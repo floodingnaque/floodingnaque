@@ -2,16 +2,15 @@
 Unit tests for Google Weather (Earth Engine) service.
 """
 
-import sys
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+from app.services.google_weather_service import (
+    GoogleWeatherService,
+    SatellitePrecipitation,
+    WeatherReanalysis,
+)
 
 
 class TestGoogleWeatherServiceInitialization:
@@ -20,8 +19,6 @@ class TestGoogleWeatherServiceInitialization:
     @patch.dict("os.environ", {"EARTHENGINE_ENABLED": "false"}, clear=False)
     def test_service_disabled_by_env(self):
         """Test service can be disabled via environment variable."""
-        from app.services.google_weather_service import GoogleWeatherService
-
         service = GoogleWeatherService()
 
         assert not service.enabled
@@ -29,8 +26,6 @@ class TestGoogleWeatherServiceInitialization:
     @patch.dict("os.environ", {"EARTHENGINE_ENABLED": "true", "GOOGLE_CLOUD_PROJECT": "test-project"}, clear=False)
     def test_service_enabled_with_config(self):
         """Test service is enabled with proper configuration."""
-        from app.services.google_weather_service import GoogleWeatherService
-
         service = GoogleWeatherService()
 
         # Should be enabled based on env
@@ -42,8 +37,6 @@ class TestSatellitePrecipitationDataStructure:
 
     def test_data_structure_creation(self):
         """Test SatellitePrecipitation dataclass creation."""
-        from app.services.google_weather_service import SatellitePrecipitation
-
         precip = SatellitePrecipitation(
             timestamp=datetime.now(), latitude=14.4793, longitude=121.0198, precipitation_rate=5.0
         )
@@ -53,8 +46,6 @@ class TestSatellitePrecipitationDataStructure:
 
     def test_default_values(self):
         """Test SatellitePrecipitation default values."""
-        from app.services.google_weather_service import SatellitePrecipitation
-
         precip = SatellitePrecipitation(
             timestamp=datetime.now(), latitude=14.4793, longitude=121.0198, precipitation_rate=2.5
         )
@@ -64,8 +55,6 @@ class TestSatellitePrecipitationDataStructure:
 
     def test_accumulation_fields(self):
         """Test precipitation accumulation fields."""
-        from app.services.google_weather_service import SatellitePrecipitation
-
         precip = SatellitePrecipitation(
             timestamp=datetime.now(),
             latitude=14.4793,
@@ -86,8 +75,6 @@ class TestWeatherReanalysisDataStructure:
 
     def test_data_structure_creation(self):
         """Test WeatherReanalysis dataclass creation."""
-        from app.services.google_weather_service import WeatherReanalysis
-
         reanalysis = WeatherReanalysis(
             timestamp=datetime.now(),
             latitude=14.4793,
@@ -102,8 +89,6 @@ class TestWeatherReanalysisDataStructure:
 
     def test_default_source(self):
         """Test default source is ERA5."""
-        from app.services.google_weather_service import WeatherReanalysis
-
         reanalysis = WeatherReanalysis(
             timestamp=datetime.now(),
             latitude=14.4793,

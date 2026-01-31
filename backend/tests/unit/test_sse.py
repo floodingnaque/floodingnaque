@@ -11,19 +11,22 @@ Tests the real-time flood alert streaming endpoints including:
 
 import json
 import queue
-import sys
 import threading
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
+# Application imports (moved from function level for coverage tracking)
+from app.api.app import create_app
+from app.api.routes.sse import (
+    SSEManager,
+    _generate_sse_stream,
+    broadcast_alert,
+    get_sse_manager,
+    sse_manager,
+)
 
 # =============================================================================
 # Test Fixtures
@@ -33,8 +36,6 @@ sys.path.insert(0, str(backend_path))
 @pytest.fixture
 def app():
     """Create Flask application for testing."""
-    from app.api.app import create_app
-
     application = create_app()
     application.config["TESTING"] = True
     return application
@@ -50,8 +51,6 @@ def client(app):
 @pytest.fixture
 def fresh_sse_manager():
     """Create a fresh SSEManager instance for testing."""
-    from app.api.routes.sse import SSEManager
-
     return SSEManager()
 
 
@@ -489,8 +488,6 @@ class TestBroadcastAlertFunction:
     @patch("app.api.routes.sse.sse_manager")
     def test_broadcast_alert_wraps_data(self, mock_manager):
         """Test broadcast_alert wraps alert data properly."""
-        from app.api.routes.sse import broadcast_alert
-
         mock_manager.broadcast.return_value = 3
 
         alert_data = {"risk_level": 2, "location": "Test Area"}
@@ -511,8 +508,6 @@ class TestGetSSEManager:
 
     def test_returns_global_manager(self):
         """Test get_sse_manager returns global instance."""
-        from app.api.routes.sse import get_sse_manager, sse_manager
-
         result = get_sse_manager()
         assert result is sse_manager
 
@@ -528,8 +523,6 @@ class TestSSEStreamGenerator:
     @patch("app.api.routes.sse.sse_manager")
     def test_yields_queued_messages(self, mock_manager):
         """Test generator yields messages from queue."""
-        from app.api.routes.sse import _generate_sse_stream
-
         client_queue = queue.Queue()
         test_message = "event: test\ndata: {}\n\n"
         client_queue.put(test_message)

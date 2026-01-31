@@ -5,16 +5,32 @@ Logs all API requests to database for analytics and debugging.
 """
 
 import logging
+import os
 import time
 
 from app.models.db import APIRequest, get_db_session
-from flask import g, request
+from flask import current_app, g, request
 
 logger = logging.getLogger(__name__)
 
 
+def _is_logging_disabled():
+    """Check if request logging should be disabled."""
+    # Disable in testing environment to avoid SQLite thread safety issues
+    if os.environ.get("TESTING", "").lower() == "true":
+        return True
+    # Also check Flask app testing flag
+    if current_app and current_app.config.get("TESTING"):
+        return True
+    return False
+
+
 def log_request_to_db():
     """Log request details to database after response is sent."""
+    # Skip logging in test environment
+    if _is_logging_disabled():
+        return
+
     if not hasattr(g, "start_time") or not hasattr(g, "request_id"):
         return
 

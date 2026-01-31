@@ -5,16 +5,10 @@ Tests user authentication, registration, login, logout, and password reset.
 """
 
 import json
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
 
 
 class TestUserRegistration:
@@ -52,7 +46,7 @@ class TestUserRegistration:
 
                                 with patch("app.api.routes.users.User", return_value=mock_user):
                                     response = client.post(
-                                        "/api/users/register",
+                                        "/api/v1/auth/register",
                                         data=json.dumps(valid_registration_data),
                                         content_type="application/json",
                                     )
@@ -68,7 +62,7 @@ class TestUserRegistration:
             with patch("app.api.routes.users.is_jwt_available", return_value=True):
                 with patch("app.api.routes.users.is_bcrypt_available", return_value=True):
                     response = client.post(
-                        "/api/users/register",
+                        "/api/v1/auth/register",
                         data=json.dumps({"password": "SecurePassword123!@#"}),
                         content_type="application/json",
                     )
@@ -81,7 +75,7 @@ class TestUserRegistration:
             with patch("app.api.routes.users.is_jwt_available", return_value=True):
                 with patch("app.api.routes.users.is_bcrypt_available", return_value=True):
                     response = client.post(
-                        "/api/users/register",
+                        "/api/v1/auth/register",
                         data=json.dumps({"email": "invalid-email", "password": "SecurePassword123!@#"}),
                         content_type="application/json",
                     )
@@ -94,7 +88,7 @@ class TestUserRegistration:
             with patch("app.api.routes.users.is_jwt_available", return_value=True):
                 with patch("app.api.routes.users.is_bcrypt_available", return_value=True):
                     response = client.post(
-                        "/api/users/register",
+                        "/api/v1/auth/register",
                         data=json.dumps({"email": "test@example.com"}),
                         content_type="application/json",
                     )
@@ -108,7 +102,7 @@ class TestUserRegistration:
                 with patch("app.api.routes.users.is_bcrypt_available", return_value=True):
                     with patch("app.api.routes.users.is_secure_password", return_value=(False, ["Password too weak"])):
                         response = client.post(
-                            "/api/users/register",
+                            "/api/v1/auth/register",
                             data=json.dumps({"email": "test@example.com", "password": "weak"}),
                             content_type="application/json",
                         )
@@ -132,7 +126,7 @@ class TestUserRegistration:
                             session.query.return_value = mock_query
 
                             response = client.post(
-                                "/api/users/register",
+                                "/api/v1/auth/register",
                                 data=json.dumps(valid_registration_data),
                                 content_type="application/json",
                             )
@@ -144,7 +138,7 @@ class TestUserRegistration:
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
             with patch("app.api.routes.users.is_jwt_available", return_value=False):
                 response = client.post(
-                    "/api/users/register",
+                    "/api/v1/auth/register",
                     data=json.dumps({"email": "test@example.com", "password": "pwd"}),
                     content_type="application/json",
                 )
@@ -195,7 +189,7 @@ class TestUserLogin:
                                     session.query.return_value = mock_query
 
                                     response = client.post(
-                                        "/api/users/login",
+                                        "/api/v1/auth/login",
                                         data=json.dumps(valid_login_data),
                                         content_type="application/json",
                                     )
@@ -212,7 +206,7 @@ class TestUserLogin:
             with patch("app.api.routes.users.is_jwt_available", return_value=True):
                 with patch("app.api.routes.users.is_bcrypt_available", return_value=True):
                     response = client.post(
-                        "/api/users/login",
+                        "/api/v1/auth/login",
                         data=json.dumps({"password": "password123"}),
                         content_type="application/json",
                     )
@@ -235,7 +229,7 @@ class TestUserLogin:
                         session.query.return_value = mock_query
 
                         response = client.post(
-                            "/api/users/login", data=json.dumps(valid_login_data), content_type="application/json"
+                            "/api/v1/auth/login", data=json.dumps(valid_login_data), content_type="application/json"
                         )
 
         assert response.status_code == 401
@@ -257,7 +251,7 @@ class TestUserLogin:
                             session.query.return_value = mock_query
 
                             response = client.post(
-                                "/api/users/login", data=json.dumps(valid_login_data), content_type="application/json"
+                                "/api/v1/auth/login", data=json.dumps(valid_login_data), content_type="application/json"
                             )
 
         assert response.status_code == 401
@@ -281,7 +275,7 @@ class TestUserLogin:
                         session.query.return_value = mock_query
 
                         response = client.post(
-                            "/api/users/login", data=json.dumps(valid_login_data), content_type="application/json"
+                            "/api/v1/auth/login", data=json.dumps(valid_login_data), content_type="application/json"
                         )
 
         assert response.status_code == 423
@@ -304,7 +298,7 @@ class TestUserLogin:
                         session.query.return_value = mock_query
 
                         response = client.post(
-                            "/api/users/login", data=json.dumps(valid_login_data), content_type="application/json"
+                            "/api/v1/auth/login", data=json.dumps(valid_login_data), content_type="application/json"
                         )
 
         assert response.status_code == 403
@@ -339,7 +333,7 @@ class TestTokenRefresh:
                             mock_hash.return_value.hexdigest.return_value = "token_hash"
 
                             response = client.post(
-                                "/api/users/refresh",
+                                "/api/v1/auth/refresh",
                                 data=json.dumps({"refresh_token": "valid_token"}),
                                 content_type="application/json",
                             )
@@ -351,7 +345,7 @@ class TestTokenRefresh:
     def test_refresh_missing_token(self, client):
         """Test refresh with missing token."""
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
-            response = client.post("/api/users/refresh", data=json.dumps({}), content_type="application/json")
+            response = client.post("/api/v1/auth/refresh", data=json.dumps({}), content_type="application/json")
 
         assert response.status_code == 400
 
@@ -360,7 +354,7 @@ class TestTokenRefresh:
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
             with patch("app.api.routes.users.decode_token", return_value=(None, "Invalid token")):
                 response = client.post(
-                    "/api/users/refresh",
+                    "/api/v1/auth/refresh",
                     data=json.dumps({"refresh_token": "invalid_token"}),
                     content_type="application/json",
                 )
@@ -388,7 +382,7 @@ class TestLogout:
                     mock_query.first.return_value = mock_user
                     session.query.return_value = mock_query
 
-                    response = client.post("/api/users/logout", headers={"Authorization": "Bearer valid_token"})
+                    response = client.post("/api/v1/auth/logout", headers={"Authorization": "Bearer valid_token"})
 
         assert response.status_code == 200
         data = response.get_json()
@@ -397,7 +391,7 @@ class TestLogout:
     def test_logout_without_token(self, client):
         """Test logout without authorization header."""
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
-            response = client.post("/api/users/logout")
+            response = client.post("/api/v1/auth/logout")
 
         assert response.status_code == 401
 
@@ -405,7 +399,7 @@ class TestLogout:
         """Test logout with expired token still succeeds."""
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
             with patch("app.api.routes.users.decode_token", return_value=(None, "Token expired")):
-                response = client.post("/api/users/logout", headers={"Authorization": "Bearer expired_token"})
+                response = client.post("/api/v1/auth/logout", headers={"Authorization": "Bearer expired_token"})
 
         assert response.status_code == 200
 
@@ -432,7 +426,7 @@ class TestPasswordReset:
                     return_value=("token", datetime.now(timezone.utc)),
                 ):
                     response = client.post(
-                        "/api/users/password-reset/request",
+                        "/api/v1/auth/password-reset/request",
                         data=json.dumps({"email": "test@example.com"}),
                         content_type="application/json",
                     )
@@ -446,7 +440,7 @@ class TestPasswordReset:
         """Test password reset request with invalid email still returns success."""
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
             response = client.post(
-                "/api/users/password-reset/request",
+                "/api/v1/auth/password-reset/request",
                 data=json.dumps({"email": "invalid"}),
                 content_type="application/json",
             )
@@ -475,7 +469,7 @@ class TestPasswordReset:
                             session.query.return_value = mock_query
 
                             response = client.post(
-                                "/api/users/password-reset/confirm",
+                                "/api/v1/auth/password-reset/confirm",
                                 data=json.dumps(
                                     {
                                         "email": "test@example.com",
@@ -492,7 +486,7 @@ class TestPasswordReset:
         """Test password reset confirmation with missing fields."""
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
             response = client.post(
-                "/api/users/password-reset/confirm",
+                "/api/v1/auth/password-reset/confirm",
                 data=json.dumps({"email": "test@example.com"}),
                 content_type="application/json",
             )
@@ -516,7 +510,7 @@ class TestPasswordReset:
                         session.query.return_value = mock_query
 
                         response = client.post(
-                            "/api/users/password-reset/confirm",
+                            "/api/v1/auth/password-reset/confirm",
                             data=json.dumps(
                                 {
                                     "email": "test@example.com",
@@ -549,7 +543,7 @@ class TestGetCurrentUser:
                 mock_query.first.return_value = mock_user
                 session.query.return_value = mock_query
 
-                response = client.get("/api/users/me", headers={"Authorization": "Bearer valid_token"})
+                response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer valid_token"})
 
         assert response.status_code == 200
         data = response.get_json()
@@ -558,14 +552,14 @@ class TestGetCurrentUser:
 
     def test_get_current_user_unauthorized(self, client):
         """Test get current user without authorization."""
-        response = client.get("/api/users/me")
+        response = client.get("/api/v1/auth/me")
 
         assert response.status_code == 401
 
     def test_get_current_user_invalid_token(self, client):
         """Test get current user with invalid token."""
         with patch("app.api.routes.users.decode_token", return_value=(None, "Invalid token")):
-            response = client.get("/api/users/me", headers={"Authorization": "Bearer invalid_token"})
+            response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"})
 
         assert response.status_code == 401
 
@@ -582,7 +576,7 @@ class TestGetCurrentUser:
                 mock_query.first.return_value = None
                 session.query.return_value = mock_query
 
-                response = client.get("/api/users/me", headers={"Authorization": "Bearer valid_token"})
+                response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer valid_token"})
 
         assert response.status_code == 404
 

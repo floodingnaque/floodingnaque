@@ -1,0 +1,26 @@
+[run]
+source = app
+branch = True
+omit =
+    */tests/*
+    */__pycache__/*
+    */migrations/*
+    */.venv/*
+    */venv/*
+
+[report]
+fail_under = 85
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml

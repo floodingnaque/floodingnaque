@@ -1,0 +1,62 @@
+================================================================================
+ RANDOM FOREST FLOOD PREDICTION MODEL - COMPREHENSIVE REPORT
+ Parañaque City Flood Detection System
+================================================================================
+
+MODEL INFORMATION
+--------------------------------------------------------------------------------
+Version: 6
+Model Type: RandomForestClassifier
+Created: 2026-01-17T01:26:59.597662
+Model Path: N/A
+
+TRAINING DATA
+--------------------------------------------------------------------------------
+Data Source: N/A
+Dataset Shape: N/A
+Features: 
+Target Distribution: {}
+
+MODEL PARAMETERS
+--------------------------------------------------------------------------------
+
+PERFORMANCE METRICS
+--------------------------------------------------------------------------------
+Accuracy:  1.0000
+Precision: 1.0000
+Recall:    1.0000
+F1 Score:  1.0000
+
+DETAILED CLASSIFICATION REPORT
+--------------------------------------------------------------------------------
+              precision    recall  f1-score   support
+
+    No Flood       1.00      1.00      1.00      9132
+       Flood       1.00      1.00      1.00      4566
+
+    accuracy                           1.00     13698
+   macro avg       1.00      1.00      1.00     13698
+weighted avg       1.00      1.00      1.00     13698
+
+CONFUSION MATRIX
+--------------------------------------------------------------------------------
+                Predicted No Flood    Predicted Flood
+Actual No Flood          9132                   0
+Actual Flood                0                4566
+
+FEATURE IMPORTANCE (Top 10)
+--------------------------------------------------------------------------------
+precipitation                 : 0.3377
+humidity_precip_interaction   : 0.2553
+temp_precip_interaction       : 0.2085
+humidity                      : 0.0522
+temp_humidity_interaction     : 0.0320
+monsoon_precip_interaction    : 0.0272
+is_monsoon_season             : 0.0260
+month                         : 0.0212
+temperature                   : 0.0206
+saturation_risk               : 0.0194
+
+================================================================================
+Report generated on: 2026-01-17 02:35:33
+================================================================================

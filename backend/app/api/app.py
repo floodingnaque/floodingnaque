@@ -5,6 +5,7 @@ Flask application factory with modular route blueprints.
 Industry-standard security hardening applied.
 """
 
+import json
 import logging
 import os
 import uuid
@@ -34,6 +35,7 @@ from app.api.routes.sse import sse_bp
 from app.api.routes.tides import tides_bp
 from app.api.routes.upload import upload_bp
 from app.api.routes.users import users_bp
+from app.api.routes.v1 import v1_bp
 from app.api.routes.versioning import versioning_bp
 from app.api.routes.webhooks import webhooks_bp
 from app.api.swagger_config import init_swagger
@@ -291,10 +293,12 @@ def create_app(config_override: dict = None) -> Flask:
     # API v1 routes (with /api/v1 prefix)
     API_V1_PREFIX = "/api/v1"
 
+    # Register models_bp without prefix - provides /api/version, /api/models, /api/docs
+    app.register_blueprint(models_bp)
+
     app.register_blueprint(ingest_bp, url_prefix=f"{API_V1_PREFIX}/ingest")
     app.register_blueprint(predict_bp, url_prefix=f"{API_V1_PREFIX}/predict")
     app.register_blueprint(data_bp, url_prefix=f"{API_V1_PREFIX}/data")
-    app.register_blueprint(models_bp, url_prefix=f"{API_V1_PREFIX}/models")
     app.register_blueprint(webhooks_bp, url_prefix=f"{API_V1_PREFIX}/webhooks")
     app.register_blueprint(batch_bp, url_prefix=f"{API_V1_PREFIX}/batch")
     app.register_blueprint(export_bp, url_prefix=f"{API_V1_PREFIX}/export")
@@ -309,8 +313,18 @@ def create_app(config_override: dict = None) -> Flask:
     app.register_blueprint(predictions_bp, url_prefix=f"{API_V1_PREFIX}/predictions")
     app.register_blueprint(sse_bp, url_prefix=f"{API_V1_PREFIX}/sse")
     app.register_blueprint(upload_bp, url_prefix=f"{API_V1_PREFIX}/upload")
-    app.register_blueprint(versioning_bp, url_prefix=f"{API_V1_PREFIX}/versioning")
+    app.register_blueprint(versioning_bp)  # No prefix - routes contain full paths like /api/models/versions
     app.register_blueprint(feature_flags_bp, url_prefix=f"{API_V1_PREFIX}/feature-flags")
+
+    # Backward-compatible routes (shorter URL prefixes for legacy/test compatibility)
+    # These register the same blueprints with different names and prefixes
+    app.register_blueprint(tides_bp, url_prefix="/tides", name="tides_compat")
+    app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard", name="dashboard_compat")
+    app.register_blueprint(export_bp, url_prefix="/api/export", name="export_compat")
+    app.register_blueprint(sse_bp, url_prefix="/sse", name="sse_compat")
+
+    # V1 API blueprint (backward compatible endpoints)
+    app.register_blueprint(v1_bp, url_prefix="/api/v1", name="v1_api")
 
     logger.info("All blueprints registered")
 
@@ -396,6 +410,16 @@ def create_app(config_override: dict = None) -> Flask:
             resp.headers["Retry-After"] = str(error.retry_after)
 
         return resp, error.status_code
+
+    @app.errorhandler(json.JSONDecodeError)
+    def handle_json_decode_error(error):
+        """Handle JSON decode errors (malformed JSON)."""
+        return _build_error_response(
+            "BAD_REQUEST",
+            "Invalid JSON",
+            f"Failed to parse JSON: {str(error)}",
+            400,
+        )
 
     @app.errorhandler(400)
     def bad_request(error):

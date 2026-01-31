@@ -1,0 +1,227 @@
+{
+  "generated_at": "2026-01-17T01:26:59.598874",
+  "total_versions": 6,
+  "best_version": 1,
+  "versions": [
+    {
+      "version": 1,
+      "name": "Baseline_2022",
+      "description": "Official Records 2022 Only",
+      "data_type": "official_records",
+      "dataset_size": 1272,
+      "feature_count": 5,
+      "features": [
+        "temperature",
+        "humidity",
+        "precipitation",
+        "is_monsoon_season",
+        "month"
+      ],
+      "metrics": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "roc_auc": 1.0,
+        "cv_mean": 1.0,
+        "cv_std": 0.0
+      },
+      "best_params": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "class_weight": "balanced",
+        "random_state": 42,
+        "n_jobs": -1
+      }
+    },
+    {
+      "version": 2,
+      "name": "Extended_2023",
+      "description": "Official Records 2022-2023",
+      "data_type": "official_records",
+      "dataset_size": 3450,
+      "feature_count": 5,
+      "features": [
+        "temperature",
+        "humidity",
+        "precipitation",
+        "is_monsoon_season",
+        "month"
+      ],
+      "metrics": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "roc_auc": 1.0,
+        "cv_mean": 1.0,
+        "cv_std": 0.0
+      },
+      "best_params": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "class_weight": "balanced",
+        "random_state": 42,
+        "n_jobs": -1
+      }
+    },
+    {
+      "version": 3,
+      "name": "Extended_2024",
+      "description": "Official Records 2022-2024",
+      "data_type": "official_records",
+      "dataset_size": 5970,
+      "feature_count": 5,
+      "features": [
+        "temperature",
+        "humidity",
+        "precipitation",
+        "is_monsoon_season",
+        "month"
+      ],
+      "metrics": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "roc_auc": 1.0,
+        "cv_mean": 1.0,
+        "cv_std": 0.0
+      },
+      "best_params": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "class_weight": "balanced",
+        "random_state": 42,
+        "n_jobs": -1
+      }
+    },
+    {
+      "version": 4,
+      "name": "Full_Official",
+      "description": "Official Records 2022-2025",
+      "data_type": "official_records",
+      "dataset_size": 13698,
+      "feature_count": 5,
+      "features": [
+        "temperature",
+        "humidity",
+        "precipitation",
+        "is_monsoon_season",
+        "month"
+      ],
+      "metrics": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "roc_auc": 1.0,
+        "cv_mean": 1.0,
+        "cv_std": 0.0
+      },
+      "best_params": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "class_weight": "balanced",
+        "random_state": 42,
+        "n_jobs": -1
+      }
+    },
+    {
+      "version": 5,
+      "name": "PAGASA",
+      "description": "PAGASA Weather Data (2020-2025)",
+      "data_type": "pagasa",
+      "dataset_size": 4944,
+      "feature_count": 11,
+      "features": [
+        "temperature",
+        "humidity",
+        "precipitation",
+        "is_monsoon_season",
+        "month",
+        "precip_3day_sum",
+        "precip_7day_sum",
+        "temp_humidity_interaction",
+        "humidity_precip_interaction",
+        "monsoon_precip_interaction",
+        "rain_streak"
+      ],
+      "metrics": {
+        "accuracy": 0.9848331648129424,
+        "precision": 0.9851817888677099,
+        "recall": 0.9848331648129424,
+        "f1_score": 0.9849081765673765,
+        "roc_auc": 0.9989819305461763,
+        "cv_mean": 0.9863683571531109,
+        "cv_std": 0.010861052378052738
+      },
+      "best_params": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "class_weight": "balanced",
+        "random_state": 42,
+        "n_jobs": -1
+      }
+    },
+    {
+      "version": 6,
+      "name": "ULTIMATE",
+      "description": "Combined: Official + PAGASA",
+      "data_type": "combined",
+      "dataset_size": 18021,
+      "feature_count": 10,
+      "features": [
+        "temperature",
+        "humidity",
+        "precipitation",
+        "is_monsoon_season",
+        "month",
+        "temp_humidity_interaction",
+        "humidity_precip_interaction",
+        "temp_precip_interaction",
+        "monsoon_precip_interaction",
+        "saturation_risk"
+      ],
+      "metrics": {
+        "accuracy": 0.9675450762829404,
+        "precision": 0.9679476767109967,
+        "recall": 0.9675450762829404,
+        "f1_score": 0.9676565239822061,
+        "roc_auc": 0.9957253199428113,
+        "cv_mean": 0.9621888457260589,
+        "cv_std": 0.06452587316428132
+      },
+      "best_params": {
+        "n_estimators": 200,
+        "max_depth": 15,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "class_weight": "balanced",
+        "random_state": 42,
+        "n_jobs": -1
+      }
+    }
+  ],
+  "improvement": {
+    "accuracy": -0.0324549237170596,
+    "f1_score": -0.03234347601779386,
+    "roc_auc": -0.004274680057188673
+  }
+}

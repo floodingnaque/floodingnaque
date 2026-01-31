@@ -4,10 +4,15 @@ Unit Tests for Celery Application Configuration.
 Tests the Celery app setup, configuration, and task routing.
 """
 
+import importlib
 import os
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Import the module properly (not through app.services.__init__.py which exports the Celery instance)
+celery_module = importlib.import_module("app.services.celery_app")
+celery_app = celery_module.celery_app
 
 
 class TestCeleryAppConfiguration:
@@ -19,8 +24,6 @@ class TestCeleryAppConfiguration:
             os.environ,
             {"CELERY_BROKER_URL": "redis://localhost:6379/1", "CELERY_RESULT_BACKEND": "redis://localhost:6379/2"},
         ):
-            from app.services.celery_app import celery_app
-
             assert celery_app is not None
             assert celery_app.main == "floodingnaque"
 
@@ -28,8 +31,6 @@ class TestCeleryAppConfiguration:
         """Test default broker URL configuration."""
         with patch.dict(os.environ, {}, clear=True):
             # Reload to get defaults
-            from app.services.celery_app import celery_app
-
             # Default should be localhost redis
             assert "redis://localhost:6379" in celery_app.conf.broker_url
 
@@ -37,33 +38,23 @@ class TestCeleryAppConfiguration:
         """Test broker URL from environment variable."""
         custom_broker = "redis://custom-redis:6380/0"
         with patch.dict(os.environ, {"CELERY_BROKER_URL": custom_broker}):
-            import importlib
-
-            from app.services import celery_app as celery_module
-
             importlib.reload(celery_module)
 
             assert celery_module.celery_app.conf.broker_url == custom_broker
 
     def test_celery_serializer_config(self):
         """Test that serializer is configured as JSON."""
-        from app.services.celery_app import celery_app
-
         assert celery_app.conf.task_serializer == "json"
         assert "json" in celery_app.conf.accept_content
         assert celery_app.conf.result_serializer == "json"
 
     def test_celery_timezone_config(self):
         """Test timezone configuration."""
-        from app.services.celery_app import celery_app
-
         assert celery_app.conf.timezone == "UTC"
         assert celery_app.conf.enable_utc is True
 
     def test_celery_task_routing(self):
         """Test task routing configuration."""
-        from app.services.celery_app import celery_app
-
         routes = celery_app.conf.task_routes
 
         assert "app.services.tasks.model_retraining" in routes
@@ -77,30 +68,22 @@ class TestCeleryAppConfiguration:
 
     def test_celery_worker_settings(self):
         """Test worker configuration settings."""
-        from app.services.celery_app import celery_app
-
         assert celery_app.conf.worker_prefetch_multiplier == 1
         assert celery_app.conf.task_acks_late is True
         assert celery_app.conf.worker_max_tasks_per_child == 1000
 
     def test_celery_result_settings(self):
         """Test result backend settings."""
-        from app.services.celery_app import celery_app
-
         assert celery_app.conf.result_expires == 3600  # 1 hour
         assert celery_app.conf.result_compression == "gzip"
 
     def test_celery_error_handling_settings(self):
         """Test error handling configuration."""
-        from app.services.celery_app import celery_app
-
         assert celery_app.conf.task_reject_on_worker_lost is True
         assert celery_app.conf.task_ignore_result is False
 
     def test_celery_beat_schedule(self):
         """Test periodic task scheduling configuration."""
-        from app.services.celery_app import celery_app
-
         beat_schedule = celery_app.conf.beat_schedule
 
         # Check cleanup task
@@ -122,10 +105,6 @@ class TestCeleryAppImports:
         with patch("app.services.celery_app.logger") as mock_logger:
             # Force reimport with tasks module unavailable
             with patch.dict("sys.modules", {"app.services.tasks": None}):
-                import importlib
-
-                from app.services import celery_app as celery_module
-
                 # Should not raise an exception
                 assert celery_module.celery_app is not None
 
@@ -143,10 +122,6 @@ class TestCeleryAppEnvironmentVariables:
     def test_environment_variable_overrides(self, env_var, expected_key, expected_value):
         """Test that environment variables properly override defaults."""
         with patch.dict(os.environ, {env_var: expected_value}):
-            import importlib
-
-            from app.services import celery_app as celery_module
-
             importlib.reload(celery_module)
 
             actual_value = getattr(celery_module.celery_app.conf, expected_key)

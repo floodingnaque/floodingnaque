@@ -565,7 +565,7 @@ def update_webhook(webhook_id):
         description: Not found
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"error": "No data provided"}), 400
 

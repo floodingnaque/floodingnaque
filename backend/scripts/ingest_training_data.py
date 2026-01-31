@@ -488,6 +488,9 @@ def process_and_merge_fetched_data(fetched_data: Dict[str, pd.DataFrame], args, 
 
 
 def main():
+    # Declare globals at function start before any usage
+    global DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY
+
     parser = argparse.ArgumentParser(description="Ingest training data from files or fetch from external sources")
 
     # File/directory ingestion options
@@ -522,8 +525,7 @@ def main():
     # Setup logging based on --verbose flag
     setup_logging(verbose=args.verbose)
 
-    # Update global retry settings if provided
-    global DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY
+    # Update global retry settings if provided (global declared at function start)
     if args.max_retries != DEFAULT_MAX_RETRIES:
         DEFAULT_MAX_RETRIES = args.max_retries
         logger.info(f"Using custom max retries: {DEFAULT_MAX_RETRIES}")

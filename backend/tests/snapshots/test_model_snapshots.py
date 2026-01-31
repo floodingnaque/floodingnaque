@@ -5,7 +5,7 @@ Uses syrupy for snapshot testing to detect unintended model output changes.
 These tests help ensure model updates don't break compatibility.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pytest
@@ -29,11 +29,16 @@ class TestPredictionSnapshots:
         """
         from app.services.predict import make_prediction
 
-        with patch("app.services.predict.load_model") as mock_load:
+        with patch("app.services.predict._get_model_loader") as mock_loader:
             mock_model = Mock()
-            mock_model.predict.return_value = np.array([[0]])
+            mock_model.predict.return_value = np.array([0])
             mock_model.predict_proba.return_value = np.array([[0.85, 0.15]])
-            mock_load.return_value = mock_model
+            mock_model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+
+            mock_instance = MagicMock()
+            mock_instance.model = mock_model
+            mock_instance.metadata = {"version": "1.0.0"}
+            mock_loader.return_value = mock_instance
 
             weather_data = {"temperature": 25.0, "humidity": 60.0, "precipitation": 5.0}
 
@@ -49,11 +54,16 @@ class TestPredictionSnapshots:
         """
         from app.services.predict import make_prediction
 
-        with patch("app.services.predict.load_model") as mock_load:
+        with patch("app.services.predict._get_model_loader") as mock_loader:
             mock_model = Mock()
-            mock_model.predict.return_value = np.array([[0]])
+            mock_model.predict.return_value = np.array([0])
             mock_model.predict_proba.return_value = np.array([[0.55, 0.45]])
-            mock_load.return_value = mock_model
+            mock_model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+
+            mock_instance = MagicMock()
+            mock_instance.model = mock_model
+            mock_instance.metadata = {"version": "1.0.0"}
+            mock_loader.return_value = mock_instance
 
             weather_data = {"temperature": 28.0, "humidity": 80.0, "precipitation": 20.0}
 
@@ -68,11 +78,16 @@ class TestPredictionSnapshots:
         """
         from app.services.predict import make_prediction
 
-        with patch("app.services.predict.load_model") as mock_load:
+        with patch("app.services.predict._get_model_loader") as mock_loader:
             mock_model = Mock()
-            mock_model.predict.return_value = np.array([[1]])
+            mock_model.predict.return_value = np.array([1])
             mock_model.predict_proba.return_value = np.array([[0.20, 0.80]])
-            mock_load.return_value = mock_model
+            mock_model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+
+            mock_instance = MagicMock()
+            mock_instance.model = mock_model
+            mock_instance.metadata = {"version": "1.0.0"}
+            mock_loader.return_value = mock_instance
 
             weather_data = {"temperature": 32.0, "humidity": 95.0, "precipitation": 100.0}
 
@@ -160,12 +175,21 @@ class TestBatchPredictionSnapshots:
         """
         from app.services.predict import make_prediction
 
-        with patch("app.services.predict.load_model") as mock_load:
+        with patch("app.services.predict._get_model_loader") as mock_loader:
             mock_model = Mock()
-            # Return predictions for 3 samples
-            mock_model.predict.return_value = np.array([[0], [1], [0]])
-            mock_model.predict_proba.return_value = np.array([[0.85, 0.15], [0.20, 0.80], [0.60, 0.40]])
-            mock_load.return_value = mock_model
+            # Return predictions for each sample
+            mock_model.predict.side_effect = [np.array([0]), np.array([1]), np.array([0])]
+            mock_model.predict_proba.side_effect = [
+                np.array([[0.85, 0.15]]),
+                np.array([[0.20, 0.80]]),
+                np.array([[0.60, 0.40]]),
+            ]
+            mock_model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+
+            mock_instance = MagicMock()
+            mock_instance.model = mock_model
+            mock_instance.metadata = {"version": "1.0.0"}
+            mock_loader.return_value = mock_instance
 
             batch_data = [
                 {"temperature": 25.0, "humidity": 60.0, "precipitation": 5.0},
@@ -195,7 +219,12 @@ class TestModelMetadataSnapshots:
         from app.services.predict import get_current_model_info
 
         with patch("app.services.predict._get_model_loader") as mock_loader:
-            mock_instance = Mock()
+            mock_model = Mock()
+            mock_model.__class__.__name__ = "RandomForestClassifier"
+            mock_model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+
+            mock_instance = MagicMock()
+            mock_instance.model = mock_model
             mock_instance.model_path = "models/flood_rf_model.joblib"
             mock_instance.metadata = {
                 "version": "1.0.0",
@@ -235,6 +264,10 @@ class TestErrorResponseSnapshots:
 
         error_dict = error.to_dict()
 
+        # Normalize dynamic timestamp for reproducible snapshots
+        if "error" in error_dict and "timestamp" in error_dict["error"]:
+            error_dict["error"]["timestamp"] = "2025-01-15T10:30:00Z"
+
         assert error_dict == snapshot
 
     @pytest.mark.snapshot
@@ -247,6 +280,10 @@ class TestErrorResponseSnapshots:
         error = ModelError("Model prediction failed", details={"reason": "Invalid input shape"})
 
         error_dict = error.to_dict()
+
+        # Normalize dynamic timestamp for reproducible snapshots
+        if "error" in error_dict and "timestamp" in error_dict["error"]:
+            error_dict["error"]["timestamp"] = "2025-01-15T10:30:00Z"
 
         assert error_dict == snapshot
 

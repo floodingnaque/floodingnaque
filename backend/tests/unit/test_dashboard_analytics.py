@@ -5,18 +5,18 @@ Tests the DashboardAnalytics class for dashboard statistics,
 time-series data, flood risk trends, and performance metrics.
 """
 
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
+# Application imports (moved from function level for coverage tracking)
+from app.services.dashboard_analytics import (
+    DashboardAnalytics,
+    _dashboard_analytics,
+    get_dashboard_analytics,
+)
 
 # =============================================================================
 # Test Fixtures
@@ -94,8 +94,6 @@ class TestDashboardAnalyticsInitialization:
     @patch("app.services.dashboard_analytics.get_router")
     def test_init_creates_router(self, mock_get_router):
         """Test that initialization creates a router."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -107,10 +105,6 @@ class TestDashboardAnalyticsInitialization:
         """Test singleton pattern for get_dashboard_analytics."""
         # Reset singleton
         import app.services.dashboard_analytics as module
-        from app.services.dashboard_analytics import (
-            _dashboard_analytics,
-            get_dashboard_analytics,
-        )
 
         module._dashboard_analytics = None
 
@@ -135,8 +129,6 @@ class TestGetDashboardStats:
         self, mock_get_router, mock_session, mock_weather_stats, mock_prediction_stats, mock_alert_stats
     ):
         """Test that dashboard stats returns complete structure."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -161,8 +153,6 @@ class TestGetDashboardStats:
         self, mock_get_router, mock_session, mock_weather_stats, mock_prediction_stats, mock_alert_stats
     ):
         """Test weather stats structure."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -187,8 +177,6 @@ class TestGetDashboardStats:
         self, mock_get_router, mock_session, mock_weather_stats, mock_prediction_stats, mock_alert_stats
     ):
         """Test prediction stats structure."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -213,8 +201,6 @@ class TestGetDashboardStats:
         self, mock_get_router, mock_session, mock_weather_stats, mock_prediction_stats, mock_alert_stats
     ):
         """Test alert stats structure."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -235,8 +221,6 @@ class TestGetDashboardStats:
     @patch("app.services.dashboard_analytics.get_router")
     def test_handles_null_values(self, mock_get_router, mock_session):
         """Test handling of NULL values from database."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -264,8 +248,6 @@ class TestGetDashboardStats:
         self, mock_get_router, mock_session, mock_weather_stats, mock_prediction_stats, mock_alert_stats
     ):
         """Test custom days parameter."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -291,8 +273,6 @@ class TestGetTimeSeriesData:
     @patch("app.services.dashboard_analytics.get_router")
     def test_returns_list_of_dicts(self, mock_get_router, mock_session, mock_time_series_results):
         """Test that time series returns list of dictionaries."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -310,8 +290,6 @@ class TestGetTimeSeriesData:
     @patch("app.services.dashboard_analytics.get_router")
     def test_data_point_structure(self, mock_get_router, mock_session, mock_time_series_results):
         """Test structure of individual data points."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -326,8 +304,6 @@ class TestGetTimeSeriesData:
     @patch("app.services.dashboard_analytics.get_router")
     def test_default_parameters(self, mock_get_router, mock_session):
         """Test default parameter values."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -341,8 +317,6 @@ class TestGetTimeSeriesData:
     @patch("app.services.dashboard_analytics.get_router")
     def test_metric_options(self, mock_get_router, mock_session):
         """Test different metric options."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -357,8 +331,6 @@ class TestGetTimeSeriesData:
     @patch("app.services.dashboard_analytics.get_router")
     def test_interval_options(self, mock_get_router, mock_session):
         """Test different interval options."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -373,8 +345,6 @@ class TestGetTimeSeriesData:
     @patch("app.services.dashboard_analytics.get_router")
     def test_custom_date_range(self, mock_get_router, mock_session):
         """Test custom date range parameters."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -392,8 +362,6 @@ class TestGetTimeSeriesData:
     @patch("app.services.dashboard_analytics.get_router")
     def test_handles_empty_results(self, mock_get_router, mock_session):
         """Test handling of empty results."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -415,8 +383,6 @@ class TestGetFloodRiskTrend:
     @patch("app.services.dashboard_analytics.get_router")
     def test_returns_daily_risk_distributions(self, mock_get_router, mock_session, mock_risk_trend_results):
         """Test that risk trend returns daily distributions."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -430,8 +396,6 @@ class TestGetFloodRiskTrend:
     @patch("app.services.dashboard_analytics.get_router")
     def test_daily_data_structure(self, mock_get_router, mock_session, mock_risk_trend_results):
         """Test structure of daily data."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -448,8 +412,6 @@ class TestGetFloodRiskTrend:
     @patch("app.services.dashboard_analytics.get_router")
     def test_risk_level_counts(self, mock_get_router, mock_session, mock_risk_trend_results):
         """Test that risk level counts are correct."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -469,8 +431,6 @@ class TestGetFloodRiskTrend:
     @patch("app.services.dashboard_analytics.get_router")
     def test_custom_days_parameter(self, mock_get_router, mock_session):
         """Test custom days parameter."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -483,8 +443,6 @@ class TestGetFloodRiskTrend:
     @patch("app.services.dashboard_analytics.get_router")
     def test_handles_empty_results(self, mock_get_router, mock_session):
         """Test handling of empty results."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -506,8 +464,6 @@ class TestGetPartitionStats:
     @patch("app.services.dashboard_analytics.get_router")
     def test_returns_partition_list(self, mock_get_router, mock_session):
         """Test that partition stats returns list."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -525,8 +481,6 @@ class TestGetPartitionStats:
     @patch("app.services.dashboard_analytics.get_router")
     def test_partition_structure(self, mock_get_router, mock_session):
         """Test structure of partition data."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -545,8 +499,6 @@ class TestGetPartitionStats:
     @patch("app.services.dashboard_analytics.get_router")
     def test_custom_table_name(self, mock_get_router, mock_session):
         """Test custom table name parameter."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -560,8 +512,6 @@ class TestGetPartitionStats:
     @patch("app.services.dashboard_analytics.get_router")
     def test_handles_database_error(self, mock_get_router, mock_session):
         """Test handling of database errors."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -583,8 +533,6 @@ class TestGetPerformanceMetrics:
     @patch("app.services.dashboard_analytics.get_router")
     def test_returns_complete_metrics(self, mock_get_router, mock_session, mock_performance_metrics):
         """Test that performance metrics returns complete structure."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -606,8 +554,6 @@ class TestGetPerformanceMetrics:
     @patch("app.services.dashboard_analytics.get_router")
     def test_metrics_values(self, mock_get_router, mock_session, mock_performance_metrics):
         """Test metrics values are correct."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -627,8 +573,6 @@ class TestGetPerformanceMetrics:
     @patch("app.services.dashboard_analytics.get_router")
     def test_custom_hours_parameter(self, mock_get_router, mock_session, mock_performance_metrics):
         """Test custom hours parameter."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -641,8 +585,6 @@ class TestGetPerformanceMetrics:
     @patch("app.services.dashboard_analytics.get_router")
     def test_handles_null_values(self, mock_get_router, mock_session):
         """Test handling of NULL values."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -658,8 +600,6 @@ class TestGetPerformanceMetrics:
     @patch("app.services.dashboard_analytics.get_router")
     def test_error_rate_calculation(self, mock_get_router, mock_session):
         """Test error rate calculation."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -685,8 +625,6 @@ class TestDashboardAnalyticsIntegration:
         self, mock_get_router, mock_session, mock_weather_stats, mock_prediction_stats, mock_alert_stats
     ):
         """Test calling multiple methods on same instance."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 
@@ -713,8 +651,6 @@ class TestDashboardAnalyticsIntegration:
         self, mock_get_router, mock_session, mock_weather_stats, mock_prediction_stats, mock_alert_stats
     ):
         """Test that stats include generation timestamp."""
-        from app.services.dashboard_analytics import DashboardAnalytics
-
         mock_get_router.return_value = MagicMock()
         analytics = DashboardAnalytics()
 

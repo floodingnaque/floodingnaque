@@ -8,6 +8,12 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.api.middleware.request_logger import (
+    log_request_to_db,
+    setup_request_logging_middleware,
+)
+from app.models.db import APIRequest, get_db_session
+from flask import Flask, g
 
 
 class TestLogRequestToDb:
@@ -15,16 +21,12 @@ class TestLogRequestToDb:
 
     def test_log_request_to_db_function_exists(self):
         """Test log_request_to_db function exists."""
-        from app.api.middleware.request_logger import log_request_to_db
-
         assert callable(log_request_to_db)
 
+    @patch("app.api.middleware.request_logger._is_logging_disabled", return_value=False)
     @patch("app.api.middleware.request_logger.get_db_session")
-    def test_log_request_to_db_success(self, mock_get_db):
+    def test_log_request_to_db_success(self, mock_get_db, mock_disabled):
         """Test successful request logging to database."""
-        from app.api.middleware.request_logger import log_request_to_db
-        from flask import Flask, g
-
         app = Flask(__name__)
         mock_session = MagicMock()
         mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)
@@ -41,9 +43,6 @@ class TestLogRequestToDb:
 
     def test_log_request_to_db_no_start_time(self):
         """Test log_request_to_db handles missing start_time."""
-        from app.api.middleware.request_logger import log_request_to_db
-        from flask import Flask, g
-
         app = Flask(__name__)
 
         with app.test_request_context("/api/test"):
@@ -53,9 +52,6 @@ class TestLogRequestToDb:
 
     def test_log_request_to_db_no_request_id(self):
         """Test log_request_to_db handles missing request_id."""
-        from app.api.middleware.request_logger import log_request_to_db
-        from flask import Flask, g
-
         app = Flask(__name__)
 
         with app.test_request_context("/api/test"):
@@ -70,15 +66,10 @@ class TestSetupRequestLoggingMiddleware:
 
     def test_setup_function_exists(self):
         """Test setup_request_logging_middleware function exists."""
-        from app.api.middleware.request_logger import setup_request_logging_middleware
-
         assert callable(setup_request_logging_middleware)
 
     def test_setup_registers_handlers(self):
         """Test setup registers before/after/teardown handlers."""
-        from app.api.middleware.request_logger import setup_request_logging_middleware
-        from flask import Flask
-
         app = Flask(__name__)
 
         # Should not raise
@@ -94,8 +85,6 @@ class TestAPIRequestModel:
 
     def test_api_request_model_exists(self):
         """Test APIRequest model can be imported from db models."""
-        from app.models.db import APIRequest
-
         assert APIRequest is not None
 
 
@@ -104,8 +93,6 @@ class TestGetDbSession:
 
     def test_get_db_session_exists(self):
         """Test get_db_session can be imported from db models."""
-        from app.models.db import get_db_session
-
         assert callable(get_db_session)
 
 
@@ -115,9 +102,6 @@ class TestAPIVersionExtraction:
     @patch("app.api.middleware.request_logger.get_db_session")
     def test_api_version_extracted_from_v1_path(self, mock_get_db):
         """Test API version is extracted from /v1/ path."""
-        from app.api.middleware.request_logger import log_request_to_db
-        from flask import Flask, g
-
         app = Flask(__name__)
         mock_session = MagicMock()
         mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)
@@ -138,9 +122,6 @@ class TestAPIVersionExtraction:
     @patch("app.api.middleware.request_logger.get_db_session")
     def test_api_version_default(self, mock_get_db):
         """Test API version defaults to v1."""
-        from app.api.middleware.request_logger import log_request_to_db
-        from flask import Flask, g
-
         app = Flask(__name__)
         mock_session = MagicMock()
         mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)
@@ -161,13 +142,11 @@ class TestAPIVersionExtraction:
 class TestErrorHandling:
     """Tests for error handling in request logging."""
 
+    @patch("app.api.middleware.request_logger._is_logging_disabled", return_value=False)
     @patch("app.api.middleware.request_logger.get_db_session")
     @patch("app.api.middleware.request_logger.logger")
-    def test_database_error_logged(self, mock_logger, mock_get_db):
+    def test_database_error_logged(self, mock_logger, mock_get_db, mock_disabled):
         """Test database errors are logged, not raised."""
-        from app.api.middleware.request_logger import log_request_to_db
-        from flask import Flask, g
-
         app = Flask(__name__)
         mock_get_db.side_effect = Exception("Database connection error")
 
@@ -187,9 +166,6 @@ class TestResponseTimeMeasurement:
     @patch("app.api.middleware.request_logger.get_db_session")
     def test_response_time_calculated(self, mock_get_db):
         """Test response time is calculated correctly."""
-        from app.api.middleware.request_logger import log_request_to_db
-        from flask import Flask, g
-
         app = Flask(__name__)
         mock_session = MagicMock()
         mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)

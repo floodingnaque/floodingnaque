@@ -1,33 +1,49 @@
 """
 Unit tests for data ingestion service.
+
+Tests for app/services/ingest.py
 """
 
-import sys
-from pathlib import Path
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+# Import modules at top level for proper coverage tracking
+from app.services import ingest
+from app.services.ingest import ingest_data
 
 
 class TestIngestFunction:
     """Tests for the ingest_data function."""
 
-    @patch("app.services.ingest.get_meteostat_weather_for_ingest")
+    @patch("app.services.ingest._get_meteostat_service")
     @patch("app.services.ingest.get_db_session")
-    def test_ingest_data_returns_dict(self, mock_session, mock_weather):
+    @patch.dict("os.environ", {"OWM_API_KEY": "test_key"})
+    @patch("app.services.ingest.requests.get")
+    def test_ingest_data_returns_dict(self, mock_get, mock_session, mock_meteostat):
         """Test that ingest_data returns a dictionary."""
-        from app.services.ingest import ingest_data
-
-        mock_weather.return_value = {
+        # Mock the meteostat service
+        mock_service = MagicMock()
+        mock_service.get_weather_for_ingest.return_value = {
             "temperature": 298.15,
             "humidity": 75.0,
             "precipitation": 5.0,
             "source": "meteostat",
         }
+        mock_meteostat.return_value = mock_service
+
+        # Mock the HTTP request
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "main": {"temp": 298.15, "humidity": 75, "pressure": 1013},
+            "weather": [{"description": "clear sky"}],
+            "wind": {"speed": 5.0},
+            "rain": {},
+        }
+        mock_get.return_value = mock_response
+
         mock_session.return_value.__enter__ = Mock(return_value=MagicMock())
         mock_session.return_value.__exit__ = Mock(return_value=None)
 
@@ -102,8 +118,6 @@ class TestTimestampHandling:
 
     def test_timestamp_format_iso(self):
         """Test timestamp is in ISO format."""
-        from datetime import datetime
-
         timestamp = datetime.utcnow().isoformat()
 
         # ISO format should contain 'T' separator
@@ -111,8 +125,6 @@ class TestTimestampHandling:
 
     def test_utc_timezone_used(self):
         """Test that UTC timezone is used for timestamps."""
-        from datetime import datetime, timezone
-
         utc_now = datetime.now(timezone.utc)
 
         assert utc_now.tzinfo is not None

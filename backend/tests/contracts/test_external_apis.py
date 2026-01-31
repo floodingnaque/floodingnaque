@@ -70,21 +70,23 @@ class TestGoogleWeatherAPIContract:
             assert "maxTemperature" in day or "minTemperature" in day
 
     @pytest.mark.contract
-    @patch("app.services.google_weather_service.requests.get")
-    def test_service_parses_response_correctly(self, mock_get, app, app_context, mock_google_weather_response):
-        """Test service correctly parses Google Weather response."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = mock_google_weather_response
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
+    def test_service_parses_response_correctly(self, app, app_context, mock_google_weather_response):
+        """Test service correctly parses Google Weather response.
 
+        Note: GoogleWeatherService uses Earth Engine, not requests.
+        This test verifies service instantiation and response structure validation.
+        """
         try:
             from app.services.google_weather_service import get_google_weather_service
 
             service = get_google_weather_service()
             # Service should be instantiated
             assert service is not None
+
+            # Verify mock response structure is valid (contract validation)
+            current = mock_google_weather_response.get("currentConditions", {})
+            assert "temperature" in current
+            assert "humidity" in current
         except (ImportError, Exception):
             pytest.skip("Google Weather service not available")
 
@@ -153,21 +155,23 @@ class TestMeteostatAPIContract:
         assert "generated" in meta or "stations" in meta
 
     @pytest.mark.contract
-    @patch("app.services.meteostat_service.requests.get")
-    def test_service_parses_response_correctly(self, mock_get, app, app_context, mock_meteostat_response):
-        """Test service correctly parses Meteostat response."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = mock_meteostat_response
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
+    def test_service_parses_response_correctly(self, app, app_context, mock_meteostat_response):
+        """Test service correctly parses Meteostat response.
 
+        Note: MeteostatService uses the meteostat library (Stations, Daily, Hourly),
+        not the requests library. This test verifies service instantiation and
+        response structure validation.
+        """
         try:
             from app.services.meteostat_service import get_meteostat_service
 
             service = get_meteostat_service()
             # Service should be instantiated
             assert service is not None
+
+            # Verify mock response structure is valid (contract validation)
+            assert "data" in mock_meteostat_response
+            assert isinstance(mock_meteostat_response["data"], list)
         except (ImportError, Exception):
             pytest.skip("Meteostat service not available")
 
@@ -274,44 +278,49 @@ class TestExternalAPIErrorContracts:
     """Contract tests for external API error handling."""
 
     @pytest.mark.contract
-    @patch("app.services.google_weather_service.requests.get")
-    def test_google_weather_error_handling(self, mock_get, app, app_context):
-        """Test Google Weather API error is handled gracefully."""
-        mock_response = MagicMock()
-        mock_response.status_code = 503
-        mock_response.raise_for_status.side_effect = Exception("Service Unavailable")
-        mock_get.return_value = mock_response
+    @patch("app.services.google_weather_service._lazy_import_ee")
+    def test_google_weather_error_handling(self, mock_ee, app, app_context):
+        """Test Google Weather API error is handled gracefully.
+
+        Note: GoogleWeatherService uses Earth Engine, not requests.
+        We mock the Earth Engine lazy import to simulate unavailability.
+        """
+        # Simulate Earth Engine being unavailable
+        mock_ee.return_value = None
 
         try:
             from app.services.google_weather_service import get_google_weather_service
 
             # Should not raise unhandled exception
             service = get_google_weather_service()
-            # Service should be instantiated
+            # Service should be instantiated (even if EE is unavailable)
             assert service is not None
         except (ImportError, Exception) as e:
-            if "Service Unavailable" in str(e):
-                pass  # Expected behavior
+            if "Earth Engine" in str(e) or "ee" in str(e).lower():
+                pass  # Expected behavior when EE is unavailable
             else:
                 pytest.skip("Service not available")
 
     @pytest.mark.contract
-    @patch("app.services.meteostat_service.requests.get")
-    def test_meteostat_error_handling(self, mock_get, app, app_context):
-        """Test Meteostat API error is handled gracefully."""
-        mock_response = MagicMock()
-        mock_response.status_code = 429
-        mock_response.raise_for_status.side_effect = Exception("Rate Limited")
-        mock_get.return_value = mock_response
+    @patch("app.services.meteostat_service.Stations")
+    def test_meteostat_error_handling(self, mock_stations, app, app_context):
+        """Test Meteostat API error is handled gracefully.
+
+        Note: MeteostatService uses the meteostat library (Stations, Daily, Hourly),
+        not the requests library. We mock the Stations class to simulate errors.
+        """
+        # Simulate meteostat library error
+        mock_stations.nearby.side_effect = Exception("Rate Limited")
 
         try:
             from app.services.meteostat_service import get_meteostat_service
 
             service = get_meteostat_service()
+            # Service should be instantiated (error occurs on data fetch, not init)
             assert service is not None
         except (ImportError, Exception) as e:
             if "Rate Limited" in str(e):
-                pass
+                pass  # Expected behavior
             else:
                 pytest.skip("Service not available")
 

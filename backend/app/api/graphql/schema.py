@@ -17,12 +17,58 @@ from graphene.types.scalars import Scalar
 logger = get_logger(__name__)
 
 # Load environment variables before checking GRAPHQL_ENABLED
+# Skip in testing mode to allow test fixtures to control environment
 _backend_dir = Path(__file__).resolve().parent.parent.parent.parent
-load_dotenv(_backend_dir / ".env")
-load_dotenv(_backend_dir / ".env.production", override=True)
+if os.getenv("TESTING", "false").lower() != "true":
+    load_dotenv(_backend_dir / ".env")
+    load_dotenv(_backend_dir / ".env.production", override=True)
 
 # Check if GraphQL is enabled
 GRAPHQL_ENABLED = os.getenv("GRAPHQL_ENABLED", "false").lower() == "true"
+
+
+# Health check functions
+def check_database_health() -> dict:
+    """Check database connection health.
+
+    Returns:
+        dict: Database health status with 'connected' key
+    """
+    try:
+        from app.models.db import get_db_session
+        from sqlalchemy import text
+
+        with get_db_session() as session:
+            # Execute a simple query to test connection
+            session.execute(text("SELECT 1"))
+        return {"status": "healthy", "connected": True}
+    except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
+        return {"status": "unhealthy", "connected": False, "error": str(e)}
+
+
+def check_model_health() -> str:
+    """Check model availability.
+
+    Returns:
+        str: 'healthy' if model is available, 'unhealthy' otherwise
+    """
+    try:
+        # Check if model file exists and is loadable
+        # For now, return a simple status - can be enhanced to check actual model loading
+        import os
+        from pathlib import Path
+
+        # Check for model file existence
+        model_dir = Path(__file__).resolve().parent.parent.parent / "models" / "saved"
+        if model_dir.exists():
+            # Could add more sophisticated checks here
+            return "healthy"
+        else:
+            return "unhealthy"
+    except Exception as e:
+        logger.error(f"Model health check failed: {str(e)}")
+        return "unhealthy"
 
 
 # Custom scalar for handling various data types
@@ -145,7 +191,6 @@ class Query(ObjectType):
     def resolve_health(self, info):
         """Get system health status."""
         try:
-            from app.api.routes.health import check_database_health, check_model_health
             from app.utils.cache import get_cache_stats
 
             db_status = check_database_health()
@@ -172,8 +217,6 @@ class Query(ObjectType):
     def resolve_health_status(self, info):
         """Simple health status string."""
         try:
-            from app.api.routes.health import check_database_health, check_model_health
-
             db_status = check_database_health()
             model_status = check_model_health()
 

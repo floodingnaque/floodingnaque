@@ -162,10 +162,19 @@ def _hash_api_key_pbkdf2(api_key: str) -> str:
 
     PBKDF2 with high iteration count is a secure key derivation function
     that is resistant to brute-force and rainbow table attacks.
+
+    Raises:
+        ValueError: If API_KEY_HASH_SALT environment variable is not set.
     """
     # PBKDF2-SHA256 with 100,000 iterations for secure API key hashing
-    secret_salt = os.getenv("API_KEY_HASH_SALT", "floodingnaque-default-salt-change-in-production").encode()
-    return hashlib.pbkdf2_hmac("sha256", api_key.encode("utf-8"), secret_salt, 100000).hex()
+    # Security: Salt MUST be provided via environment variable - no hardcoded fallback
+    secret_salt = os.getenv("API_KEY_HASH_SALT")
+    if not secret_salt:
+        raise ValueError(
+            "API_KEY_HASH_SALT environment variable is required for PBKDF2 fallback. "
+            "Set a secure random salt (at least 32 characters) or install bcrypt."
+        )
+    return hashlib.pbkdf2_hmac("sha256", api_key.encode("utf-8"), secret_salt.encode(), 100000).hex()
 
 
 def _timing_safe_compare(a: str, b: str) -> bool:

@@ -12,11 +12,11 @@ import pytest
 
 
 class TestGetWeatherData:
-    """Tests for GET /data endpoint."""
+    """Tests for GET /api/v1/data/data endpoint."""
 
     def test_get_weather_data_default(self, client):
         """Test getting weather data with default parameters."""
-        response = client.get("/data")
+        response = client.get("/api/v1/data/data")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -24,13 +24,13 @@ class TestGetWeatherData:
 
     def test_get_weather_data_with_limit(self, client):
         """Test getting weather data with custom limit."""
-        response = client.get("/data?limit=10")
+        response = client.get("/api/v1/data/data?limit=10")
 
         assert response.status_code == 200
 
     def test_get_weather_data_invalid_limit_low(self, client):
         """Test getting weather data with limit below minimum."""
-        response = client.get("/data?limit=0")
+        response = client.get("/api/v1/data/data?limit=0")
 
         assert response.status_code == 400
         data = response.get_json()
@@ -38,7 +38,7 @@ class TestGetWeatherData:
 
     def test_get_weather_data_invalid_limit_high(self, client):
         """Test getting weather data with limit above maximum."""
-        response = client.get("/data?limit=10000")
+        response = client.get("/api/v1/data/data?limit=10000")
 
         assert response.status_code == 400
         data = response.get_json()
@@ -46,7 +46,7 @@ class TestGetWeatherData:
 
     def test_get_weather_data_with_offset(self, client):
         """Test getting weather data with offset."""
-        response = client.get("/data?offset=10")
+        response = client.get("/api/v1/data/data?offset=10")
 
         assert response.status_code == 200
 
@@ -55,51 +55,51 @@ class TestGetWeatherData:
         start_date = (datetime.now() - timedelta(days=7)).isoformat()
         end_date = datetime.now().isoformat()
 
-        response = client.get(f"/data?start_date={start_date}&end_date={end_date}")
+        response = client.get(f"/api/v1/data/data?start_date={start_date}&end_date={end_date}")
 
         assert response.status_code == 200
 
     def test_get_weather_data_invalid_start_date(self, client):
         """Test getting weather data with invalid start date format."""
-        response = client.get("/data?start_date=invalid-date")
+        response = client.get("/api/v1/data/data?start_date=invalid-date")
 
         assert response.status_code == 400
 
     def test_get_weather_data_invalid_end_date(self, client):
         """Test getting weather data with invalid end date format."""
-        response = client.get("/data?end_date=not-a-date")
+        response = client.get("/api/v1/data/data?end_date=not-a-date")
 
         assert response.status_code == 400
 
     def test_get_weather_data_with_sort(self, client):
         """Test getting weather data with sorting."""
-        response = client.get("/data?sort_by=timestamp&order=desc")
+        response = client.get("/api/v1/data/data?sort_by=timestamp&order=desc")
 
         assert response.status_code == 200
 
     def test_get_weather_data_invalid_sort_field(self, client):
         """Test getting weather data with invalid sort field."""
-        response = client.get("/data?sort_by=invalid_field")
+        response = client.get("/api/v1/data/data?sort_by=invalid_field")
 
         assert response.status_code == 400
 
     def test_get_weather_data_invalid_order(self, client):
         """Test getting weather data with invalid order."""
-        response = client.get("/data?order=invalid")
+        response = client.get("/api/v1/data/data?order=invalid")
 
         assert response.status_code == 400
 
     def test_get_weather_data_with_source_filter(self, client):
         """Test getting weather data filtered by source."""
-        response = client.get("/data?source=Meteostat")
+        response = client.get("/api/v1/data/data?source=Meteostat")
 
         assert response.status_code == 200
 
     def test_get_weather_data_cache_hit(self, client):
         """Test that repeated requests can hit cache."""
         # Make the same request twice
-        response1 = client.get("/data?limit=10")
-        response2 = client.get("/data?limit=10")
+        response1 = client.get("/api/v1/data/data?limit=10")
+        response2 = client.get("/api/v1/data/data?limit=10")
 
         assert response1.status_code == 200
         assert response2.status_code == 200
@@ -114,7 +114,7 @@ class TestWeatherDataPagination:
 
     def test_pagination_response_structure(self, client):
         """Test pagination info is included in response."""
-        response = client.get("/data?limit=10&offset=0")
+        response = client.get("/api/v1/data/data?limit=10&offset=0")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -124,8 +124,8 @@ class TestWeatherDataPagination:
 
     def test_pagination_offset_works(self, client):
         """Test that offset actually skips records."""
-        response1 = client.get("/data?limit=5&offset=0")
-        response2 = client.get("/data?limit=5&offset=5")
+        response1 = client.get("/api/v1/data/data?limit=5&offset=0")
+        response2 = client.get("/api/v1/data/data?limit=5&offset=5")
 
         assert response1.status_code == 200
         assert response2.status_code == 200
@@ -137,14 +137,14 @@ class TestWeatherDataSorting:
     @pytest.mark.parametrize("sort_field", ["timestamp", "temperature", "humidity", "precipitation", "created_at"])
     def test_valid_sort_fields(self, client, sort_field):
         """Test all valid sort fields work."""
-        response = client.get(f"/data?sort_by={sort_field}")
+        response = client.get(f"/api/v1/data/data?sort_by={sort_field}")
 
         assert response.status_code == 200
 
     @pytest.mark.parametrize("order", ["asc", "desc"])
     def test_sort_orders(self, client, order):
         """Test both sort orders work."""
-        response = client.get(f"/data?order={order}")
+        response = client.get(f"/api/v1/data/data?order={order}")
 
         assert response.status_code == 200
 
@@ -158,19 +158,19 @@ class TestWeatherDataFiltering:
         start = (now - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S")
         end = now.strftime("%Y-%m-%dT%H:%M:%S")
 
-        response = client.get(f"/data?start_date={start}&end_date={end}")
+        response = client.get(f"/api/v1/data/data?start_date={start}&end_date={end}")
 
         assert response.status_code == 200
 
     def test_filter_by_source_owm(self, client):
         """Test filtering by OWM source."""
-        response = client.get("/data?source=OWM")
+        response = client.get("/api/v1/data/data?source=OWM")
 
         assert response.status_code == 200
 
     def test_filter_by_source_manual(self, client):
         """Test filtering by Manual source."""
-        response = client.get("/data?source=Manual")
+        response = client.get("/api/v1/data/data?source=Manual")
 
         assert response.status_code == 200
 
@@ -180,7 +180,7 @@ class TestWeatherDataRateLimiting:
 
     def test_data_endpoint_rate_limit_header(self, client):
         """Test that rate limit headers are present."""
-        response = client.get("/data")
+        response = client.get("/api/v1/data/data")
 
         assert response.status_code == 200
         # Rate limit headers may be present
@@ -195,14 +195,14 @@ class TestWeatherDataErrorHandling:
         """Test handling of database errors."""
         mock_db.side_effect = Exception("Database connection failed")
 
-        response = client.get("/data")
+        response = client.get("/api/v1/data/data")
 
         # Should return error response, not 500
         assert response.status_code in [200, 500, 503]
 
     def test_malformed_query_parameters(self, client):
         """Test handling of malformed query parameters."""
-        response = client.get("/data?limit=abc")
+        response = client.get("/api/v1/data/data?limit=abc")
 
         # Should handle gracefully
         assert response.status_code in [200, 400]

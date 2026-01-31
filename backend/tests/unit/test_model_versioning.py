@@ -233,7 +233,7 @@ class TestABTestMetrics:
         metrics = ABTestMetrics(variant_name="test")
         metrics.confidence_scores = [0.8, 0.9, 0.7, 0.85, 0.95]
 
-        assert metrics.average_confidence == 0.84
+        assert metrics.average_confidence == pytest.approx(0.84)
 
     def test_to_dict(self):
         """Test metrics serialization."""

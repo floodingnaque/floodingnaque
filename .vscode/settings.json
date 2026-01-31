@@ -12,11 +12,13 @@
         "${workspaceFolder}/backend"
     ],
     "github.copilot.chat.agent.autoFix": true,
+    "github.copilot.chat.agent.tools.enabled": true,
     "github.copilot.chat.codesearch.enabled": true,
     "github.copilot.chat.customAgents.showOrganizationAndEnterpriseAgents": true,
     "github.copilot.chat.generateTests.codeLens": true,
     "github.copilot.chat.githubMcpServer.enabled": true,
     "github.copilot.chat.tools.memory.enabled": true,
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
     "github.copilot.enable": {
         "markdown": true,
         "plaintext": true

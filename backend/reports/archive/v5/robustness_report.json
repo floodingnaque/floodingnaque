@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-01-17T02:57:45.522416",
+  "model_path": "models/flood_rf_model_v5.joblib",
+  "threshold_analysis": {
+    "no_flood_max": 19.5,
+    "flood_min": 0.0,
+    "gap": 0.0,
+    "perfectly_separable": false
+  },
+  "cross_validation": {
+    "accuracy_mean": 0.9864474809954029,
+    "accuracy_std": 0.0020881144592728744,
+    "f1_mean": 0.9757736073411456,
+    "f1_std": 0.003554576969874738,
+    "precision_mean": 0.9643872068003366,
+    "recall_mean": 0.9875457875457876
+  },
+  "robustness": [
+    {
+      "noise_level": 0.0,
+      "accuracy": 0.9939320388349514,
+      "f1_score": 0.9891067538126361,
+      "accuracy_drop": 0.0,
+      "f1_drop": 0.0
+    },
+    {
+      "noise_level": 0.05,
+      "accuracy": 0.9900889967637541,
+      "f1_score": 0.9822141560798548,
+      "accuracy_drop": 0.0038430420711973445,
+      "f1_drop": 0.00689259773278128
+    },
+    {
+      "noise_level": 0.1,
+      "accuracy": 0.9838187702265372,
+      "f1_score": 0.9709090909090909,
+      "accuracy_drop": 0.010113268608414216,
+      "f1_drop": 0.018197662903545186
+    },
+    {
+      "noise_level": 0.15,
+      "accuracy": 0.9728964401294499,
+      "f1_score": 0.9515545914678236,
+      "accuracy_drop": 0.021035598705501535,
+      "f1_drop": 0.03755216234481251
+    },
+    {
+      "noise_level": 0.2,
+      "accuracy": 0.9654126213592233,
+      "f1_score": 0.9382894261999278,
+      "accuracy_drop": 0.02851941747572806,
+      "f1_drop": 0.050817327612708296
+    }
+  ],
+  "calibration": {
+    "brier_score": 0.005007097093398231,
+    "high_conf_flood": 1253,
+    "high_conf_no_flood": 3481,
+    "uncertain": 60,
+    "prob_mean": 0.2788541787308933,
+    "prob_std": 0.4313050505556173
+  }
+}

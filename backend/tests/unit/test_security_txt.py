@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
+from app.api.routes.security_txt import get_security_txt_content
 
 
 class TestSecurityTxtContent:
@@ -15,8 +16,6 @@ class TestSecurityTxtContent:
 
     def test_get_security_txt_content_default(self):
         """Test default security.txt content generation."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         assert "Contact:" in content
@@ -33,8 +32,6 @@ class TestSecurityTxtContent:
     )
     def test_get_security_txt_content_custom(self):
         """Test security.txt content with custom environment variables."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         assert "security@test.com" in content
@@ -42,8 +39,6 @@ class TestSecurityTxtContent:
 
     def test_security_txt_content_format(self):
         """Test security.txt follows RFC 9116 format."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         # RFC 9116 required fields
@@ -114,13 +109,20 @@ class TestSecurityTxtRootEndpoint:
         assert "text/plain" in response.content_type
 
     def test_security_txt_root_same_content(self, client):
-        """Test root and well-known endpoints return same content."""
+        """Test root and well-known endpoints return same content structure."""
         well_known_response = client.get("/.well-known/security.txt")
         root_response = client.get("/security.txt")
 
         assert well_known_response.status_code == 200
         assert root_response.status_code == 200
-        assert well_known_response.data == root_response.data
+
+        # Compare content excluding the Expires line (which has a dynamic timestamp)
+        # The Expires line can differ by a second between requests
+        well_known_lines = [
+            line for line in well_known_response.data.decode().split("\n") if not line.startswith("Expires:")
+        ]
+        root_lines = [line for line in root_response.data.decode().split("\n") if not line.startswith("Expires:")]
+        assert well_known_lines == root_lines
 
 
 class TestSecurityTxtExpiration:
@@ -134,16 +136,12 @@ class TestSecurityTxtExpiration:
     )
     def test_custom_expiration_date(self):
         """Test custom expiration date is used."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         assert "2027-01-01" in content
 
     def test_default_expiration_is_future(self):
         """Test default expiration is at least 1 year in future."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         # Extract expiration date
@@ -162,8 +160,6 @@ class TestSecurityTxtPreferredLanguages:
 
     def test_preferred_languages_present(self):
         """Test preferred languages are included."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         assert "Preferred-Languages:" in content
@@ -175,8 +171,6 @@ class TestSecurityTxtCanonical:
 
     def test_canonical_url_present(self):
         """Test canonical URL is included."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         assert "Canonical:" in content
@@ -189,8 +183,6 @@ class TestSecurityTxtCanonical:
     )
     def test_custom_canonical_url(self):
         """Test custom canonical URL is used."""
-        from app.api.routes.security_txt import get_security_txt_content
-
         content = get_security_txt_content()
 
         assert "https://custom.api.com/.well-known/security.txt" in content

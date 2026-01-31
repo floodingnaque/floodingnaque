@@ -1,0 +1,10 @@
+{
+  "model_path": "models\\flood_rf_model.joblib",
+  "valid": false,
+  "checks": {
+    "integrity": {
+      "valid": false,
+      "message": "Model file not found"
+    }
+  }
+}

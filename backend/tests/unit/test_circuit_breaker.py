@@ -8,6 +8,15 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.utils.circuit_breaker import (
+    CircuitBreaker,
+    CircuitOpenError,
+    CircuitState,
+    meteostat_breaker,
+    openweathermap_breaker,
+    retry_with_backoff,
+    weatherstack_breaker,
+)
 
 
 class TestCircuitState:
@@ -15,16 +24,12 @@ class TestCircuitState:
 
     def test_circuit_states_exist(self):
         """Test all circuit states are defined."""
-        from app.utils.circuit_breaker import CircuitState
-
         assert CircuitState.CLOSED is not None
         assert CircuitState.OPEN is not None
         assert CircuitState.HALF_OPEN is not None
 
     def test_circuit_state_values(self):
         """Test circuit state values."""
-        from app.utils.circuit_breaker import CircuitState
-
         assert CircuitState.CLOSED.value == "closed"
         assert CircuitState.OPEN.value == "open"
         assert CircuitState.HALF_OPEN.value == "half-open"
@@ -35,8 +40,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_initialization(self):
         """Test circuit breaker initializes in closed state."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=30, name="test")
 
         assert breaker.state == CircuitState.CLOSED
@@ -47,8 +50,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_default_values(self):
         """Test circuit breaker default initialization values."""
-        from app.utils.circuit_breaker import CircuitBreaker
-
         breaker = CircuitBreaker()
 
         assert breaker.failure_threshold == 5
@@ -57,8 +58,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_record_success(self):
         """Test recording success resets failure count."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         breaker = CircuitBreaker()
         breaker._failures = 3
 
@@ -69,8 +68,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_record_failure(self):
         """Test recording failure increments count."""
-        from app.utils.circuit_breaker import CircuitBreaker
-
         breaker = CircuitBreaker(failure_threshold=5)
 
         breaker.record_failure()
@@ -79,8 +76,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_opens_at_threshold(self):
         """Test circuit opens when failure threshold reached."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         breaker = CircuitBreaker(failure_threshold=3)
 
         for _ in range(3):
@@ -90,8 +85,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_is_open_property(self):
         """Test is_open property."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         breaker = CircuitBreaker(failure_threshold=2)
 
         assert breaker.is_open is False
@@ -103,8 +96,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_half_open_after_timeout(self):
         """Test circuit enters half-open state after recovery timeout."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0)  # 0 second timeout
 
         breaker.record_failure()
@@ -118,8 +109,6 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_closes_after_success_in_half_open(self):
         """Test circuit closes after success in half-open state."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0)
 
         breaker.record_failure()
@@ -132,24 +121,20 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_reopens_after_failure_in_half_open(self):
         """Test circuit reopens after failure in half-open state."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
-        breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=0)
+        breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=60)  # Long timeout to prevent auto-recovery
 
         # First failure opens the circuit
         breaker.record_failure()
-        time.sleep(0.2)  # Wait for recovery timeout
+        assert breaker._state == CircuitState.OPEN
 
-        # Access state to transition to HALF_OPEN
-        state_after_timeout = breaker.state
+        # Manually set to HALF_OPEN to test the transition
+        breaker._state = CircuitState.HALF_OPEN
 
-        if state_after_timeout == CircuitState.HALF_OPEN:
-            # Record another failure which should reopen the circuit
-            breaker.record_failure()
-            assert breaker.state == CircuitState.OPEN
-        else:
-            # If already in OPEN state (timing issue), just pass
-            assert state_after_timeout in [CircuitState.OPEN, CircuitState.HALF_OPEN]
+        # Record another failure which should reopen the circuit
+        breaker.record_failure()
+
+        # Check internal state directly to avoid property's recovery check
+        assert breaker._state == CircuitState.OPEN
 
 
 class TestCircuitBreakerCall:
@@ -157,8 +142,6 @@ class TestCircuitBreakerCall:
 
     def test_call_success(self):
         """Test successful call through circuit breaker."""
-        from app.utils.circuit_breaker import CircuitBreaker
-
         breaker = CircuitBreaker()
 
         def success_func():
@@ -171,8 +154,6 @@ class TestCircuitBreakerCall:
 
     def test_call_failure(self):
         """Test failed call records failure."""
-        from app.utils.circuit_breaker import CircuitBreaker
-
         breaker = CircuitBreaker()
 
         def fail_func():
@@ -185,8 +166,6 @@ class TestCircuitBreakerCall:
 
     def test_call_blocked_when_open(self):
         """Test calls are blocked when circuit is open."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitOpenError
-
         breaker = CircuitBreaker(failure_threshold=1, recovery_timeout=60)
 
         breaker.record_failure()  # Opens circuit
@@ -203,8 +182,6 @@ class TestCircuitBreakerDecorator:
 
     def test_decorator_wraps_function(self):
         """Test decorator properly wraps function."""
-        from app.utils.circuit_breaker import CircuitBreaker
-
         breaker = CircuitBreaker()
 
         @breaker
@@ -217,8 +194,6 @@ class TestCircuitBreakerDecorator:
 
     def test_decorator_preserves_function_name(self):
         """Test decorator preserves function metadata."""
-        from app.utils.circuit_breaker import CircuitBreaker
-
         breaker = CircuitBreaker()
 
         @breaker
@@ -235,8 +210,6 @@ class TestCircuitBreakerReset:
 
     def test_reset_clears_state(self):
         """Test reset returns circuit to initial state."""
-        from app.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         breaker = CircuitBreaker(failure_threshold=2)
 
         # Open the circuit
@@ -257,8 +230,6 @@ class TestCircuitBreakerStatus:
 
     def test_get_status(self):
         """Test getting circuit breaker status."""
-        from app.utils.circuit_breaker import CircuitBreaker
-
         breaker = CircuitBreaker(name="test_breaker", failure_threshold=5, recovery_timeout=30)
         breaker.record_failure()
 
@@ -276,8 +247,6 @@ class TestCircuitOpenError:
 
     def test_circuit_open_error(self):
         """Test CircuitOpenError exception."""
-        from app.utils.circuit_breaker import CircuitOpenError
-
         error = CircuitOpenError("Circuit is open")
 
         assert str(error) == "Circuit is open"
@@ -289,8 +258,6 @@ class TestRetryWithBackoff:
 
     def test_retry_success_first_try(self):
         """Test retry succeeds on first try."""
-        from app.utils.circuit_breaker import retry_with_backoff
-
         call_count = 0
 
         @retry_with_backoff(max_retries=3)
@@ -306,8 +273,6 @@ class TestRetryWithBackoff:
 
     def test_retry_succeeds_after_failures(self):
         """Test retry succeeds after some failures."""
-        from app.utils.circuit_breaker import retry_with_backoff
-
         call_count = 0
 
         @retry_with_backoff(max_retries=3, base_delay=0.01)
@@ -325,7 +290,6 @@ class TestRetryWithBackoff:
 
     def test_retry_exhausted(self):
         """Test retry raises after max retries."""
-        from app.utils.circuit_breaker import retry_with_backoff
 
         @retry_with_backoff(max_retries=2, base_delay=0.01)
         def always_fail():
@@ -340,21 +304,15 @@ class TestPredefinedBreakers:
 
     def test_openweathermap_breaker_exists(self):
         """Test OpenWeatherMap breaker is defined."""
-        from app.utils.circuit_breaker import openweathermap_breaker
-
         assert openweathermap_breaker is not None
         assert openweathermap_breaker.name == "openweathermap"
 
     def test_weatherstack_breaker_exists(self):
         """Test Weatherstack breaker is defined."""
-        from app.utils.circuit_breaker import weatherstack_breaker
-
         assert weatherstack_breaker is not None
         assert weatherstack_breaker.name == "weatherstack"
 
     def test_meteostat_breaker_exists(self):
         """Test Meteostat breaker is defined."""
-        from app.utils.circuit_breaker import meteostat_breaker
-
         assert meteostat_breaker is not None
         assert meteostat_breaker.name == "meteostat"

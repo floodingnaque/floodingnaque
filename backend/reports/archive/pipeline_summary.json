@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "ingest_only": false,
+  "dry_run": {
+    "IsPresent": false
+  },
+  "completed_at": "2026-01-17T01:27:29",
+  "duration_minutes": 1.7,
+  "warnings": []
+}

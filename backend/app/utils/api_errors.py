@@ -174,9 +174,16 @@ class ServiceUnavailableError(AppException):
 class ModelError(AppException):
     """ML Model processing error."""
 
-    def __init__(self, message: str = "Model processing failed", model_name: str = None):
-        details = {"model_name": model_name} if model_name else {}
-        super().__init__(message, 500, "ModelError", details=details)
+    def __init__(
+        self,
+        message: str = "Model processing failed",
+        model_name: str = None,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        error_details = details.copy() if details else {}
+        if model_name:
+            error_details["model_name"] = model_name
+        super().__init__(message, 500, "ModelError", details=error_details if error_details else None)
 
 
 class ExternalServiceError(AppException):

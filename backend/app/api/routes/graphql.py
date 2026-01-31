@@ -74,10 +74,10 @@ def init_graphql_route(app):
             variables = data.get("variables")
             operation_name = data.get("operationName")
 
-            result = graphql_sync(
-                schema,
+            # Use graphene's execute method or convert to GraphQL core schema
+            result = schema.execute(
                 query,
-                variable_values=variables,
+                variables=variables,
                 operation_name=operation_name,
                 context_value={"request": request},
             )
@@ -256,8 +256,6 @@ def graphql_schema_introspection():
         """
 
         # Execute introspection query
-        from graphql import graphql_sync
-
         result = graphql_sync(schema, introspection_query)
 
         if result.errors:

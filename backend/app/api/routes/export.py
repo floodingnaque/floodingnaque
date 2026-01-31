@@ -198,14 +198,14 @@ def export_predictions():
             if start_date:
                 try:
                     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-                    query = query.filter(Prediction.timestamp >= start_dt)
+                    query = query.filter(Prediction.created_at >= start_dt)
                 except ValueError:
                     return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
 
             if end_date:
                 try:
                     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-                    query = query.filter(Prediction.timestamp <= end_dt)
+                    query = query.filter(Prediction.created_at <= end_dt)
                 except ValueError:
                     return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
 
@@ -213,7 +213,7 @@ def export_predictions():
                 query = query.filter(Prediction.risk_level == risk_level)
 
             # Order and limit
-            query = query.order_by(Prediction.timestamp.desc()).limit(limit)
+            query = query.order_by(Prediction.created_at.desc()).limit(limit)
 
             # Execute query
             predictions = query.all()
@@ -246,13 +246,13 @@ def export_predictions():
                 writer.writerow(
                     [
                         record.id,
-                        record.timestamp.isoformat() if record.timestamp else "",
+                        record.created_at.isoformat() if record.created_at else "",
                         record.prediction,
                         record.risk_level,
                         record.confidence,
-                        record.temperature,
-                        record.humidity,
-                        record.precipitation,
+                        getattr(record, "temperature", None),
+                        getattr(record, "humidity", None),
+                        getattr(record, "precipitation", None),
                         record.model_version,
                     ]
                 )
@@ -275,13 +275,13 @@ def export_predictions():
                 data_list.append(
                     {
                         "id": record.id,
-                        "timestamp": record.timestamp.isoformat() if record.timestamp else None,
+                        "timestamp": record.created_at.isoformat() if record.created_at else None,
                         "prediction": record.prediction,
                         "risk_level": record.risk_level,
                         "confidence": record.confidence,
-                        "temperature": record.temperature,
-                        "humidity": record.humidity,
-                        "precipitation": record.precipitation,
+                        "temperature": getattr(record, "temperature", None),
+                        "humidity": getattr(record, "humidity", None),
+                        "precipitation": getattr(record, "precipitation", None),
                         "model_version": record.model_version,
                     }
                 )

@@ -7,6 +7,7 @@ Additional Hypothesis tests for edge cases in weather/coordinate validation.
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.utils.validation import InputValidator, ValidationError
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
@@ -22,54 +23,33 @@ class TestCoordinateEdgeCases:
     @settings(max_examples=100, deadline=None)
     def test_near_north_pole_latitude(self, lat):
         """Property: Latitudes near North Pole should be handled."""
-        try:
-            from app.utils.validation import InputValidator
-
-            result = InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
-            assert result is not None
-            assert 89.9 <= result <= 90.0
-        except ImportError:
-            # Basic validation
-            assert -90 <= lat <= 90
+        result = InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
+        assert result is not None
+        assert 89.9 <= result <= 90.0
 
     @given(lat=st.floats(min_value=-90.0, max_value=-89.9, allow_nan=False, allow_infinity=False))
     @settings(max_examples=100, deadline=None)
     def test_near_south_pole_latitude(self, lat):
         """Property: Latitudes near South Pole should be handled."""
-        try:
-            from app.utils.validation import InputValidator
-
-            result = InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
-            assert result is not None
-            assert -90.0 <= result <= -89.9
-        except ImportError:
-            assert -90 <= lat <= 90
+        result = InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
+        assert result is not None
+        assert -90.0 <= result <= -89.9
 
     @given(lon=st.floats(min_value=179.9, max_value=180.0, allow_nan=False, allow_infinity=False))
     @settings(max_examples=100, deadline=None)
     def test_near_antimeridian_longitude_positive(self, lon):
         """Property: Longitudes near +180 should be handled."""
-        try:
-            from app.utils.validation import InputValidator
-
-            result = InputValidator.validate_float(lon, "longitude", min_val=-180, max_val=180)
-            assert result is not None
-            assert 179.9 <= result <= 180.0
-        except ImportError:
-            assert -180 <= lon <= 180
+        result = InputValidator.validate_float(lon, "longitude", min_val=-180, max_val=180)
+        assert result is not None
+        assert 179.9 <= result <= 180.0
 
     @given(lon=st.floats(min_value=-180.0, max_value=-179.9, allow_nan=False, allow_infinity=False))
     @settings(max_examples=100, deadline=None)
     def test_near_antimeridian_longitude_negative(self, lon):
         """Property: Longitudes near -180 should be handled."""
-        try:
-            from app.utils.validation import InputValidator
-
-            result = InputValidator.validate_float(lon, "longitude", min_val=-180, max_val=180)
-            assert result is not None
-            assert -180.0 <= result <= -179.9
-        except ImportError:
-            assert -180 <= lon <= 180
+        result = InputValidator.validate_float(lon, "longitude", min_val=-180, max_val=180)
+        assert result is not None
+        assert -180.0 <= result <= -179.9
 
     @given(
         lat=st.floats(min_value=-0.001, max_value=0.001, allow_nan=False, allow_infinity=False),
@@ -103,14 +83,8 @@ class TestCoordinatePrecision:
         import math
 
         if math.isnan(lat):
-            try:
-                from app.utils.validation import InputValidator, ValidationError
-
-                with pytest.raises((ValidationError, ValueError)):
-                    InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
-            except ImportError:
-                # NaN comparisons are always False
-                assert not (-90 <= lat <= 90)
+            with pytest.raises((ValidationError, ValueError)):
+                InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
 
     @given(lat=st.floats(allow_nan=False, allow_infinity=True))
     @settings(max_examples=50, deadline=None)
@@ -119,13 +93,8 @@ class TestCoordinatePrecision:
         import math
 
         if math.isinf(lat):
-            try:
-                from app.utils.validation import InputValidator, ValidationError
-
-                with pytest.raises((ValidationError, ValueError)):
-                    InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
-            except ImportError:
-                assert not (-90 <= lat <= 90)
+            with pytest.raises((ValidationError, ValueError)):
+                InputValidator.validate_float(lat, "latitude", min_val=-90, max_val=90)
 
 
 # ============================================================================
@@ -148,40 +117,25 @@ class TestWeatherDataEdgeCases:
     def test_extreme_high_temperature(self, temp):
         """Property: Extreme high temperatures should be handled."""
         # Record high temps on Earth are around 56.7°C
-        try:
-            from app.utils.validation import InputValidator
-
-            # Should accept as valid (unusual but possible)
-            result = InputValidator.validate_float(temp, "temperature", min_val=-50, max_val=60)
-            assert result is not None
-        except ImportError:
-            assert 55.0 <= temp <= 60.0
+        # Should accept as valid (unusual but possible)
+        result = InputValidator.validate_float(temp, "temperature", min_val=-50, max_val=60)
+        assert result is not None
 
     @given(humidity=st.floats(min_value=99.9, max_value=100.0, allow_nan=False, allow_infinity=False))
     @settings(max_examples=50, deadline=None)
     def test_near_saturation_humidity(self, humidity):
         """Property: Humidity near 100% should be handled."""
-        try:
-            from app.utils.validation import InputValidator
-
-            result = InputValidator.validate_float(humidity, "humidity", min_val=0, max_val=100)
-            if result is not None:
-                assert 99.9 <= result <= 100.0
-        except ImportError:
-            assert 99.9 <= humidity <= 100.0
+        result = InputValidator.validate_float(humidity, "humidity", min_val=0, max_val=100)
+        if result is not None:
+            assert 99.9 <= result <= 100.0
 
     @given(humidity=st.floats(min_value=0.0, max_value=0.1, allow_nan=False, allow_infinity=False))
     @settings(max_examples=50, deadline=None)
     def test_near_zero_humidity(self, humidity):
         """Property: Humidity near 0% should be handled."""
-        try:
-            from app.utils.validation import InputValidator
-
-            result = InputValidator.validate_float(humidity, "humidity", min_val=0, max_val=100)
-            if result is not None:
-                assert 0.0 <= result <= 0.1
-        except ImportError:
-            assert 0.0 <= humidity <= 0.1
+        result = InputValidator.validate_float(humidity, "humidity", min_val=0, max_val=100)
+        if result is not None:
+            assert 0.0 <= result <= 0.1
 
     @given(precip=st.floats(min_value=400.0, max_value=500.0, allow_nan=False, allow_infinity=False))
     @settings(max_examples=50, deadline=None)

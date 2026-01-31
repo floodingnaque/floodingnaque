@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 rate_limits_bp = Blueprint("rate_limits", __name__)
 
 
-@rate_limits_bp.route("/rate-limits/status", methods=["GET"])
+@rate_limits_bp.route("/status", methods=["GET"])
 @limiter.exempt  # Don't rate limit rate limit status endpoint
 def rate_limit_status():
     """
@@ -57,9 +57,11 @@ def rate_limit_status():
             },
         }
 
-        return (
-            api_success("RateLimitStatus", "Rate limiting status retrieved successfully", response, request_id),
-            HTTP_OK,
+        return api_success(
+            data=response,
+            message="Rate limiting status retrieved successfully",
+            status_code=HTTP_OK,
+            request_id=request_id,
         )
 
     except Exception as e:
@@ -67,7 +69,7 @@ def rate_limit_status():
         return api_error("RateLimitStatusFailed", "Failed to get rate limit status", HTTP_BAD_REQUEST, request_id)
 
 
-@rate_limits_bp.route("/rate-limits/tiers", methods=["GET"])
+@rate_limits_bp.route("/tiers", methods=["GET"])
 @limiter.limit("60/minute")  # Moderate rate limit for tier information
 def list_rate_limit_tiers():
     """
@@ -101,22 +103,19 @@ def list_rate_limit_tiers():
             else:
                 tiers[tier_name] = {"name": tier_config.name, "requests_per_minute": tier_config.requests_per_minute}
 
-        return (
-            api_success(
-                "RateLimitTiers",
-                "Rate limiting tiers retrieved successfully",
-                {
-                    "tiers": tiers,
-                    "current_user_tier": (
-                        get_api_key_tier(getattr(g, "api_key_hash", None))
-                        if getattr(g, "api_key_hash", None)
-                        else "anonymous"
-                    ),
-                    "detailed": detailed,
-                },
-                request_id,
-            ),
-            HTTP_OK,
+        return api_success(
+            data={
+                "tiers": tiers,
+                "current_user_tier": (
+                    get_api_key_tier(getattr(g, "api_key_hash", None))
+                    if getattr(g, "api_key_hash", None)
+                    else "anonymous"
+                ),
+                "detailed": detailed,
+            },
+            message="Rate limiting tiers retrieved successfully",
+            status_code=HTTP_OK,
+            request_id=request_id,
         )
 
     except Exception as e:
@@ -124,7 +123,7 @@ def list_rate_limit_tiers():
         return api_error("TierListFailed", "Failed to list rate limit tiers", HTTP_BAD_REQUEST, request_id)
 
 
-@rate_limits_bp.route("/rate-limits/endpoint-info", methods=["GET"])
+@rate_limits_bp.route("/endpoint-info", methods=["GET"])
 @limiter.limit("60/minute")
 def endpoint_rate_limit_info():
     """
@@ -167,17 +166,14 @@ def endpoint_rate_limit_info():
                 limit_string = get_endpoint_limit(ep, as_callable=False)
                 endpoint_info[ep] = {"rate_limit": limit_string, "description": _get_endpoint_description(ep)}
 
-        return (
-            api_success(
-                "EndpointRateLimitInfo",
-                "Endpoint rate limit information retrieved successfully",
-                {
-                    "endpoint_info": endpoint_info,
-                    "note": "Rate limits vary based on API key tier and authentication status",
-                },
-                request_id,
-            ),
-            HTTP_OK,
+        return api_success(
+            data={
+                "endpoint_info": endpoint_info,
+                "note": "Rate limits vary based on API key tier and authentication status",
+            },
+            message="Endpoint rate limit information retrieved successfully",
+            status_code=HTTP_OK,
+            request_id=request_id,
         )
 
     except Exception as e:
@@ -185,7 +181,7 @@ def endpoint_rate_limit_info():
         return api_error("EndpointInfoFailed", "Failed to get endpoint rate limit info", HTTP_BAD_REQUEST, request_id)
 
 
-@rate_limits_bp.route("/rate-limits/test", methods=["GET"])
+@rate_limits_bp.route("/test", methods=["GET"])
 @limiter.limit("10/minute")
 def rate_limit_test():
     """
@@ -198,23 +194,20 @@ def rate_limit_test():
 
     try:
         # This endpoint is rate limited to demonstrate the functionality
-        return (
-            api_success(
-                "RateLimitTest",
-                "Rate limiting test endpoint",
-                {
-                    "message": "This endpoint is rate limited to demonstrate rate limiting",
-                    "current_time": (
-                        logger.handlers[0].formatter.formatTime(logger.makeRecord("test", 20, "", 0, "", (), None))
-                        if logger.handlers
-                        else None
-                    ),
-                    "request_id": request_id,
-                    "note": "Check the response headers for X-RateLimit-* information",
-                },
-                request_id,
-            ),
-            HTTP_OK,
+        return api_success(
+            data={
+                "message": "This endpoint is rate limited to demonstrate rate limiting",
+                "current_time": (
+                    logger.handlers[0].formatter.formatTime(logger.makeRecord("test", 20, "", 0, "", (), None))
+                    if logger.handlers
+                    else None
+                ),
+                "request_id": request_id,
+                "note": "Check the response headers for X-RateLimit-* information",
+            },
+            message="Rate limiting test endpoint",
+            status_code=HTTP_OK,
+            request_id=request_id,
         )
 
     except Exception as e:

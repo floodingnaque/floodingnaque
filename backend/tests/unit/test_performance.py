@@ -8,6 +8,12 @@ from collections import deque
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.api.routes.performance import (
+    _endpoint_times,
+    _response_times,
+    calculate_percentiles,
+    record_response_time,
+)
 
 
 class TestResponseTimeTracking:
@@ -15,8 +21,6 @@ class TestResponseTimeTracking:
 
     def test_record_response_time(self):
         """Test recording a response time."""
-        from app.api.routes.performance import _endpoint_times, _response_times, record_response_time
-
         initial_count = len(_response_times)
         record_response_time("/api/test", 150.5)
 
@@ -28,8 +32,6 @@ class TestResponseTimeTracking:
 
     def test_calculate_percentiles_empty(self):
         """Test percentile calculation with empty list."""
-        from app.api.routes.performance import calculate_percentiles
-
         result = calculate_percentiles([])
 
         assert result["p50"] == 0
@@ -40,8 +42,6 @@ class TestResponseTimeTracking:
 
     def test_calculate_percentiles_single_value(self):
         """Test percentile calculation with single value."""
-        from app.api.routes.performance import calculate_percentiles
-
         result = calculate_percentiles([100])
 
         assert result["p50"] == 100
@@ -49,16 +49,15 @@ class TestResponseTimeTracking:
 
     def test_calculate_percentiles_multiple_values(self):
         """Test percentile calculation with multiple values."""
-        from app.api.routes.performance import calculate_percentiles
-
         # 100 values from 1 to 100
         times = list(range(1, 101))
         result = calculate_percentiles(times)
 
-        assert result["p50"] == 50
-        assert result["p90"] == 90
-        assert result["p95"] == 95
-        assert result["p99"] == 99
+        # With 100 values, index = int(100 * 0.50) = 50, so p50 = times[50] = 51
+        assert result["p50"] == 51
+        assert result["p90"] == 91
+        assert result["p95"] == 96
+        assert result["p99"] == 100
 
     def test_get_response_time_stats(self):
         """Test comprehensive response time statistics."""
@@ -80,7 +79,7 @@ class TestPerformanceDashboard:
 
     def test_performance_dashboard_endpoint(self, client):
         """Test performance dashboard returns metrics."""
-        response = client.get("/performance/dashboard")
+        response = client.get("/api/v1/performance/dashboard")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -94,7 +93,7 @@ class TestPerformanceDashboard:
         mock_cache.return_value = {"hits": 100, "misses": 10}
         mock_pool.return_value = {"pool_size": 20, "checked_out": 5}
 
-        response = client.get("/performance/dashboard")
+        response = client.get("/api/v1/performance/dashboard")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -106,7 +105,7 @@ class TestCacheMetrics:
 
     def test_cache_stats_endpoint(self, client):
         """Test cache statistics endpoint."""
-        response = client.get("/performance/cache/stats")
+        response = client.get("/api/v1/performance/cache/stats")
 
         # May return 200 or 404 depending on route registration
         assert response.status_code in [200, 404]
@@ -116,7 +115,7 @@ class TestCacheMetrics:
         """Test cache warming endpoint."""
         mock_enabled.return_value = True
 
-        response = client.post("/performance/cache/warm")
+        response = client.post("/api/v1/performance/cache/warm")
 
         # Endpoint might require authentication
         assert response.status_code in [200, 401, 404]
@@ -127,7 +126,7 @@ class TestDatabaseMetrics:
 
     def test_slow_queries_endpoint(self, client):
         """Test slow queries endpoint."""
-        response = client.get("/performance/slow-queries")
+        response = client.get("/api/v1/performance/slow-queries")
 
         assert response.status_code in [200, 404]
 
@@ -136,7 +135,7 @@ class TestDatabaseMetrics:
         """Test database health metrics endpoint."""
         mock_health.return_value = {"status": "healthy", "connections": 10}
 
-        response = client.get("/performance/database")
+        response = client.get("/api/v1/performance/database")
 
         assert response.status_code in [200, 404]
 
@@ -145,7 +144,7 @@ class TestDatabaseMetrics:
         """Test table statistics endpoint."""
         mock_stats.return_value = [{"table": "weather_data", "rows": 1000}]
 
-        response = client.get("/performance/tables")
+        response = client.get("/api/v1/performance/tables")
 
         assert response.status_code in [200, 404]
 
@@ -158,7 +157,7 @@ class TestIndexMetrics:
         """Test index usage statistics endpoint."""
         mock_usage.return_value = [{"index": "idx_timestamp", "scans": 500}]
 
-        response = client.get("/performance/indexes")
+        response = client.get("/api/v1/performance/indexes")
 
         assert response.status_code in [200, 404]
 
@@ -167,7 +166,7 @@ class TestIndexMetrics:
         """Test unused indexes endpoint."""
         mock_unused.return_value = []
 
-        response = client.get("/performance/indexes/unused")
+        response = client.get("/api/v1/performance/indexes/unused")
 
         assert response.status_code in [200, 404]
 
@@ -180,7 +179,7 @@ class TestQueryStatistics:
         """Test query statistics endpoint."""
         mock_stats.return_value = {"total_queries": 1000, "avg_time_ms": 5.5}
 
-        response = client.get("/performance/queries")
+        response = client.get("/api/v1/performance/queries")
 
         assert response.status_code in [200, 404]
 
@@ -189,7 +188,7 @@ class TestQueryStatistics:
         """Test clearing slow query log."""
         mock_clear.return_value = None
 
-        response = client.delete("/performance/slow-queries")
+        response = client.delete("/api/v1/performance/slow-queries")
 
         # May require authentication
         assert response.status_code in [200, 204, 401, 404]
@@ -203,6 +202,6 @@ class TestMaintenanceRecommendations:
         """Test maintenance recommendations endpoint."""
         mock_recs.return_value = [{"type": "vacuum", "table": "weather_data", "priority": "medium"}]
 
-        response = client.get("/performance/recommendations")
+        response = client.get("/api/v1/performance/recommendations")
 
         assert response.status_code in [200, 404]

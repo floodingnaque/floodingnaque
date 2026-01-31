@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.models.db import APIRequest, Prediction, WeatherData, get_db_session
+from app.utils.db_optimization import config, get_pool_health
 
 
 class TestDatabaseConnection:
@@ -16,7 +18,6 @@ class TestDatabaseConnection:
     def test_database_connection_success(self, app, app_context):
         """Test successful database connection."""
         try:
-            from app.models.db import get_db_session
             from sqlalchemy import text
 
             with get_db_session() as session:
@@ -30,8 +31,6 @@ class TestDatabaseConnection:
     def test_database_connection_with_context_manager(self, app, app_context):
         """Test database session context manager properly closes."""
         try:
-            from app.models.db import get_db_session
-
             session = None
             with get_db_session() as s:
                 session = s
@@ -59,11 +58,9 @@ class TestWeatherDataModel:
     def test_weather_data_model_creation(self, app, app_context):
         """Test WeatherData model can be created."""
         try:
-            from app.models.db import WeatherData
-
             weather = WeatherData(
-                latitude=14.4793,
-                longitude=121.0198,
+                location_lat=14.4793,
+                location_lon=121.0198,
                 temperature=298.15,
                 humidity=75.0,
                 precipitation=5.0,
@@ -71,8 +68,8 @@ class TestWeatherDataModel:
             )
 
             # Use getattr for runtime value access
-            assert getattr(weather, "latitude", None) == 14.4793
-            assert getattr(weather, "longitude", None) == 121.0198
+            assert getattr(weather, "location_lat", None) == 14.4793
+            assert getattr(weather, "location_lon", None) == 121.0198
             assert getattr(weather, "temperature", None) == 298.15
         except ImportError:
             pytest.skip("WeatherData model not available")
@@ -80,11 +77,9 @@ class TestWeatherDataModel:
     def test_weather_data_validation(self, app, app_context):
         """Test WeatherData model validation."""
         try:
-            from app.models.db import WeatherData
-
             # Valid data should not raise
             weather = WeatherData(
-                latitude=14.4793, longitude=121.0198, temperature=298.15, humidity=75.0, precipitation=5.0
+                location_lat=14.4793, location_lon=121.0198, temperature=298.15, humidity=75.0, precipitation=5.0
             )
             assert weather is not None
         except ImportError:
@@ -97,15 +92,11 @@ class TestPredictionModel:
     def test_prediction_model_creation(self, app, app_context):
         """Test Prediction model can be created."""
         try:
-            from app.models.db import Prediction
-
-            prediction = Prediction(
-                prediction=1, flood_risk="high", risk_level=2, confidence=0.85, model_version="1.0.0"
-            )
+            prediction = Prediction(prediction=1, risk_label="Critical", risk_level=2, confidence=0.85, model_version=1)
 
             # Use getattr for runtime value access
             assert getattr(prediction, "prediction", None) == 1
-            assert getattr(prediction, "flood_risk", None) == "high"
+            assert getattr(prediction, "risk_label", None) == "Critical"
             assert getattr(prediction, "confidence", None) == 0.85
         except ImportError:
             pytest.skip("Prediction model not available")
@@ -113,14 +104,12 @@ class TestPredictionModel:
     def test_prediction_with_weather_relationship(self, app, app_context):
         """Test Prediction model relationship with WeatherData."""
         try:
-            from app.models.db import Prediction, WeatherData
-
             # Create related objects
             weather = WeatherData(
-                latitude=14.4793, longitude=121.0198, temperature=298.15, humidity=75.0, precipitation=5.0
+                location_lat=14.4793, location_lon=121.0198, temperature=298.15, humidity=75.0, precipitation=5.0
             )
 
-            prediction = Prediction(prediction=1, flood_risk="high", risk_level=2, confidence=0.85)
+            prediction = Prediction(prediction=1, risk_label="Critical", risk_level=2, confidence=0.85)
 
             # Relationship should be configurable
             assert weather is not None
@@ -135,8 +124,6 @@ class TestAPIRequestModel:
     def test_api_request_model_creation(self, app, app_context):
         """Test APIRequest model can be created."""
         try:
-            from app.models.db import APIRequest
-
             request = APIRequest(
                 request_id="test-123",
                 endpoint="/api/v1/predict",
@@ -244,7 +231,6 @@ class TestDatabaseMigrations:
     def test_model_columns_exist(self, app, app_context):
         """Test that model columns match expected schema."""
         try:
-            from app.models.db import APIRequest, Prediction, WeatherData
             from sqlalchemy import inspect
 
             # Check WeatherData columns
@@ -257,7 +243,6 @@ class TestDatabaseMigrations:
     def test_foreign_key_relationships(self, app, app_context):
         """Test foreign key relationships are defined."""
         try:
-            from app.models.db import Prediction, WeatherData
             from sqlalchemy import inspect
 
             # Check if relationships are properly defined
@@ -273,23 +258,32 @@ class TestConnectionPooling:
     def test_pool_configuration(self, app, app_context):
         """Test connection pool is configured."""
         try:
-            from app.utils.db_optimization import config
-
             assert config.pool_size > 0
             assert config.max_overflow >= 0
             assert config.pool_timeout > 0
         except ImportError:
             pytest.skip("db_optimization not available")
 
-    @patch("app.utils.db_optimization.get_pool_health")
+    @patch("tests.integration.test_database.get_pool_health")
     def test_pool_health_check(self, mock_health, app, app_context):
         """Test connection pool health check."""
-        mock_health.return_value = {"pool_size": 20, "checked_out": 5, "checked_in": 15, "overflow": 0, "healthy": True}
-
-        from app.utils.db_optimization import get_pool_health
+        # Mock returns dict keyed by engine name with status field (actual implementation structure)
+        mock_health.return_value = {
+            "primary": {
+                "pool_size": 20,
+                "checked_out": 5,
+                "checked_in": 15,
+                "overflow": 0,
+                "utilization_percent": 16.67,
+                "status": "healthy",
+            }
+        }
 
         health = get_pool_health()
-        assert health["healthy"] is True
+        assert "primary" in health
+        assert health["primary"]["status"] == "healthy"
+        assert health["primary"]["checked_out"] == 5
+        assert health["primary"]["checked_in"] == 15
 
 
 class TestDatabaseIndexes:
@@ -298,7 +292,6 @@ class TestDatabaseIndexes:
     def test_index_exists_on_timestamp(self, app, app_context):
         """Test index exists on timestamp columns."""
         try:
-            from app.models.db import WeatherData
             from sqlalchemy import inspect
 
             # Check if indexes are defined on the model

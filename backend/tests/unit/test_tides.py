@@ -8,17 +8,14 @@ Tests the tide data API endpoints including:
 - Error handling and service availability
 """
 
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
+# Import modules at top level for proper coverage tracking
+from app.api.app import create_app
+from app.services.worldtides_service import TideData, TideExtreme
 
 # =============================================================================
 # Test Fixtures
@@ -28,8 +25,6 @@ sys.path.insert(0, str(backend_path))
 @pytest.fixture
 def app():
     """Create Flask application for testing."""
-    from app.api.app import create_app
-
     application = create_app()
     application.config["TESTING"] = True
     return application
@@ -45,8 +40,6 @@ def client(app):
 @pytest.fixture
 def mock_tide_data():
     """Create mock TideData object."""
-    from app.services.worldtides_service import TideData
-
     return TideData(
         timestamp=datetime.now(timezone.utc),
         height=1.5,
@@ -59,8 +52,6 @@ def mock_tide_data():
 @pytest.fixture
 def mock_tide_extremes():
     """Create mock TideExtreme objects."""
-    from app.services.worldtides_service import TideExtreme
-
     return [
         TideExtreme(
             timestamp=datetime.now(timezone.utc),

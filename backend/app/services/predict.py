@@ -508,3 +508,83 @@ def get_current_model_info() -> Optional[Dict[str, Any]]:
         info["features"] = list(loader.model.feature_names_in_)
 
     return info
+
+
+# =============================================================================
+# Module-level convenience functions for backward compatibility
+# =============================================================================
+# These functions provide a simpler interface and allow for easy mocking in tests
+
+
+def load_model(model_path: Optional[str] = None) -> Any:
+    """
+    Load prediction model.
+
+    Module-level function that wraps the internal model loader for backward
+    compatibility and easier testing (allows simple patching).
+
+    Args:
+        model_path: Optional path to model file. Uses default if not specified.
+
+    Returns:
+        Loaded model object
+
+    Raises:
+        FileNotFoundError: If model file doesn't exist
+        ValueError: If integrity check fails
+    """
+    return _load_model(model_path=model_path)
+
+
+def make_prediction(features: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Make a flood prediction.
+
+    Module-level function for backward compatibility and easier testing.
+
+    Args:
+        features: Dictionary with weather features (temperature, humidity, precipitation)
+
+    Returns:
+        Prediction result dictionary with prediction, probability, and risk_level
+    """
+    return predict_flood(features, return_proba=True, return_risk_level=True)
+
+
+def get_model_info() -> Optional[Dict[str, Any]]:
+    """
+    Get information about the loaded model.
+
+    Module-level wrapper for get_current_model_info().
+
+    Returns:
+        Dictionary with model information or None if not loaded
+    """
+    return get_current_model_info()
+
+
+# Export all public functions and classes
+__all__ = [
+    # Main class
+    "ModelLoader",
+    # Model loading functions
+    "load_model",
+    "_load_model",
+    "load_model_version",
+    # Prediction functions
+    "make_prediction",
+    "predict_flood",
+    # Model info functions
+    "get_model_info",
+    "get_current_model_info",
+    "get_model_metadata",
+    # Model management functions
+    "list_available_models",
+    "get_latest_model_version",
+    "save_model_with_checksum",
+    # Integrity verification functions
+    "verify_model_integrity",
+    "verify_model_hmac_signature",
+    "compute_model_checksum",
+    "compute_model_hmac_signature",
+]

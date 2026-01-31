@@ -1,15 +1,14 @@
 """
 Unit tests for prediction service.
-"""
 
-import sys
-from pathlib import Path
+Tests for app/services/predict.py
+"""
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(backend_path))
+# Import modules at top level for proper coverage tracking
+# Note: The actual predict service doesn't need to be imported here
+# as these tests are pure logic tests, but we keep consistent pattern
 
 
 class TestPredictService:

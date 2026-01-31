@@ -1,0 +1,263 @@
+# serializer version: 1
+# name: TestAPIResponseSnapshots.test_health_check_response_snapshot
+  dict({
+    'database': 'connected',
+    'model_available': True,
+    'scheduler_running': True,
+    'status': 'healthy',
+    'timestamp': '2024-01-15T10:30:00Z',
+    'version': '2.0.0',
+  })
+# ---
+# name: TestAPIResponseSnapshots.test_prediction_api_response_snapshot
+  dict({
+    'confidence': 0.85,
+    'flood_risk': 'low',
+    'model_name': 'flood_predictor',
+    'model_version': '1.0.0',
+    'prediction': 0,
+    'probability': dict({
+      'flood': 0.15,
+      'no_flood': 0.85,
+    }),
+    'request_id': 'req_abc123',
+    'risk_color': '#10B981',
+    'risk_description': 'Conditions are safe. No flood risk detected.',
+    'risk_label': 'Safe',
+    'risk_level': 0,
+    'success': True,
+    'timestamp': '2024-01-15T10:30:00Z',
+  })
+# ---
+# name: TestBatchPredictionSnapshots.test_batch_prediction_structure_snapshot
+  list([
+    dict({
+      'confidence': 0.85,
+      'model_version': '1.0.0',
+      'prediction': 0,
+      'probability': dict({
+        'flood': 0.15,
+        'no_flood': 0.85,
+      }),
+      'risk_color': '#28a745',
+      'risk_description': 'No immediate flood risk. Normal weather conditions.',
+      'risk_label': 'Safe',
+      'risk_level': 0,
+    }),
+    dict({
+      'confidence': 0.8,
+      'model_version': '1.0.0',
+      'prediction': 1,
+      'probability': dict({
+        'flood': 0.8,
+        'no_flood': 0.2,
+      }),
+      'risk_color': '#dc3545',
+      'risk_description': 'High flood risk. Immediate action required. Evacuate if necessary.',
+      'risk_label': 'Critical',
+      'risk_level': 2,
+    }),
+    dict({
+      'confidence': 0.6,
+      'model_version': '1.0.0',
+      'prediction': 0,
+      'probability': dict({
+        'flood': 0.4,
+        'no_flood': 0.6,
+      }),
+      'risk_color': '#ffc107',
+      'risk_description': 'Moderate flood risk. Monitor conditions closely. Prepare for possible flooding.',
+      'risk_label': 'Alert',
+      'risk_level': 1,
+    }),
+  ])
+# ---
+# name: TestDataTransformationSnapshots.test_weather_data_preprocessing_snapshot
+  dict({
+    'humidity': 75.0,
+    'precipitation': 10.5,
+    'temperature': 28.5,
+  })
+# ---
+# name: TestErrorResponseSnapshots.test_model_error_structure_snapshot
+  dict({
+    'error': dict({
+      'code': 'ModelError',
+      'detail': 'Model prediction failed',
+      'status': 500,
+      'timestamp': '2025-01-15T10:30:00Z',
+      'title': 'Model Processing Error',
+      'type': '/errors/model',
+    }),
+    'success': False,
+  })
+# ---
+# name: TestErrorResponseSnapshots.test_validation_error_structure_snapshot
+  dict({
+    'error': dict({
+      'code': 'ValidationError',
+      'detail': 'Validation failed',
+      'errors': list([
+        dict({
+          'code': 'required',
+          'field': 'temperature',
+          'message': 'Temperature is required',
+        }),
+        dict({
+          'code': 'range',
+          'field': 'humidity',
+          'message': 'Humidity must be between 0 and 100',
+        }),
+      ]),
+      'status': 400,
+      'timestamp': '2025-01-15T10:30:00Z',
+      'title': 'Validation Failed',
+      'type': '/errors/validation',
+    }),
+    'success': False,
+  })
+# ---
+# name: TestModelMetadataSnapshots.test_model_info_structure_snapshot
+  dict({
+    'checksum': 'abc123def456...',
+    'features': list([
+      'temperature',
+      'humidity',
+      'precipitation',
+    ]),
+    'integrity_verified': True,
+    'metadata': dict({
+      'created_at': '2024-01-15T10:30:00Z',
+      'metrics': dict({
+        'accuracy': 0.92,
+        'f1_score': 0.91,
+        'precision': 0.89,
+        'recall': 0.94,
+      }),
+      'version': '1.0.0',
+    }),
+    'model_path': 'models/flood_rf_model.joblib',
+    'model_type': 'RandomForestClassifier',
+  })
+# ---
+# name: TestPredictionSnapshots.test_alert_weather_prediction_snapshot
+  dict({
+    'confidence': 0.55,
+    'model_version': '1.0.0',
+    'prediction': 0,
+    'probability': dict({
+      'flood': 0.45,
+      'no_flood': 0.55,
+    }),
+    'risk_color': '#ffc107',
+    'risk_description': 'Moderate flood risk. Monitor conditions closely. Prepare for possible flooding.',
+    'risk_label': 'Alert',
+    'risk_level': 1,
+  })
+# ---
+# name: TestPredictionSnapshots.test_critical_weather_prediction_snapshot
+  dict({
+    'confidence': 0.8,
+    'model_version': '1.0.0',
+    'prediction': 1,
+    'probability': dict({
+      'flood': 0.8,
+      'no_flood': 0.2,
+    }),
+    'risk_color': '#dc3545',
+    'risk_description': 'High flood risk. Immediate action required. Evacuate if necessary.',
+    'risk_label': 'Critical',
+    'risk_level': 2,
+  })
+# ---
+# name: TestPredictionSnapshots.test_safe_weather_prediction_snapshot
+  dict({
+    'confidence': 0.85,
+    'model_version': '1.0.0',
+    'prediction': 0,
+    'probability': dict({
+      'flood': 0.15,
+      'no_flood': 0.85,
+    }),
+    'risk_color': '#28a745',
+    'risk_description': 'No immediate flood risk. Normal weather conditions.',
+    'risk_label': 'Safe',
+    'risk_level': 0,
+  })
+# ---
+# name: TestRiskClassificationSnapshots.test_alert_risk_classification_snapshot
+  dict({
+    'binary_prediction': 0,
+    'confidence': 0.55,
+    'description': 'Moderate flood risk. Monitor conditions closely. Prepare for possible flooding.',
+    'probability': dict({
+      'flood': 0.45,
+      'no_flood': 0.55,
+    }),
+    'risk_color': '#ffc107',
+    'risk_label': 'Alert',
+    'risk_level': 1,
+  })
+# ---
+# name: TestRiskClassificationSnapshots.test_boundary_alert_critical_snapshot
+  dict({
+    'binary_prediction': 1,
+    'confidence': 0.75,
+    'description': 'High flood risk. Immediate action required. Evacuate if necessary.',
+    'probability': dict({
+      'flood': 0.75,
+      'no_flood': 0.25,
+    }),
+    'risk_color': '#dc3545',
+    'risk_label': 'Critical',
+    'risk_level': 2,
+  })
+# ---
+# name: TestRiskClassificationSnapshots.test_boundary_safe_alert_snapshot
+  dict({
+    'binary_prediction': 0,
+    'confidence': 0.7,
+    'description': 'Moderate flood risk. Monitor conditions closely. Prepare for possible flooding.',
+    'probability': dict({
+      'flood': 0.3,
+      'no_flood': 0.7,
+    }),
+    'risk_color': '#ffc107',
+    'risk_label': 'Alert',
+    'risk_level': 1,
+  })
+# ---
+# name: TestRiskClassificationSnapshots.test_critical_risk_classification_snapshot
+  dict({
+    'binary_prediction': 1,
+    'confidence': 0.8,
+    'description': 'High flood risk. Immediate action required. Evacuate if necessary.',
+    'probability': dict({
+      'flood': 0.8,
+      'no_flood': 0.2,
+    }),
+    'risk_color': '#dc3545',
+    'risk_label': 'Critical',
+    'risk_level': 2,
+  })
+# ---
+# name: TestRiskClassificationSnapshots.test_safe_risk_classification_snapshot
+  dict({
+    'binary_prediction': 0,
+    'confidence': 0.85,
+    'description': 'No immediate flood risk. Normal weather conditions.',
+    'probability': dict({
+      'flood': 0.15,
+      'no_flood': 0.85,
+    }),
+    'risk_color': '#28a745',
+    'risk_label': 'Safe',
+    'risk_level': 0,
+  })
+# ---
+# name: test_snapshot_serialization_float_precision
+  dict({
+    'confidence': 0.8548,
+    'probability': 0.1452,
+  })
+# ---

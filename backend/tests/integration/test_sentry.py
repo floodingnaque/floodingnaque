@@ -6,13 +6,17 @@ Run this to test Sentry without starting the full Flask app.
 
 import os
 import sys
-from pathlib import Path
-
-# Add app directory to path
-sys.path.insert(0, str(Path(__file__).parent / "app"))
 
 from app.core.config import load_env
-from app.utils.sentry import capture_message, init_sentry, is_sentry_enabled
+from app.utils.sentry import (
+    add_breadcrumb,
+    capture_exception,
+    capture_message,
+    init_sentry,
+    is_sentry_enabled,
+    set_tag,
+    set_user_context,
+)
 
 
 def test_sentry_disabled():
@@ -76,8 +80,6 @@ def test_sentry_functions():
     print("=" * 60)
     print("TEST 3: Sentry utility functions")
     print("=" * 60)
-
-    from app.utils.sentry import add_breadcrumb, capture_exception, set_tag, set_user_context
 
     try:
         # Test breadcrumb

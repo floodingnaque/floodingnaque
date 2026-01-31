@@ -4,17 +4,11 @@ Unit tests for export routes.
 Tests data export functionality for weather and predictions.
 """
 
-import sys
 from datetime import datetime
 from io import StringIO
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
 
 
 class TestExportWeather:
@@ -162,9 +156,9 @@ class TestExportPredictions:
         """Create mock prediction records."""
         records = []
         for i in range(3):
-            record = MagicMock()
+            record = Mock()
             record.id = i + 1
-            record.timestamp = datetime(2025, 1, 10, 12, 0, 0)
+            record.created_at = datetime(2025, 1, 10, 12, 0, 0)
             record.prediction = 0
             record.risk_level = 0
             record.confidence = 0.85
@@ -172,6 +166,7 @@ class TestExportPredictions:
             record.humidity = 75.0
             record.precipitation = 5.0
             record.model_version = "1.0.0"
+            record.is_deleted = False
             records.append(record)
         return records
 

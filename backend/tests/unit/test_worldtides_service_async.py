@@ -14,19 +14,17 @@ from WorldTides API, including:
 
 import asyncio
 import os
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
+from app.services.worldtides_service_async import (
+    AsyncWorldTidesService,
+    TideData,
+    TideExtreme,
+)
 
 # =============================================================================
 # Test Fixtures
@@ -36,8 +34,6 @@ sys.path.insert(0, str(backend_path))
 @pytest.fixture(autouse=True)
 def reset_singleton():
     """Reset the singleton instance before each test."""
-    from app.services.worldtides_service_async import AsyncWorldTidesService
-
     # Store original class state
     original_instance = AsyncWorldTidesService._instance
     original_session = AsyncWorldTidesService._session
@@ -122,8 +118,6 @@ class TestTideDataDataclass:
 
     def test_create_basic(self):
         """Test creating a basic TideData."""
-        from app.services.worldtides_service_async import TideData
-
         tide = TideData(
             timestamp=datetime.now(timezone.utc),
             height=1.5,
@@ -136,8 +130,6 @@ class TestTideDataDataclass:
 
     def test_create_with_all_fields(self):
         """Test creating TideData with all fields."""
-        from app.services.worldtides_service_async import TideData
-
         tide = TideData(
             timestamp=datetime.now(timezone.utc),
             height=2.1,
@@ -156,8 +148,6 @@ class TestTideExtremeDataclass:
 
     def test_create_high_tide(self):
         """Test creating a high tide extreme."""
-        from app.services.worldtides_service_async import TideExtreme
-
         extreme = TideExtreme(
             timestamp=datetime.now(timezone.utc),
             height=2.1,
@@ -170,8 +160,6 @@ class TestTideExtremeDataclass:
 
     def test_create_low_tide(self):
         """Test creating a low tide extreme."""
-        from app.services.worldtides_service_async import TideExtreme
-
         extreme = TideExtreme(
             timestamp=datetime.now(timezone.utc),
             height=0.3,
@@ -199,16 +187,12 @@ class TestAsyncWorldTidesServiceInitialization:
     )
     def test_service_enabled_with_key(self):
         """Test service is enabled with API key."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         assert service.enabled is True
 
     @patch.dict(os.environ, {"WORLDTIDES_API_KEY": ""}, clear=False)
     def test_service_disabled_without_key(self):
         """Test service is disabled without API key."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         assert service.enabled is False
 
@@ -219,8 +203,6 @@ class TestAsyncWorldTidesServiceInitialization:
     )
     def test_service_disabled_via_env(self):
         """Test service can be disabled via environment."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         assert service.enabled is False
 
@@ -231,8 +213,6 @@ class TestAsyncWorldTidesServiceInitialization:
     )
     def test_custom_datum(self):
         """Test custom datum configuration."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         assert service.default_datum == "LAT"
 
@@ -247,16 +227,12 @@ class TestAsyncWorldTidesServiceInitialization:
     )
     def test_default_coordinates_from_env(self):
         """Test default coordinates from environment."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         assert service.default_lat == 15.0
         assert service.default_lon == 121.5
 
     def test_singleton_pattern(self, mock_env_vars):
         """Test singleton pattern returns same instance."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         instance1 = AsyncWorldTidesService.get_instance()
         instance2 = AsyncWorldTidesService.get_instance()
 
@@ -264,8 +240,6 @@ class TestAsyncWorldTidesServiceInitialization:
 
     def test_reset_instance(self, mock_env_vars):
         """Test reset_instance creates new instance."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         instance1 = AsyncWorldTidesService.get_instance()
         AsyncWorldTidesService.reset_instance()
         instance2 = AsyncWorldTidesService.get_instance()
@@ -279,8 +253,6 @@ class TestAsyncWorldTidesServiceInitialization:
     )
     def test_cache_ttl_config(self):
         """Test cache TTL configuration."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         assert service._cache_ttl == 3600
 
@@ -296,8 +268,6 @@ class TestSessionManagement:
     @pytest.mark.asyncio
     async def test_get_session_creates_new(self, mock_env_vars):
         """Test _get_session creates new session."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         session = await service._get_session()
 
@@ -310,8 +280,6 @@ class TestSessionManagement:
     @pytest.mark.asyncio
     async def test_get_session_reuses_existing(self, mock_env_vars):
         """Test _get_session reuses existing session."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         session1 = await service._get_session()
         session2 = await service._get_session()
@@ -324,8 +292,6 @@ class TestSessionManagement:
     @pytest.mark.asyncio
     async def test_close_session(self, mock_env_vars):
         """Test closing the session."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         await service._get_session()
 
@@ -343,8 +309,6 @@ class TestCaching:
 
     def test_get_cache_key(self, mock_env_vars):
         """Test cache key generation."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         key = service._get_cache_key("current", 14.4793, 120.9822, datum="MSL")
 
@@ -355,8 +319,6 @@ class TestCaching:
 
     def test_cache_key_consistent(self, mock_env_vars):
         """Test cache key is consistent for same inputs."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         key1 = service._get_cache_key("heights", 14.0, 120.0, days=2)
         key2 = service._get_cache_key("heights", 14.0, 120.0, days=2)
@@ -365,8 +327,6 @@ class TestCaching:
 
     def test_set_and_get_cache(self, mock_env_vars):
         """Test setting and getting from cache."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         cache_key = "test_key"
         test_data = {"height": 1.5}
@@ -378,8 +338,6 @@ class TestCaching:
 
     def test_cache_miss(self, mock_env_vars):
         """Test cache miss returns None."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         result = service._get_from_cache("nonexistent_key")
 
@@ -387,8 +345,6 @@ class TestCaching:
 
     def test_cache_expiry(self, mock_env_vars):
         """Test cache expiry."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         with patch.dict(os.environ, {"WORLDTIDES_CACHE_TTL_SECONDS": "0"}, clear=False):
             service = AsyncWorldTidesService()
             service._cache_ttl = 0  # Override to expire immediately
@@ -417,8 +373,6 @@ class TestGetCurrentTide:
     @patch.dict(os.environ, {"WORLDTIDES_API_KEY": ""}, clear=False)
     async def test_returns_none_when_disabled(self):
         """Test returns None when service is disabled."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         result = await service.get_current_tide()
 
@@ -427,8 +381,6 @@ class TestGetCurrentTide:
     @pytest.mark.asyncio
     async def test_returns_cached_data(self, mock_env_vars):
         """Test returns cached data if available."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService, TideData
-
         service = AsyncWorldTidesService()
 
         # Pre-populate cache
@@ -457,8 +409,6 @@ class TestGetTideHeights:
     @patch.dict(os.environ, {"WORLDTIDES_API_KEY": ""}, clear=False)
     async def test_returns_empty_when_disabled(self):
         """Test returns empty list when disabled."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         result = await service.get_tide_heights()
 
@@ -467,8 +417,6 @@ class TestGetTideHeights:
     @pytest.mark.asyncio
     async def test_clamps_days_parameter(self, mock_env_vars):
         """Test days parameter is clamped to 1-7."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
 
         # Days should be clamped even though we can't make actual API call
@@ -491,8 +439,6 @@ class TestGetTideExtremes:
     @patch.dict(os.environ, {"WORLDTIDES_API_KEY": ""}, clear=False)
     async def test_returns_empty_when_disabled(self):
         """Test returns empty list when disabled."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         result = await service.get_tide_extremes()
 
@@ -511,8 +457,6 @@ class TestMakeRequest:
     @patch.dict(os.environ, {"WORLDTIDES_API_KEY": ""}, clear=False)
     async def test_returns_none_when_disabled(self):
         """Test returns None when service is disabled."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
         result = await service._make_request({"test": "params"})
 
@@ -529,8 +473,6 @@ class TestRetryConfiguration:
 
     def test_retry_constants(self):
         """Test retry configuration constants."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         assert AsyncWorldTidesService.MAX_RETRIES == 3
         assert AsyncWorldTidesService.RETRY_MIN_WAIT == 1
         assert AsyncWorldTidesService.RETRY_MAX_WAIT == 10
@@ -546,8 +488,6 @@ class TestApiConfiguration:
 
     def test_api_base_url(self):
         """Test API base URL is correct."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         assert AsyncWorldTidesService.API_BASE_URL == "https://www.worldtides.info/api/v3"
 
 
@@ -561,16 +501,12 @@ class TestDefaultLocation:
 
     def test_default_coordinates_are_manila_bay(self):
         """Test default coordinates are for Manila Bay area."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         # These are the class-level defaults
         assert AsyncWorldTidesService.DEFAULT_LAT == 14.4793
         assert AsyncWorldTidesService.DEFAULT_LON == 120.9822
 
     def test_coordinates_in_manila_bay(self):
         """Test coordinates are within Manila Bay bounds."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         lat = AsyncWorldTidesService.DEFAULT_LAT
         lon = AsyncWorldTidesService.DEFAULT_LON
 
@@ -580,8 +516,6 @@ class TestDefaultLocation:
 
     def test_coordinates_in_philippines(self):
         """Test coordinates are within Philippines bounds."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         lat = AsyncWorldTidesService.DEFAULT_LAT
         lon = AsyncWorldTidesService.DEFAULT_LON
 
@@ -631,8 +565,6 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_handles_api_error_response(self, mock_env_vars, mock_error_response):
         """Test handling of API error responses."""
-        from app.services.worldtides_service_async import AsyncWorldTidesService
-
         service = AsyncWorldTidesService()
 
         # API error should result in None
@@ -651,8 +583,6 @@ class TestTideAlertFormatting:
 
     def test_tide_data_serializable(self):
         """Test TideData can be serialized."""
-        from app.services.worldtides_service_async import TideData
-
         tide = TideData(
             timestamp=datetime.now(timezone.utc),
             height=1.5,

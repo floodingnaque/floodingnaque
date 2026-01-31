@@ -126,7 +126,7 @@ def batch_predict():
       - api_key: []
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data or "predictions" not in data:
             return jsonify({"error": "Missing required field: predictions"}), 400

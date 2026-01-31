@@ -49,7 +49,7 @@ services:
       - FLASK_DEBUG=True
       - PORT=5000
       - HOST=0.0.0.0
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-floodingnaque}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:-floodingnaque}
       # SSL mode 'require' for development (encrypted, no certificate needed)
       - DB_SSL_MODE=require
       - RATE_LIMIT_ENABLED=False
@@ -86,7 +86,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-floodingnaque}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     ports:
       - "5432:5432"
     volumes:
@@ -117,7 +117,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=floodingnaque
       - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - DB_SSL_MODE=disable
       # Pool settings (development)
       - PGBOUNCER_POOL_MODE=transaction
@@ -126,11 +126,11 @@ services:
       - PGBOUNCER_MIN_POOL_SIZE=2
       - PGBOUNCER_RESERVE_POOL_SIZE=5
       - PGBOUNCER_MAX_DB_CONNECTIONS=20
-      # Admin credentials (set via environment or .env file)
+      # Admin credentials (MUST be set via environment or .env file)
       - PGBOUNCER_ADMIN_USER=${PGBOUNCER_ADMIN_USER:-pgbouncer_admin}
-      - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD:-changeme}
+      - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD:?PGBOUNCER_ADMIN_PASSWORD must be set}
       - PGBOUNCER_STATS_USER=${PGBOUNCER_STATS_USER:-pgbouncer_stats}
-      - PGBOUNCER_STATS_PASSWORD=${PGBOUNCER_STATS_PASSWORD:-changeme}
+      - PGBOUNCER_STATS_PASSWORD=${PGBOUNCER_STATS_PASSWORD:?PGBOUNCER_STATS_PASSWORD must be set}
     depends_on:
       db:
         condition: service_healthy

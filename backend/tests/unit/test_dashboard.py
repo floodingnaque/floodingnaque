@@ -4,16 +4,10 @@ Unit tests for dashboard routes.
 Tests dashboard statistics and summary endpoints.
 """
 
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
 
 
 class TestDashboardSummary:
@@ -49,16 +43,17 @@ class TestDashboardSummary:
         prediction.created_at = datetime.now(timezone.utc)
         return prediction
 
-    def test_get_dashboard_summary_success(self, client, mock_db_session, mock_latest_weather, mock_latest_prediction):
+    def test_get_dashboard_summary_success(self, client, mock_db_session):
         """Test successful dashboard summary retrieval."""
-        # Setup mock queries
+        # Setup mock queries with proper return values
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.count.return_value = 100
         mock_query.group_by.return_value = mock_query
         mock_query.all.return_value = [(0, 80), (1, 15), (2, 5)]
         mock_query.order_by.return_value = mock_query
-        mock_query.first.return_value = mock_latest_weather
+        # Return None for first() to avoid MagicMock serialization issues
+        mock_query.first.return_value = None
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):

@@ -5,9 +5,26 @@ Tests for app/utils/db_optimization.py
 """
 
 import os
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Import modules at top level for proper coverage tracking
+from app.utils import db_optimization
+from app.utils.db_optimization import (
+    DatabaseConfig,
+    _create_engine_with_pooling,
+    _get_pg_driver,
+    _prepare_database_url,
+    create_partition_sql,
+    get_partition_name,
+    get_pool_health,
+    get_read_engine,
+    get_write_engine,
+    use_primary,
+    use_read_replica,
+)
 
 
 class TestDatabaseConfig:
@@ -15,8 +32,6 @@ class TestDatabaseConfig:
 
     def test_database_config_initialization(self):
         """Test DatabaseConfig initializes with defaults."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert hasattr(config, "primary_url")
@@ -33,8 +48,6 @@ class TestDatabaseConfig:
     )
     def test_database_config_from_env(self):
         """Test DatabaseConfig reads from environment."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert "localhost" in config.primary_url
@@ -43,8 +56,6 @@ class TestDatabaseConfig:
     @patch.dict(os.environ, {"DB_POOL_SIZE": "50"})
     def test_database_config_pool_size(self):
         """Test pool size from environment."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert config.pool_size == 50
@@ -52,8 +63,6 @@ class TestDatabaseConfig:
     @patch.dict(os.environ, {"USE_PGBOUNCER": "true"})
     def test_database_config_pgbouncer(self):
         """Test PgBouncer configuration."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert config.use_pgbouncer is True
@@ -65,8 +74,6 @@ class TestPgDriverSelection:
     @patch("sys.platform", "win32")
     def test_pg_driver_windows(self):
         """Test pg8000 selected on Windows."""
-        from app.utils.db_optimization import _get_pg_driver
-
         driver = _get_pg_driver()
 
         assert driver == "pg8000"
@@ -74,8 +81,6 @@ class TestPgDriverSelection:
     @patch("sys.platform", "linux")
     def test_pg_driver_linux_psycopg2(self):
         """Test psycopg2 selected on Linux when available."""
-        from app.utils.db_optimization import _get_pg_driver
-
         # Will return psycopg2 if available, otherwise pg8000
         driver = _get_pg_driver()
 
@@ -87,8 +92,6 @@ class TestDatabaseUrlPreparation:
 
     def test_prepare_sqlite_url(self):
         """Test SQLite URL is not modified."""
-        from app.utils.db_optimization import _prepare_database_url
-
         url = "sqlite:///data/test.db"
         result = _prepare_database_url(url)
 
@@ -96,8 +99,6 @@ class TestDatabaseUrlPreparation:
 
     def test_prepare_postgres_url(self):
         """Test postgres:// URL is updated with driver."""
-        from app.utils.db_optimization import _prepare_database_url
-
         url = "postgres://user:pass@localhost/db"
         result = _prepare_database_url(url)
 
@@ -105,8 +106,6 @@ class TestDatabaseUrlPreparation:
 
     def test_prepare_postgresql_url(self):
         """Test postgresql:// URL is updated with driver."""
-        from app.utils.db_optimization import _prepare_database_url
-
         url = "postgresql://user:pass@localhost/db"
         result = _prepare_database_url(url)
 
@@ -114,8 +113,6 @@ class TestDatabaseUrlPreparation:
 
     def test_prepare_url_already_has_driver(self):
         """Test URL with driver is not double-modified."""
-        from app.utils.db_optimization import _prepare_database_url
-
         url = "postgresql+psycopg2://user:pass@localhost/db"
         result = _prepare_database_url(url)
 
@@ -129,8 +126,6 @@ class TestEngineFactory:
     @patch("app.utils.db_optimization.create_engine")
     def test_create_engine_with_pooling_sqlite(self, mock_create):
         """Test SQLite engine creation."""
-        from app.utils.db_optimization import _create_engine_with_pooling
-
         mock_create.return_value = MagicMock()
 
         engine = _create_engine_with_pooling("sqlite:///test.db")
@@ -145,8 +140,6 @@ class TestEngineFactory:
         mock_driver.return_value = "pg8000"
         mock_create.return_value = MagicMock()
 
-        from app.utils.db_optimization import _create_engine_with_pooling
-
         engine = _create_engine_with_pooling("postgresql://user:pass@localhost/db", pool_size=20, max_overflow=10)
 
         mock_create.assert_called_once()
@@ -157,8 +150,6 @@ class TestDatabaseRouter:
 
     def test_get_read_engine(self):
         """Test getting read engine."""
-        from app.utils.db_optimization import get_read_engine
-
         # May return engine or None depending on configuration
         try:
             engine = get_read_engine()
@@ -168,8 +159,6 @@ class TestDatabaseRouter:
 
     def test_get_write_engine(self):
         """Test getting write engine."""
-        from app.utils.db_optimization import get_write_engine
-
         try:
             engine = get_write_engine()
         except Exception:
@@ -182,8 +171,6 @@ class TestReadReplicaRouter:
     @patch.dict(os.environ, {"READ_REPLICA_ENABLED": "true"})
     def test_read_replica_enabled(self):
         """Test read replica configuration enabled."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert config.read_replica_enabled is True
@@ -191,8 +178,6 @@ class TestReadReplicaRouter:
     @patch.dict(os.environ, {"READ_REPLICA_ENABLED": "false"})
     def test_read_replica_disabled(self):
         """Test read replica configuration disabled."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert config.read_replica_enabled is False
@@ -203,15 +188,11 @@ class TestSessionManagement:
 
     def test_read_engine_exists(self):
         """Test read engine function exists."""
-        from app.utils.db_optimization import get_read_engine
-
         # Function should exist and be callable
         assert callable(get_read_engine)
 
     def test_write_engine_exists(self):
         """Test write engine function exists."""
-        from app.utils.db_optimization import get_write_engine
-
         # Function should exist and be callable
         assert callable(get_write_engine)
 
@@ -221,8 +202,6 @@ class TestConnectionPoolMonitoring:
 
     def test_get_pool_health(self):
         """Test getting connection pool health status."""
-        from app.utils.db_optimization import get_pool_health
-
         try:
             status = get_pool_health()
             assert isinstance(status, dict)
@@ -235,7 +214,6 @@ class TestDatabaseDecorators:
 
     def test_use_read_replica_decorator(self):
         """Test use_read_replica decorator exists."""
-        from app.utils.db_optimization import use_read_replica
 
         @use_read_replica
         def read_operation():
@@ -246,7 +224,6 @@ class TestDatabaseDecorators:
 
     def test_use_primary_decorator(self):
         """Test use_primary decorator exists."""
-        from app.utils.db_optimization import use_primary
 
         @use_primary
         def write_operation():
@@ -261,8 +238,6 @@ class TestSSLConfiguration:
     @patch.dict(os.environ, {"DB_SSL_MODE": "require"})
     def test_ssl_mode_require(self):
         """Test SSL mode require configuration."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert config.ssl_mode == "require"
@@ -270,8 +245,6 @@ class TestSSLConfiguration:
     @patch.dict(os.environ, {"DB_SSL_MODE": "verify-full"})
     def test_ssl_mode_verify_full(self):
         """Test SSL mode verify-full configuration."""
-        from app.utils.db_optimization import DatabaseConfig
-
         config = DatabaseConfig()
 
         assert config.ssl_mode == "verify-full"
@@ -282,10 +255,6 @@ class TestPartitioningHelpers:
 
     def test_get_partition_name(self):
         """Test partition name generation."""
-        from datetime import datetime
-
-        from app.utils.db_optimization import get_partition_name
-
         name = get_partition_name("weather_data", datetime(2024, 1, 15))
 
         assert "weather_data" in name
@@ -293,8 +262,6 @@ class TestPartitioningHelpers:
 
     def test_create_partition_sql(self):
         """Test partition SQL generation helper."""
-        from app.utils.db_optimization import create_partition_sql
-
         sql = create_partition_sql("weather_data", 2024, 1)
 
         # Just verify function is callable and returns string

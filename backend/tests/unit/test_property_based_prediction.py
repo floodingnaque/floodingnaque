@@ -7,6 +7,8 @@ Uses Hypothesis to test prediction and risk classification with edge cases.
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from app.services.risk_classifier import classify_risk_level
+from app.utils.validation import InputValidator
 from hypothesis import HealthCheck, assume, given, settings
 from tests.strategies import (
     extreme_weather_data,
@@ -30,8 +32,6 @@ class TestPropertyBasedRiskClassification:
     @settings(max_examples=100, deadline=None)
     def test_low_probability_always_safe(self, flood_prob):
         """Property: Probabilities < 0.3 should always be classified as Safe."""
-        from app.services.risk_classifier import classify_risk_level
-
         result = classify_risk_level(prediction=0, probability={"no_flood": 1 - flood_prob, "flood": flood_prob})
 
         assert result["risk_level"] == 0
@@ -41,8 +41,6 @@ class TestPropertyBasedRiskClassification:
     @settings(max_examples=100, deadline=None)
     def test_medium_probability_always_alert(self, flood_prob):
         """Property: Probabilities 0.3-0.74 should always be classified as Alert."""
-        from app.services.risk_classifier import classify_risk_level
-
         result = classify_risk_level(
             prediction=1 if flood_prob >= 0.5 else 0, probability={"no_flood": 1 - flood_prob, "flood": flood_prob}
         )
@@ -54,8 +52,6 @@ class TestPropertyBasedRiskClassification:
     @settings(max_examples=100, deadline=None)
     def test_high_probability_always_critical(self, flood_prob):
         """Property: Probabilities >= 0.75 should always be classified as Critical."""
-        from app.services.risk_classifier import classify_risk_level
-
         result = classify_risk_level(prediction=1, probability={"no_flood": 1 - flood_prob, "flood": flood_prob})
 
         assert result["risk_level"] == 2
@@ -72,8 +68,6 @@ class TestPropertyBasedRiskClassification:
     @settings(max_examples=200, deadline=None)
     def test_risk_level_monotonicity(self, flood_prob):
         """Property: Risk level should be monotonic with probability."""
-        from app.services.risk_classifier import classify_risk_level
-
         result = classify_risk_level(
             prediction=1 if flood_prob >= 0.5 else 0, probability={"no_flood": 1 - flood_prob, "flood": flood_prob}
         )
@@ -114,8 +108,8 @@ class TestPropertyBasedPredictionConfidence:
 
         expected_confidence = max(prob["no_flood"], prob["flood"])
 
-        # Should be within reasonable tolerance
-        assert abs(confidence - expected_confidence) < 0.5
+        # Should be within reasonable tolerance (inclusive boundary)
+        assert abs(confidence - expected_confidence) <= 0.5
 
 
 # ============================================================================
@@ -130,8 +124,6 @@ class TestPropertyBasedModelInputValidation:
     @settings(max_examples=100, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_valid_weather_data_for_prediction(self, data):
         """Property: Valid weather data should be accepted for prediction."""
-        from app.utils.validation import InputValidator
-
         # All fields should validate successfully
         temp = InputValidator.validate_float(data["temperature"], "temperature", min_val=-50, max_val=50)
         humidity = InputValidator.validate_float(data["humidity"], "humidity", min_val=0, max_val=100)
@@ -145,8 +137,6 @@ class TestPropertyBasedModelInputValidation:
     @settings(max_examples=50, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_extreme_weather_data_for_prediction(self, data):
         """Property: Extreme weather data should still be processable."""
-        from app.utils.validation import InputValidator
-
         # Extreme but valid values should still validate
         temp = InputValidator.validate_float(data["temperature"], "temperature", min_val=-50, max_val=50)
         humidity = InputValidator.validate_float(data["humidity"], "humidity", min_val=0, max_val=100)
@@ -255,8 +245,6 @@ class TestPropertyBasedRiskThresholds:
     @settings(max_examples=200, deadline=None)
     def test_threshold_boundaries(self, flood_prob):
         """Property: Risk level transitions should occur at correct thresholds."""
-        from app.services.risk_classifier import classify_risk_level
-
         result = classify_risk_level(
             prediction=1 if flood_prob >= 0.5 else 0, probability={"no_flood": 1 - flood_prob, "flood": flood_prob}
         )

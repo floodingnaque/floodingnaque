@@ -1,16 +1,17 @@
 """
 Unit tests for alert service.
+
+Tests for app/services/alerts.py
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+# Import modules at top level for proper coverage tracking
+from app.services import alerts
+from app.services.alerts import AlertSystem, get_alert_system, send_flood_alert
+from app.services.risk_classifier import format_alert_message
 
 
 class TestAlertSystem:
@@ -18,16 +19,12 @@ class TestAlertSystem:
 
     def test_alert_system_initialization(self):
         """Test AlertSystem can be instantiated."""
-        from app.services.alerts import AlertSystem
-
         with patch("app.services.alerts.get_db_session"):
             alert_system = AlertSystem()
             assert alert_system is not None
 
     def test_alert_system_singleton(self):
         """Test get_alert_system returns singleton instance."""
-        from app.services.alerts import get_alert_system
-
         with patch("app.services.alerts.get_db_session"):
             instance1 = get_alert_system()
             instance2 = get_alert_system()
@@ -36,8 +33,6 @@ class TestAlertSystem:
 
     def test_send_flood_alert_returns_dict(self):
         """Test send_flood_alert returns a dictionary."""
-        from app.services.alerts import send_flood_alert
-
         with patch("app.services.alerts.get_alert_system") as mock_get_alert:
             mock_system = MagicMock()
             mock_system.send_alert.return_value = {"success": True, "alert_id": "12345"}
@@ -77,8 +72,6 @@ class TestAlertMessageFormatting:
 
     def test_alert_message_contains_location(self):
         """Test that alert messages include location."""
-        from app.services.risk_classifier import format_alert_message
-
         risk_data = {"risk_label": "Critical", "description": "High flood risk", "confidence": 0.85}
 
         message = format_alert_message(risk_data, location="Paranaque City")
@@ -86,8 +79,6 @@ class TestAlertMessageFormatting:
 
     def test_alert_message_contains_risk_level(self):
         """Test that alert messages include risk level."""
-        from app.services.risk_classifier import format_alert_message
-
         risk_data = {"risk_label": "Alert", "description": "Moderate flood risk", "confidence": 0.65}
 
         message = format_alert_message(risk_data)
@@ -95,8 +86,6 @@ class TestAlertMessageFormatting:
 
     def test_critical_alert_has_action_text(self):
         """Test that critical alerts include action text."""
-        from app.services.risk_classifier import format_alert_message
-
         risk_data = {"risk_label": "Critical", "description": "High flood risk", "confidence": 0.90}
 
         message = format_alert_message(risk_data)

@@ -15,6 +15,19 @@ on:
   schedule:
     # Run weekly security scans on Monday at 6:00 AM UTC
     - cron: '0 6 * * 1'
+  workflow_call:
+    # Allow this workflow to be called by other workflows
+    inputs:
+      scan_type:
+        description: 'Scan type to run (all, pip-audit, bandit, safety)'
+        required: false
+        type: string
+        default: 'all'
+      fail_on:
+        description: 'Fail on severity level (critical, high, medium, low)'
+        required: false
+        type: string
+        default: 'critical'
   workflow_dispatch:
     inputs:
       scan_type:

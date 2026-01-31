@@ -72,8 +72,14 @@ def hash_api_key(api_key: str) -> str:
         return bcrypt.hashpw(api_key.encode(), bcrypt.gensalt(rounds=12)).decode()  # type: ignore[possibly-undefined]
     else:
         # Fallback to PBKDF2-SHA256 with high iteration count
-        secret_salt = os.getenv("API_KEY_HASH_SALT", "floodingnaque-default-salt-change-in-production").encode()
-        return hashlib.pbkdf2_hmac("sha256", api_key.encode(), secret_salt, 100000).hex()
+        # Security: Salt MUST be provided via environment variable
+        secret_salt = os.getenv("API_KEY_HASH_SALT")
+        if not secret_salt:
+            raise ValueError(
+                "API_KEY_HASH_SALT environment variable is required for PBKDF2 fallback. "
+                "Set a secure random salt (at least 32 characters) or install bcrypt."
+            )
+        return hashlib.pbkdf2_hmac("sha256", api_key.encode(), secret_salt.encode(), 100000).hex()
 
 
 def verify_api_key(api_key: str, hashed_key: str) -> bool:
@@ -94,8 +100,14 @@ def verify_api_key(api_key: str, hashed_key: str) -> bool:
             return False
     else:
         # Fallback verification using PBKDF2
-        secret_salt = os.getenv("API_KEY_HASH_SALT", "floodingnaque-default-salt-change-in-production").encode()
-        computed_hash = hashlib.pbkdf2_hmac("sha256", api_key.encode(), secret_salt, 100000).hex()
+        # Security: Salt MUST be provided via environment variable
+        secret_salt = os.getenv("API_KEY_HASH_SALT")
+        if not secret_salt:
+            raise ValueError(
+                "API_KEY_HASH_SALT environment variable is required for PBKDF2 fallback. "
+                "Set a secure random salt (at least 32 characters) or install bcrypt."
+            )
+        computed_hash = hashlib.pbkdf2_hmac("sha256", api_key.encode(), secret_salt.encode(), 100000).hex()
         return hmac.compare_digest(computed_hash, hashed_key)
 
 

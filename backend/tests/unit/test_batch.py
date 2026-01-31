@@ -5,15 +5,21 @@ Tests batch prediction functionality for multiple flood predictions.
 """
 
 import json
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+# Test API key used in headers
+TEST_API_KEY = "test-api-key-for-batch-tests"
+
+
+def auth_bypass():
+    """Context manager to bypass API key authentication in tests."""
+    return patch.multiple(
+        "app.api.middleware.auth",
+        validate_api_key=Mock(return_value=(True, "")),
+        _hash_api_key_pbkdf2=Mock(return_value="mock_hash"),
+    )
 
 
 class TestBatchPredictEndpoint:
@@ -43,13 +49,16 @@ class TestBatchPredictEndpoint:
 
     def test_batch_predict_success(self, client, valid_batch_data, mock_prediction_result):
         """Test successful batch prediction."""
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 with patch("app.api.routes.batch.predict_flood") as mock_predict:
                     mock_predict.return_value = mock_prediction_result
 
                     response = client.post(
-                        "/api/batch/predict", data=json.dumps(valid_batch_data), content_type="application/json"
+                        "/api/v1/batch/predict",
+                        data=json.dumps(valid_batch_data),
+                        content_type="application/json",
+                        headers={"X-API-Key": TEST_API_KEY},
                     )
 
         assert response.status_code == 200
@@ -63,9 +72,14 @@ class TestBatchPredictEndpoint:
 
     def test_batch_predict_missing_predictions_field(self, client):
         """Test batch predict with missing predictions field."""
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                response = client.post("/api/batch/predict", data=json.dumps({}), content_type="application/json")
+                response = client.post(
+                    "/api/v1/batch/predict",
+                    data=json.dumps({}),
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
+                )
 
         assert response.status_code == 400
         data = response.get_json()
@@ -74,12 +88,13 @@ class TestBatchPredictEndpoint:
 
     def test_batch_predict_predictions_not_list(self, client):
         """Test batch predict when predictions is not a list."""
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/batch/predict",
+                    "/api/v1/batch/predict",
                     data=json.dumps({"predictions": "not a list"}),
                     content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
                 )
 
         assert response.status_code == 400
@@ -89,10 +104,13 @@ class TestBatchPredictEndpoint:
 
     def test_batch_predict_empty_list(self, client):
         """Test batch predict with empty predictions list."""
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/batch/predict", data=json.dumps({"predictions": []}), content_type="application/json"
+                    "/api/v1/batch/predict",
+                    data=json.dumps({"predictions": []}),
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
                 )
 
         assert response.status_code == 400
@@ -104,10 +122,13 @@ class TestBatchPredictEndpoint:
         """Test batch predict with too many predictions."""
         predictions = [{"temperature": 298.15, "humidity": 65, "precipitation": 5.0} for _ in range(101)]
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/batch/predict", data=json.dumps({"predictions": predictions}), content_type="application/json"
+                    "/api/v1/batch/predict",
+                    data=json.dumps({"predictions": predictions}),
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
                 )
 
         assert response.status_code == 413
@@ -123,9 +144,14 @@ class TestBatchPredictValidation:
         """Test batch predict with missing temperature field."""
         data = {"predictions": [{"humidity": 65, "precipitation": 5.0}]}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                response = client.post(
+                    "/api/v1/batch/predict",
+                    data=json.dumps(data),
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
+                )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -136,9 +162,14 @@ class TestBatchPredictValidation:
         """Test batch predict with missing humidity field."""
         data = {"predictions": [{"temperature": 298.15, "precipitation": 5.0}]}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                response = client.post(
+                    "/api/v1/batch/predict",
+                    data=json.dumps(data),
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
+                )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -148,9 +179,14 @@ class TestBatchPredictValidation:
         """Test batch predict with missing precipitation field."""
         data = {"predictions": [{"temperature": 298.15, "humidity": 65}]}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                response = client.post(
+                    "/api/v1/batch/predict",
+                    data=json.dumps(data),
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
+                )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -160,9 +196,14 @@ class TestBatchPredictValidation:
         """Test batch predict with invalid data types."""
         data = {"predictions": [{"temperature": "hot", "humidity": 65, "precipitation": 5.0}]}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                response = client.post(
+                    "/api/v1/batch/predict",
+                    data=json.dumps(data),
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
+                )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -184,12 +225,17 @@ class TestBatchPredictMixedResults:
 
         mock_result = {"prediction": 0, "risk_level": 0, "confidence": 0.85, "model_version": "1.0.0"}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 with patch("app.api.routes.batch.predict_flood") as mock_predict:
                     mock_predict.return_value = mock_result
 
-                    response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                    response = client.post(
+                        "/api/v1/batch/predict",
+                        data=json.dumps(data),
+                        content_type="application/json",
+                        headers={"X-API-Key": TEST_API_KEY},
+                    )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -207,12 +253,17 @@ class TestBatchPredictResultFormat:
 
         mock_result = {"prediction": 0, "risk_level": 0, "confidence": 0.85, "model_version": "1.0.0"}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 with patch("app.api.routes.batch.predict_flood") as mock_predict:
                     mock_predict.return_value = mock_result
 
-                    response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                    response = client.post(
+                        "/api/v1/batch/predict",
+                        data=json.dumps(data),
+                        content_type="application/json",
+                        headers={"X-API-Key": TEST_API_KEY},
+                    )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -241,12 +292,17 @@ class TestBatchPredictResultFormat:
 
         mock_result = {"prediction": 0, "risk_level": 0, "confidence": 0.85, "model_version": "1.0.0"}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 with patch("app.api.routes.batch.predict_flood") as mock_predict:
                     mock_predict.return_value = mock_result
 
-                    response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                    response = client.post(
+                        "/api/v1/batch/predict",
+                        data=json.dumps(data),
+                        content_type="application/json",
+                        headers={"X-API-Key": TEST_API_KEY},
+                    )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -262,9 +318,13 @@ class TestBatchPredictErrorHandling:
 
     def test_no_json_body(self, client):
         """Test batch predict with no JSON body."""
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                response = client.post("/api/batch/predict", content_type="application/json")
+                response = client.post(
+                    "/api/v1/batch/predict",
+                    content_type="application/json",
+                    headers={"X-API-Key": TEST_API_KEY},
+                )
 
         assert response.status_code == 400
 
@@ -272,12 +332,17 @@ class TestBatchPredictErrorHandling:
         """Test batch predict handles prediction service errors."""
         data = {"predictions": [{"temperature": 298.15, "humidity": 65, "precipitation": 5.0}]}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 with patch("app.api.routes.batch.predict_flood") as mock_predict:
                     mock_predict.side_effect = Exception("Prediction service error")
 
-                    response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                    response = client.post(
+                        "/api/v1/batch/predict",
+                        data=json.dumps(data),
+                        content_type="application/json",
+                        headers={"X-API-Key": TEST_API_KEY},
+                    )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -293,12 +358,17 @@ class TestBatchPredictDefaultValues:
 
         mock_result = {"prediction": 0, "risk_level": 0, "confidence": 0.85, "model_version": "1.0.0"}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 with patch("app.api.routes.batch.predict_flood") as mock_predict:
                     mock_predict.return_value = mock_result
 
-                    response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                    response = client.post(
+                        "/api/v1/batch/predict",
+                        data=json.dumps(data),
+                        content_type="application/json",
+                        headers={"X-API-Key": TEST_API_KEY},
+                    )
 
         assert response.status_code == 200
         result = response.get_json()
@@ -310,12 +380,17 @@ class TestBatchPredictDefaultValues:
 
         mock_result = {"prediction": 0, "risk_level": 0, "confidence": 0.85, "model_version": "1.0.0"}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
+        with auth_bypass():
             with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
                 with patch("app.api.routes.batch.predict_flood") as mock_predict:
                     mock_predict.return_value = mock_result
 
-                    response = client.post("/api/batch/predict", data=json.dumps(data), content_type="application/json")
+                    response = client.post(
+                        "/api/v1/batch/predict",
+                        data=json.dumps(data),
+                        content_type="application/json",
+                        headers={"X-API-Key": TEST_API_KEY},
+                    )
 
         assert response.status_code == 200
         result = response.get_json()

@@ -207,15 +207,25 @@ def load_env() -> None:
     - staging/stage -> .env.staging
     - production/prod -> .env.production
     - (unset) -> .env or .env.development
+
+    In testing mode (TESTING=true), .env files are NOT loaded to allow
+    test fixtures to fully control the environment.
     """
+    # In testing mode, skip loading .env files entirely
+    # This allows test fixtures to control all environment variables
+    is_testing = os.getenv("TESTING", "false").lower() == "true"
+    if is_testing:
+        logger.debug("TESTING=true: Skipping .env file loading")
+        return
+
     env_file = get_env_file()
 
     if env_file.exists():
         logger.info(f"Loading environment from: {env_file.name}")
-        load_dotenv(env_file, override=True)
+        load_dotenv(env_file, override=False)
     else:
         logger.warning(f"Environment file not found: {env_file}")
-        load_dotenv()  # Try to load from default .env
+        load_dotenv(override=False)  # Try to load from default .env
 
 
 @dataclass

@@ -210,6 +210,7 @@ def predict():
         # Handle dict response (with probabilities and risk level) or int response
         if isinstance(prediction, dict):
             response = {
+                "success": True,
                 "prediction": prediction["prediction"],
                 "flood_risk": "high" if prediction["prediction"] == 1 else "low",
                 "model_version": prediction.get("model_version"),
@@ -228,6 +229,7 @@ def predict():
         else:
             # Simple int response - convert to dict with basic info
             response = {
+                "success": True,
                 "prediction": prediction,
                 "flood_risk": "high" if prediction == 1 else "low",
                 "request_id": request_id,

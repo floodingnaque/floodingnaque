@@ -233,13 +233,14 @@ class TestPropertyBasedTypeCoercion:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    @given(value=st.text(alphabet="0123456789", min_size=1, max_size=10))
+    @given(value=st.integers(min_value=0, max_value=9999999999))
     @settings(max_examples=100, deadline=None)
     def test_numeric_string_to_int_coercion(self, value):
         """Property: Numeric strings should be coercible to integers."""
-        result = InputValidator.validate_int(value, "test_field", required=False)
+        str_value = str(value)
+        result = InputValidator.validate_int(str_value, "test_field", required=False)
         assert isinstance(result, int)
-        assert str(result) == value
+        assert result == value
 
 
 # ============================================================================

@@ -2,15 +2,18 @@
 Unit tests for scheduler service.
 """
 
-import sys
-from pathlib import Path
+import os
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+from app.services.scheduler import (
+    _get_lock_file_path,
+    init_scheduler,
+    scheduled_ingest,
+    scheduler,
+    shutdown,
+    start,
+)
 
 
 class TestSchedulerInitialization:
@@ -18,15 +21,11 @@ class TestSchedulerInitialization:
 
     def test_scheduler_instance_exists(self):
         """Test scheduler instance is created."""
-        from app.services.scheduler import scheduler
-
         assert scheduler is not None
 
     @patch.dict("os.environ", {"SCHEDULER_ENABLED": "false"}, clear=False)
     def test_scheduler_can_be_disabled(self):
         """Test scheduler can be disabled via environment variable."""
-        import os
-
         scheduler_enabled = os.getenv("SCHEDULER_ENABLED", "true").lower() == "true"
 
         assert not scheduler_enabled
@@ -34,8 +33,6 @@ class TestSchedulerInitialization:
     @patch.dict("os.environ", {"SCHEDULER_ENABLED": "true"}, clear=False)
     def test_scheduler_enabled_by_default(self):
         """Test scheduler is enabled by default."""
-        import os
-
         scheduler_enabled = os.getenv("SCHEDULER_ENABLED", "true").lower() == "true"
 
         assert scheduler_enabled
@@ -47,8 +44,6 @@ class TestSchedulerLocking:
     @patch("sys.platform", "win32")
     def test_windows_lock_file_path(self):
         """Test lock file path on Windows."""
-        from app.services.scheduler import _get_lock_file_path
-
         lock_path = _get_lock_file_path()
 
         assert "floodingnaque_scheduler.lock" in lock_path
@@ -56,8 +51,6 @@ class TestSchedulerLocking:
     @patch("sys.platform", "linux")
     def test_unix_lock_file_path(self):
         """Test lock file path on Unix systems."""
-        from app.services.scheduler import _get_lock_file_path
-
         lock_path = _get_lock_file_path()
 
         assert "/tmp/" in lock_path or "floodingnaque_scheduler.lock" in lock_path
@@ -66,23 +59,19 @@ class TestSchedulerLocking:
 class TestScheduledIngest:
     """Tests for scheduled data ingestion task."""
 
-    @patch("app.services.scheduler.ingest_data")
+    @patch("app.services.ingest.ingest_data")
     def test_scheduled_ingest_calls_ingest_data(self, mock_ingest):
         """Test scheduled_ingest calls ingest_data function."""
-        from app.services.scheduler import scheduled_ingest
-
         mock_ingest.return_value = {"status": "success"}
 
         scheduled_ingest()
 
         mock_ingest.assert_called_once()
 
-    @patch("app.services.scheduler.ingest_data")
+    @patch("app.services.ingest.ingest_data")
     @patch.dict("os.environ", {"DEFAULT_LATITUDE": "14.4793", "DEFAULT_LONGITUDE": "121.0198"}, clear=False)
     def test_uses_default_coordinates(self, mock_ingest):
         """Test scheduled_ingest uses default coordinates."""
-        from app.services.scheduler import scheduled_ingest
-
         mock_ingest.return_value = {"status": "success"}
 
         scheduled_ingest()
@@ -100,8 +89,6 @@ class TestSchedulerStart:
     @patch("app.services.scheduler.init_scheduler")
     def test_start_initializes_scheduler(self, mock_init, mock_scheduler):
         """Test start function initializes the scheduler."""
-        from app.services.scheduler import start
-
         mock_scheduler.running = False
 
         start()
@@ -111,8 +98,6 @@ class TestSchedulerStart:
     @patch("app.services.scheduler.scheduler")
     def test_does_not_start_if_already_running(self, mock_scheduler):
         """Test start doesn't restart if already running."""
-        from app.services.scheduler import start
-
         mock_scheduler.running = True
 
         start()
@@ -127,8 +112,6 @@ class TestSchedulerShutdown:
     @patch("app.services.scheduler.scheduler")
     def test_shutdown_when_running(self, mock_scheduler):
         """Test shutdown gracefully stops running scheduler."""
-        from app.services.scheduler import shutdown
-
         mock_scheduler.running = True
 
         shutdown()
@@ -138,8 +121,6 @@ class TestSchedulerShutdown:
     @patch("app.services.scheduler.scheduler")
     def test_shutdown_when_not_running(self, mock_scheduler):
         """Test shutdown handles not-running scheduler."""
-        from app.services.scheduler import shutdown
-
         mock_scheduler.running = False
 
         shutdown()
@@ -153,16 +134,12 @@ class TestSchedulerConfiguration:
 
     def test_default_timezone(self):
         """Test default timezone is Asia/Manila."""
-        import os
-
         default_timezone = os.getenv("SCHEDULER_TIMEZONE", "Asia/Manila")
 
         assert default_timezone == "Asia/Manila"
 
     def test_default_ingest_interval(self):
         """Test default ingest interval is 1 hour."""
-        import os
-
         ingest_interval = int(os.getenv("DATA_INGEST_INTERVAL_HOURS", "1"))
 
         assert ingest_interval == 1
@@ -198,8 +175,6 @@ class TestSchedulerJobManagement:
 
     def test_job_interval_hours(self):
         """Test job interval is in hours."""
-        import os
-
         interval_hours = int(os.getenv("DATA_INGEST_INTERVAL_HOURS", "1"))
 
         # Interval should be between 1 and 24 hours
@@ -215,11 +190,9 @@ class TestSchedulerJobManagement:
 class TestErrorHandling:
     """Tests for scheduler error handling."""
 
-    @patch("app.services.scheduler.ingest_data")
+    @patch("app.services.ingest.ingest_data")
     def test_handles_ingest_error(self, mock_ingest):
         """Test scheduler handles ingestion errors gracefully."""
-        from app.services.scheduler import scheduled_ingest
-
         mock_ingest.side_effect = Exception("API error")
 
         # Should not raise exception

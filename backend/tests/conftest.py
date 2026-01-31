@@ -6,15 +6,54 @@ Provides reusable fixtures and configuration for all tests.
 
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 
 # Add backend to path
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
+
+# ============================================================================
+# Set Test Environment Variables BEFORE importing app modules
+# This ensures module-level code (like db.py) sees the test configuration
+# ============================================================================
+os.environ.setdefault("APP_ENV", "development")
+os.environ.setdefault("FLASK_DEBUG", "true")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-not-for-production")
+os.environ.setdefault("TESTING", "true")
+os.environ.setdefault("AUTH_BYPASS_ENABLED", "true")
+os.environ.setdefault("STARTUP_HEALTH_CHECK", "false")
+os.environ.setdefault("SCHEDULER_ENABLED", "false")
+os.environ.setdefault("ENV_VALIDATION_ENABLED", "false")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")  # Disable rate limiting in tests
+# Clear VALID_API_KEYS to enable auth bypass in tests (AUTH_BYPASS_ENABLED=true)
+os.environ["VALID_API_KEYS"] = ""
+
+
+# ============================================================================
+# Deterministic UUIDs for Reproducible Snapshot Tests
+# ============================================================================
+# Use fixed UUIDs for reproducible snapshots - these ensure consistent
+# test output across different runs and environments
+
+FLOOD_EVENT_UUID_1 = UUID("11111111-1111-1111-1111-111111111111")
+FLOOD_EVENT_UUID_2 = UUID("22222222-2222-2222-2222-222222222222")
+SENSOR_UUID_1 = UUID("33333333-3333-3333-3333-333333333333")
+SENSOR_UUID_2 = UUID("44444444-4444-4444-4444-444444444444")
+ALERT_UUID_1 = UUID("55555555-5555-5555-5555-555555555555")
+ALERT_UUID_2 = UUID("66666666-6666-6666-6666-666666666666")
+PREDICTION_UUID_1 = UUID("77777777-7777-7777-7777-777777777777")
+PREDICTION_UUID_2 = UUID("88888888-8888-8888-8888-888888888888")
+REQUEST_UUID_1 = UUID("99999999-9999-9999-9999-999999999999")
+
+# Fixed timestamps for reproducible snapshots
+FIXED_TIMESTAMP = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+FIXED_TIMESTAMP_ISO = "2025-01-15T10:30:00+00:00"
 
 
 # ============================================================================
@@ -25,16 +64,25 @@ sys.path.insert(0, str(backend_path))
 @pytest.fixture(scope="session")
 def app():
     """Create a Flask application for testing."""
+    # Invalidate any cached API keys to ensure test environment settings are used
+    from app.api.middleware.auth import invalidate_api_key_cache
+
+    invalidate_api_key_cache()
+
     from app.api.app import create_app
 
-    # Create app with testing configuration
-    # Note: FLASK_ENV is deprecated in Flask 2.3+ - use FLASK_DEBUG instead
-    os.environ["FLASK_DEBUG"] = "true"
-    os.environ["TESTING"] = "true"
-    os.environ["AUTH_BYPASS_ENABLED"] = "true"
-
     application = create_app()
-    application.config["TESTING"] = True
+
+    # Configure for testing
+    application.config.update(
+        {
+            "TESTING": True,
+            "WTF_CSRF_ENABLED": False,
+            "PRESERVE_CONTEXT_ON_EXCEPTION": False,
+            # Use in-memory SQLite for tests
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        }
+    )
 
     yield application
 
@@ -42,15 +90,96 @@ def app():
 @pytest.fixture(scope="function")
 def client(app):
     """Create a test client for making HTTP requests."""
-    with app.test_client() as client:
-        yield client
+    with app.test_client() as testing_client:
+        with app.app_context():
+            yield testing_client
 
 
 @pytest.fixture(scope="function")
 def app_context(app):
-    """Provide an application context."""
-    with app.app_context():
-        yield
+    """Push application context for each test."""
+    with app.app_context() as ctx:
+        yield ctx
+
+
+@pytest.fixture(scope="function")
+def request_context(app):
+    """Push request context for tests needing request/session."""
+    with app.test_request_context() as ctx:
+        yield ctx
+
+
+@pytest.fixture(scope="function")
+def client_with_db(app, app_context):
+    """Test client with database initialized."""
+    try:
+        from app.models.db import init_db
+
+        init_db(app)
+    except ImportError:
+        pass  # init_db may not exist
+    with app.test_client() as testing_client:
+        yield testing_client
+
+
+# ============================================================================
+# Concurrent Test Support Fixtures
+# ============================================================================
+
+
+@pytest.fixture(scope="function")
+def isolated_client(app):
+    """
+    Fully isolated client for concurrent tests.
+
+    Each call creates fresh context, solving the
+    LookupError: <ContextVar name='flask.request_ctx'> issue.
+
+    Usage in tests:
+        def test_concurrent(isolated_client):
+            def make_request():
+                with isolated_client() as client:
+                    return client.get('/health')
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = [executor.submit(make_request) for _ in range(10)]
+                results = [f.result() for f in futures]
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def make_client():
+        with app.app_context():
+            with app.test_client() as client:
+                yield client
+
+    return make_client
+
+
+@pytest.fixture(scope="function")
+def thread_safe_app(app):
+    """
+    App fixture safe for multi-threaded tests.
+
+    Ensures each thread gets its own context.
+    Returns tuple of (app, get_client_in_context function).
+
+    Usage:
+        def test_threading(thread_safe_app):
+            app, get_client = thread_safe_app
+
+            def thread_task():
+                client = get_client()
+                return client.get('/health')
+    """
+
+    def get_client_in_context():
+        """Get a client within proper app context."""
+        with app.app_context():
+            with app.test_client() as client:
+                return client
+
+    return app, get_client_in_context
 
 
 # ============================================================================
@@ -61,20 +190,30 @@ def app_context(app):
 @pytest.fixture
 def mock_model():
     """Create a mock ML model for testing."""
+    import numpy as np
+
     model = MagicMock()
-    model.predict.return_value = [0]  # No flood by default
-    model.predict_proba.return_value = [[0.8, 0.2]]  # 80% no flood, 20% flood
-    model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+    model.predict.return_value = np.array([0])  # No flood by default
+    model.predict_proba.return_value = np.array([[0.8, 0.2]])  # 80% no flood, 20% flood
+    model.feature_names_in_ = np.array(["temperature", "humidity", "precipitation"])
+    model.n_features_in_ = 3
+    model.classes_ = np.array([0, 1])
+    model.feature_importances_ = np.array([0.3, 0.3, 0.4])  # Precipitation most important
     return model
 
 
 @pytest.fixture
 def mock_model_flood():
     """Create a mock ML model that predicts flood."""
+    import numpy as np
+
     model = MagicMock()
-    model.predict.return_value = [1]  # Flood predicted
-    model.predict_proba.return_value = [[0.15, 0.85]]  # 85% flood probability
-    model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+    model.predict.return_value = np.array([1])  # Flood predicted
+    model.predict_proba.return_value = np.array([[0.15, 0.85]])  # 85% flood probability
+    model.feature_names_in_ = np.array(["temperature", "humidity", "precipitation"])
+    model.n_features_in_ = 3
+    model.classes_ = np.array([0, 1])
+    model.feature_importances_ = np.array([0.3, 0.3, 0.4])
     return model
 
 
@@ -89,6 +228,436 @@ def mock_model_loader(mock_model):
         loader_instance.checksum = "abc123456789"
         mock_loader.return_value = loader_instance
         yield loader_instance
+
+
+@pytest.fixture
+def mock_model_comprehensive(mock_model):
+    """
+    Comprehensive model mocking fixture that patches ALL model-related functions.
+
+    This fixture patches:
+    - ModelLoader singleton (_instance and get_instance)
+    - _load_model() function
+    - get_model_metadata() function
+    - list_available_models() function
+    - get_current_model_info() function
+
+    Use this for tests that need complete isolation from actual model files.
+    """
+    import numpy as np
+
+    test_metadata = {
+        "version": "1.0.0",
+        "checksum": "abc123def456789abcdef123456789abcdef123456789abcdef123456789abcd",
+        "created_at": "2025-01-15T10:00:00Z",
+        "metrics": {"accuracy": 0.95, "f1": 0.92, "precision": 0.94, "recall": 0.90},
+        "features": ["temperature", "humidity", "precipitation"],
+        "model_type": "RandomForestClassifier",
+        "n_estimators": 100,
+    }
+
+    test_model_list = [
+        {
+            "version": 1,
+            "path": "models/flood_rf_model_v1.joblib",
+            "metadata": test_metadata,
+        }
+    ]
+
+    test_model_info = {
+        "model_path": "models/flood_rf_model.joblib",
+        "model_type": "RandomForestClassifier",
+        "features": ["temperature", "humidity", "precipitation"],
+        "n_features": 3,
+        "metadata": test_metadata,
+    }
+
+    # Create loader instance mock
+    loader_instance = MagicMock()
+    loader_instance.model = mock_model
+    loader_instance.model_path = "models/flood_rf_model.joblib"
+    loader_instance.metadata = test_metadata
+    loader_instance.checksum = test_metadata["checksum"]
+
+    with (
+        patch("app.services.predict.ModelLoader") as MockModelLoader,
+        patch("app.services.predict._load_model") as mock_load_model,
+        patch("app.services.predict.get_model_metadata") as mock_get_metadata,
+        patch("app.services.predict.list_available_models") as mock_list_models,
+        patch("app.services.predict.get_current_model_info") as mock_get_info,
+        patch("app.services.predict.load_model_version") as mock_load_version,
+    ):
+
+        # Configure ModelLoader mock
+        MockModelLoader._instance = loader_instance
+        MockModelLoader.get_instance.return_value = loader_instance
+        MockModelLoader.reset_instance = MagicMock()
+
+        # Configure function mocks
+        mock_load_model.return_value = mock_model
+        mock_get_metadata.return_value = test_metadata
+        mock_list_models.return_value = test_model_list
+        mock_get_info.return_value = test_model_info
+        mock_load_version.return_value = mock_model
+
+        yield {
+            "model": mock_model,
+            "loader": loader_instance,
+            "metadata": test_metadata,
+            "model_list": test_model_list,
+            "model_info": test_model_info,
+            "mocks": {
+                "ModelLoader": MockModelLoader,
+                "_load_model": mock_load_model,
+                "get_model_metadata": mock_get_metadata,
+                "list_available_models": mock_list_models,
+                "get_current_model_info": mock_get_info,
+                "load_model_version": mock_load_version,
+            },
+        }
+
+
+@pytest.fixture
+def mock_prediction_flow(mock_model):
+    """
+    Mock the entire prediction flow for API endpoint testing.
+
+    This patches predict_flood() to return consistent results without
+    requiring an actual model file. Use for API contract and endpoint tests.
+    """
+    import numpy as np
+
+    def mock_predict_flood(data, return_proba=True, return_risk_level=True):
+        """Mock prediction that simulates real model behavior."""
+        # Extract values, defaulting if not present
+        temp = data.get("temperature", 298.15)
+        humidity = data.get("humidity", 50.0)
+        precip = data.get("precipitation", 0.0)
+
+        # Simple logic: high humidity + precipitation = flood risk
+        flood_prob = min(0.95, (humidity / 100) * 0.4 + (precip / 100) * 0.6)
+        no_flood_prob = 1 - flood_prob
+
+        prediction = 1 if flood_prob >= 0.5 else 0
+
+        # Determine risk level based on probability
+        if prediction == 1 and flood_prob >= 0.75:
+            risk_level = 2  # Critical
+            risk_label = "Critical"
+            risk_color = "#dc3545"
+        elif prediction == 1 or flood_prob >= 0.3:
+            risk_level = 1  # Alert
+            risk_label = "Alert"
+            risk_color = "#ffc107"
+        else:
+            risk_level = 0  # Safe
+            risk_label = "Safe"
+            risk_color = "#28a745"
+
+        result = {
+            "prediction": prediction,
+            "flood_risk": "high" if prediction == 1 else "low",
+            "success": True,
+        }
+
+        if return_proba:
+            result["probability"] = {"no_flood": no_flood_prob, "flood": flood_prob}
+            result["confidence"] = max(flood_prob, no_flood_prob)
+
+        if return_risk_level:
+            result["risk_level"] = risk_level
+            result["risk_label"] = risk_label
+            result["risk_color"] = risk_color
+
+        return result
+
+    with patch("app.services.predict.predict_flood", side_effect=mock_predict_flood) as mock:
+        yield mock
+
+
+# ============================================================================
+# Singleton Reset Fixture (Critical for Test Isolation)
+# ============================================================================
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_singletons():
+    """
+    Reset singleton instances between tests.
+
+    This is CRITICAL for test isolation. Without this, singleton state
+    from one test can leak into another, causing flaky tests.
+
+    This fixture runs automatically before AND after each test.
+    """
+    # Setup: Clear any existing singleton state before test
+    _reset_all_singletons()
+
+    yield
+
+    # Teardown: Clean up singletons after test
+    _reset_all_singletons()
+
+
+def _reset_all_singletons():
+    """Helper function to reset all known singleton instances."""
+    # Reset ModelLoader singleton
+    try:
+        from app.services.predict import ModelLoader
+
+        ModelLoader._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Reset FeatureFlagService singleton
+    try:
+        from config.feature_flags import FeatureFlagService
+
+        FeatureFlagService._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Reset MeteostatService singleton
+    try:
+        from app.services.meteostat_service import MeteostatService
+
+        if hasattr(MeteostatService, "_instance"):
+            MeteostatService._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Reset AsyncMeteostatService singleton
+    try:
+        from app.services.meteostat_service_async import AsyncMeteostatService
+
+        if hasattr(AsyncMeteostatService, "_instance"):
+            AsyncMeteostatService._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Reset GoogleWeatherService singleton
+    try:
+        from app.services.google_weather_service import GoogleWeatherService
+
+        if hasattr(GoogleWeatherService, "_instance"):
+            GoogleWeatherService._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Reset AsyncGoogleWeatherService singleton
+    try:
+        from app.services.google_weather_service_async import AsyncGoogleWeatherService
+
+        if hasattr(AsyncGoogleWeatherService, "_instance"):
+            AsyncGoogleWeatherService._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Reset WorldTidesService singleton
+    try:
+        from app.services.worldtides_service import WorldTidesService
+
+        if hasattr(WorldTidesService, "_instance"):
+            WorldTidesService._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+    # Reset AsyncWorldTidesService singleton
+    try:
+        from app.services.worldtides_service_async import AsyncWorldTidesService
+
+        if hasattr(AsyncWorldTidesService, "_instance"):
+            AsyncWorldTidesService._instance = None
+    except (ImportError, AttributeError):
+        pass
+
+
+# ============================================================================
+# Mock External Service Fixtures for Test Isolation
+# ============================================================================
+
+
+@pytest.fixture(scope="function")
+def mock_prediction_service():
+    """
+    Mock prediction service for tests.
+
+    Provides consistent, predictable prediction results
+    without requiring actual model loading.
+    """
+    with patch("app.services.predict.PredictionService", autospec=True) as mock_class:
+        mock_instance = MagicMock()
+        mock_instance.predict.return_value = {
+            "prediction": 0,
+            "probability": {"flood": 0.15, "no_flood": 0.85},
+            "confidence": 0.85,
+            "risk_level": 0,
+        }
+        mock_instance.model = MagicMock()
+        mock_instance.is_model_loaded.return_value = True
+        mock_instance.model_version = "1.0.0"
+        mock_instance.model_path = "models/test_model.joblib"
+        mock_class.get_instance.return_value = mock_instance
+        yield mock_instance
+
+
+@pytest.fixture(scope="function")
+def mock_worldtides_service():
+    """
+    Mock WorldTides service for tide tests.
+
+    Provides consistent tide data without requiring API calls.
+    """
+    with patch("app.api.routes.tides._get_worldtides_service") as mock_get:
+        mock_service = MagicMock()
+        mock_service.is_available.return_value = True
+        mock_service.get_current_tide.return_value = {
+            "height": 1.5,
+            "timestamp": "2026-01-30T10:00:00Z",
+            "type": "rising",
+        }
+        mock_service.get_extremes.return_value = {
+            "data": [
+                {"type": "high", "height": 2.1, "time": "2026-01-30T12:00:00Z"},
+                {"type": "low", "height": 0.3, "time": "2026-01-30T18:00:00Z"},
+            ]
+        }
+        mock_service.get_prediction.return_value = {
+            "heights": [1.5, 1.8, 2.0, 1.9],
+            "times": ["10:00", "11:00", "12:00", "13:00"],
+        }
+        mock_get.return_value = mock_service
+        yield mock_service
+
+
+@pytest.fixture(scope="function")
+def mock_health_checks():
+    """
+    Mock all health check dependencies.
+
+    This prevents tests from failing due to external service unavailability.
+    """
+    with (
+        patch("app.api.routes.health.check_database") as mock_db,
+        patch("app.api.routes.health.check_model") as mock_model,
+        patch("app.api.routes.health.check_redis") as mock_redis,
+    ):
+        mock_db.return_value = {"status": "healthy", "latency_ms": 5}
+        mock_model.return_value = {"status": "healthy", "loaded": True}
+        mock_redis.return_value = {"status": "healthy", "connected": True}
+        yield {
+            "database": mock_db,
+            "model": mock_model,
+            "redis": mock_redis,
+        }
+
+
+@pytest.fixture(scope="function", autouse=True)
+def auto_mock_health_dependencies(request):
+    """
+    Auto-mock health check dependencies for all tests unless marked otherwise.
+
+    This prevents tests from failing due to:
+    - Database not being available
+    - Model not being loaded
+    - Redis not being connected
+    - External APIs being unavailable
+
+    To skip this mocking (e.g., for integration tests that need real health checks),
+    mark your test with: @pytest.mark.no_health_mock
+
+    Example:
+        @pytest.mark.no_health_mock
+        def test_real_health_check(self, client):
+            # This test will use real health check implementations
+            ...
+    """
+    # Skip mocking if test is marked with 'no_health_mock'
+    if "no_health_mock" in request.keywords:
+        yield
+        return
+
+    # Mock all health check helper functions used by /health and /status endpoints
+    with (
+        patch("app.api.routes.health.check_database_health") as mock_db,
+        patch("app.api.routes.health.check_redis_health") as mock_redis,
+        patch("app.api.routes.health.check_external_api_health") as mock_external,
+        patch("app.api.routes.health.check_cache_health") as mock_cache,
+        patch("app.api.routes.health.get_pool_status") as mock_pool,
+        patch("app.api.routes.health.get_current_model_info") as mock_model,
+    ):
+        # Return healthy status for database - include all keys expected by various routes
+        mock_db.return_value = {
+            "status": "healthy",
+            "connected": True,
+            "latency_ms": 5.0,
+            "pool_size": 5,
+            "pool_checked_out": 0,
+            "pool_checked_in": 5,
+            "pool_overflow": 0,
+        }
+        # Return healthy status for redis
+        mock_redis.return_value = {
+            "status": "healthy",
+            "connected": True,
+            "latency_ms": 1.0,
+        }
+        # Return healthy status for external APIs
+        mock_external.return_value = {
+            "google_weather": {"status": "healthy", "circuit_state": "closed"},
+            "meteostat": {"status": "healthy", "circuit_state": "closed"},
+            "worldtides": {"status": "healthy", "circuit_state": "closed"},
+        }
+        # Return healthy status for cache
+        mock_cache.return_value = {
+            "status": "healthy",
+            "type": "memory",
+        }
+        # Return healthy database pool status
+        mock_pool.return_value = {
+            "pool_size": 5,
+            "checked_out": 0,
+            "checked_in": 5,
+            "overflow": 0,
+        }
+        # Return mock model info so model_available is True
+        mock_model.return_value = {
+            "model_type": "RandomForestClassifier",
+            "features": ["temperature", "humidity", "precipitation"],
+            "metadata": {
+                "version": "1.0.0",
+                "created_at": "2025-01-15T10:00:00Z",
+                "metrics": {"accuracy": 0.95, "f1": 0.92},
+            },
+        }
+        yield
+
+
+# ============================================================================
+# Database Fixtures with Proper Cleanup
+# ============================================================================
+
+
+@pytest.fixture(scope="function")
+def db_session_isolated(app, app_context):
+    """
+    Provide clean database session with rollback.
+
+    Ensures each test starts with a clean database state.
+    """
+    try:
+        from app.models.db import db
+
+        db.create_all()
+
+        yield db.session
+
+        db.session.rollback()
+        db.session.remove()
+        db.drop_all()
+    except ImportError:
+        # If db module doesn't exist, yield None
+        yield None
 
 
 # ============================================================================
@@ -1130,3 +1699,107 @@ def deprecated_endpoints():
         {"path": "/predict", "new_path": "/api/v1/predict"},
         {"path": "/health", "new_path": "/api/v1/health"},
     ]
+
+
+# ============================================================================
+# Error Handling Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def mock_metrics_extended():
+    """Mock Prometheus metrics for testing without Prometheus installed."""
+    with patch("app.utils.metrics._metrics") as mock:
+        mock.predictions_total = MagicMock()
+        mock.external_api_calls_total = MagicMock()
+        mock.db_pool_connections = MagicMock()
+        mock.cache_operations = MagicMock()
+        mock.circuit_breaker_state = MagicMock()
+        yield mock
+
+
+@pytest.fixture
+def mock_error_context():
+    """Fixture for testing ErrorContext context manager."""
+    from app.utils.error_handling import ErrorContext
+
+    return ErrorContext
+
+
+@pytest.fixture
+def structured_error_factory():
+    """Factory fixture to create StructuredError instances for testing."""
+    from app.utils.error_handling import ErrorCategory, StructuredError
+
+    def _create_error(
+        error_id="test-error-id",
+        category=ErrorCategory.INTERNAL,
+        message="Test error message",
+        exception_type="TestException",
+        exception_message="Test exception",
+        recoverable=False,
+        retry_after_seconds=None,
+        **context,
+    ):
+        return StructuredError(
+            error_id=error_id,
+            category=category,
+            message=message,
+            exception_type=exception_type,
+            exception_message=exception_message,
+            recoverable=recoverable,
+            retry_after_seconds=retry_after_seconds,
+            context=context,
+        )
+
+    return _create_error
+
+
+@pytest.fixture
+def mock_external_services():
+    """Mock all external services at once for isolated testing."""
+    patches = []
+
+    # Mock weather services
+    weather_patch = patch("app.services.google_weather_service.GoogleWeatherService")
+    meteostat_patch = patch("app.services.meteostat_service.MeteostatService")
+    worldtides_patch = patch("app.services.worldtides_service.WorldTidesService")
+
+    mock_weather = weather_patch.start()
+    mock_meteostat = meteostat_patch.start()
+    mock_worldtides = worldtides_patch.start()
+
+    patches.extend([weather_patch, meteostat_patch, worldtides_patch])
+
+    # Configure default return values
+    mock_weather.return_value.get_weather.return_value = {
+        "temperature": 298.15,
+        "humidity": 75.0,
+        "precipitation": 5.0,
+    }
+    mock_meteostat.return_value.get_historical_data.return_value = []
+    mock_worldtides.return_value.get_tides.return_value = {"tide_level": 1.5}
+
+    yield {
+        "weather": mock_weather,
+        "meteostat": mock_meteostat,
+        "worldtides": mock_worldtides,
+    }
+
+    # Cleanup
+    for p in patches:
+        p.stop()
+
+
+@pytest.fixture
+def mock_model_with_predictions():
+    """Factory fixture for models with configurable prediction outcomes."""
+
+    def _create_model(prediction=0, probabilities=None):
+        model = MagicMock()
+        model.predict.return_value = [prediction]
+        model.predict_proba.return_value = [probabilities or [0.8, 0.2]]
+        model.feature_names_in_ = ["temperature", "humidity", "precipitation"]
+        return model
+
+    return _create_model

@@ -1,17 +1,21 @@
 """
 Unit tests for WorldTides service.
+
+Tests for app/services/worldtides_service.py
 """
 
-import sys
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+# Import modules at top level for proper coverage tracking
+from app.services import worldtides_service
+from app.services.worldtides_service import (
+    TideData,
+    TideExtreme,
+    WorldTidesService,
+)
 
 
 class TestWorldTidesServiceInitialization:
@@ -20,8 +24,6 @@ class TestWorldTidesServiceInitialization:
     @patch.dict("os.environ", {"WORLDTIDES_API_KEY": ""}, clear=False)
     def test_service_disabled_without_api_key(self):
         """Test service is disabled without API key."""
-        from app.services.worldtides_service import WorldTidesService
-
         WorldTidesService.reset_instance()
         service = WorldTidesService()
 
@@ -30,8 +32,6 @@ class TestWorldTidesServiceInitialization:
     @patch.dict("os.environ", {"WORLDTIDES_API_KEY": "test-key-123", "WORLDTIDES_ENABLED": "true"}, clear=False)
     def test_service_enabled_with_api_key(self):
         """Test service is enabled with API key."""
-        from app.services.worldtides_service import WorldTidesService
-
         WorldTidesService.reset_instance()
         service = WorldTidesService()
 
@@ -39,8 +39,6 @@ class TestWorldTidesServiceInitialization:
 
     def test_singleton_pattern(self):
         """Test singleton pattern returns same instance."""
-        from app.services.worldtides_service import WorldTidesService
-
         WorldTidesService.reset_instance()
         instance1 = WorldTidesService.get_instance()
         instance2 = WorldTidesService.get_instance()
@@ -53,8 +51,6 @@ class TestTideDataStructure:
 
     def test_tide_data_creation(self):
         """Test TideData dataclass creation."""
-        from app.services.worldtides_service import TideData
-
         tide = TideData(timestamp=datetime.now(), height=1.5, type="high", datum="MSL", source="worldtides")
 
         assert tide.height == 1.5
@@ -63,8 +59,6 @@ class TestTideDataStructure:
 
     def test_tide_data_default_values(self):
         """Test TideData default values."""
-        from app.services.worldtides_service import TideData
-
         tide = TideData(timestamp=datetime.now(), height=0.5)
 
         assert tide.datum == "MSL"
@@ -77,8 +71,6 @@ class TestTideExtremeStructure:
 
     def test_tide_extreme_creation(self):
         """Test TideExtreme dataclass creation."""
-        from app.services.worldtides_service import TideExtreme
-
         extreme = TideExtreme(timestamp=datetime.now(), height=2.1, type="High", datum="MSL")
 
         assert extreme.height == 2.1

@@ -194,6 +194,12 @@ def sanitize_input(
     # Strip HTML/scripts
     if strip_html:
         value = bleach.clean(value, tags=[], strip=True)
+        # Remove javascript: and other dangerous protocols (XSS prevention)
+        value = re.sub(r"javascript\s*:", "", value, flags=re.IGNORECASE)
+        value = re.sub(r"vbscript\s*:", "", value, flags=re.IGNORECASE)
+        value = re.sub(r"data\s*:", "", value, flags=re.IGNORECASE)
+        # Remove event handlers that might have survived
+        value = re.sub(r"on\w+\s*=", "", value, flags=re.IGNORECASE)
 
     # Check for dangerous patterns
     if check_patterns:
@@ -529,6 +535,8 @@ class InputValidator:
         Raises:
             ValidationError: If validation fails
         """
+        import math
+
         if value is None:
             if required:
                 raise ValidationError(f"{field_name} is required")
@@ -538,6 +546,13 @@ class InputValidator:
             float_val = float(value)
         except (ValueError, TypeError):
             raise ValidationError(f"{field_name} must be a valid number")
+
+        # Check for NaN and infinity
+        if math.isnan(float_val):
+            raise ValidationError(f"{field_name} must be a valid number, not NaN")
+
+        if math.isinf(float_val):
+            raise ValidationError(f"{field_name} must be a finite number, not infinity")
 
         if min_val is not None and float_val < min_val:
             raise ValidationError(f"{field_name} must be >= {min_val}, got {float_val}")
@@ -569,6 +584,17 @@ class InputValidator:
             raise ValidationError(f"{field_name} must be <= {max_val}")
 
         return int_val
+
+    @staticmethod
+    def validate_int(
+        value: Any,
+        field_name: str,
+        min_val: Optional[int] = None,
+        max_val: Optional[int] = None,
+        required: bool = True,
+    ) -> Optional[int]:
+        """Alias for validate_integer for convenience."""
+        return InputValidator.validate_integer(value, field_name, min_val, max_val, required)
 
     @staticmethod
     def validate_string(

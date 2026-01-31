@@ -10,16 +10,10 @@ Tests the file upload endpoints for historical weather data including:
 """
 
 import io
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
+from app.api.routes.upload import ALLOWED_EXTENSIONS, allowed_file, parse_csv_content
 
 # =============================================================================
 # Test Fixtures
@@ -89,8 +83,6 @@ class TestCsvParsing:
 
     def test_parse_valid_csv(self, valid_csv_content):
         """Test parsing valid CSV content."""
-        from app.api.routes.upload import parse_csv_content
-
         rows, errors = parse_csv_content(valid_csv_content)
 
         assert len(rows) == 3
@@ -99,8 +91,6 @@ class TestCsvParsing:
 
     def test_parse_csv_missing_columns(self, invalid_csv_content):
         """Test parsing CSV with missing required columns."""
-        from app.api.routes.upload import parse_csv_content
-
         rows, errors = parse_csv_content(invalid_csv_content)
 
         assert len(rows) == 0
@@ -109,8 +99,6 @@ class TestCsvParsing:
 
     def test_parse_csv_invalid_values(self, csv_with_invalid_values):
         """Test parsing CSV with invalid values."""
-        from app.api.routes.upload import parse_csv_content
-
         rows, errors = parse_csv_content(csv_with_invalid_values)
 
         # Should have some errors for invalid values
@@ -118,8 +106,6 @@ class TestCsvParsing:
 
     def test_parse_empty_csv(self):
         """Test parsing empty CSV."""
-        from app.api.routes.upload import parse_csv_content
-
         rows, errors = parse_csv_content("")
 
         assert len(rows) == 0
@@ -136,37 +122,26 @@ class TestFileExtensionValidation:
 
     def test_allowed_csv(self):
         """Test CSV extension is allowed."""
-        from app.api.routes.upload import allowed_file
-
         assert allowed_file("data.csv") is True
 
     def test_allowed_xlsx(self):
         """Test XLSX extension is allowed."""
-        from app.api.routes.upload import allowed_file
-
         assert allowed_file("data.xlsx") is True
 
     def test_allowed_xls(self):
         """Test XLS extension is allowed."""
-        from app.api.routes.upload import allowed_file
-
         assert allowed_file("data.xls") is True
 
     def test_disallowed_txt(self):
         """Test TXT extension is not allowed."""
-        from app.api.routes.upload import allowed_file
-
         assert allowed_file("data.txt") is False
 
     def test_disallowed_json(self):
         """Test JSON extension is not allowed."""
-        from app.api.routes.upload import allowed_file
-
         assert allowed_file("data.json") is False
 
     def test_no_extension(self):
         """Test file without extension is not allowed."""
-        from app.api.routes.upload import allowed_file
 
         assert allowed_file("datafile") is False
 
@@ -194,7 +169,7 @@ class TestUploadEndpoint:
         }
 
         response = client.post(
-            "/upload/weather",
+            "/api/v1/upload/csv",
             data=data,
             content_type="multipart/form-data",
             headers={"X-API-Key": "test-key"},
@@ -206,7 +181,7 @@ class TestUploadEndpoint:
     def test_upload_no_file(self, client):
         """Test upload endpoint with no file."""
         response = client.post(
-            "/upload/weather",
+            "/api/v1/upload/csv",
             data={},
             content_type="multipart/form-data",
         )
@@ -402,8 +377,7 @@ class TestUploadConfiguration:
 
     def test_allowed_extensions_defined(self):
         """Test allowed extensions are defined."""
-        from app.api.routes.upload import ALLOWED_EXTENSIONS
-
+        # ALLOWED_EXTENSIONS imported at module level
         assert "csv" in ALLOWED_EXTENSIONS
         assert "xlsx" in ALLOWED_EXTENSIONS
 

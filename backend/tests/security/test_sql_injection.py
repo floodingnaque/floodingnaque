@@ -17,7 +17,7 @@ class TestSQLInjectionPrevention:
         """Test SQL injection payloads in data endpoint parameters."""
         for payload in sql_injection_payloads:
             # Test in query parameter
-            response = client.get(f"/data?limit={payload}")
+            response = client.get(f"/api/v1/data?limit={payload}")
 
             # Should not return 500 (server error from SQL execution)
             # Should return 400 (validation error) or 200 (safely handled)
@@ -27,7 +27,7 @@ class TestSQLInjectionPrevention:
     def test_injection_in_search_parameter(self, client, sql_injection_payloads):
         """Test SQL injection in search parameters."""
         for payload in sql_injection_payloads:
-            response = client.get(f"/data?search={payload}")
+            response = client.get(f"/api/v1/data?search={payload}")
 
             # Should be safely rejected or sanitized
             assert response.status_code in [200, 400, 422], f"Potential vulnerability: {payload}"
@@ -36,7 +36,7 @@ class TestSQLInjectionPrevention:
     def test_injection_in_date_filters(self, client, sql_injection_payloads):
         """Test SQL injection in date filter parameters."""
         for payload in sql_injection_payloads:
-            response = client.get(f"/data?start_date={payload}")
+            response = client.get(f"/api/v1/data?start_date={payload}")
 
             # Date parameters should be validated
             assert response.status_code in [200, 400, 422], f"Potential vulnerability: {payload}"
@@ -45,7 +45,7 @@ class TestSQLInjectionPrevention:
     def test_injection_in_order_by(self, client, sql_injection_payloads):
         """Test SQL injection in ORDER BY parameter."""
         for payload in sql_injection_payloads:
-            response = client.get(f"/data?sort_by={payload}")
+            response = client.get(f"/api/v1/data?sort_by={payload}")
 
             # Sort parameters should use allowlist validation
             assert response.status_code in [200, 400, 422], f"Potential vulnerability: {payload}"
@@ -65,7 +65,7 @@ class TestSQLInjectionPrevention:
     def test_injection_in_coordinates(self, client, sql_injection_payloads, api_headers):
         """Test SQL injection in coordinate parameters."""
         for payload in sql_injection_payloads:
-            response = client.get(f"/ingest?lat={payload}&lon=121.0")
+            response = client.get(f"/api/v1/ingest/ingest?lat={payload}&lon=121.0")
 
             # Coordinates should be validated as numbers
             assert response.status_code in [200, 400, 422], f"Potential vulnerability: {payload}"
@@ -135,7 +135,7 @@ class TestSecondOrderInjection:
         )
 
         # Second request retrieves data - should not execute stored SQL
-        response = client.get("/data")
+        response = client.get("/api/v1/data")
 
         # Server should still be functioning
         assert response.status_code != 500
@@ -151,7 +151,7 @@ class TestBlindSQLInjection:
         payload = "1; SELECT SLEEP(5)--"
 
         performance_timer.start()
-        response = client.get(f"/data?limit={payload}")
+        response = client.get(f"/api/v1/data?limit={payload}")
         performance_timer.stop()
 
         # Response should be fast (< 3 seconds), not delayed by SLEEP
@@ -164,8 +164,8 @@ class TestBlindSQLInjection:
         true_payload = "1 AND 1=1"
         false_payload = "1 AND 1=2"
 
-        response_true = client.get(f"/data?limit={true_payload}")
-        response_false = client.get(f"/data?limit={false_payload}")
+        response_true = client.get(f"/api/v1/data?limit={true_payload}")
+        response_false = client.get(f"/api/v1/data?limit={false_payload}")
 
         # Both should be handled the same way (validation error)
         assert response_true.status_code == response_false.status_code

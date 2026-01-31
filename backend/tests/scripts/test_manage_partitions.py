@@ -18,11 +18,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Skip if we can't import due to database connection requirements
-pytestmark = pytest.mark.skipif(
-    "manage_partitions" not in sys.modules and not hasattr(sys, "_called_from_test"),
-    reason="Skipping tests that require database connection setup",
-)
+
+# Helper function to get a mocked version of manage_partitions
+def get_mocked_manage_partitions():
+    """Import manage_partitions with mocked database dependencies."""
+    # Mock the database module before importing
+    mock_db = MagicMock()
+    mock_engine = MagicMock()
+    mock_db.engine = mock_engine
+
+    with patch.dict("sys.modules", {"app.models.db": mock_db}):
+        # Also patch at the location where it's imported
+        with patch("app.models.db.engine", mock_engine):
+            import importlib
+
+            import scripts.manage_partitions as mp
+
+            importlib.reload(mp)
+            return mp
 
 
 class TestPrintStatistics:
@@ -30,40 +43,32 @@ class TestPrintStatistics:
 
     def test_prints_formatted_output(self, capsys):
         """Test that statistics are printed correctly."""
-        # Import with mocked engine to avoid connection issues
-        with patch.dict("sys.modules", {"app.models.db": MagicMock()}):
-            with patch("app.models.db.engine", MagicMock()):
-                # Now import the module
-                import importlib
+        mp = get_mocked_manage_partitions()
 
-                import scripts.manage_partitions as mp
-
-                importlib.reload(mp)
-
-                stats = {
-                    "tables": {
-                        "weather_data": {
-                            "partition_count": 12,
-                            "total_rows": 10000,
-                            "partitions": [
-                                {
-                                    "name": "weather_data_2024_01",
-                                    "row_count": 1000,
-                                    "table_size": "8 KB",
-                                    "index_size": "4 KB",
-                                    "total_size": "12 KB",
-                                }
-                            ],
+        stats = {
+            "tables": {
+                "weather_data": {
+                    "partition_count": 12,
+                    "total_rows": 10000,
+                    "partitions": [
+                        {
+                            "name": "weather_data_2024_01",
+                            "row_count": 1000,
+                            "table_size": "8 KB",
+                            "index_size": "4 KB",
+                            "total_size": "12 KB",
                         }
-                    },
-                    "errors": [],
+                    ],
                 }
+            },
+            "errors": [],
+        }
 
-                mp.print_statistics(stats)
+        mp.print_statistics(stats)
 
-                captured = capsys.readouterr()
-                assert "PARTITION STATISTICS" in captured.out
-                assert "WEATHER_DATA" in captured.out
+        captured = capsys.readouterr()
+        assert "PARTITION STATISTICS" in captured.out
+        assert "WEATHER_DATA" in captured.out
 
 
 class TestDryRunMode:
@@ -71,35 +76,27 @@ class TestDryRunMode:
 
     def test_create_partitions_dry_run_returns_results(self):
         """Test that create_partitions dry-run returns expected structure."""
-        with patch.dict("sys.modules", {"app.models.db": MagicMock()}):
-            with patch("app.models.db.engine", MagicMock()):
-                import importlib
+        mp = get_mocked_manage_partitions()
 
-                import scripts.manage_partitions as mp
+        # Mock is_sqlite to return False so dry-run mode can proceed
+        with patch.object(mp, "is_sqlite", return_value=False):
+            results = mp.create_partitions(months_ahead=3, dry_run=True)
 
-                importlib.reload(mp)
-
-                results = mp.create_partitions(months_ahead=3, dry_run=True)
-
-                assert "created" in results
-                assert "errors" in results
-                assert len(results["created"]) == 2  # weather_data and predictions
-                assert all(r["status"] == "dry-run" for r in results["created"])
-                assert len(results["errors"]) == 0
+        assert "created" in results
+        assert "errors" in results
+        assert len(results["created"]) == 2  # weather_data and predictions
+        assert all(r["status"] == "dry-run" for r in results["created"])
+        assert len(results["errors"]) == 0
 
     def test_cleanup_partitions_dry_run_returns_results(self):
         """Test that cleanup_old_partitions dry-run returns expected structure."""
-        with patch.dict("sys.modules", {"app.models.db": MagicMock()}):
-            with patch("app.models.db.engine", MagicMock()):
-                import importlib
+        mp = get_mocked_manage_partitions()
 
-                import scripts.manage_partitions as mp
+        # Mock is_sqlite to return False so dry-run mode can proceed
+        with patch.object(mp, "is_sqlite", return_value=False):
+            results = mp.cleanup_old_partitions(retention_months=24, dry_run=True)
 
-                importlib.reload(mp)
-
-                results = mp.cleanup_old_partitions(retention_months=24, dry_run=True)
-
-                assert "dropped" in results
-                assert "errors" in results
-                assert len(results["dropped"]) == 2  # weather_data and predictions
-                assert all(r["status"] == "dry-run" for r in results["dropped"])
+        assert "dropped" in results
+        assert "errors" in results
+        assert len(results["dropped"]) == 2  # weather_data and predictions
+        assert all(r["status"] == "dry-run" for r in results["dropped"])

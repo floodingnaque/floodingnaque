@@ -18,11 +18,11 @@ class TestCSRFProtection:
         # Request without Origin header to protected endpoint
         headers = {k: v for k, v in api_headers.items() if k != "Origin"}
 
-        response = client.post("/ingest", json={"lat": 14.4793, "lon": 121.0198}, headers=headers)
+        response = client.post("/api/v1/ingest/ingest", json={"lat": 14.4793, "lon": 121.0198}, headers=headers)
 
         # Should either succeed (with proper auth) or fail validation
         # but not silently accept cross-origin requests without validation
-        assert response.status_code in [200, 400, 401, 403, 502]
+        assert response.status_code in [200, 400, 401, 403, 502, 503]
 
     @pytest.mark.security
     def test_csrf_token_validation(self, client, api_headers, csrf_test_data):

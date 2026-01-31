@@ -36,3 +36,13 @@ testpaths = ["backend/tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+    "snapshot: marks tests as snapshot tests (using syrupy)",
+    "no_health_mock: skip auto-mocking of health check dependencies",
+    "slow: marks tests as slow running",
+    "integration: marks tests as integration tests requiring external services",
+]
+
+# Syrupy snapshot settings
+# To update snapshots after intentional changes:
+#   cd backend && pytest tests/snapshots/ --snapshot-update -v

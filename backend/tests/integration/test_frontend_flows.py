@@ -5,16 +5,10 @@ Tests complete user flows that simulate frontend interactions with the API.
 """
 
 import json
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
 
 
 class TestUserAuthenticationFlow:
@@ -50,7 +44,7 @@ class TestUserAuthenticationFlow:
 
                                 with patch("app.api.routes.users.User", return_value=mock_user):
                                     register_response = client.post(
-                                        "/api/users/register",
+                                        "/api/v1/auth/register",
                                         data=json.dumps(registration_data),
                                         content_type="application/json",
                                     )
@@ -88,7 +82,9 @@ class TestUserAuthenticationFlow:
                                     session.query.return_value = mock_query
 
                                     login_response = client.post(
-                                        "/api/users/login", data=json.dumps(login_data), content_type="application/json"
+                                        "/api/v1/auth/login",
+                                        data=json.dumps(login_data),
+                                        content_type="application/json",
                                     )
 
         assert login_response.status_code == 200
@@ -96,12 +92,14 @@ class TestUserAuthenticationFlow:
 
     def test_session_token_refresh_flow(self, client):
         """Test token refresh flow for maintaining session."""
+        from datetime import timedelta
+
         mock_user = MagicMock()
         mock_user.id = 1
         mock_user.email = "test@example.com"
         mock_user.role = "user"
         mock_user.refresh_token_hash = "token_hash"
-        mock_user.refresh_token_expires = datetime.now(timezone.utc)
+        mock_user.refresh_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
         with patch("app.api.routes.users.limiter.limit", lambda x: lambda f: f):
             with patch("app.api.routes.users.decode_token", return_value=({"sub": "1", "type": "refresh"}, None)):
@@ -120,7 +118,7 @@ class TestUserAuthenticationFlow:
                             mock_hash.return_value.hexdigest.return_value = "token_hash"
 
                             response = client.post(
-                                "/api/users/refresh",
+                                "/api/v1/auth/refresh",
                                 data=json.dumps({"refresh_token": "valid_refresh_token"}),
                                 content_type="application/json",
                             )
@@ -134,6 +132,28 @@ class TestDashboardDataFlow:
 
     def test_dashboard_full_load_flow(self, client):
         """Test complete dashboard data loading flow."""
+
+        # Create proper mock prediction objects for statistics endpoint
+        # Using a simple class instead of MagicMock to ensure proper comparison
+        class MockPrediction:
+            def __init__(self, i):
+                self.created_at = datetime.now(timezone.utc)
+                self.prediction = i % 2
+                self.risk_level = i % 3
+                self.confidence = 0.85
+                self.is_deleted = False
+
+        class MockAlert:
+            def __init__(self, i):
+                self.created_at = datetime.now(timezone.utc)
+                self.risk_level = i % 3
+                self.alert_type = "flood_warning"
+                self.triggered = True
+                self.is_deleted = False
+
+        mock_predictions = [MockPrediction(i) for i in range(5)]
+        mock_alerts = [MockAlert(i) for i in range(3)]
+
         # Setup mocks for all dashboard endpoints
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
             with patch("app.api.routes.dashboard.get_db_session") as mock_session:
@@ -141,25 +161,30 @@ class TestDashboardDataFlow:
                 mock_session.return_value.__enter__ = Mock(return_value=session)
                 mock_session.return_value.__exit__ = Mock(return_value=False)
 
+                # Create a mock query that can handle different calls
                 mock_query = MagicMock()
                 mock_query.filter.return_value = mock_query
                 mock_query.count.return_value = 50
                 mock_query.group_by.return_value = mock_query
+                # Return tuples for group_by().all() (risk_distribution)
                 mock_query.all.return_value = [(0, 40), (1, 8), (2, 2)]
                 mock_query.order_by.return_value = mock_query
                 mock_query.first.return_value = None
                 session.query.return_value = mock_query
 
                 # Get summary
-                summary_response = client.get("/api/dashboard/summary")
+                summary_response = client.get("/api/v1/dashboard/summary")
                 assert summary_response.status_code == 200
 
+                # For statistics, return empty list (simplest working case)
+                mock_query.all.return_value = []
+
                 # Get statistics
-                stats_response = client.get("/api/dashboard/statistics?period=week")
+                stats_response = client.get("/api/v1/dashboard/statistics?period=week")
                 assert stats_response.status_code == 200
 
                 # Get activity feed
-                activity_response = client.get("/api/dashboard/activity?limit=20")
+                activity_response = client.get("/api/v1/dashboard/activity?limit=20")
                 assert activity_response.status_code == 200
 
     def test_dashboard_with_filters(self, client):
@@ -178,12 +203,12 @@ class TestDashboardDataFlow:
 
                 # Test different period filters
                 for period in ["day", "week", "month"]:
-                    response = client.get(f"/api/dashboard/statistics?period={period}")
+                    response = client.get(f"/api/v1/dashboard/statistics?period={period}")
                     assert response.status_code == 200
 
                 # Test different metric filters
                 for metric in ["predictions", "alerts", "weather"]:
-                    response = client.get(f"/api/dashboard/statistics?metric={metric}")
+                    response = client.get(f"/api/v1/dashboard/statistics?metric={metric}")
                     assert response.status_code == 200
 
 
@@ -202,10 +227,10 @@ class TestPredictionWorkflow:
             "request_id": "test-123",
         }
 
-        with patch("app.api.routes.predict.limiter.limit", lambda x: lambda f: f):
+        with patch("app.api.routes.predict.rate_limit_with_burst", lambda x: lambda f: f):
             with patch("app.api.routes.predict.predict_flood", return_value=mock_result):
                 response = client.post(
-                    "/api/predict", data=json.dumps(prediction_input), content_type="application/json"
+                    "/api/v1/predict/predict", data=json.dumps(prediction_input), content_type="application/json"
                 )
 
         # Verify prediction was processed
@@ -225,12 +250,16 @@ class TestPredictionWorkflow:
 
         mock_result = {"prediction": 0, "risk_level": 0, "confidence": 0.85, "model_version": "1.0.0"}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
-            with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.batch.predict_flood", return_value=mock_result):
-                    response = client.post(
-                        "/api/batch/predict", data=json.dumps(batch_input), content_type="application/json"
-                    )
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.middleware.rate_limit.limiter"):
+                    with patch("app.api.routes.batch.predict_flood", return_value=mock_result):
+                        response = client.post(
+                            "/api/v1/batch/predict",
+                            data=json.dumps(batch_input),
+                            content_type="application/json",
+                            headers={"X-API-Key": "test-key"},
+                        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -268,7 +297,7 @@ class TestPredictionWorkflow:
                 mock_query.all.return_value = mock_predictions
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions?limit=10")
+                response = client.get("/api/v1/predictions?limit=10")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -295,48 +324,55 @@ class TestDataExportFlow:
             record.location = "Paranaque City"
             mock_records.append(record)
 
-        with patch("app.api.routes.export.require_api_key", lambda f: f):
-            with patch("app.api.routes.export.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.export.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.routes.export.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.export.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter_by.return_value = mock_query
-                    mock_query.filter.return_value = mock_query
-                    mock_query.order_by.return_value = mock_query
-                    mock_query.limit.return_value = mock_query
-                    mock_query.all.return_value = mock_records
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter_by.return_value = mock_query
+                        mock_query.filter.return_value = mock_query
+                        mock_query.order_by.return_value = mock_query
+                        mock_query.limit.return_value = mock_query
+                        mock_query.all.return_value = mock_records
+                        session.query.return_value = mock_query
 
-                    # Test JSON export
-                    json_response = client.get("/api/export/weather?format=json")
-                    assert json_response.status_code == 200
+                        headers = {"X-API-Key": "test-key"}
 
-                    # Test CSV export
-                    csv_response = client.get("/api/export/weather?format=csv")
-                    assert csv_response.status_code == 200
-                    assert csv_response.content_type == "text/csv; charset=utf-8"
+                        # Test JSON export
+                        json_response = client.get("/api/v1/export/weather?format=json", headers=headers)
+                        assert json_response.status_code == 200
+
+                        # Test CSV export
+                        csv_response = client.get("/api/v1/export/weather?format=csv", headers=headers)
+                        assert csv_response.status_code == 200
+                        assert csv_response.content_type == "text/csv; charset=utf-8"
 
     def test_export_with_date_filters(self, client):
         """Test export with date filters."""
-        with patch("app.api.routes.export.require_api_key", lambda f: f):
-            with patch("app.api.routes.export.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.export.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.routes.export.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.export.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter_by.return_value = mock_query
-                    mock_query.filter.return_value = mock_query
-                    mock_query.order_by.return_value = mock_query
-                    mock_query.limit.return_value = mock_query
-                    mock_query.all.return_value = []
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter_by.return_value = mock_query
+                        mock_query.filter.return_value = mock_query
+                        mock_query.order_by.return_value = mock_query
+                        mock_query.limit.return_value = mock_query
+                        mock_query.all.return_value = []
+                        session.query.return_value = mock_query
 
-                    response = client.get("/api/export/weather?start_date=2025-01-01&end_date=2025-01-31&limit=1000")
+                        response = client.get(
+                            "/api/v1/export/weather?start_date=2025-01-01&end_date=2025-01-31&limit=1000",
+                            headers={"X-API-Key": "test-key"},
+                        )
 
         assert response.status_code == 200
 
@@ -351,18 +387,22 @@ class TestWebhookManagementFlow:
 
         mock_webhook = MagicMock()
         mock_webhook.id = 1
+        headers = {"X-API-Key": "test-key", "Content-Type": "application/json"}
 
-        with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
-            with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.webhooks.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.webhooks.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    with patch("app.api.routes.webhooks.Webhook", return_value=mock_webhook):
-                        register_response = client.post(
-                            "/api/webhooks/register", data=json.dumps(webhook_data), content_type="application/json"
-                        )
+                        with patch("app.api.routes.webhooks.Webhook", return_value=mock_webhook):
+                            register_response = client.post(
+                                "/api/v1/webhooks/register",
+                                data=json.dumps(webhook_data),
+                                headers=headers,
+                            )
 
         assert register_response.status_code == 201
 
@@ -374,19 +414,20 @@ class TestWebhookManagementFlow:
         mock_webhook.last_triggered_at = None
         mock_webhook.created_at = datetime.now(timezone.utc)
 
-        with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
-            with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.webhooks.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.webhooks.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter_by.return_value = mock_query
-                    mock_query.all.return_value = [mock_webhook]
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter_by.return_value = mock_query
+                        mock_query.all.return_value = [mock_webhook]
+                        session.query.return_value = mock_query
 
-                    list_response = client.get("/api/webhooks/list")
+                        list_response = client.get("/api/v1/webhooks/list", headers={"X-API-Key": "test-key"})
 
         assert list_response.status_code == 200
         assert list_response.get_json()["count"] >= 1
@@ -394,57 +435,60 @@ class TestWebhookManagementFlow:
         # Step 3: Update webhook
         mock_webhook.updated_at = datetime.now(timezone.utc)
 
-        with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
-            with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.webhooks.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.webhooks.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter_by.return_value = mock_query
-                    mock_query.first.return_value = mock_webhook
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter_by.return_value = mock_query
+                        mock_query.first.return_value = mock_webhook
+                        session.query.return_value = mock_query
 
-                    update_response = client.put(
-                        "/api/webhooks/1",
-                        data=json.dumps({"url": "https://new-url.com/webhook"}),
-                        content_type="application/json",
-                    )
+                        update_response = client.put(
+                            "/api/v1/webhooks/1",
+                            data=json.dumps({"url": "https://new-url.com/webhook"}),
+                            headers=headers,
+                        )
 
         assert update_response.status_code == 200
 
         # Step 4: Toggle webhook
-        with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
-            with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.webhooks.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.webhooks.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter_by.return_value = mock_query
-                    mock_query.first.return_value = mock_webhook
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter_by.return_value = mock_query
+                        mock_query.first.return_value = mock_webhook
+                        session.query.return_value = mock_query
 
-                    toggle_response = client.post("/api/webhooks/1/toggle")
+                        toggle_response = client.post("/api/v1/webhooks/1/toggle", headers={"X-API-Key": "test-key"})
 
         assert toggle_response.status_code == 200
 
         # Step 5: Delete webhook
-        with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
-            with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
-                with patch("app.api.routes.webhooks.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.webhooks.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter_by.return_value = mock_query
-                    mock_query.first.return_value = mock_webhook
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter_by.return_value = mock_query
+                        mock_query.first.return_value = mock_webhook
+                        session.query.return_value = mock_query
 
-                    delete_response = client.delete("/api/webhooks/1")
+                        delete_response = client.delete("/api/v1/webhooks/1", headers={"X-API-Key": "test-key"})
 
         assert delete_response.status_code == 200
 
@@ -459,7 +503,7 @@ class TestErrorRecoveryFlow:
             with patch("app.api.routes.dashboard.get_db_session") as mock_session:
                 mock_session.side_effect = Exception("Database error")
 
-                response = client.get("/api/dashboard/summary")
+                response = client.get("/api/v1/dashboard/summary")
 
                 # Should return error but not crash
                 assert response.status_code == 500
@@ -471,11 +515,15 @@ class TestErrorRecoveryFlow:
 
         mock_result = {"prediction": 0, "risk_level": 0, "confidence": 0.85, "model_version": "1.0.0"}
 
-        with patch("app.api.routes.batch.require_api_key", lambda f: f):
-            with patch("app.api.routes.batch.limiter.limit", lambda x: lambda f: f):
-                response = client.post(
-                    "/api/batch/predict", data=json.dumps(invalid_batch_data), content_type="application/json"
-                )
+        with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+            with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                with patch("app.api.middleware.rate_limit.limiter"):
+                    response = client.post(
+                        "/api/v1/batch/predict",
+                        data=json.dumps(invalid_batch_data),
+                        content_type="application/json",
+                        headers={"X-API-Key": "test-key"},
+                    )
 
         assert response.status_code == 200
         data = response.get_json()

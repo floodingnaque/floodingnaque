@@ -8,6 +8,20 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.api.middleware.rate_limit import (
+    BURST_ENABLED,
+    BURST_MULTIPLIER,
+    BURST_WINDOW_SECONDS,
+    DEFAULT_LIMIT,
+    INTERNAL_BYPASS_IPS,
+    RATE_LIMIT_ENABLED,
+    RATE_LIMIT_STORAGE,
+    Limiter,
+    get_rate_limit_key,
+    get_remote_address,
+    is_internal_service_request,
+)
+from flask import Flask, g
 
 
 class TestRateLimitConfiguration:
@@ -15,26 +29,18 @@ class TestRateLimitConfiguration:
 
     def test_rate_limit_enabled_env_var(self):
         """Test RATE_LIMIT_ENABLED environment variable is read."""
-        from app.api.middleware.rate_limit import RATE_LIMIT_ENABLED
-
         assert isinstance(RATE_LIMIT_ENABLED, bool)
 
     def test_rate_limit_storage_env_var(self):
         """Test RATE_LIMIT_STORAGE environment variable is read."""
-        from app.api.middleware.rate_limit import RATE_LIMIT_STORAGE
-
         assert isinstance(RATE_LIMIT_STORAGE, str)
 
     def test_default_limit_env_var(self):
         """Test DEFAULT_LIMIT environment variable is read."""
-        from app.api.middleware.rate_limit import DEFAULT_LIMIT
-
         assert isinstance(DEFAULT_LIMIT, str)
 
     def test_burst_configuration(self):
         """Test burst configuration constants."""
-        from app.api.middleware.rate_limit import BURST_ENABLED, BURST_MULTIPLIER, BURST_WINDOW_SECONDS
-
         assert isinstance(BURST_ENABLED, bool)
         assert isinstance(BURST_MULTIPLIER, float)
         assert isinstance(BURST_WINDOW_SECONDS, int)
@@ -45,15 +51,10 @@ class TestGetRateLimitKey:
 
     def test_get_rate_limit_key_function_exists(self):
         """Test get_rate_limit_key function exists."""
-        from app.api.middleware.rate_limit import get_rate_limit_key
-
         assert callable(get_rate_limit_key)
 
     def test_get_rate_limit_key_returns_string(self):
         """Test get_rate_limit_key returns a string."""
-        from app.api.middleware.rate_limit import get_rate_limit_key
-        from flask import Flask, g
-
         app = Flask(__name__)
 
         with app.test_request_context("/test"):
@@ -61,11 +62,9 @@ class TestGetRateLimitKey:
 
             assert isinstance(key, str)
 
-    def test_get_rate_limit_key_uses_api_key_if_present(self):
+    @patch("app.api.middleware.rate_limit.is_internal_service_request", return_value=False)
+    def test_get_rate_limit_key_uses_api_key_if_present(self, mock_internal):
         """Test get_rate_limit_key uses API key hash if present."""
-        from app.api.middleware.rate_limit import get_rate_limit_key
-        from flask import Flask, g
-
         app = Flask(__name__)
 
         with app.test_request_context("/test"):
@@ -81,15 +80,10 @@ class TestIsInternalServiceRequest:
 
     def test_is_internal_service_request_function_exists(self):
         """Test is_internal_service_request function exists."""
-        from app.api.middleware.rate_limit import is_internal_service_request
-
         assert callable(is_internal_service_request)
 
     def test_is_internal_service_request_returns_bool(self):
         """Test is_internal_service_request returns boolean."""
-        from app.api.middleware.rate_limit import is_internal_service_request
-        from flask import Flask
-
         app = Flask(__name__)
 
         with app.test_request_context("/test"):
@@ -115,14 +109,10 @@ class TestInternalBypassIPs:
 
     def test_internal_bypass_ips_is_set(self):
         """Test INTERNAL_BYPASS_IPS is configured."""
-        from app.api.middleware.rate_limit import INTERNAL_BYPASS_IPS
-
         assert isinstance(INTERNAL_BYPASS_IPS, set)
 
     def test_localhost_in_bypass_ips(self):
         """Test localhost IPs are in bypass list."""
-        from app.api.middleware.rate_limit import INTERNAL_BYPASS_IPS
-
         # By default should include localhost
         assert "127.0.0.1" in INTERNAL_BYPASS_IPS or "::1" in INTERNAL_BYPASS_IPS
 
@@ -132,8 +122,6 @@ class TestGetRemoteAddress:
 
     def test_get_remote_address_imported(self):
         """Test get_remote_address is available."""
-        from app.api.middleware.rate_limit import get_remote_address
-
         assert callable(get_remote_address)
 
 
@@ -142,6 +130,4 @@ class TestLimiterSetup:
 
     def test_limiter_class_imported(self):
         """Test Limiter class is imported."""
-        from app.api.middleware.rate_limit import Limiter
-
         assert Limiter is not None

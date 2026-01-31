@@ -2,14 +2,9 @@
 Unit tests for schemas.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(backend_path))
+from app.api.schemas.prediction import PredictRequestSchema
+from app.api.schemas.weather import IngestRequestSchema, parse_json_safely
 
 
 class TestIngestRequestSchema:
@@ -17,16 +12,12 @@ class TestIngestRequestSchema:
 
     def test_valid_coordinates(self):
         """Test valid coordinate values."""
-        from app.api.schemas.weather import IngestRequestSchema
-
         schema = IngestRequestSchema(lat=14.4793, lon=121.0198)
         errors = schema.validate()
         assert len(errors) == 0
 
     def test_invalid_latitude(self):
         """Test invalid latitude value."""
-        from app.api.schemas.weather import IngestRequestSchema
-
         schema = IngestRequestSchema(lat=91.0, lon=121.0198)
         errors = schema.validate()
         assert len(errors) > 0
@@ -34,8 +25,6 @@ class TestIngestRequestSchema:
 
     def test_invalid_longitude(self):
         """Test invalid longitude value."""
-        from app.api.schemas.weather import IngestRequestSchema
-
         schema = IngestRequestSchema(lat=14.4793, lon=181.0)
         errors = schema.validate()
         assert len(errors) > 0
@@ -43,8 +32,6 @@ class TestIngestRequestSchema:
 
     def test_optional_coordinates(self):
         """Test that coordinates are optional."""
-        from app.api.schemas.weather import IngestRequestSchema
-
         schema = IngestRequestSchema()
         errors = schema.validate()
         assert len(errors) == 0
@@ -55,24 +42,18 @@ class TestPredictRequestSchema:
 
     def test_valid_weather_data(self):
         """Test valid weather data."""
-        from app.api.schemas.prediction import PredictRequestSchema
-
         schema = PredictRequestSchema(temperature=298.15, humidity=65.0, precipitation=10.5)
         errors = schema.validate()
         assert len(errors) == 0
 
     def test_invalid_humidity(self):
         """Test invalid humidity value."""
-        from app.api.schemas.prediction import PredictRequestSchema
-
         schema = PredictRequestSchema(temperature=298.15, humidity=150.0, precipitation=10.5)  # Invalid: > 100
         errors = schema.validate()
         assert len(errors) > 0
 
     def test_negative_precipitation(self):
         """Test negative precipitation value."""
-        from app.api.schemas.prediction import PredictRequestSchema
-
         schema = PredictRequestSchema(temperature=298.15, humidity=65.0, precipitation=-5.0)  # Invalid: negative
         errors = schema.validate()
         assert len(errors) > 0
@@ -83,8 +64,6 @@ class TestJsonParsing:
 
     def test_parse_valid_json(self):
         """Test parsing valid JSON."""
-        from app.api.schemas.weather import parse_json_safely
-
         data = b'{"lat": 14.6, "lon": 120.98}'
         result = parse_json_safely(data)
         assert result is not None
@@ -93,15 +72,11 @@ class TestJsonParsing:
 
     def test_parse_empty_bytes(self):
         """Test parsing empty bytes."""
-        from app.api.schemas.weather import parse_json_safely
-
         result = parse_json_safely(b"")
         assert result == {}
 
     def test_parse_none(self):
         """Test parsing None."""
-        from app.api.schemas.weather import parse_json_safely
-
         result = parse_json_safely(None)
         assert result == {}
 

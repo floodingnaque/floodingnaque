@@ -5,16 +5,10 @@ Tests webhook management functionality for flood alerts.
 """
 
 import json
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
 
 
 class TestRegisterWebhook:
@@ -47,7 +41,9 @@ class TestRegisterWebhook:
                     MockWebhook.return_value = mock_webhook
 
                     response = client.post(
-                        "/api/webhooks/register", data=json.dumps(valid_webhook_data), content_type="application/json"
+                        "/api/v1/webhooks/register",
+                        data=json.dumps(valid_webhook_data),
+                        content_type="application/json",
                     )
 
         assert response.status_code == 201
@@ -61,7 +57,7 @@ class TestRegisterWebhook:
         with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
             with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/webhooks/register",
+                    "/api/v1/webhooks/register",
                     data=json.dumps({"events": ["flood_detected"]}),
                     content_type="application/json",
                 )
@@ -75,7 +71,7 @@ class TestRegisterWebhook:
         with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
             with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/webhooks/register",
+                    "/api/v1/webhooks/register",
                     data=json.dumps({"url": "https://example.com/webhook"}),
                     content_type="application/json",
                 )
@@ -87,7 +83,7 @@ class TestRegisterWebhook:
         with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
             with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/webhooks/register",
+                    "/api/v1/webhooks/register",
                     data=json.dumps({"url": "invalid-url", "events": ["flood_detected"]}),
                     content_type="application/json",
                 )
@@ -101,7 +97,7 @@ class TestRegisterWebhook:
         with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
             with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/webhooks/register",
+                    "/api/v1/webhooks/register",
                     data=json.dumps({"url": "https://example.com/webhook", "events": ["invalid_event"]}),
                     content_type="application/json",
                 )
@@ -115,7 +111,7 @@ class TestRegisterWebhook:
         with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
             with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
                 response = client.post(
-                    "/api/webhooks/register",
+                    "/api/v1/webhooks/register",
                     data=json.dumps({"url": "https://example.com/webhook", "events": []}),
                     content_type="application/json",
                 )
@@ -133,7 +129,7 @@ class TestRegisterWebhook:
                     MockWebhook.return_value = mock_webhook
 
                     response = client.post(
-                        "/api/webhooks/register",
+                        "/api/v1/webhooks/register",
                         data=json.dumps(
                             {
                                 "url": "https://example.com/webhook",
@@ -182,7 +178,7 @@ class TestListWebhooks:
                     mock_query.all.return_value = mock_webhooks
                     session.query.return_value = mock_query
 
-                    response = client.get("/api/webhooks/list")
+                    response = client.get("/api/v1/webhooks/list")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -204,7 +200,7 @@ class TestListWebhooks:
                     mock_query.all.return_value = []
                     session.query.return_value = mock_query
 
-                    response = client.get("/api/webhooks/list")
+                    response = client.get("/api/v1/webhooks/list")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -240,7 +236,7 @@ class TestUpdateWebhook:
                     session.query.return_value = mock_query
 
                     response = client.put(
-                        "/api/webhooks/1",
+                        "/api/v1/webhooks/1",
                         data=json.dumps({"url": "https://new-url.com/webhook"}),
                         content_type="application/json",
                     )
@@ -265,7 +261,7 @@ class TestUpdateWebhook:
                     session.query.return_value = mock_query
 
                     response = client.put(
-                        "/api/webhooks/999",
+                        "/api/v1/webhooks/999",
                         data=json.dumps({"url": "https://new-url.com/webhook"}),
                         content_type="application/json",
                     )
@@ -287,7 +283,7 @@ class TestUpdateWebhook:
                     session.query.return_value = mock_query
 
                     response = client.put(
-                        "/api/webhooks/1", data=json.dumps({"url": "invalid-url"}), content_type="application/json"
+                        "/api/v1/webhooks/1", data=json.dumps({"url": "invalid-url"}), content_type="application/json"
                     )
 
         assert response.status_code == 400
@@ -296,7 +292,7 @@ class TestUpdateWebhook:
         """Test updating webhook with no data."""
         with patch("app.api.routes.webhooks.require_api_key", lambda f: f):
             with patch("app.api.routes.webhooks.limiter.limit", lambda x: lambda f: f):
-                response = client.put("/api/webhooks/1", content_type="application/json")
+                response = client.put("/api/v1/webhooks/1", content_type="application/json")
 
         assert response.status_code == 400
 
@@ -321,7 +317,7 @@ class TestDeleteWebhook:
                     mock_query.first.return_value = mock_webhook
                     session.query.return_value = mock_query
 
-                    response = client.delete("/api/webhooks/1")
+                    response = client.delete("/api/v1/webhooks/1")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -341,7 +337,7 @@ class TestDeleteWebhook:
                     mock_query.first.return_value = None
                     session.query.return_value = mock_query
 
-                    response = client.delete("/api/webhooks/999")
+                    response = client.delete("/api/v1/webhooks/999")
 
         assert response.status_code == 404
 
@@ -367,7 +363,7 @@ class TestToggleWebhook:
                     mock_query.first.return_value = mock_webhook
                     session.query.return_value = mock_query
 
-                    response = client.post("/api/webhooks/1/toggle")
+                    response = client.post("/api/v1/webhooks/1/toggle")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -391,7 +387,7 @@ class TestToggleWebhook:
                     mock_query.first.return_value = mock_webhook
                     session.query.return_value = mock_query
 
-                    response = client.post("/api/webhooks/1/toggle")
+                    response = client.post("/api/v1/webhooks/1/toggle")
 
         assert response.status_code == 200
 
@@ -409,7 +405,7 @@ class TestToggleWebhook:
                     mock_query.first.return_value = None
                     session.query.return_value = mock_query
 
-                    response = client.post("/api/webhooks/999/toggle")
+                    response = client.post("/api/v1/webhooks/999/toggle")
 
         assert response.status_code == 404
 
@@ -435,7 +431,7 @@ class TestWebhookEventTypes:
                         MockWebhook.return_value = mock_webhook
 
                         response = client.post(
-                            "/api/webhooks/register",
+                            "/api/v1/webhooks/register",
                             data=json.dumps({"url": "https://example.com/webhook", "events": valid_events}),
                             content_type="application/json",
                         )
@@ -454,7 +450,7 @@ class TestWebhookErrorHandling:
                     mock_session.side_effect = Exception("Database error")
 
                     response = client.post(
-                        "/api/webhooks/register",
+                        "/api/v1/webhooks/register",
                         data=json.dumps({"url": "https://example.com/webhook", "events": ["flood_detected"]}),
                         content_type="application/json",
                     )
@@ -468,7 +464,7 @@ class TestWebhookErrorHandling:
                 with patch("app.api.routes.webhooks.get_db_session") as mock_session:
                     mock_session.side_effect = Exception("Database error")
 
-                    response = client.get("/api/webhooks/list")
+                    response = client.get("/api/v1/webhooks/list")
 
         assert response.status_code == 500
 

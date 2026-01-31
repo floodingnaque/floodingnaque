@@ -33,7 +33,7 @@ Policy: {policy_url}
 Acknowledgments: {acknowledgments_url}
 
 # Encryption key for secure communications (optional)
-# Encryption: {pgp_key_url}
+# Encryption: {{pgp_key_url}}
 
 # Expiration date for this file (should be renewed annually)
 Expires: {expires}
@@ -42,7 +42,7 @@ Expires: {expires}
 Canonical: {canonical_url}
 
 # Optional: Hiring page for security professionals
-# Hiring: {hiring_url}
+# Hiring: {{hiring_url}}
 """
 
 

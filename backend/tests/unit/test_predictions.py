@@ -4,16 +4,13 @@ Unit tests for predictions routes.
 Tests prediction history CRUD operations.
 """
 
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+# API version prefix constant
+API_V1_PREFIX = "/api/v1"
 
 
 class TestGetPredictions:
@@ -58,7 +55,7 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions")
+            response = client.get(f"{API_V1_PREFIX}/predictions")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -80,7 +77,7 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?limit=2")
+            response = client.get(f"{API_V1_PREFIX}/predictions?limit=2")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -89,7 +86,7 @@ class TestGetPredictions:
     def test_get_predictions_invalid_limit(self, client):
         """Test get predictions with invalid limit (less than 1)."""
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?limit=0")
+            response = client.get(f"{API_V1_PREFIX}/predictions?limit=0")
 
         assert response.status_code == 400
 
@@ -105,7 +102,7 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?offset=2")
+            response = client.get(f"{API_V1_PREFIX}/predictions?offset=2")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -125,7 +122,7 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?risk_level=0")
+            response = client.get(f"{API_V1_PREFIX}/predictions?risk_level=0")
 
         assert response.status_code == 200
 
@@ -136,7 +133,7 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?risk_level=5")
+            response = client.get(f"{API_V1_PREFIX}/predictions?risk_level=5")
 
         assert response.status_code == 400
 
@@ -152,7 +149,7 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?prediction=1")
+            response = client.get(f"{API_V1_PREFIX}/predictions?prediction=1")
 
         assert response.status_code == 200
 
@@ -163,7 +160,7 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?prediction=5")
+            response = client.get(f"{API_V1_PREFIX}/predictions?prediction=5")
 
         assert response.status_code == 400
 
@@ -179,21 +176,21 @@ class TestGetPredictions:
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?sort_by=confidence&order=asc")
+            response = client.get(f"{API_V1_PREFIX}/predictions?sort_by=confidence&order=asc")
 
         assert response.status_code == 200
 
     def test_get_predictions_invalid_sort_by(self, client):
         """Test get predictions with invalid sort field."""
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?sort_by=invalid_field")
+            response = client.get(f"{API_V1_PREFIX}/predictions?sort_by=invalid_field")
 
         assert response.status_code == 400
 
     def test_get_predictions_invalid_order(self, client):
         """Test get predictions with invalid order."""
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions?order=invalid")
+            response = client.get(f"{API_V1_PREFIX}/predictions?order=invalid")
 
         assert response.status_code == 400
 
@@ -242,7 +239,7 @@ class TestGetPredictionById:
                 mock_query.first.side_effect = [mock_prediction, mock_weather]
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/1")
+                response = client.get(f"{API_V1_PREFIX}/predictions/1")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -263,7 +260,7 @@ class TestGetPredictionById:
                 mock_query.first.return_value = None
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/999")
+                response = client.get(f"{API_V1_PREFIX}/predictions/999")
 
         assert response.status_code == 404
 
@@ -280,7 +277,7 @@ class TestGetPredictionById:
                 mock_query.first.side_effect = [mock_prediction, mock_weather]
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/1")
+                response = client.get(f"{API_V1_PREFIX}/predictions/1")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -290,24 +287,37 @@ class TestGetPredictionById:
 class TestDeletePrediction:
     """Tests for deleting prediction endpoint."""
 
+    # Valid API key meeting minimum length (32 chars)
+    TEST_API_KEY = "test-api-key-12345-valid-32chars"
+
     def test_delete_prediction_success(self, client):
         """Test successful prediction deletion."""
         mock_prediction = MagicMock()
         mock_prediction.id = 1
 
-        with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            with patch("app.api.routes.predictions.require_api_key", lambda f: f):
-                with patch("app.api.routes.predictions.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch(
+            "app.api.middleware.auth.validate_api_key",
+            return_value=(True, ""),
+        ):
+            with patch(
+                "app.api.middleware.auth._hash_api_key_pbkdf2",
+                return_value="mock_hash",
+            ):
+                with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.predictions.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter.return_value = mock_query
-                    mock_query.first.return_value = mock_prediction
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter.return_value = mock_query
+                        mock_query.first.return_value = mock_prediction
+                        session.query.return_value = mock_query
 
-                    response = client.delete("/api/predictions/1")
+                        response = client.delete(
+                            f"{API_V1_PREFIX}/predictions/1",
+                            headers={"X-API-Key": self.TEST_API_KEY},
+                        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -316,19 +326,29 @@ class TestDeletePrediction:
 
     def test_delete_prediction_not_found(self, client):
         """Test deleting non-existent prediction."""
-        with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            with patch("app.api.routes.predictions.require_api_key", lambda f: f):
-                with patch("app.api.routes.predictions.get_db_session") as mock_session:
-                    session = MagicMock()
-                    mock_session.return_value.__enter__ = Mock(return_value=session)
-                    mock_session.return_value.__exit__ = Mock(return_value=False)
+        with patch(
+            "app.api.middleware.auth.validate_api_key",
+            return_value=(True, ""),
+        ):
+            with patch(
+                "app.api.middleware.auth._hash_api_key_pbkdf2",
+                return_value="mock_hash",
+            ):
+                with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
+                    with patch("app.api.routes.predictions.get_db_session") as mock_session:
+                        session = MagicMock()
+                        mock_session.return_value.__enter__ = Mock(return_value=session)
+                        mock_session.return_value.__exit__ = Mock(return_value=False)
 
-                    mock_query = MagicMock()
-                    mock_query.filter.return_value = mock_query
-                    mock_query.first.return_value = None
-                    session.query.return_value = mock_query
+                        mock_query = MagicMock()
+                        mock_query.filter.return_value = mock_query
+                        mock_query.first.return_value = None
+                        session.query.return_value = mock_query
 
-                    response = client.delete("/api/predictions/999")
+                        response = client.delete(
+                            f"{API_V1_PREFIX}/predictions/999",
+                            headers={"X-API-Key": self.TEST_API_KEY},
+                        )
 
         assert response.status_code == 404
 
@@ -350,7 +370,7 @@ class TestPredictionStats:
                 mock_query.scalar.return_value = 0.85
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/stats")
+                response = client.get(f"{API_V1_PREFIX}/predictions/stats")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -372,7 +392,7 @@ class TestPredictionStats:
                 mock_query.scalar.return_value = 0.80
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/stats?days=7")
+                response = client.get(f"{API_V1_PREFIX}/predictions/stats?days=7")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -381,7 +401,7 @@ class TestPredictionStats:
     def test_get_stats_invalid_days(self, client):
         """Test prediction stats with invalid days."""
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
-            response = client.get("/api/predictions/stats?days=0")
+            response = client.get(f"{API_V1_PREFIX}/predictions/stats?days=0")
 
         assert response.status_code == 400
 
@@ -399,7 +419,7 @@ class TestPredictionStats:
                 mock_query.scalar.return_value = 0.85
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/stats")
+                response = client.get(f"{API_V1_PREFIX}/predictions/stats")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -446,7 +466,7 @@ class TestRecentPredictions:
                 mock_query.all.return_value = mock_recent_predictions[:10]
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/recent")
+                response = client.get(f"{API_V1_PREFIX}/predictions/recent")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -469,7 +489,7 @@ class TestRecentPredictions:
                 mock_query.all.return_value = mock_recent_predictions[:5]
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions/recent?limit=5")
+                response = client.get(f"{API_V1_PREFIX}/predictions/recent?limit=5")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -496,7 +516,7 @@ class TestPredictionsDateFilter:
                 mock_query.all.return_value = []
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions?start_date=2025-01-01T00:00:00Z")
+                response = client.get(f"{API_V1_PREFIX}/predictions?start_date=2025-01-01T00:00:00Z")
 
         assert response.status_code == 200
 
@@ -517,7 +537,7 @@ class TestPredictionsDateFilter:
                 mock_query.all.return_value = []
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions?end_date=2025-12-31T23:59:59Z")
+                response = client.get(f"{API_V1_PREFIX}/predictions?end_date=2025-12-31T23:59:59Z")
 
         assert response.status_code == 200
 
@@ -533,7 +553,7 @@ class TestPredictionsDateFilter:
                 mock_query.filter.return_value = mock_query
                 session.query.return_value = mock_query
 
-                response = client.get("/api/predictions?start_date=invalid")
+                response = client.get(f"{API_V1_PREFIX}/predictions?start_date=invalid")
 
         assert response.status_code == 400
 
@@ -547,7 +567,7 @@ class TestPredictionsErrorHandling:
             with patch("app.api.routes.predictions.get_db_session") as mock_session:
                 mock_session.side_effect = Exception("Database error")
 
-                response = client.get("/api/predictions")
+                response = client.get(f"{API_V1_PREFIX}/predictions")
 
         assert response.status_code == 500
 
@@ -557,7 +577,7 @@ class TestPredictionsErrorHandling:
             with patch("app.api.routes.predictions.get_db_session") as mock_session:
                 mock_session.side_effect = Exception("Database error")
 
-                response = client.get("/api/predictions/1")
+                response = client.get(f"{API_V1_PREFIX}/predictions/1")
 
         assert response.status_code == 500
 

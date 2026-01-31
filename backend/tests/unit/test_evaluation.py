@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.services.evaluation import SystemEvaluator, evaluate_system_for_thesis
 
 
 class TestSystemEvaluatorInit:
@@ -21,8 +22,6 @@ class TestSystemEvaluatorInit:
         with tempfile.TemporaryDirectory() as tmpdir:
             results_path = os.path.join(tmpdir, "test_results")
 
-            from app.services.evaluation import SystemEvaluator
-
             evaluator = SystemEvaluator(results_dir=results_path)
 
             assert Path(results_path).exists()
@@ -31,8 +30,6 @@ class TestSystemEvaluatorInit:
     def test_evaluator_initializes_empty_results(self):
         """Test that evaluator initializes with empty results list."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            from app.services.evaluation import SystemEvaluator
-
             evaluator = SystemEvaluator(results_dir=tmpdir)
 
             assert evaluator.evaluation_results == []
@@ -45,8 +42,6 @@ class TestEvaluateAccuracy:
     def evaluator(self):
         """Create evaluator instance for tests."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            from app.services.evaluation import SystemEvaluator
-
             yield SystemEvaluator(results_dir=tmpdir)
 
     def test_accuracy_perfect_predictions(self, evaluator):
@@ -99,8 +94,6 @@ class TestEvaluateScalability:
     def evaluator(self):
         """Create evaluator instance for tests."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            from app.services.evaluation import SystemEvaluator
-
             yield SystemEvaluator(results_dir=tmpdir)
 
     def test_scalability_with_custom_test_func(self, evaluator):
@@ -176,8 +169,6 @@ class TestEvaluateReliability:
     def evaluator(self):
         """Create evaluator instance for tests."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            from app.services.evaluation import SystemEvaluator
-
             yield SystemEvaluator(results_dir=tmpdir)
 
     def test_reliability_perfect_uptime(self, evaluator):
@@ -211,8 +202,6 @@ class TestEvaluateUsability:
     def evaluator(self):
         """Create evaluator instance for tests."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            from app.services.evaluation import SystemEvaluator
-
             yield SystemEvaluator(results_dir=tmpdir)
 
     def test_usability_endpoint_count(self, evaluator):
@@ -231,7 +220,7 @@ class TestEvaluateUsability:
 
         metrics = evaluator.evaluate_usability(endpoints, response_times)
 
-        assert metrics["avg_response_time_ms"] == 150.0  # (100 + 200) / 2
+        assert metrics["avg_response_time_ms"] == pytest.approx(150.0)  # (100 + 200) / 2
 
     def test_usability_documentation_quality(self, evaluator):
         """Test usability captures documentation quality."""
@@ -249,8 +238,6 @@ class TestGenerateEvaluationReport:
     def evaluator(self):
         """Create evaluator instance for tests."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            from app.services.evaluation import SystemEvaluator
-
             yield SystemEvaluator(results_dir=tmpdir)
 
     def test_report_contains_all_metrics(self, evaluator):
@@ -324,8 +311,6 @@ class TestEvaluateSystemForThesis:
             mock_instance.evaluate_usability.return_value = {"total_endpoints": 5}
             mock_instance.generate_evaluation_report.return_value = {"status": "complete"}
             MockEvaluator.return_value = mock_instance
-
-            from app.services.evaluation import evaluate_system_for_thesis
 
             report = evaluate_system_for_thesis()
 

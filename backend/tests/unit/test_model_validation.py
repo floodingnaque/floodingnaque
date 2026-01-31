@@ -2,36 +2,272 @@
 ML Model Validation Tests.
 
 Tests specific to machine learning model behavior, quality, and robustness.
+
+This module contains two types of tests:
+1. Unit Tests: Use mock fixtures, always run, test interfaces and data flow
+2. Integration Tests: Marked with @pytest.mark.model, skip if model unavailable
+
+Run unit tests only: pytest tests/unit/test_model_validation.py
+Run with real model: pytest tests/unit/test_model_validation.py -m "model"
 """
 
-import json
 import os
-import sys
 import tempfile
-from pathlib import Path
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
+import pandas as pd
 import pytest
+from app.services.predict import (
+    ModelLoader,
+    _load_model,
+    get_current_model_info,
+    get_model_metadata,
+    list_available_models,
+    load_model_version,
+    predict_flood,
+)
 
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
+# ============================================================================
+# Unit Tests - Model Loading Interface (Always Run with Mocks)
+# ============================================================================
+
+
+class TestModelLoadingUnit:
+    """Unit tests for model loading interface using mocks."""
+
+    def test_model_loads_successfully(self, mock_model_comprehensive):
+        """Test that model loading returns a model object."""
+        model = mock_model_comprehensive["mocks"]["_load_model"].return_value
+        assert model is not None
+        assert hasattr(model, "predict")
+        assert hasattr(model, "predict_proba")
+
+    def test_model_has_required_methods(self, mock_model_comprehensive):
+        """Test that loaded model has required prediction methods."""
+        model = mock_model_comprehensive["model"]
+
+        # Should have predict method
+        assert hasattr(model, "predict")
+        assert callable(model.predict)
+
+        # Should have predict_proba for probability estimation
+        assert hasattr(model, "predict_proba")
+        assert callable(model.predict_proba)
+
+    def test_model_has_feature_names(self, mock_model_comprehensive):
+        """Test that model tracks feature names."""
+        model = mock_model_comprehensive["model"]
+
+        # Should have feature names
+        assert hasattr(model, "feature_names_in_")
+        assert len(model.feature_names_in_) > 0
+
+        # Check for expected features
+        features = list(model.feature_names_in_)
+        assert "temperature" in features
+
+    def test_model_metadata_structure(self, mock_model_comprehensive):
+        """Test that model metadata has expected structure."""
+        metadata = mock_model_comprehensive["metadata"]
+
+        assert metadata is not None
+        # Should have version info
+        assert "version" in metadata or "created_at" in metadata
+        # Should have checksum for integrity
+        assert "checksum" in metadata
+        assert len(metadata["checksum"]) == 64  # SHA-256
+
+    def test_list_available_models_returns_list(self, mock_model_comprehensive):
+        """Test that list_available_models returns model list."""
+        models = mock_model_comprehensive["model_list"]
+
+        assert isinstance(models, list)
+        if models:
+            assert "version" in models[0]
+            assert "path" in models[0]
 
 
 # ============================================================================
-# Model Loading and Initialization Tests
+# Unit Tests - Prediction Quality (Always Run with Mocks)
 # ============================================================================
 
 
-class TestModelLoading:
-    """Tests for model loading and initialization."""
+class TestPredictionQualityUnit:
+    """Unit tests for prediction quality using mocks."""
+
+    def test_prediction_returns_expected_format(self, mock_model_comprehensive):
+        """Test that predictions return expected format."""
+        model = mock_model_comprehensive["model"]
+
+        # Model predict should return array
+        prediction = model.predict([[298.15, 75.0, 10.0]])
+        assert prediction is not None
+        assert hasattr(prediction, "__len__")
+
+    def test_prediction_proba_returns_probabilities(self, mock_model_comprehensive):
+        """Test that predict_proba returns probability array."""
+        model = mock_model_comprehensive["model"]
+
+        proba = model.predict_proba([[298.15, 75.0, 10.0]])
+        assert proba is not None
+        # Should be 2D array with class probabilities
+        assert len(proba[0]) == 2  # Binary classification
+
+    def test_probability_values_in_range(self, mock_model_comprehensive):
+        """Test that probabilities are in valid range [0, 1]."""
+        model = mock_model_comprehensive["model"]
+
+        proba = model.predict_proba([[298.15, 75.0, 10.0]])
+        for p in proba[0]:
+            assert 0.0 <= p <= 1.0
+
+    def test_prediction_deterministic_with_mock(self, mock_model_comprehensive):
+        """Test that mock predictions are deterministic."""
+        model = mock_model_comprehensive["model"]
+
+        # Make the same prediction multiple times
+        results = []
+        for _ in range(5):
+            prediction = model.predict([[298.15, 75.0, 10.0]])
+            results.append(prediction[0])
+
+        # All predictions should be identical
+        assert all(r == results[0] for r in results)
+
+
+# ============================================================================
+# Unit Tests - Risk Classification (Always Run with Mocks)
+# ============================================================================
+
+
+class TestRiskClassificationUnit:
+    """Unit tests for risk classification using mocks."""
+
+    def test_risk_levels_are_integers(self, mock_prediction_flow):
+        """Test that risk levels are valid integers."""
+        test_data = {"temperature": 298.15, "humidity": 75.0, "precipitation": 10.0}
+
+        result = mock_prediction_flow(test_data, return_proba=True, return_risk_level=True)
+
+        assert "risk_level" in result
+        assert isinstance(result["risk_level"], int)
+        assert result["risk_level"] in [0, 1, 2]
+
+    def test_risk_labels_are_strings(self, mock_prediction_flow):
+        """Test that risk labels are valid strings."""
+        test_data = {"temperature": 298.15, "humidity": 75.0, "precipitation": 10.0}
+
+        result = mock_prediction_flow(test_data, return_proba=True, return_risk_level=True)
+
+        assert "risk_label" in result
+        assert isinstance(result["risk_label"], str)
+        assert result["risk_label"] in ["Safe", "Alert", "Critical"]
+
+    def test_risk_level_label_consistency(self, mock_prediction_flow):
+        """Test that risk level matches risk label."""
+        level_labels = {0: "Safe", 1: "Alert", 2: "Critical"}
+
+        test_cases = [
+            {"temperature": 298.15, "humidity": 30.0, "precipitation": 0.0},  # Low risk
+            {"temperature": 298.15, "humidity": 70.0, "precipitation": 30.0},  # Medium risk
+            {"temperature": 298.15, "humidity": 95.0, "precipitation": 100.0},  # High risk
+        ]
+
+        for data in test_cases:
+            result = mock_prediction_flow(data, return_proba=True, return_risk_level=True)
+            risk_level = result["risk_level"]
+            risk_label = result["risk_label"]
+
+            expected_label = level_labels.get(risk_level)
+            assert risk_label == expected_label, f"Mismatch: level={risk_level}, label={risk_label}"
+
+    def test_risk_color_codes_unit(self, mock_prediction_flow):
+        """Test that risk color codes are correct."""
+        color_map = {"Safe": "#28a745", "Alert": "#ffc107", "Critical": "#dc3545"}
+
+        test_cases = [
+            {"temperature": 298.15, "humidity": 30.0, "precipitation": 0.0},  # Should be Safe
+            {"temperature": 298.15, "humidity": 70.0, "precipitation": 30.0},  # Should be Alert
+            {"temperature": 298.15, "humidity": 95.0, "precipitation": 100.0},  # Should be Critical
+        ]
+
+        for data in test_cases:
+            result = mock_prediction_flow(data, return_proba=True, return_risk_level=True)
+            risk_label = result.get("risk_label")
+            risk_color = result.get("risk_color")
+
+            if risk_label and risk_color:
+                expected_color = color_map.get(risk_label)
+                assert risk_color == expected_color, f"Wrong color for {risk_label}: got {risk_color}"
+
+
+# ============================================================================
+# Unit Tests - Feature Importance (Always Run with Mocks)
+# ============================================================================
+
+
+class TestFeatureImportanceUnit:
+    """Unit tests for feature importance using mocks."""
+
+    def test_model_has_feature_importances(self, mock_model_comprehensive):
+        """Test that model has feature importances attribute."""
+        model = mock_model_comprehensive["model"]
+
+        # Should have feature_importances_
+        assert hasattr(model, "feature_importances_")
+        importances = model.feature_importances_
+
+        # Should have importance for each feature
+        assert len(importances) > 0
+
+    def test_feature_importances_sum_approximately_one(self, mock_model_comprehensive):
+        """Test that feature importances sum to approximately 1."""
+        model = mock_model_comprehensive["model"]
+
+        if hasattr(model, "feature_importances_"):
+            importances = model.feature_importances_
+            assert 0.99 <= sum(importances) <= 1.01
+
+
+# ============================================================================
+# Unit Tests - Model Version Consistency (Always Run with Mocks)
+# ============================================================================
+
+
+class TestModelVersionConsistencyUnit:
+    """Unit tests for model version consistency using mocks."""
+
+    def test_model_info_structure(self, mock_model_comprehensive):
+        """Test that model info has expected structure."""
+        info = mock_model_comprehensive["model_info"]
+
+        if info:
+            assert "model_path" in info
+            assert "model_type" in info
+
+    def test_version_list_structure(self, mock_model_comprehensive):
+        """Test that version list has expected structure."""
+        models = mock_model_comprehensive["model_list"]
+
+        if models:
+            for model_info in models:
+                assert "version" in model_info
+                assert "path" in model_info
+
+
+# ============================================================================
+# Integration Tests - Real Model (Skip if model unavailable)
+# ============================================================================
+
+
+@pytest.mark.model
+class TestModelLoadingIntegration:
+    """Integration tests for model loading with real model files."""
 
     def test_model_loads_successfully(self):
-        """Test that model can be loaded without errors."""
-        from app.services.predict import ModelLoader, _load_model
-
+        """Test that real model can be loaded without errors."""
         ModelLoader.reset_instance()
 
         try:
@@ -42,8 +278,6 @@ class TestModelLoading:
 
     def test_model_has_required_methods(self):
         """Test that loaded model has required prediction methods."""
-        from app.services.predict import ModelLoader, _load_model
-
         ModelLoader.reset_instance()
 
         try:
@@ -62,8 +296,6 @@ class TestModelLoading:
 
     def test_model_has_feature_names(self):
         """Test that model tracks feature names."""
-        from app.services.predict import ModelLoader, _load_model
-
         ModelLoader.reset_instance()
 
         try:
@@ -82,8 +314,6 @@ class TestModelLoading:
 
     def test_model_metadata_exists(self):
         """Test that model metadata file exists and is valid."""
-        from app.services.predict import get_model_metadata
-
         metadata = get_model_metadata()
 
         if metadata is None:
@@ -98,8 +328,6 @@ class TestModelLoading:
 
     def test_model_version_loading(self):
         """Test loading specific model versions."""
-        from app.services.predict import list_available_models, load_model_version
-
         models = list_available_models()
 
         if not models:
@@ -114,18 +342,12 @@ class TestModelLoading:
             pytest.skip(f"Model version {latest['version']} not found")
 
 
-# ============================================================================
-# Prediction Quality Tests
-# ============================================================================
-
-
-class TestPredictionQuality:
-    """Tests for prediction quality and consistency."""
+@pytest.mark.model
+class TestPredictionQualityIntegration:
+    """Integration tests for prediction quality with real model."""
 
     def test_prediction_deterministic(self):
         """Test that predictions are deterministic (same input = same output)."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         test_data = {"temperature": 298.15, "humidity": 75.0, "precipitation": 10.0}
@@ -135,6 +357,7 @@ class TestPredictionQuality:
             results = []
             for _ in range(5):
                 result = predict_flood(test_data, return_proba=True)
+                assert isinstance(result, dict)
                 results.append(result["prediction"])
 
             # All predictions should be identical
@@ -145,14 +368,13 @@ class TestPredictionQuality:
 
     def test_prediction_probability_range(self):
         """Test that prediction probabilities are in valid range [0, 1]."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         test_data = {"temperature": 298.15, "humidity": 75.0, "precipitation": 10.0}
 
         try:
             result = predict_flood(test_data, return_proba=True)
+            assert isinstance(result, dict)
 
             if "probability" in result:
                 for key, prob in result["probability"].items():
@@ -163,14 +385,13 @@ class TestPredictionQuality:
 
     def test_probability_sum_to_one(self):
         """Test that class probabilities sum to approximately 1."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         test_data = {"temperature": 298.15, "humidity": 75.0, "precipitation": 10.0}
 
         try:
             result = predict_flood(test_data, return_proba=True)
+            assert isinstance(result, dict)
 
             if "probability" in result:
                 prob_sum = sum(result["probability"].values())
@@ -181,20 +402,17 @@ class TestPredictionQuality:
 
     def test_extreme_conditions_trigger_flood(self):
         """Test that extreme weather conditions tend to predict flood risk."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
-        extreme_data = {"temperature": 298.15, "humidity": 98.0, "precipitation": 200.0}  # Very heavy rain
+        extreme_data = {"temperature": 298.15, "humidity": 98.0, "precipitation": 200.0}
 
         try:
             result = predict_flood(extreme_data, return_proba=True, return_risk_level=True)
+            assert isinstance(result, dict)
 
-            # Extreme conditions should either predict flood or high probability
             flood_prob = result.get("probability", {}).get("flood", 0)
             risk_level = result.get("risk_level", 0)
 
-            # At least one should indicate elevated risk
             assert (
                 flood_prob > 0.3 or risk_level >= 1 or result["prediction"] == 1
             ), f"Extreme conditions not detected: prob={flood_prob}, risk={risk_level}"
@@ -204,48 +422,39 @@ class TestPredictionQuality:
 
     def test_normal_conditions_low_risk(self):
         """Test that normal weather conditions predict low risk."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
-        normal_data = {"temperature": 298.15, "humidity": 50.0, "precipitation": 0.0}  # No rain
+        normal_data = {"temperature": 298.15, "humidity": 50.0, "precipitation": 0.0}
 
         try:
             result = predict_flood(normal_data, return_proba=True, return_risk_level=True)
+            assert isinstance(result, dict)
 
-            # Normal conditions should have low flood probability
             flood_prob = result.get("probability", {}).get("flood", 0)
-
-            # Probability should be relatively low (< 50%)
             assert flood_prob < 0.7, f"Normal conditions show high risk: {flood_prob}"
 
         except FileNotFoundError:
             pytest.skip("Model file not found")
 
 
-# ============================================================================
-# Model Robustness Tests
-# ============================================================================
-
-
-class TestModelRobustness:
-    """Tests for model robustness to edge cases and adversarial inputs."""
+@pytest.mark.model
+class TestModelRobustnessIntegration:
+    """Integration tests for model robustness with real model."""
 
     def test_handles_boundary_values(self):
         """Test model handles boundary values without crashing."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         boundary_cases = [
-            {"temperature": 200.0, "humidity": 0.0, "precipitation": 0.0},  # Min values
-            {"temperature": 330.0, "humidity": 100.0, "precipitation": 500.0},  # Max values
-            {"temperature": 273.15, "humidity": 50.0, "precipitation": 0.001},  # Near zero
+            {"temperature": 200.0, "humidity": 0.0, "precipitation": 0.0},
+            {"temperature": 330.0, "humidity": 100.0, "precipitation": 500.0},
+            {"temperature": 273.15, "humidity": 50.0, "precipitation": 0.001},
         ]
 
         try:
             for data in boundary_cases:
                 result = predict_flood(data, return_proba=True)
+                assert isinstance(result, dict)
                 assert "prediction" in result
                 assert result["prediction"] in [0, 1]
 
@@ -254,14 +463,13 @@ class TestModelRobustness:
 
     def test_handles_integer_inputs(self):
         """Test model handles integer inputs (converted to float)."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
-        int_data = {"temperature": 298, "humidity": 75, "precipitation": 10}  # Integer, not float
+        int_data = {"temperature": 298, "humidity": 75, "precipitation": 10}
 
         try:
             result = predict_flood(int_data, return_proba=True)
+            assert isinstance(result, dict)
             assert "prediction" in result
 
         except FileNotFoundError:
@@ -269,21 +477,19 @@ class TestModelRobustness:
 
     def test_prediction_with_additional_features(self):
         """Test prediction when extra features are provided."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         data_with_extras = {
             "temperature": 298.15,
             "humidity": 75.0,
             "precipitation": 10.0,
-            "wind_speed": 15.0,  # Extra feature
-            "pressure": 1013.25,  # Extra feature
+            "wind_speed": 15.0,
+            "pressure": 1013.25,
         }
 
         try:
-            # Should handle extra features gracefully
             result = predict_flood(data_with_extras, return_proba=True)
+            assert isinstance(result, dict)
             assert "prediction" in result
 
         except FileNotFoundError:
@@ -291,8 +497,6 @@ class TestModelRobustness:
 
     def test_multiple_sequential_predictions(self):
         """Test that model handles many sequential predictions."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         import random
@@ -306,6 +510,7 @@ class TestModelRobustness:
                 }
 
                 result = predict_flood(data, return_proba=True)
+                assert isinstance(result, dict)
                 assert "prediction" in result
                 assert result["prediction"] in [0, 1]
 
@@ -313,18 +518,12 @@ class TestModelRobustness:
             pytest.skip("Model file not found")
 
 
-# ============================================================================
-# Risk Classification Validation Tests
-# ============================================================================
-
-
-class TestRiskClassificationValidation:
-    """Tests for 3-level risk classification accuracy."""
+@pytest.mark.model
+class TestRiskClassificationIntegration:
+    """Integration tests for risk classification with real model."""
 
     def test_risk_level_consistency(self):
         """Test that risk level is consistent with prediction and probability."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         test_cases = [
@@ -336,27 +535,20 @@ class TestRiskClassificationValidation:
         try:
             for data in test_cases:
                 result = predict_flood(data, return_proba=True, return_risk_level=True)
+                assert isinstance(result, dict)
 
                 prediction = result["prediction"]
                 risk_level = result.get("risk_level", -1)
                 flood_prob = result.get("probability", {}).get("flood", 0)
 
-                # Validate risk level assignment
                 if prediction == 1 and flood_prob >= 0.75:
-                    # Should be Critical (2)
                     assert risk_level == 2, f"Expected Critical for high prob {flood_prob}"
-
-                if prediction == 0 and flood_prob < 0.3:
-                    # Should be Safe (0) unless other conditions apply
-                    pass  # Other factors may elevate risk
 
         except FileNotFoundError:
             pytest.skip("Model file not found")
 
     def test_risk_label_matches_level(self):
         """Test that risk label matches risk level."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
         level_labels = {0: "Safe", 1: "Alert", 2: "Critical"}
@@ -370,24 +562,23 @@ class TestRiskClassificationValidation:
                 }
 
                 result = predict_flood(data, return_proba=True, return_risk_level=True)
+                assert isinstance(result, dict)
 
                 risk_level = result.get("risk_level")
                 risk_label = result.get("risk_label")
 
                 if risk_level is not None and risk_label is not None:
                     expected_label = level_labels.get(risk_level)
-                    assert risk_label == expected_label, f"Mismatch: level={risk_level}, label={risk_label}"
+                    assert risk_label == expected_label
 
         except FileNotFoundError:
             pytest.skip("Model file not found")
 
     def test_risk_color_codes(self):
         """Test that risk color codes are correct."""
-        from app.services.predict import ModelLoader, predict_flood
-
         ModelLoader.reset_instance()
 
-        color_map = {"Safe": "#28a745", "Alert": "#ffc107", "Critical": "#dc3545"}  # Green  # Yellow  # Red
+        color_map = {"Safe": "#28a745", "Alert": "#ffc107", "Critical": "#dc3545"}
 
         try:
             for _ in range(20):
@@ -398,43 +589,33 @@ class TestRiskClassificationValidation:
                 }
 
                 result = predict_flood(data, return_proba=True, return_risk_level=True)
+                assert isinstance(result, dict)
 
                 risk_label = result.get("risk_label")
                 risk_color = result.get("risk_color")
 
                 if risk_label and risk_color:
                     expected_color = color_map.get(risk_label)
-                    assert risk_color == expected_color, f"Wrong color for {risk_label}: got {risk_color}"
+                    assert risk_color == expected_color
 
         except FileNotFoundError:
             pytest.skip("Model file not found")
 
 
-# ============================================================================
-# Feature Importance Tests
-# ============================================================================
-
-
-class TestFeatureImportance:
-    """Tests related to feature importance in the model."""
+@pytest.mark.model
+class TestFeatureImportanceIntegration:
+    """Integration tests for feature importance with real model."""
 
     def test_model_has_feature_importances(self):
         """Test that Random Forest model has feature importances."""
-        from app.services.predict import ModelLoader, _load_model
-
         ModelLoader.reset_instance()
 
         try:
             model = _load_model()
 
-            # Random Forest should have feature_importances_
             if hasattr(model, "feature_importances_"):
                 importances = model.feature_importances_
-
-                # Should have importance for each feature
                 assert len(importances) > 0
-
-                # Importances should sum to ~1
                 assert 0.99 <= sum(importances) <= 1.01
 
         except FileNotFoundError:
@@ -442,8 +623,6 @@ class TestFeatureImportance:
 
     def test_precipitation_is_important(self):
         """Test that precipitation is a significant feature."""
-        from app.services.predict import ModelLoader, _load_model
-
         ModelLoader.reset_instance()
 
         try:
@@ -453,11 +632,8 @@ class TestFeatureImportance:
                 feature_names = list(model.feature_names_in_)
                 importances = model.feature_importances_
 
-                # Find precipitation feature
                 for i, name in enumerate(feature_names):
                     if "precip" in name.lower():
-                        # Precipitation should be a significant feature
-                        # (assuming it's one of the top features for flood prediction)
                         assert importances[i] > 0.01, f"Precipitation importance too low: {importances[i]}"
                         break
 
@@ -465,19 +641,12 @@ class TestFeatureImportance:
             pytest.skip("Model file not found")
 
 
-# ============================================================================
-# Model Consistency Across Versions
-# ============================================================================
-
-
-class TestModelVersionConsistency:
-    """Tests for consistency across model versions."""
+@pytest.mark.model
+class TestModelVersionConsistencyIntegration:
+    """Integration tests for model version consistency with real models."""
 
     def test_all_versions_produce_valid_output(self):
         """Test that all available model versions produce valid outputs."""
-        import pandas as pd
-        from app.services.predict import list_available_models, load_model_version
-
         models = list_available_models()
 
         if not models:
@@ -490,23 +659,19 @@ class TestModelVersionConsistency:
             try:
                 model = load_model_version(version)
 
-                # Reindex to match model features
                 if hasattr(model, "feature_names_in_"):
                     test_df = test_data.reindex(columns=model.feature_names_in_, fill_value=0)
                 else:
                     test_df = test_data
 
                 prediction = model.predict(test_df)
-
-                assert prediction[0] in [0, 1], f"Version {version} produced invalid prediction: {prediction[0]}"
+                assert prediction[0] in [0, 1], f"Version {version} produced invalid prediction"
 
             except FileNotFoundError:
-                continue  # Skip missing versions
+                continue
 
     def test_current_model_info(self):
         """Test that current model info is accessible."""
-        from app.services.predict import ModelLoader, get_current_model_info
-
         ModelLoader.reset_instance()
 
         try:

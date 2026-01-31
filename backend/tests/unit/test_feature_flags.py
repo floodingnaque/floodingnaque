@@ -32,11 +32,16 @@ sys.path.insert(0, str(backend_path))
 @pytest.fixture(autouse=True)
 def reset_singleton():
     """Reset the singleton instance before each test."""
+    import app.services.feature_flags as ff_module
     from app.services.feature_flags import FeatureFlagService
 
     FeatureFlagService._instance = None
+    FeatureFlagService._initialized = False
+    ff_module._feature_flag_service = None
     yield
     FeatureFlagService._instance = None
+    FeatureFlagService._initialized = False
+    ff_module._feature_flag_service = None
 
 
 @pytest.fixture

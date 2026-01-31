@@ -13,18 +13,16 @@ from Google Earth Engine, including:
 
 import asyncio
 import os
-import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-# Add backend to path
-backend_path = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(backend_path))
-
+from app.services.google_weather_service_async import (
+    AsyncGoogleWeatherService,
+    SatellitePrecipitation,
+    WeatherReanalysis,
+)
 
 # =============================================================================
 # Test Fixtures
@@ -34,8 +32,6 @@ sys.path.insert(0, str(backend_path))
 @pytest.fixture(autouse=True)
 def reset_singleton():
     """Reset the singleton instance before each test."""
-    from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
     AsyncGoogleWeatherService.reset_instance()
     yield
     AsyncGoogleWeatherService.reset_instance()
@@ -100,8 +96,6 @@ class TestSatellitePrecipitationDataclass:
 
     def test_create_basic(self):
         """Test creating a basic SatellitePrecipitation."""
-        from app.services.google_weather_service_async import SatellitePrecipitation
-
         precip = SatellitePrecipitation(
             timestamp=datetime.now(timezone.utc),
             latitude=14.4793,
@@ -116,8 +110,6 @@ class TestSatellitePrecipitationDataclass:
 
     def test_create_with_accumulations(self):
         """Test creating SatellitePrecipitation with accumulations."""
-        from app.services.google_weather_service_async import SatellitePrecipitation
-
         precip = SatellitePrecipitation(
             timestamp=datetime.now(timezone.utc),
             latitude=14.4793,
@@ -137,8 +129,6 @@ class TestSatellitePrecipitationDataclass:
 
     def test_default_values(self):
         """Test SatellitePrecipitation default values."""
-        from app.services.google_weather_service_async import SatellitePrecipitation
-
         precip = SatellitePrecipitation(
             timestamp=datetime.now(timezone.utc),
             latitude=0.0,
@@ -158,8 +148,6 @@ class TestWeatherReanalysisDataclass:
 
     def test_create_weather_reanalysis(self):
         """Test creating WeatherReanalysis."""
-        from app.services.google_weather_service_async import WeatherReanalysis
-
         reanalysis = WeatherReanalysis(
             timestamp=datetime.now(timezone.utc),
             latitude=14.4793,
@@ -189,16 +177,12 @@ class TestAsyncGoogleWeatherServiceInitialization:
     @patch.dict(os.environ, {"EARTHENGINE_ENABLED": "true"}, clear=False)
     def test_service_enabled_by_default(self):
         """Test service is enabled when env var is true."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         assert service.enabled is True
 
     @patch.dict(os.environ, {"EARTHENGINE_ENABLED": "false"}, clear=False)
     def test_service_disabled(self):
         """Test service can be disabled via environment."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         assert service.enabled is False
 
@@ -209,16 +193,12 @@ class TestAsyncGoogleWeatherServiceInitialization:
     )
     def test_default_coordinates_from_env(self):
         """Test default coordinates are loaded from environment."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         assert service.default_lat == 14.5
         assert service.default_lon == 121.0
 
     def test_singleton_pattern(self):
         """Test singleton pattern returns same instance."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         instance1 = AsyncGoogleWeatherService.get_instance()
         instance2 = AsyncGoogleWeatherService.get_instance()
 
@@ -226,8 +206,6 @@ class TestAsyncGoogleWeatherServiceInitialization:
 
     def test_reset_instance(self):
         """Test reset_instance creates new instance."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         instance1 = AsyncGoogleWeatherService.get_instance()
         AsyncGoogleWeatherService.reset_instance()
         instance2 = AsyncGoogleWeatherService.get_instance()
@@ -245,8 +223,6 @@ class TestAsyncGoogleWeatherServiceInitialization:
     )
     def test_dataset_toggles(self):
         """Test individual dataset toggles."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
 
         assert service.gpm_enabled is True
@@ -259,8 +235,6 @@ class TestDatasetConfiguration:
 
     def test_datasets_defined(self):
         """Test that all datasets are defined."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
 
         assert "GPM" in service.DATASETS
@@ -269,8 +243,6 @@ class TestDatasetConfiguration:
 
     def test_gpm_dataset_config(self):
         """Test GPM dataset configuration."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         gpm_config = service.DATASETS["GPM"]
 
@@ -281,8 +253,6 @@ class TestDatasetConfiguration:
 
     def test_chirps_dataset_config(self):
         """Test CHIRPS dataset configuration."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         chirps_config = service.DATASETS["CHIRPS"]
 
@@ -302,8 +272,6 @@ class TestGetGpmPrecipitation:
     @patch.dict(os.environ, {"GPM_PRECIPITATION_ENABLED": "false"}, clear=False)
     async def test_returns_none_when_disabled(self):
         """Test returns None when GPM is disabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         result = await service.get_gpm_precipitation()
 
@@ -313,8 +281,6 @@ class TestGetGpmPrecipitation:
     @patch.dict(os.environ, {"EARTHENGINE_ENABLED": "false"}, clear=False)
     async def test_returns_none_when_service_disabled(self):
         """Test returns None when Earth Engine is disabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         result = await service.get_gpm_precipitation()
 
@@ -325,8 +291,6 @@ class TestGetGpmPrecipitation:
     @patch.dict(os.environ, {"EARTHENGINE_ENABLED": "true", "GPM_PRECIPITATION_ENABLED": "true"}, clear=False)
     async def test_uses_default_coordinates(self, mock_lazy_import):
         """Test uses default coordinates when not specified."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         mock_lazy_import.return_value = None  # Will fail initialization
         service = AsyncGoogleWeatherService()
 
@@ -337,8 +301,6 @@ class TestGetGpmPrecipitation:
     @pytest.mark.asyncio
     async def test_accepts_custom_coordinates(self):
         """Test accepts custom lat/lon coordinates."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         # Test that parameters are accepted (service disabled to avoid actual API call)
         with patch.dict(os.environ, {"EARTHENGINE_ENABLED": "false"}, clear=False):
             service = AsyncGoogleWeatherService()
@@ -358,8 +320,6 @@ class TestGetChirpsPrecipitation:
     @patch.dict(os.environ, {"CHIRPS_PRECIPITATION_ENABLED": "false"}, clear=False)
     async def test_returns_none_when_disabled(self):
         """Test returns None when CHIRPS is disabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
 
         # CHIRPS method should return None when disabled
@@ -378,8 +338,6 @@ class TestGetEra5Reanalysis:
     @patch.dict(os.environ, {"ERA5_REANALYSIS_ENABLED": "false"}, clear=False)
     async def test_returns_none_when_disabled(self):
         """Test returns None when ERA5 is disabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         assert service.era5_enabled is False
 
@@ -397,8 +355,6 @@ class TestEarthEngineInitialization:
     def test_lazy_import_failure(self, mock_lazy_import):
         """Test handling when earthengine-api is not installed."""
         mock_lazy_import.return_value = None
-
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
 
         service = AsyncGoogleWeatherService()
         result = service._initialize_ee()
@@ -419,8 +375,6 @@ class TestEarthEngineInitialization:
         """Test initialization with service account credentials."""
         mock_lazy_import.return_value = mock_ee_module
 
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         # Service account path doesn't exist, so init will use default
         assert service.credentials_path == "/path/to/creds.json"
@@ -428,8 +382,6 @@ class TestEarthEngineInitialization:
     @patch.dict(os.environ, {"EARTHENGINE_ENABLED": "false"}, clear=False)
     def test_initialization_skipped_when_disabled(self):
         """Test initialization is skipped when service disabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         result = service._initialize_ee()
 
@@ -446,8 +398,6 @@ class TestRetryConfiguration:
 
     def test_retry_constants(self):
         """Test retry configuration constants."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         assert AsyncGoogleWeatherService.MAX_RETRIES == 3
         assert AsyncGoogleWeatherService.RETRY_MIN_WAIT == 1
         assert AsyncGoogleWeatherService.RETRY_MAX_WAIT == 10
@@ -464,8 +414,6 @@ class TestResourceCleanup:
     @pytest.mark.asyncio
     async def test_close_executor(self):
         """Test closing the executor."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         assert service._executor is not None
 
@@ -475,8 +423,6 @@ class TestResourceCleanup:
     @pytest.mark.asyncio
     async def test_reset_cleans_up_executor(self):
         """Test reset_instance cleans up executor."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService.get_instance()
         executor = service._executor
 
@@ -498,24 +444,18 @@ class TestRequestLogging:
     @patch.dict(os.environ, {"EARTHENGINE_LOG_REQUESTS": "true"}, clear=False)
     def test_logging_enabled(self):
         """Test request logging can be enabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         assert service.log_requests is True
 
     @patch.dict(os.environ, {"EARTHENGINE_LOG_REQUESTS": "false"}, clear=False)
     def test_logging_disabled(self):
         """Test request logging can be disabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         assert service.log_requests is False
 
     @patch.dict(os.environ, {"EARTHENGINE_LOG_REQUESTS": "false"}, clear=False)
     def test_log_ee_request_returns_none_when_disabled(self):
         """Test _log_ee_request returns None when logging disabled."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         service = AsyncGoogleWeatherService()
         result = service._log_ee_request("gpm", dataset="GPM", lat=14.4793, lon=121.0198)
 
@@ -532,8 +472,6 @@ class TestCacheDirectory:
 
     def test_cache_dir_created(self, tmp_path):
         """Test cache directory is created on initialization."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         with patch.dict(os.environ, {"EARTHENGINE_CACHE_DIR": str(tmp_path / "ee_cache")}, clear=False):
             service = AsyncGoogleWeatherService()
             assert service.cache_dir.exists()
@@ -549,16 +487,12 @@ class TestDefaultLocation:
 
     def test_default_coordinates_are_paranaque(self):
         """Test default coordinates are for Parañaque City."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         # These are the class-level defaults
         assert AsyncGoogleWeatherService.DEFAULT_LAT == 14.4793
         assert AsyncGoogleWeatherService.DEFAULT_LON == 121.0198
 
     def test_coordinates_in_metro_manila(self):
         """Test coordinates are within Metro Manila bounds."""
-        from app.services.google_weather_service_async import AsyncGoogleWeatherService
-
         lat = AsyncGoogleWeatherService.DEFAULT_LAT
         lon = AsyncGoogleWeatherService.DEFAULT_LON
 
