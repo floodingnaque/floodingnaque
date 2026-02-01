@@ -148,7 +148,7 @@ overpy==0.7
 shap==0.50.0  # Requires C++ build tools on Windows (Visual Studio Build Tools with Windows SDK)
 
 # Geospatial (for flood mapping features)
-geopandas==1.0.1
+geopandas==1.1.2
 folium==0.18.0  # Interactive maps
 shapely==2.0.6  # Geometric operations
 
