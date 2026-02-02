@@ -207,9 +207,9 @@ class TestGetCorsOrigins:
         """Test returns origins from environment."""
         origins = get_cors_origins()
 
-        assert "http://localhost:3000" in origins
-        # lgtm[py/incomplete-url-substring-sanitization] - Test assertion, not URL sanitization
-        assert "http://example.com" in origins
+        # Use set comparison for exact membership check (avoids CodeQL py/incomplete-url-substring-sanitization)
+        expected_origins = {"http://localhost:3000", "http://example.com"}
+        assert set(origins) == expected_origins
 
     @patch.dict(os.environ, {"CORS_ORIGINS": "", "FLASK_DEBUG": "true"}, clear=False)
     @patch("app.api.middleware.security.is_debug_mode", return_value=True)

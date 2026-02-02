@@ -152,8 +152,7 @@ def v1_predict():
 
     except ValueError as e:
         logger.warning(f"V1 predict validation error: {e}")
-        # lgtm[py/stack-trace-exposure] - Intended: validation error messages are user-facing
-        return {"error": str(e)}, 400  # CodeQL: validation messages are safe
+        return {"error": "Invalid input data for prediction"}, 400
 
     except Exception as e:
         logger.error(f"V1 predict error: {e}")

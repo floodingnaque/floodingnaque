@@ -183,7 +183,7 @@ def reload_configuration():
             results["training_config"] = True
             logger.info("Training configuration reloaded via API")
         except Exception as e:
-            errors.append(f"Training config: {e}")
+            errors.append("Training config: reload failed")
             logger.error(f"Failed to reload training config: {e}")
 
         # Reload feature flags
@@ -197,7 +197,7 @@ def reload_configuration():
         except ImportError:
             logger.debug("Feature flags module not available")
         except Exception as e:
-            errors.append(f"Feature flags: {e}")
+            errors.append("Feature flags: reload failed")
             logger.error(f"Failed to reload feature flags: {e}")
 
         # Reload secrets
@@ -211,7 +211,7 @@ def reload_configuration():
         except ImportError:
             logger.debug("Secrets module not available")
         except Exception as e:
-            errors.append(f"Secrets: {e}")
+            errors.append("Secrets: reload failed")
             logger.error(f"Failed to reload secrets: {e}")
 
         success = all(results.values()) or (results["training_config"] and not errors)
@@ -300,12 +300,14 @@ def validate_configuration():
                         "note": "Schema validation unavailable (pydantic not installed)",
                     }
                 except Exception as e:
-                    results["training_config"] = {"valid": False, "error": str(e)}
-                    errors.append(f"Training config schema: {e}")
+                    results["training_config"] = {"valid": False, "error": "Schema validation failed"}
+                    errors.append("Training config schema: validation failed")
+                    logger.error(f"Training config schema validation error: {e}")
 
             except yaml.YAMLError as e:
-                results["training_config"] = {"valid": False, "error": f"YAML parse error: {e}"}
-                errors.append(f"Training config YAML: {e}")
+                results["training_config"] = {"valid": False, "error": "YAML parse error"}
+                errors.append("Training config YAML: parse error")
+                logger.error(f"Training config YAML parse error: {e}")
         else:
             results["training_config"] = {"valid": False, "error": "File not found"}
 
@@ -317,8 +319,9 @@ def validate_configuration():
                     flags_dict = yaml.safe_load(f)
                 results["feature_flags"] = {"valid": True, "flags_count": len(flags_dict.get("flags", {}))}
             except yaml.YAMLError as e:
-                results["feature_flags"] = {"valid": False, "error": f"YAML parse error: {e}"}
-                errors.append(f"Feature flags YAML: {e}")
+                results["feature_flags"] = {"valid": False, "error": "YAML parse error"}
+                errors.append("Feature flags YAML: parse error")
+                logger.error(f"Feature flags YAML parse error: {e}")
         else:
             results["feature_flags"] = {"valid": True, "note": "File not found (using defaults)"}
 
@@ -334,8 +337,9 @@ def validate_configuration():
                     "has_metadata": "metadata" in secrets_dict,
                 }
             except yaml.YAMLError as e:
-                results["secrets"] = {"valid": False, "error": f"YAML parse error: {e}"}
-                errors.append(f"Secrets YAML: {e}")
+                results["secrets"] = {"valid": False, "error": "YAML parse error"}
+                errors.append("Secrets YAML: parse error")
+                logger.error(f"Secrets YAML parse error: {e}")
         else:
             results["secrets"] = {"valid": True, "note": "File not found (using environment variables)"}
 
