@@ -1,0 +1,187 @@
+/**
+ * UI Store
+ * 
+ * Zustand store for managing UI state including sidebar state
+ * and theme preferences. Persisted to localStorage.
+ */
+
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+
+/**
+ * Theme type
+ */
+export type Theme = 'light' | 'dark';
+
+/**
+ * UI store state interface
+ */
+interface UIState {
+  /** Whether sidebar is open (mobile) */
+  sidebarOpen: boolean;
+  /** Whether sidebar is collapsed (desktop) */
+  sidebarCollapsed: boolean;
+  /** Current theme */
+  theme: Theme;
+}
+
+/**
+ * UI store actions interface
+ */
+interface UIActions {
+  /** Toggle sidebar open/closed */
+  toggleSidebar: () => void;
+  /** Set sidebar open state explicitly */
+  setSidebarOpen: (open: boolean) => void;
+  /** Toggle sidebar collapsed state */
+  collapseSidebar: () => void;
+  /** Set sidebar collapsed state explicitly */
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  /** Toggle theme between light and dark */
+  toggleTheme: () => void;
+  /** Set theme explicitly */
+  setTheme: (theme: Theme) => void;
+}
+
+/**
+ * Combined UI store type
+ */
+type UIStore = UIState & UIActions;
+
+/**
+ * Get system preference for color scheme
+ */
+function getSystemTheme(): Theme {
+  if (typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+  return 'light';
+}
+
+/**
+ * Initial state
+ */
+const initialState: UIState = {
+  sidebarOpen: false,
+  sidebarCollapsed: false,
+  theme: 'light', // Will be overridden by persist or system preference
+};
+
+/**
+ * UI store with persistence
+ */
+export const useUIStore = create<UIStore>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
+
+      toggleSidebar: () => {
+        set((state) => ({ sidebarOpen: !state.sidebarOpen }));
+      },
+
+      setSidebarOpen: (open: boolean) => {
+        set({ sidebarOpen: open });
+      },
+
+      collapseSidebar: () => {
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
+      },
+
+      setSidebarCollapsed: (collapsed: boolean) => {
+        set({ sidebarCollapsed: collapsed });
+      },
+
+      toggleTheme: () => {
+        const newTheme = get().theme === 'light' ? 'dark' : 'light';
+        set({ theme: newTheme });
+        applyTheme(newTheme);
+      },
+
+      setTheme: (theme: Theme) => {
+        set({ theme });
+        applyTheme(theme);
+      },
+    }),
+    {
+      name: 'ui-storage',
+      storage: createJSONStorage(() => localStorage),
+      // Persist sidebar collapsed state and theme
+      partialize: (state) => ({
+        sidebarCollapsed: state.sidebarCollapsed,
+        theme: state.theme,
+      }),
+      // Apply theme on rehydration
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // If no stored theme, use system preference
+          if (!state.theme) {
+            state.theme = getSystemTheme();
+          }
+          applyTheme(state.theme);
+        }
+      },
+    }
+  )
+);
+
+/**
+ * Apply theme to document
+ */
+function applyTheme(theme: Theme): void {
+  if (typeof document !== 'undefined') {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }
+}
+
+/**
+ * Initialize theme on first load
+ */
+if (typeof window !== 'undefined') {
+  // Check if already rehydrated
+  const stored = localStorage.getItem('ui-storage');
+  if (!stored) {
+    // Apply system preference if no stored preference
+    applyTheme(getSystemTheme());
+  }
+}
+
+/**
+ * Selector hooks for common UI state
+ */
+export const useTheme = () => useUIStore((state) => state.theme);
+export const useSidebarOpen = () => useUIStore((state) => state.sidebarOpen);
+export const useSidebarCollapsed = () => useUIStore((state) => state.sidebarCollapsed);
+
+/**
+ * Action hooks
+ */
+export const useUIActions = () =>
+  useUIStore((state) => ({
+    toggleSidebar: state.toggleSidebar,
+    setSidebarOpen: state.setSidebarOpen,
+    collapseSidebar: state.collapseSidebar,
+    setSidebarCollapsed: state.setSidebarCollapsed,
+    toggleTheme: state.toggleTheme,
+    setTheme: state.setTheme,
+  }));
+
+/**
+ * Combined sidebar state hook
+ */
+export const useSidebarState = () =>
+  useUIStore((state) => ({
+    isOpen: state.sidebarOpen,
+    isCollapsed: state.sidebarCollapsed,
+    toggle: state.toggleSidebar,
+    setOpen: state.setSidebarOpen,
+    toggleCollapse: state.collapseSidebar,
+  }));
+
+export default useUIStore;
