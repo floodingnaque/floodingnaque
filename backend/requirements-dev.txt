@@ -11,6 +11,7 @@ ipython==8.18.1
 
 # Testing
 pytest==8.3.4
+pytest-asyncio==0.24.0  # Testing async code with pytest
 pytest-cov==6.0.0
 pytest-mock==3.14.0  # Mock objects for pytest
 pytest-xdist==3.5.0  # Parallel test execution
