@@ -1,0 +1,220 @@
+/**
+ * StatsCards Component
+ *
+ * Displays dashboard statistics in a responsive grid of cards.
+ * Each card shows a metric with an icon, value, and optional trend indicator.
+ */
+
+import { Activity, TrendingUp, AlertTriangle, Shield } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import type { DashboardStats } from '../services/dashboardApi';
+
+interface StatsCardsProps {
+  /** Dashboard statistics data */
+  stats: DashboardStats;
+}
+
+interface StatCardProps {
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+  iconColor: string;
+  bgColor: string;
+  change?: {
+    value: number;
+    isPositive: boolean;
+  };
+  subtitle?: string;
+}
+
+/**
+ * Individual stat card component
+ */
+function StatCard({
+  title,
+  value,
+  icon,
+  iconColor,
+  bgColor,
+  change,
+  subtitle,
+}: StatCardProps) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <div className={cn('p-2 rounded-md', bgColor)}>
+          <div className={iconColor}>{icon}</div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {(change || subtitle) && (
+          <div className="flex items-center mt-1">
+            {change && (
+              <span
+                className={cn(
+                  'text-xs font-medium',
+                  change.isPositive ? 'text-green-600' : 'text-red-600'
+                )}
+              >
+                {change.isPositive ? '+' : ''}
+                {change.value}%
+              </span>
+            )}
+            {subtitle && (
+              <span className="text-xs text-muted-foreground ml-1">
+                {subtitle}
+              </span>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Get risk level label and color based on numeric value
+ */
+function getRiskLevelInfo(level: number): {
+  label: string;
+  colorClass: string;
+  bgClass: string;
+} {
+  if (level <= 25) {
+    return {
+      label: 'Low',
+      colorClass: 'text-green-600',
+      bgClass: 'bg-green-100 dark:bg-green-900/30',
+    };
+  }
+  if (level <= 50) {
+    return {
+      label: 'Moderate',
+      colorClass: 'text-yellow-600',
+      bgClass: 'bg-yellow-100 dark:bg-yellow-900/30',
+    };
+  }
+  if (level <= 75) {
+    return {
+      label: 'High',
+      colorClass: 'text-orange-600',
+      bgClass: 'bg-orange-100 dark:bg-orange-900/30',
+    };
+  }
+  return {
+    label: 'Critical',
+    colorClass: 'text-red-600',
+    bgClass: 'bg-red-100 dark:bg-red-900/30',
+  };
+}
+
+/**
+ * Get alert indicator color based on count
+ */
+function getAlertColorInfo(count: number): {
+  colorClass: string;
+  bgClass: string;
+} {
+  if (count === 0) {
+    return {
+      colorClass: 'text-green-600',
+      bgClass: 'bg-green-100 dark:bg-green-900/30',
+    };
+  }
+  if (count <= 3) {
+    return {
+      colorClass: 'text-amber-600',
+      bgClass: 'bg-amber-100 dark:bg-amber-900/30',
+    };
+  }
+  return {
+    colorClass: 'text-red-600',
+    bgClass: 'bg-red-100 dark:bg-red-900/30',
+  };
+}
+
+/**
+ * StatsCards displays a responsive grid of dashboard statistics
+ */
+export function StatsCards({ stats }: StatsCardsProps) {
+  const riskInfo = getRiskLevelInfo(stats.avg_risk_level);
+  const alertInfo = getAlertColorInfo(stats.active_alerts);
+
+  // Mock percentage changes (in a real app, these would come from the API)
+  const mockChanges = {
+    totalPredictions: { value: 12, isPositive: true },
+    predictionsToday: { value: 8, isPositive: true },
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <StatCard
+        title="Total Predictions"
+        value={stats.total_predictions.toLocaleString()}
+        icon={<Activity className="h-4 w-4" />}
+        iconColor="text-blue-600"
+        bgColor="bg-blue-100 dark:bg-blue-900/30"
+        change={mockChanges.totalPredictions}
+        subtitle="from last month"
+      />
+
+      <StatCard
+        title="Today's Predictions"
+        value={stats.predictions_today}
+        icon={<TrendingUp className="h-4 w-4" />}
+        iconColor="text-green-600"
+        bgColor="bg-green-100 dark:bg-green-900/30"
+        change={mockChanges.predictionsToday}
+        subtitle="from yesterday"
+      />
+
+      <StatCard
+        title="Active Alerts"
+        value={stats.active_alerts}
+        icon={<AlertTriangle className="h-4 w-4" />}
+        iconColor={alertInfo.colorClass}
+        bgColor={alertInfo.bgClass}
+        subtitle={stats.active_alerts === 0 ? 'All clear' : 'Requires attention'}
+      />
+
+      <StatCard
+        title="Avg Risk Level"
+        value={`${Math.round(stats.avg_risk_level)}%`}
+        icon={<Shield className="h-4 w-4" />}
+        iconColor={riskInfo.colorClass}
+        bgColor={riskInfo.bgClass}
+        subtitle={riskInfo.label}
+      />
+    </div>
+  );
+}
+
+/**
+ * Skeleton loading state for StatsCards
+ */
+export function StatsCardsSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-20 mb-2" />
+            <Skeleton className="h-3 w-32" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export default StatsCards;
