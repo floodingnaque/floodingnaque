@@ -117,7 +117,15 @@ def get_config_status():
         )
     except Exception as e:
         logger.error(f"Failed to get config status: {e}")
-        return jsonify({"success": False, "error": {"code": "CONFIG_ERROR", "message": str(e)}}), 500
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": {"code": "CONFIG_ERROR", "message": "Failed to retrieve configuration status"},
+                }
+            ),
+            500,
+        )
 
 
 @config_bp.route("/reload", methods=["POST"])
@@ -223,7 +231,18 @@ def reload_configuration():
 
     except Exception as e:
         logger.error(f"Configuration reload failed: {e}", exc_info=True)
-        return jsonify({"success": False, "error": {"code": "RELOAD_FAILED", "message": str(e)}}), 500
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "RELOAD_FAILED",
+                        "message": "Configuration reload failed. Check server logs for details.",
+                    },
+                }
+            ),
+            500,
+        )
 
 
 @config_bp.route("/validate", methods=["POST"])
@@ -333,7 +352,18 @@ def validate_configuration():
 
     except Exception as e:
         logger.error(f"Configuration validation failed: {e}", exc_info=True)
-        return jsonify({"success": False, "error": {"code": "VALIDATION_FAILED", "message": str(e)}}), 500
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "Configuration validation failed. Check server logs for details.",
+                    },
+                }
+            ),
+            500,
+        )
 
 
 @config_bp.route("/schema", methods=["GET"])
@@ -374,7 +404,15 @@ def get_config_schema():
         )
     except Exception as e:
         logger.error(f"Failed to get config schema: {e}")
-        return jsonify({"success": False, "error": {"code": "SCHEMA_ERROR", "message": str(e)}}), 500
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": {"code": "SCHEMA_ERROR", "message": "Failed to retrieve configuration schema"},
+                }
+            ),
+            500,
+        )
 
 
 @config_bp.route("/environment", methods=["GET"])

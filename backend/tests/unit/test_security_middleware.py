@@ -208,6 +208,7 @@ class TestGetCorsOrigins:
         origins = get_cors_origins()
 
         assert "http://localhost:3000" in origins
+        # lgtm[py/incomplete-url-substring-sanitization] - Test assertion, not URL sanitization
         assert "http://example.com" in origins
 
     @patch.dict(os.environ, {"CORS_ORIGINS": "", "FLASK_DEBUG": "true"}, clear=False)
