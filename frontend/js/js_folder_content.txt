@@ -1,4 +1,0 @@
-main.js	# Page logic, UI Updates
-api.js	# Connects to Flask backend
-chart.js	# Chart.js graph rendering
-map.js	# Leaflet map initializer
