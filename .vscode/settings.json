@@ -23,5 +23,8 @@
         "markdown": true,
         "plaintext": true
     },
-    "github.copilot.nextEditSuggestions.extendedRange": true
+    "github.copilot.nextEditSuggestions.extendedRange": true,
+    "problems.visibility": {
+        "hint": false
+    }
 }
