@@ -34,19 +34,11 @@ import type { PredictionResponse } from '@/types';
 const requiredNumber = (fieldName: string) =>
   z
     .number({
-      required_error: `${fieldName} is required`,
-      invalid_type_error: `${fieldName} must be a valid number`,
+      error: `${fieldName} must be a valid number`,
     })
     .refine((val) => !Number.isNaN(val), {
       message: `${fieldName} is required`,
     });
-
-/**
- * Preprocessor to convert NaN to undefined for optional number fields
- * This allows z.optional() to work correctly with valueAsNumber inputs
- */
-const optionalNumberPreprocess = (val: unknown) =>
-  typeof val === 'number' && Number.isNaN(val) ? undefined : val;
 
 /**
  * Form validation schema
@@ -67,18 +59,25 @@ const predictionSchema = z.object({
     0,
     'Wind speed cannot be negative'
   ),
-  pressure: z.preprocess(
-    optionalNumberPreprocess,
-    z
-      .number()
-      .min(900, 'Pressure must be at least 900 hPa')
-      .max(1100, 'Pressure must be at most 1100 hPa')
-      .optional()
-      .nullable()
-  ),
+  pressure: z
+    .number()
+    .min(900, 'Pressure must be at least 900 hPa')
+    .max(1100, 'Pressure must be at most 1100 hPa')
+    .optional()
+    .nullable()
+    .or(z.nan().transform(() => undefined)),
 });
 
-type PredictionFormData = z.infer<typeof predictionSchema>;
+/**
+ * Form data type for prediction form
+ */
+type PredictionFormData = {
+  temperature: number;
+  humidity: number;
+  precipitation: number;
+  wind_speed: number;
+  pressure?: number | null;
+};
 
 /**
  * PredictionForm component props

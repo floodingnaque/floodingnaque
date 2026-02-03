@@ -10,7 +10,11 @@ import { LoginForm } from '@/features/auth/components/LoginForm';
 
 // Mock useAuth hook
 const mockLogin = vi.fn();
-const mockUseAuth = {
+const mockUseAuth: {
+  login: typeof mockLogin;
+  isLoggingIn: boolean;
+  loginError: { message?: string } | null;
+} = {
   login: mockLogin,
   isLoggingIn: false,
   loginError: null,

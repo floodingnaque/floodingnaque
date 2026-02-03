@@ -11,7 +11,12 @@ import type { PredictionResponse } from '@/types';
 
 // Mock usePrediction hook
 const mockPredict = vi.fn();
-const mockUsePrediction = {
+const mockUsePrediction: {
+  predict: typeof mockPredict;
+  isPending: boolean;
+  isError: boolean;
+  error: { message?: string } | null;
+} = {
   predict: mockPredict,
   isPending: false,
   isError: false,

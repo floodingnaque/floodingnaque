@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@/test/utils';
+import { render, screen } from '@/test/utils';
 import { AlertCard } from '@/features/alerts/components/AlertCard';
 import type { Alert } from '@/types';
 

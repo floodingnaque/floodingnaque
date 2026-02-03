@@ -9,7 +9,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/tests/mocks/server';
-import { createMockUser, createMockTokens } from '@/tests/mocks/handlers';
 import { createWrapper } from '@/test/utils';
 import { useAuth, authQueryKeys } from '@/features/auth/hooks/useAuth';
 

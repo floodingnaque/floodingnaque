@@ -5,19 +5,14 @@
  * token management, and protected routes.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server, createMockUser, createMockTokens } from '@/tests/mocks';
 import { render } from '@/test/utils';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 import { RegisterForm } from '@/features/auth/components/RegisterForm';
-import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 
-// Create a test component for protected route testing
-function TestProtectedContent() {
-  return <div data-testid="protected-content">Protected Content</div>;
-}
 
 describe('Authentication Flow Integration', () => {
   beforeEach(() => {

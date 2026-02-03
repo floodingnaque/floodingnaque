@@ -10,8 +10,6 @@ import { http, HttpResponse } from 'msw';
 import { server, createMockPrediction } from '@/tests/mocks';
 import { render } from '@/test/utils';
 import { PredictionForm } from '@/features/flooding/components/PredictionForm';
-import { PredictionResult } from '@/features/flooding/components/PredictionResult';
-import { RiskDisplay } from '@/features/flooding/components/RiskDisplay';
 import type { PredictionResponse } from '@/types';
 
 describe('Prediction Flow Integration', () => {

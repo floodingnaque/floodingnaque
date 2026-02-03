@@ -8,7 +8,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/tests/mocks/server';
-import { createMockAlert } from '@/tests/mocks/handlers';
 import { createWrapper } from '@/test/utils';
 import {
   useAlerts,

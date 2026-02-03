@@ -8,7 +8,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/tests/mocks/server';
-import { createMockPrediction } from '@/tests/mocks/handlers';
 import { createWrapper } from '@/test/utils';
 import { usePrediction } from '@/features/flooding/hooks/usePrediction';
 import type { PredictionRequest } from '@/types';

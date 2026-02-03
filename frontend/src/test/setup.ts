@@ -24,11 +24,11 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
+globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
-}));
+})) as unknown as typeof ResizeObserver;
 
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = vi.fn();
@@ -77,8 +77,8 @@ Object.defineProperty(HTMLInputElement.prototype, 'validity', {
 });
 
 // Mock URL.createObjectURL
-global.URL.createObjectURL = vi.fn(() => 'mock-url');
-global.URL.revokeObjectURL = vi.fn();
+globalThis.URL.createObjectURL = vi.fn(() => 'mock-url');
+globalThis.URL.revokeObjectURL = vi.fn();
 
 // Setup MSW server
 beforeAll(() => {
