@@ -296,6 +296,14 @@ curl http://localhost:5000/api/models
 | [backend/docs/MODEL_MANAGEMENT.md](backend/docs/MODEL_MANAGEMENT.md) | Model versioning |
 | [backend/docs/BACKEND_COMPLETE.md](backend/docs/BACKEND_COMPLETE.md) | Full documentation |
 
+### Infrastructure & DevOps
+
+| Document | Description |
+|----------|-------------|
+| [docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) | Complete Docker deployment guide |
+| [docs/TLS_SETUP.md](docs/TLS_SETUP.md) | TLS/SSL configuration with Nginx |
+| [docs/GIT_WORKFLOW_GUIDE.md](docs/GIT_WORKFLOW_GUIDE.md) | Git branching strategy |
+
 ## Thesis Defense Materials
 
 ### Key Talking Points

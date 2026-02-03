@@ -82,11 +82,11 @@ jobs:
         echo "📝 Reason: ${{ github.event.inputs.reason }}"
         echo "👤 Triggered by: ${{ github.actor }}"
         # Add your staging rollback steps here:
-        # - SSH and docker-compose pull with specific tag
+        # - SSH and docker compose pull with specific tag
         # - Cloud provider CLI rollback
         # Example:
-        # docker-compose -f docker-compose-staging.yml pull
-        # docker-compose -f docker-compose-staging.yml up -d
+        # docker compose -f compose.staging.yaml pull
+        # docker compose -f compose.staging.yaml up -d
 
     - name: Verify rollback health
       run: |
@@ -122,11 +122,11 @@ jobs:
         echo "👤 Triggered by: ${{ github.actor }}"
         echo "⚠️  This is a PRODUCTION rollback"
         # Add your production rollback steps here:
-        # - SSH and docker-compose pull with specific tag
+        # - SSH and docker compose pull with specific tag
         # - Cloud provider CLI rollback
         # Example:
-        # docker-compose -f docker-compose-production.yml pull
-        # docker-compose -f docker-compose-production.yml up -d
+        # docker compose -f compose.production.yaml pull
+        # docker compose -f compose.production.yaml up -d
 
     - name: Verify rollback health
       run: |

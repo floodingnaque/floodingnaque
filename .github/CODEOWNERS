@@ -18,7 +18,7 @@
 
 # CI/CD and DevOps configuration
 /.github/workflows/ @KyaRhamil
-/docker-compose*.yml @KyaRhamil
+/compose*.yaml @KyaRhamil
 /nginx/ @KyaRhamil
 /monitoring/ @KyaRhamil
 

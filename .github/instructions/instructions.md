@@ -28,11 +28,11 @@ A developmental research project implementing a machine learning-based flood pre
 # Type hints required
 def predict_flood_risk(rainfall: float, water_level: float) -> dict[str, any]:
     """Predict flood risk based on weather parameters.
-    
+
     Args:
         rainfall: Precipitation in mm
         water_level: Current water level in meters
-        
+
     Returns:
         Dictionary with prediction and confidence score
     """
@@ -41,7 +41,7 @@ def predict_flood_risk(rainfall: float, water_level: float) -> dict[str, any]:
 # Singleton pattern for model loading
 class ModelLoader:
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -126,7 +126,7 @@ def predict_with_confidence(features: np.ndarray) -> tuple[str, float]:
     prediction = model.predict(features)[0]
     probabilities = model.predict_proba(features)[0]
     confidence = max(probabilities)
-    
+
     risk_level = classify_risk(prediction)
     return risk_level, confidence
 
@@ -196,7 +196,7 @@ test('displays risk level correctly', async () => {
 ```
 
 ## Security Best Practices
-- Store API keys in `.env`: `OPENWEATHER_API_KEY=xxx`
+- Store API keys in `.env.development`: `OPENWEATHER_API_KEY=xxx`
 - Validate input ranges: rainfall (0-500mm), water_level (0-10m)
 - Implement CORS with specific origins
 - Sanitize user inputs before database queries
@@ -216,7 +216,7 @@ test('displays risk level correctly', async () => {
 class ModelLoader:
     def __init__(self):
         self._model = None
-    
+
     @property
     def model(self):
         if self._model is None:
@@ -229,12 +229,12 @@ class ModelLoader:
 const usePrediction = () => {
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   const fetchPrediction = useCallback(async () => {
     setLoading(true);
     // fetch logic
   }, []);
-  
+
   return { prediction, loading, fetchPrediction };
 };
 ```

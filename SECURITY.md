@@ -41,12 +41,12 @@ Send details to: **iamdefinitely.ramil@gmail.com**
 
 ### API Keys and Secrets
 - **NEVER** commit API keys, tokens, or secrets to the repository
-- Use `.env` files for local development (already in `.gitignore`)
+- Use `.env.development` files for local development (already in `.gitignore`)
 - Use `.env.example` with **placeholder values only**
 - Rotate any accidentally exposed credentials immediately
 
 ### Environment Variables
-Required secrets (store in `.env`, never commit):
+Required secrets (store in `.env.development`, never commit):
 - `WORLDTIDES_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_KEY`

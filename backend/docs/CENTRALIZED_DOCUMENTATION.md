@@ -967,11 +967,11 @@ $startDate = "2025-01-01T00:00:00"
 $endDate = "2025-12-31T23:59:59"
 Invoke-RestMethod -Uri "http://localhost:5000/data?start_date=$startDate&end_date=$endDate&limit=100" -Method GET
 This usually means the JSON wasn't parsed correctly. Try:
-docker-compose -f docker-compose-production.yml down -v
+docker compose -f compose.production.yaml down -v
 ./backend/scripts/backup_database.sh --restore /app/backups/floodingnaque_backup_YYYYMMDD_HHMMSS_full.sql.gz
 **Symptoms:** 500 errors, health check shows database unhealthy
 **Diagnosis:**
-docker-compose -f docker-compose-production.yml exec backend python -c "
+docker compose -f compose.production.yaml exec backend python -c "
 from app.core.database import engine
 from sqlalchemy import text
 with engine.connect() as conn:
@@ -2331,7 +2331,7 @@ start = time.time()
 result = make_prediction(get_production_model(), data)
 latency = (time.time() - start) * 1000
 cat backend/.env.production | grep -v "^#" | grep -v "^$"
-docker-compose -f docker-compose-production.yml down
+docker compose -f compose.production.yaml down
 cp backend/.env.production.backup backend/.env.production
 SENTRY_DSN=your_production_dsn
 SENTRY_ENVIRONMENT=production
@@ -4703,7 +4703,7 @@ docker secret create floodingnaque_database_url ./secrets/database_url.txt
 docker secret create floodingnaque_redis_url ./secrets/redis_url.txt
 docker secret create floodingnaque_dd_api_key ./secrets/dd_api_key.txt
 
-3. **Modify docker-compose-production.yml**:
+3. **Modify compose.production.yaml**:
 Add secrets section at the top level:
 secrets:
 secret_key:
@@ -4727,7 +4727,7 @@ shred -u ./secrets/*.txt  # Linux
 rm -P ./secrets/*.txt     # macOS
 
 6. **Deploy with secrets**:
-docker stack deploy -c docker-compose-production.yml floodingnaque
+docker stack deploy -c compose.production.yaml floodingnaque
 For non-Swarm deployments, you can use file-based secrets.
 echo "postgresql://user:pass@host:5432/db?sslmode=require" > ./secrets/database_url.txt
 echo "your-dd-api-key" > ./secrets/dd_api_key.txt
@@ -4792,7 +4792,7 @@ docker service inspect <service_name> --format '{{json .Spec.TaskTemplate.Contai
 
 - [ ] Create Docker secrets (Swarm) or configure file-based secrets
 
-- [ ] Update docker-compose.yml with secrets configuration
+- [ ] Update compose.yaml with secrets configuration
 
 - [ ] Update application code to read from files
 
@@ -5977,7 +5977,7 @@ docker network disconnect floodingnaque-production floodingnaque-api-prod
 - Security advisory from vendor
 pip-audit -r requirements.txt --strict
 docker build -t floodingnaque-api:patched .
-docker-compose -f docker-compose-production.yml up -d --build
+docker compose -f compose.production.yaml up -d --build
 **Risk Assessment Questions:**
 1. Is the vulnerable code path used in our application?
 2. Is the vulnerability remotely exploitable?
@@ -6024,8 +6024,8 @@ Floodingnaque Security Team
 python -c "import secrets; print('SECRET_KEY=' + secrets.token_hex(32))"
 python -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_hex(32))"
 python -c "import secrets; print('API_KEY=' + secrets.token_urlsafe(32))"
-docker-compose -f docker-compose-production.yml down
-docker-compose -f docker-compose-production.yml up -d
+docker compose -f compose.production.yaml down
+docker compose -f compose.production.yaml up -d
 docker logs floodingnaque-api-prod 2>&1 | grep -E "ERROR|CRITICAL|401|403|500"
 cat access.log | awk '{print $1}' | sort | uniq -c | sort -rn
 grep -i "sqlmap\|nikto\|scanner\|bot" access.log
@@ -7476,13 +7476,13 @@ Invoke-RestMethod -Uri "http://localhost:5000/status"
 Write-Host "Server is running"
 Write-Host "Server is not responding"
 Action | Command
-Start all services | `docker-compose -f docker-compose-production.yml up -d`
-Stop all services | `docker-compose -f docker-compose-production.yml down`
-View logs | `docker-compose -f docker-compose-production.yml logs -f`
-Restart backend | `docker-compose -f docker-compose-production.yml restart backend`
+Start all services | `docker compose -f compose.production.yaml up -d`
+Stop all services | `docker compose -f compose.production.yaml down`
+View logs | `docker compose -f compose.production.yaml logs -f`
+Restart backend | `docker compose -f compose.production.yaml restart backend`
 Health check | `curl http://localhost:5000/health`
 cd /path/to/floodingnaque
-docker-compose -f docker-compose-production.yml ps
+docker compose -f compose.production.yaml ps
 curl -s http://localhost:5000/health | jq .
 curl -s http://localhost:5000/health/detailed | jq .
 
@@ -7497,20 +7497,20 @@ curl -s http://localhost:5000/health/detailed | jq .
 - [ ] Redis connected: Check `/health/detailed` response
 
 - [ ] ML model loaded: Check `/health/detailed` response
-docker-compose -f docker-compose-production.yml stop
-docker-compose -f docker-compose-production.yml stop -t 30
-docker-compose -f docker-compose-production.yml kill
-docker-compose -f docker-compose-production.yml rm -f
+docker compose -f compose.production.yaml stop
+docker compose -f compose.production.yaml stop -t 30
+docker compose -f compose.production.yaml kill
+docker compose -f compose.production.yaml rm -f
 docker images | grep floodingnaque
 docker tag floodingnaque-api:production-v2.0.0 floodingnaque-api:rollback-backup
 docker tag floodingnaque-api:production-v1.9.0 floodingnaque-api:production-v2.0.0
-docker-compose -f docker-compose-production.yml restart backend
+docker compose -f compose.production.yaml restart backend
 **Note:** Rotating JWT_SECRET_KEY will invalidate all existing tokens.
 ./backend/scripts/backup_database.sh --list
 **Symptoms:** Container exits immediately, health check fails
 **Diagnosis:**
-docker-compose -f docker-compose-production.yml logs backend
-docker-compose -f docker-compose-production.yml run --rm backend python -c "from app.core.config import Config; Config.validate()"
+docker compose -f compose.production.yaml logs backend
+docker compose -f compose.production.yaml run --rm backend python -c "from app.core.config import Config; Config.validate()"
 **Common Causes & Fixes:**
 Issue | Error Message | Fix
 Missing SECRET_KEY | `CRITICAL: SECRET_KEY must be set` | Set SECRET_KEY in .env.production
@@ -7528,9 +7528,9 @@ docker exec floodingnaque-api-prod ps aux --sort=-%mem
 
 3. Check for memory leaks in ML model loading
 
-4. Increase container memory limit in docker-compose
+4. Increase container memory limit in compose.production.yaml
 **Symptoms:** 429 Too Many Requests
-docker-compose -f docker-compose-production.yml exec backend python -c "
+docker compose -f compose.production.yaml exec backend python -c "
 import redis
 r = redis.from_url('${REDIS_URL}')
 for key in r.scan_iter('LIMITER:*'):
@@ -7560,8 +7560,8 @@ Endpoint | Purpose | Expected Response
 `/health/detailed` | Full system status | Includes DB, Redis, Model status
 `/health/ready` | Kubernetes readiness | 200 if ready, 503 if not
 `/metrics` | Prometheus metrics | Prometheus format
-docker-compose -f docker-compose-production.yml logs --since 1h backend
-docker-compose -f docker-compose-production.yml logs -f backend
+docker compose -f compose.production.yaml logs --since 1h backend
+docker compose -f compose.production.yaml logs -f backend
 docker exec floodingnaque-api-prod cat /app/logs/floodingnaque.log
 Add to crontab:
 0 2 * * * /path/to/floodingnaque/backend/scripts/backup_database.sh >> /var/log/floodingnaque-backup.log 2>&1
@@ -7580,7 +7580,7 @@ Add to crontab:
 5. **Verify data** integrity
 
 6. **Restart services**
-Edit docker-compose-production.yml:
+Edit compose.production.yaml:
 deploy:
 resources:
 limits:

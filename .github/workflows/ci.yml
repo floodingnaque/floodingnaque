@@ -25,6 +25,46 @@ jobs:
     secrets: inherit
 
   # ==========================================================================
+  # Docker Compose Validation
+  # ==========================================================================
+  compose-validation:
+    name: Validate Compose Files
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate base compose.yaml
+      run: docker compose config > /dev/null
+      env:
+        POSTGRES_PASSWORD: validation-dummy
+        PGBOUNCER_ADMIN_PASSWORD: validation-dummy
+        PGBOUNCER_STATS_PASSWORD: validation-dummy
+
+    - name: Validate compose.development.yaml
+      run: docker compose -f compose.development.yaml config > /dev/null
+
+    - name: Validate compose.staging.yaml
+      run: docker compose -f compose.staging.yaml config > /dev/null
+      env:
+        OWM_API_KEY: validation-dummy
+
+    - name: Validate compose.production.yaml
+      run: docker compose -f compose.production.yaml config > /dev/null
+      env:
+        DD_API_KEY: validation-dummy
+        PGBOUNCER_DB_PASSWORD: validation-dummy
+
+    - name: Validate production with profiles
+      run: docker compose -f compose.production.yaml --profile nginx --profile monitoring config > /dev/null
+      env:
+        DD_API_KEY: validation-dummy
+        PGBOUNCER_DB_PASSWORD: validation-dummy
+
+    - name: Validate compose.mlflow.yaml
+      run: docker compose -f compose.mlflow.yaml config > /dev/null
+
+  # ==========================================================================
   # Container Image Security Scanning with Trivy
   # ==========================================================================
   container-scan:
