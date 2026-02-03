@@ -358,100 +358,46 @@ def run_train(args) -> int:
     """Execute training command."""
     print(f"🚂 Training mode: {args.mode}")
 
-    # Route to appropriate training module
-    if args.mode == "basic":
-        from scripts.train import main as train_main
+    # Use unified training module for all modes
+    from scripts.train_unified import TrainingConfig, TrainingMode, UnifiedTrainer
 
-        # Build argv for train.py
-        argv = []
-        if args.data:
-            argv.extend(["--data", args.data])
-        if args.grid_search:
-            argv.append("--grid-search")
-        if args.cv_folds != 5:
-            argv.extend(["--cv-folds", str(args.cv_folds)])
+    # Build configuration from arguments
+    config = TrainingConfig(
+        data_path=args.data,
+        grid_search=args.grid_search,
+        randomized_search=args.randomized_search,
+        cv_folds=args.cv_folds,
+        version=args.version,
+        phase=args.phase,
+        quick=args.quick,
+        with_smote=args.with_smote,
+        all_stations=args.all_stations,
+        shap=args.shap,
+        mlflow=args.mlflow,
+        promote=args.promote,
+        output_dir=args.output_dir,
+    )
 
-        sys.argv = ["train.py"] + argv
-        result = train_main()
-        return result if isinstance(result, int) else 0
+    # Create trainer with selected mode
+    mode = TrainingMode(args.mode)
+    trainer = UnifiedTrainer(mode=mode, config=config)
 
-    elif args.mode == "pagasa":
-        from scripts.train_pagasa import main as pagasa_main
+    # Execute training
+    result = trainer.train()
 
-        argv = []
-        if args.all_stations:
-            argv.append("--all-stations")
-        if args.grid_search:
-            argv.append("--grid-search")
-
-        sys.argv = ["train_pagasa.py"] + argv
-        result = pagasa_main()
-        return result if isinstance(result, int) else 0
-
-    elif args.mode == "production":
-        from scripts.train_production import main as production_main
-
-        argv = []
-        if args.data:
-            argv.extend(["--data", args.data])
-        if args.shap:
-            argv.append("--shap")
-
-        sys.argv = ["train_production.py", "--production"] + argv
-        result = production_main()
-        return result if isinstance(result, int) else 0
-
-    elif args.mode == "progressive":
-        from scripts.train_progressive import main as progressive_main
-
-        argv = []
-        if args.phase:
-            argv.extend(["--phase", str(args.phase)])
-        if args.quick:
-            argv.append("--quick")
-        if args.with_smote:
-            argv.append("--with-smote")
-
-        sys.argv = ["train_progressive.py"] + argv
-        result = progressive_main()
-        return result if isinstance(result, int) else 0
-
-    elif args.mode == "enhanced":
-        from scripts.train_enhanced import main as enhanced_main
-
-        argv = []
-        if args.randomized_search:
-            argv.append("--randomized-search")
-
-        sys.argv = ["train_enhanced.py"] + argv
-        result = enhanced_main()
-        return result if isinstance(result, int) else 0
-
-    elif args.mode == "enterprise":
-        from scripts.train_enterprise import main as enterprise_main
-
-        argv = []
-        if args.version:
-            argv.extend(["--version", str(args.version)])
-        if args.grid_search:
-            argv.append("--grid-search")
-        if args.promote:
-            argv.extend(["--promote", args.promote])
-
-        sys.argv = ["train_enterprise.py"] + argv
-        result = enterprise_main()
-        return result if isinstance(result, int) else 0
-
-    elif args.mode == "ultimate":
-        from scripts.train_ultimate import main as ultimate_main
-
-        argv = []
-        if args.grid_search:
-            argv.append("--grid-search")
-
-        sys.argv = ["train_ultimate.py", "--progressive"] + argv
-        result = ultimate_main()
-        return result if isinstance(result, int) else 0
+    # Print summary
+    print("\n" + "=" * 60)
+    print("TRAINING COMPLETE")
+    print("=" * 60)
+    if isinstance(result, dict) and "metrics" in result:
+        print(f"Model: {result.get('model_path', 'N/A')}")
+        metrics = result.get("metrics", {})
+        if "f1_score" in metrics:
+            print(f"F1 Score: {metrics['f1_score']:.4f}")
+    elif isinstance(result, dict):
+        for version, data in result.items():
+            if isinstance(data, dict) and "metrics" in data:
+                print(f"{version}: F1={data['metrics'].get('f1_score', 0):.4f}")
 
     return 0
 
@@ -484,31 +430,36 @@ def run_evaluate(args) -> int:
 
 def run_validate(args) -> int:
     """Execute validation command."""
-    import importlib
-
     print("✅ Running model validation...")
 
     if args.compare:
-        compare_models_module = importlib.import_module("scripts.compare_models")
+        from scripts.compare_models import compare_models
 
-        if hasattr(compare_models_module, "main"):
-            result = compare_models_module.main()
-            return result if isinstance(result, int) else 0
+        compare_models()
         return 0
     else:
-        validate_model_module = importlib.import_module("scripts.validate_model")
+        from scripts.validate_model import validate_model
 
-        argv = []
-        if args.model_path:
-            argv.extend(["--model-path", args.model_path])
         if args.all:
-            argv.append("--all")
+            # Validate all models in the models directory
+            from scripts.compare_models import get_all_model_versions
 
-        sys.argv = ["validate_model.py"] + argv
-        if hasattr(validate_model_module, "main"):
-            result = validate_model_module.main()
-            return result if isinstance(result, int) else 0
-        return 0
+            versions = get_all_model_versions()
+            if not versions:
+                print("No model versions found to validate.")
+                return 1
+
+            all_valid = True
+            for v in versions:
+                print(f"\nValidating model version {v['version']}...")
+                result = validate_model(model_path=v["path"])
+                if not result or not result.get("valid", False):
+                    all_valid = False
+
+            return 0 if all_valid else 1
+        else:
+            result = validate_model(model_path=args.model_path)
+            return 0 if result and result.get("valid", False) else 1
 
 
 def run_data(args) -> int:

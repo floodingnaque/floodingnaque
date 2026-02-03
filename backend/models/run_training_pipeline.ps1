@@ -57,6 +57,8 @@ param(
     [switch]$PAGASA,
     [switch]$Ultimate,
     [switch]$Progressive,
+    [switch]$Progressive6,
+    [int]$Version,
 
     [switch]$LatestOnly,
     [switch]$SkipMultiLevel,
@@ -67,10 +69,10 @@ param(
     [switch]$JsonLogs,
 
     [int]$CVFolds = 10,
-    [int]$Seed    = 42,
+    [int]$Seed = 42,
 
-    [string]$DataDir   = "data",
-    [string]$ModelDir  = "models",
+    [string]$DataDir = "data",
+    [string]$ModelDir = "models",
     [string]$ReportDir = "reports",
     [string]$ScriptsDir = "scripts",
     [string]$LogFile
@@ -88,7 +90,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 # HELP
 # =========================
 if ($Help) {
-@"
+    @"
 Floodingnaque ML Pipeline
 =========================
 
@@ -110,6 +112,7 @@ TRAINING MODES (mutually exclusive):
   -PAGASA            PAGASA-specific training
   -Ultimate          Ultimate training with all features
   -Progressive       Progressive training (same as Ultimate)
+  -Progressive6      Progressive training v1-v6 (thesis demonstration)
 
 OPTIONS:
   -DryRun            Show execution plan only
@@ -118,6 +121,7 @@ OPTIONS:
   -SkipValidation    Skip model validation step
   -CVFolds <int>     Cross-validation folds (default: 10)
   -Seed <int>        Random seed (default: 42)
+  -Version <int>     Train specific version only (1-6, use with -Progressive6)
 
 EXAMPLES:
   # Ingest data only
@@ -132,10 +136,19 @@ EXAMPLES:
   # Quick training without ingestion
   ./run_training_pipeline.ps1 -Quick -SkipIngestion
 
+  # Progressive v1-v6 training (all versions)
+  ./run_training_pipeline.ps1 -Progressive6
+
+  # Progressive v1-v6 quick mode
+  ./run_training_pipeline.ps1 -Progressive6 -Quick
+
+  # Train only v5
+  ./run_training_pipeline.ps1 -Progressive6 -Version 5
+
   # Dry run to see what would happen
   ./run_training_pipeline.ps1 -Full -DryRun
 "@
-return
+    return
 }
 
 # =========================
@@ -143,23 +156,39 @@ return
 # =========================
 
 # Check if this is ingest-only mode
-$IngestOnly = $Ingest -and -not $Quick -and -not $Full -and -not $PAGASA -and -not $Ultimate -and -not $Progressive
+$IngestOnly = $Ingest -and -not $Quick -and -not $Full -and -not $PAGASA -and -not $Ultimate -and -not $Progressive -and -not $Progressive6
 
 # Check if any ingest source is specified
 $HasIngestSource = $IngestGoogle -or $IngestMeteostat -or $IngestTides -or $IngestFile -or $IngestDir
 
 # Training mode validation
-$modes = @($Quick, $Full, $PAGASA, $Ultimate, $Progressive) | Where-Object { $_ }
+$modes = @($Quick, $Full, $PAGASA, $Ultimate, $Progressive, $Progressive6) | Where-Object { $_ }
 if ($modes.Count -gt 1) {
     Write-Error "Only one training mode may be specified"
     exit 1
 }
 
 # Default to Full mode if no mode specified and not ingest-only
-if (-not $Quick -and -not $Full -and -not $PAGASA -and -not $Ultimate -and -not $Progressive -and -not $IngestOnly) {
+if (-not $Quick -and -not $Full -and -not $PAGASA -and -not $Ultimate -and -not $Progressive -and -not $Progressive6 -and -not $IngestOnly) {
     if (-not $Ingest) {
         $Full = $true
     }
+}
+
+if ($PAGASA -and ($Ultimate -or $Progressive)) {
+    Write-Error "PAGASA cannot be combined with Ultimate/Progressive"
+    exit 1
+}
+
+# Version parameter validation
+if ($Version -and -not $Progressive6) {
+    Write-Error "Version parameter can only be used with -Progressive6 mode"
+    exit 1
+}
+
+if ($Version -and ($Version -lt 1 -or $Version -gt 6)) {
+    Write-Error "Version must be between 1 and 6"
+    exit 1
 }
 
 if ($PAGASA -and ($Ultimate -or $Progressive)) {
@@ -208,7 +237,8 @@ function Emit-Log {
 
     if ($JsonLogs) {
         $entry | ConvertTo-Json -Compress | Write-Host
-    } else {
+    }
+    else {
         Write-Host "[$($entry.timestamp)][$Level] $Message"
     }
 
@@ -251,11 +281,13 @@ function Run-Step {
         Remove-Job $job
 
         Emit-Log "INFO" "END: $Name"
-    } catch {
+    }
+    catch {
         if ($Critical) {
             Emit-Log "ERROR" "FAILED: $Name :: $_"
             exit 1
-        } else {
+        }
+        else {
             Emit-Log "WARN" "WARN: $Name :: $_"
             $Warnings += "$Name :: $_"
         }
@@ -295,7 +327,7 @@ $ModelPath = Join-Path $BackendDir $ModelDir
 $ReportPath = Join-Path $BackendDir $ReportDir
 
 if (-not $DryRun) {
-    New-Item -ItemType Directory -Force -Path $DataPath,$ModelPath,$ReportPath | Out-Null
+    New-Item -ItemType Directory -Force -Path $DataPath, $ModelPath, $ReportPath | Out-Null
 }
 
 # =========================
@@ -305,7 +337,8 @@ $CredentialsFile = Join-Path $BackendDir "astral-archive-482008-g2-b4f2279053c0.
 if (Test-Path $CredentialsFile) {
     $env:GOOGLE_APPLICATION_CREDENTIALS = $CredentialsFile
     Emit-Log "INFO" "Google credentials file found"
-} elseif ($IngestGoogle) {
+}
+elseif ($IngestGoogle) {
     Emit-Log "WARN" "Google credentials file not found (Earth Engine may not work)"
 }
 
@@ -320,8 +353,12 @@ $env:GOOGLE_SERVICE_ACCOUNT_EMAIL = "floodingnaque@astral-archive-482008-g2.iam.
 Emit-Log "INFO" "PIPELINE START"
 if ($IngestOnly) {
     Emit-Log "INFO" "MODE: INGEST-ONLY"
-} else {
-    Emit-Log "INFO" "MODE: $(if($PAGASA){'PAGASA'}elseif($Ultimate -or $Progressive){'ULTIMATE'}elseif($Quick){'QUICK'}else{'FULL'})"
+}
+else {
+    Emit-Log "INFO" "MODE: $(if($Progressive6){'PROGRESSIVE_V6'}elseif($PAGASA){'PAGASA'}elseif($Ultimate -or $Progressive){'ULTIMATE'}elseif($Quick){'QUICK'}else{'FULL'})"
+    if ($Progressive6 -and $Version) {
+        Emit-Log "INFO" "Training only version: v$Version"
+    }
 }
 Emit-Log "INFO" "Seed=$Seed CVFolds=$CVFolds DryRun=$DryRun"
 
@@ -337,10 +374,12 @@ if ($HasIngestSource -and -not $SkipIngestion) {
     if ($IngestFile) {
         $IngestArgs += "--file"
         $IngestArgs += $IngestFile
-    } elseif ($IngestDir) {
+    }
+    elseif ($IngestDir) {
         $IngestArgs += "--dir"
         $IngestArgs += $IngestDir
-    } else {
+    }
+    else {
         if ($IngestGoogle) {
             $IngestArgs += "--fetch-google"
         }
@@ -411,6 +450,36 @@ elseif ($Ultimate -or $Progressive) {
     Run-Step "Ultimate training" {
         python (Join-Path $using:ScriptsPath "train_ultimate.py") --cv-folds $using:CVFolds --progressive
     } -Critical
+}
+elseif ($Progressive6) {
+    # Build arguments for progressive v6 training
+    $ProgressiveArgs = @()
+    $ProgressiveArgs += "--cv-folds"
+    $ProgressiveArgs += $CVFolds
+    
+    if ($Quick) {
+        $ProgressiveArgs += "--quick"
+    }
+    
+    if ($Version) {
+        $ProgressiveArgs += "--version"
+        $ProgressiveArgs += $Version
+    }
+    
+    $ProgressiveScript = Join-Path $ScriptsPath "train_progressive_v6.py"
+    
+    if (-not $DryRun) {
+        Emit-Log "INFO" "Running: python $ProgressiveScript $($ProgressiveArgs -join ' ')"
+        & python $ProgressiveScript @ProgressiveArgs
+        if ($LASTEXITCODE -ne 0) {
+            Emit-Log "ERROR" "Progressive v6 training failed with exit code: $LASTEXITCODE"
+            exit 1
+        }
+        Emit-Log "INFO" "Progressive v6 training completed"
+    }
+    else {
+        Emit-Log "INFO" "DRY-RUN: Would run progressive v6 training"
+    }
 }
 elseif ($Quick) {
     Run-Step "Quick training" {

@@ -48,7 +48,7 @@ from dotenv import load_dotenv
 def load_env_files():
     """Load environment variables from .env files in priority order."""
     env_files = [
-        BACKEND_DIR / ".env",
+        BACKEND_DIR / ".env.development",
         BACKEND_DIR / ".env.local",
         BACKEND_DIR / ".env.production",
     ]
