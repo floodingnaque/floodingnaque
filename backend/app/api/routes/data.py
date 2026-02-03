@@ -263,6 +263,7 @@ def get_nearby_stations():
 
 
 @data_bp.route("/weather/hourly", methods=["GET"])
+@data_bp.route("/hourly", methods=["GET"])  # Alias for frontend compatibility
 @limiter.limit(get_endpoint_limit("data"))
 @cached("weather_hourly", ttl=300)  # Cache for 5 minutes
 def get_hourly_weather():

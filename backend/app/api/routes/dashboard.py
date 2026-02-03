@@ -25,6 +25,7 @@ dashboard_bp = Blueprint("dashboard", __name__)
 
 
 @dashboard_bp.route("/summary", methods=["GET"])
+@dashboard_bp.route("/stats", methods=["GET"])  # Alias for frontend compatibility
 @limiter.limit("60 per minute")
 def get_dashboard_summary():
     """

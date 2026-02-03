@@ -56,6 +56,13 @@ from app.utils.metrics import (
     record_external_api_call,
     record_prediction,
 )
+from app.utils.secrets import (
+    get_secret,
+    get_secret_or_env,
+    mask_secret,
+    read_secret_file,
+    validate_secrets,
+)
 from app.utils.sentry import (
     add_breadcrumb,
     capture_exception,
@@ -103,6 +110,12 @@ __all__ = [
     "record_prediction",
     "record_external_api_call",
     "record_alert_sent",
+    # Secrets
+    "get_secret",
+    "get_secret_or_env",
+    "read_secret_file",
+    "mask_secret",
+    "validate_secrets",
     # Sentry
     "init_sentry",
     "capture_exception",

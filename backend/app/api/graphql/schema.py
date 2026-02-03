@@ -20,8 +20,14 @@ logger = get_logger(__name__)
 # Skip in testing mode to allow test fixtures to control environment
 _backend_dir = Path(__file__).resolve().parent.parent.parent.parent
 if os.getenv("TESTING", "false").lower() != "true":
-    load_dotenv(_backend_dir / ".env")
-    load_dotenv(_backend_dir / ".env.production", override=True)
+    # Load environment-specific file based on APP_ENV
+    _app_env = os.getenv("APP_ENV", "development").lower()
+    if _app_env in ("production", "prod"):
+        load_dotenv(_backend_dir / ".env.production")
+    elif _app_env in ("staging", "stage"):
+        load_dotenv(_backend_dir / ".env.staging")
+    else:
+        load_dotenv(_backend_dir / ".env.development")
 
 # Check if GraphQL is enabled
 GRAPHQL_ENABLED = os.getenv("GRAPHQL_ENABLED", "false").lower() == "true"

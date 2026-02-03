@@ -267,6 +267,7 @@ class TestModelIntegrity:
         finally:
             os.unlink(temp_path)
 
+    @patch.dict(os.environ, {"REQUIRE_MODEL_SIGNATURE": "true"})
     def test_verify_model_integrity_no_checksum(self):
         """Test integrity verification when no checksum is available."""
         with tempfile.NamedTemporaryFile(delete=False, suffix=".joblib") as f:

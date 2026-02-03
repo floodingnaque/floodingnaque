@@ -2,12 +2,13 @@
 
 import logging
 import os
-import secrets
+import secrets as python_secrets  # Renamed to avoid conflict with our secrets module
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from typing import List, Optional
 
+from app.utils.secrets import get_secret
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -31,40 +32,53 @@ def is_debug_mode() -> bool:
 
 def _get_secret_key() -> str:
     """
-    Get SECRET_KEY from environment with security validation.
+    Get SECRET_KEY from environment or Docker secret with security validation.
 
-    In production (FLASK_DEBUG=False), fails if not explicitly set.
-    In development, generates a temporary key with warning.
+    Supports Docker Secrets _FILE pattern:
+    - First checks SECRET_KEY_FILE environment variable
+    - Falls back to SECRET_KEY environment variable
+    - In development, generates a temporary key with warning
+    - In production (FLASK_DEBUG=False), fails if not explicitly set
     """
-    key = os.getenv("SECRET_KEY")
+    # Use get_secret for Docker Secrets _FILE pattern support
+    key = get_secret("SECRET_KEY")
     is_debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
     if not key or key in ("change-me-in-production", "change_this_to_a_random_secret_key_in_production"):
         if not is_debug:
             raise ValueError(
                 "CRITICAL: SECRET_KEY must be set in production! "
+                "Set SECRET_KEY_FILE=/run/secrets/secret_key or SECRET_KEY env var. "
                 'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
             )
         # Development mode - generate temporary key
-        key = secrets.token_hex(32)
+        key = python_secrets.token_hex(32)
         logger.warning(
-            "SECRET_KEY not configured - using temporary key. " "Set SECRET_KEY in .env for persistent sessions."
+            "SECRET_KEY not configured - using temporary key. "
+            "Set SECRET_KEY or SECRET_KEY_FILE in .env for persistent sessions."
         )
     return key
 
 
 def _get_jwt_secret_key() -> str:
-    """Get JWT_SECRET_KEY with security validation."""
-    key = os.getenv("JWT_SECRET_KEY")
+    """
+    Get JWT_SECRET_KEY with security validation.
+
+    Supports Docker Secrets _FILE pattern:
+    - First checks JWT_SECRET_KEY_FILE environment variable
+    - Falls back to JWT_SECRET_KEY environment variable
+    """
+    key = get_secret("JWT_SECRET_KEY")
     is_debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 
     if not key or key in ("change_this_to_another_random_secret_key",):
         if not is_debug:
             raise ValueError(
                 "CRITICAL: JWT_SECRET_KEY must be set in production! "
+                "Set JWT_SECRET_KEY_FILE=/run/secrets/jwt_secret_key or JWT_SECRET_KEY env var. "
                 'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
             )
-        key = secrets.token_hex(32)
+        key = python_secrets.token_hex(32)
         logger.warning("JWT_SECRET_KEY not configured - using temporary key.")
     return key
 
@@ -97,6 +111,10 @@ def _get_database_url() -> str:
     """
     Get DATABASE_URL with environment-specific validation.
 
+    Supports Docker Secrets _FILE pattern:
+    - First checks DATABASE_URL_FILE environment variable
+    - Falls back to DATABASE_URL environment variable
+
     - Production: Requires Supabase PostgreSQL with SSL (fails if not set or using SQLite)
     - Staging: Requires PostgreSQL with SSL (fails if using SQLite)
     - Development: Allows SQLite fallback with warning
@@ -107,7 +125,8 @@ def _get_database_url() -> str:
     Raises:
         ValueError: If production/staging uses SQLite or DATABASE_URL not configured
     """
-    url = os.getenv("DATABASE_URL", "")
+    # Use get_secret for Docker Secrets _FILE pattern support
+    url = get_secret("DATABASE_URL", default="")
     is_debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
     app_env = os.getenv("APP_ENV", "development").lower()
 
@@ -183,11 +202,7 @@ def get_env_file() -> Path:
             return env_file
         logger.warning(f"Environment file {env_file_name} not found, falling back...")
 
-    # Fallback order: .env -> .env.development
-    default_env = BASE_DIR / ".env"
-    if default_env.exists():
-        return default_env
-
+    # Default to .env.development for local development
     dev_env = BASE_DIR / ".env.development"
     if dev_env.exists():
         logger.info("Using .env.development as default")
@@ -195,7 +210,7 @@ def get_env_file() -> Path:
 
     # No env file found - will rely on system environment variables
     logger.warning("No .env file found. Using system environment variables only.")
-    return default_env  # Return path even if doesn't exist - load_dotenv handles gracefully
+    return dev_env  # Return path even if doesn't exist - load_dotenv handles gracefully
 
 
 def load_env() -> None:
@@ -280,8 +295,8 @@ class Config:
     JWT_TOKEN_LOCATION: List[str] = field(default_factory=lambda: os.getenv("JWT_TOKEN_LOCATION", "headers").split(","))
     JWT_ALGORITHM: str = field(default_factory=lambda: os.getenv("JWT_ALGORITHM", "HS256"))
 
-    # Model Security
-    MODEL_SIGNING_KEY: str = field(default_factory=lambda: os.getenv("MODEL_SIGNING_KEY", ""))
+    # Model Security (supports _FILE pattern for Docker Secrets)
+    MODEL_SIGNING_KEY: str = field(default_factory=lambda: get_secret("MODEL_SIGNING_KEY", default=""))
     REQUIRE_MODEL_SIGNATURE: bool = field(
         default_factory=lambda: os.getenv("REQUIRE_MODEL_SIGNATURE", "false").lower() == "true"
     )
@@ -292,9 +307,9 @@ class Config:
     # CORS
     CORS_ORIGINS: str = field(default_factory=lambda: os.getenv("CORS_ORIGINS", "https://floodingnaque.vercel.app"))
 
-    # External APIs
-    OWM_API_KEY: str = field(default_factory=lambda: os.getenv("OWM_API_KEY", ""))
-    WEATHERSTACK_API_KEY: str = field(default_factory=lambda: os.getenv("WEATHERSTACK_API_KEY", ""))
+    # External APIs (supports _FILE pattern for Docker Secrets)
+    OWM_API_KEY: str = field(default_factory=lambda: get_secret("OWM_API_KEY", default=""))
+    WEATHERSTACK_API_KEY: str = field(default_factory=lambda: get_secret("WEATHERSTACK_API_KEY", default=""))
 
     # Meteostat Configuration
     METEOSTAT_ENABLED: bool = field(default_factory=lambda: os.getenv("METEOSTAT_ENABLED", "True").lower() == "true")

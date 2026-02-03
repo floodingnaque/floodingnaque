@@ -4,6 +4,7 @@ Pytest Configuration and Shared Fixtures.
 Provides reusable fixtures and configuration for all tests.
 """
 
+import gc
 import os
 import sys
 from datetime import datetime, timezone
@@ -1803,3 +1804,10 @@ def mock_model_with_predictions():
         return model
 
     return _create_model
+
+
+@pytest.fixture(autouse=True)
+def cleanup_gc():
+    """Run garbage collection after each test to help release file handles on Windows."""
+    yield
+    gc.collect()

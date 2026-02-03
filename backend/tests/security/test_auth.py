@@ -6,6 +6,8 @@ These tests verify that authentication middleware works correctly.
 Uses Flask test client for proper test isolation (no running server required).
 """
 
+from unittest.mock import patch
+
 import pytest
 
 
@@ -42,8 +44,14 @@ class TestApiKeyAuthentication:
         # Should be accepted (200), validation error (400), or fail due to external API (502/503)
         assert response.status_code in [200, 400, 401, 502, 503]
 
-    def test_public_endpoints_accessible(self, client):
+    @patch("app.api.routes.models.list_available_models")
+    @patch("app.api.routes.models.get_current_model_info")
+    def test_public_endpoints_accessible(self, mock_current, mock_list, client):
         """Test that public endpoints don't require authentication."""
+        # Setup mocks to prevent 500 errors
+        mock_list.return_value = []
+        mock_current.return_value = None
+
         # Public endpoints without URL prefix
         public_endpoints = [
             "/",

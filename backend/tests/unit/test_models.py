@@ -81,9 +81,11 @@ class TestListModels:
         assert data["models"][0]["is_current"] is True
 
     @patch("app.api.routes.models.list_available_models")
-    def test_list_models_empty(self, mock_list, client):
+    @patch("app.api.routes.models.get_current_model_info")
+    def test_list_models_empty(self, mock_current, mock_list, client):
         """Test list models when no models available."""
         mock_list.return_value = []
+        mock_current.return_value = None
 
         response = client.get("/api/models")
 

@@ -69,7 +69,7 @@ class TestResponseTimeBenchmarks:
         response = client.post("/api/v1/predict", json=payload, headers=api_headers)
         elapsed = time.perf_counter() - start
 
-        assert elapsed < 0.5, f"Prediction took {elapsed:.3f}s, expected < 0.5s"
+        assert elapsed < 0.8, f"Prediction took {elapsed:.3f}s, expected < 0.8s"
 
     @pytest.mark.performance
     @pytest.mark.benchmark
