@@ -1,8 +1,9 @@
+# syntax=docker/dockerfile:1
 # =====================================================
 # Floodingnaque Backend - Production Dockerfile
 # Multi-stage build for optimized production image
 # =====================================================
-# Build: docker build -t floodingnaque-api:latest .
+# Build: DOCKER_BUILDKIT=1 docker build -t floodingnaque-api:latest .
 # Run:   docker run -p 5000:5000 --env-file .env floodingnaque-api:latest
 # =====================================================
 
@@ -19,30 +20,37 @@ FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc \
-    g++ \
-    libffi-dev \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH="/opt/venv/bin:$PATH"
 
 # Create virtual environment
 RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies
+# Install build dependencies and Rust in a single layer
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cargo \
+        curl \
+        g++ \
+        gcc \
+        libffi-dev \
+        libpq-dev \
+        rustc && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . $HOME/.cargo/env && \
+    rustup update && \
+    rustup component add rustc
+
+# Copy and install Python dependencies
 WORKDIR /build
 COPY requirements.txt .
 
-# Install dependencies with optimizations
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    . $HOME/.cargo/env && \
+    pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt
 
 # =====================================================
 # Stage 2: Production - Minimal runtime image
@@ -60,12 +68,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONFAULTHANDLER=1 \
     PYTHONHASHSEED=random \
-    # Application settings
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH" \
     APP_ENV=production \
     PORT=5000 \
     HOST=0.0.0.0 \
-    PYTHONPATH=/app \
-    # Gunicorn settings
     GUNICORN_WORKERS=4 \
     GUNICORN_THREADS=2 \
     GUNICORN_TIMEOUT=120 \
@@ -73,45 +80,31 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     GUNICORN_MAX_REQUESTS=1000 \
     GUNICORN_MAX_REQUESTS_JITTER=50
 
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    curl \
-    tini \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean \
-    && rm -rf /var/cache/apt/archives/*
+# Install runtime dependencies
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        libpq5 \
+        tini
 
-# Create non-root user for security
+# Create non-root user and directories
 RUN groupadd --gid 1000 appgroup && \
-    useradd --uid 1000 --gid appgroup --shell /bin/bash --create-home appuser
-
-# Create application directories
-RUN mkdir -p /app/models /app/data /app/logs /app/uploads /app/backups /app/.cache /app/certs && \
+    useradd --uid 1000 --gid appgroup --shell /bin/bash --create-home appuser && \
+    mkdir -p /app/models /app/data /app/logs /app/uploads /app/backups /app/.cache /app/certs && \
     chown -R appuser:appgroup /app
 
-# Set working directory
 WORKDIR /app
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
-COPY --chown=appuser:appgroup app/ ./app/
-COPY --chown=appuser:appgroup main.py ./
-COPY --chown=appuser:appgroup alembic.ini ./
 COPY --chown=appuser:appgroup alembic/ ./alembic/
-
-# Copy model files (JSON metadata and joblib models)
-COPY --chown=appuser:appgroup models/*.json ./models/
-COPY --chown=appuser:appgroup models/*.joblib ./models/
-
-# NOTE: SSL certificates should be mounted at runtime for security
-# Mount via docker-compose: ./certs/prod-ca-2021.crt:/app/certs/prod-ca-2021.crt:ro
-
-# Copy data files for reference
-COPY --chown=appuser:appgroup data/*.csv ./data/
+COPY --chown=appuser:appgroup app/ ./app/
+COPY --chown=appuser:appgroup models/ ./models/
+COPY --chown=appuser:appgroup data/synthetic_dataset.csv ./data/
+COPY --chown=appuser:appgroup alembic.ini main.py ./
 
 # Switch to non-root user
 USER appuser
@@ -167,15 +160,17 @@ FROM production AS development
 USER root
 
 # Install development tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    vim \
-    git \
-    htop \
-    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        htop \
+        vim
 
 # Install development dependencies
 COPY requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt || true
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements-dev.txt || true
 
 # Set development environment
 ENV APP_ENV=development \

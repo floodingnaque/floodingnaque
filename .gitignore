@@ -190,6 +190,9 @@ backend/logs/csp_violations.log
 
 # Docker secrets (NEVER commit!)
 secrets/
+!secrets/.gitignore
+!secrets/README.md
+!secrets/*.example
 *.secret
 *.secret.txt
 
@@ -328,3 +331,9 @@ AICS_generalDocumentationFormat.pdf
 AICS_thesis-journal-template.pdf
 Floodingnaque_Thesis_Paper_Guide.txt
 .cache_ggshield
+
+# Generated Artifacts
+backend/certs/*.json
+backend/models/*.json
+backend/reports/
+backend/scripts/archive/

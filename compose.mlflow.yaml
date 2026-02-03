@@ -1,3 +1,4 @@
+
 # MLflow Local Development Docker Compose
 # ========================================
 #
@@ -5,7 +6,7 @@
 # and model registry during development.
 #
 # Usage:
-#   docker-compose -f docker-compose.mlflow.yml up -d
+#   docker compose -f compose.mlflow.yaml up -d
 #
 # Access:
 #   MLflow UI: http://localhost:5000
@@ -13,12 +14,13 @@
 #   Backend store: PostgreSQL or SQLite
 #
 # Stop:
-#   docker-compose -f docker-compose.mlflow.yml down
+#   docker compose -f compose.mlflow.yaml down
 #
 # With data cleanup:
-#   docker-compose -f docker-compose.mlflow.yml down -v
+#   docker compose -f compose.mlflow.yaml down -v
 
-version: '3.8'
+include:
+  - compose.yaml
 
 services:
   # ==========================================================================
@@ -106,38 +108,6 @@ services:
   #     timeout: 10s
   #     retries: 3
 
-volumes:
-  mlflow-db-data:
-    driver: local
-  mlflow-artifacts:
-    driver: local
-  # minio-data:
-  #   driver: local
 
-networks:
-  mlflow-network:
-    driver: bridge
 
-# ==========================================================================
-# Alternative: Lightweight SQLite Configuration
-# ==========================================================================
-# For local development without PostgreSQL, you can use this simplified setup:
-#
-# Create a separate file: docker-compose.mlflow-lite.yml
-#
-# services:
-#   mlflow:
-#     image: ghcr.io/mlflow/mlflow:v2.10.0
-#     container_name: floodingnaque-mlflow-lite
-#     restart: unless-stopped
-#     ports:
-#       - "5000:5000"
-#     volumes:
-#       - ./mlflow/mlruns:/mlflow/mlruns
-#       - ./mlflow/artifacts:/mlflow/artifacts
-#     command: >
-#       mlflow server
-#       --backend-store-uri sqlite:///mlflow/mlruns/mlflow.db
-#       --default-artifact-root /mlflow/artifacts
-#       --host 0.0.0.0
-#       --port 5000
+

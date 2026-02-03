@@ -2,19 +2,33 @@
 # Floodingnaque - Development Docker Compose
 # =====================================================
 # Usage:
-#   docker-compose -f docker-compose-development.yml up -d --build
-#   docker-compose -f docker-compose-development.yml logs -f backend
-#   docker-compose -f docker-compose-development.yml down
+#   docker compose -f compose.development.yaml up -d --build
+#   docker compose -f compose.development.yaml logs -f backend
+#   docker compose -f compose.development.yaml down
+#
+# Hot-reload with watch (requires Docker Compose v2.22+):
+#   docker compose -f compose.development.yaml watch
 # =====================================================
 # NOTE: This configuration uses Supabase as the database.
 #       Ensure DATABASE_URL is set in ./backend/.env.development pointing to Supabase.
+#
+# This file inherits shared anchors from compose.yaml via include directive.
+# Requires Docker Compose v2.20+
 # =====================================================
+
+include:
+  - compose.yaml
+
+name: floodingnaque-dev
 
 services:
   # ===================
   # Backend API Service
   # ===================
   backend:
+    extends:
+      file: compose.yaml
+      service: backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -23,7 +37,6 @@ services:
         PYTHON_VERSION: "3.13"
     image: floodingnaque-api:development
     container_name: floodingnaque-api-dev
-    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
@@ -52,25 +65,8 @@ services:
       - floodingnaque_logs_dev:/app/logs
     networks:
       - floodingnaque-dev
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    depends_on: []  # No db dependency (using Supabase)
+    # Inherits healthcheck, logging, resources from compose.yaml
 
   # ===================
   # Redis (Optional for Dev)

@@ -2,25 +2,35 @@
 # Floodingnaque - Staging Docker Compose
 # =====================================================
 # Usage:
-#   docker-compose -f docker-compose-staging.yml up -d --build
-#   docker-compose -f docker-compose-staging.yml logs -f backend
-#   docker-compose -f docker-compose-staging.yml down
+#   docker compose -f compose.staging.yaml up -d --build
+#   docker compose -f compose.staging.yaml logs -f backend
+#   docker compose -f compose.staging.yaml down
 # =====================================================
 # NOTE: This configuration uses Supabase as the database.
 #       Ensure DATABASE_URL is set in ./backend/.env.staging pointing to Supabase.
+#
+# This file inherits shared anchors from compose.yaml via include directive.
+# Requires Docker Compose v2.20+
 # =====================================================
+
+include:
+  - compose.yaml
+
+name: floodingnaque-staging
 
 services:
   # ===================
   # Backend API Service
   # ===================
   backend:
+    extends:
+      file: compose.yaml
+      service: backend
     build:
       context: ./backend
       dockerfile: Dockerfile
       target: production
     container_name: floodingnaque-api-staging
-    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
@@ -58,25 +68,14 @@ services:
         condition: service_healthy
     networks:
       - floodingnaque-staging
+    # Override healthcheck (uses Python instead of curl - production image may not have curl)
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    # Inherits logging, resources from compose.yaml
 
   # ===================
   # Redis (Rate Limiting & Cache)

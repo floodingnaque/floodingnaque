@@ -1,0 +1,267 @@
+# =====================================================
+# Floodingnaque - Base Docker Compose Configuration
+# =====================================================
+# This file serves as the BASE configuration with all shared YAML anchors.
+# Other compose files use the 'include' directive to inherit from this file.
+#
+# Usage (standalone local dev):
+#   docker compose up -d --build
+#   docker compose logs -f backend
+#   docker compose down
+#
+# For other environments (these include this file automatically):
+#   - compose.development.yaml (Development with Supabase)
+#   - compose.staging.yaml (Staging environment)
+#   - compose.production.yaml (Full production setup)
+#
+# Quick Start (local with PostgreSQL):
+#   1. Copy backend/.env.example to backend/.env.development
+#   2. Set POSTGRES_PASSWORD in your environment or .env.development file
+#   3. Run: docker compose up -d --build
+#
+# Hot-reload with watch (requires Docker Compose v2.22+):
+#   docker compose watch
+#
+# Requirements: Docker Compose v2.20+ (for include directive support)
+# =====================================================
+
+name: floodingnaque
+
+# ===================
+# Shared YAML Anchors
+# ===================
+# These anchors are inherited by compose.development.yaml, compose.staging.yaml,
+# and compose.production.yaml via the 'include' directive.
+
+# Backend service base configuration
+x-backend-base: &backend-base
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  environment: &backend-env-base
+    - PORT=5000
+    - HOST=0.0.0.0
+    - PYTHONPATH=/app
+
+# Health check configurations
+x-backend-healthcheck: &backend-healthcheck
+  test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+x-redis-healthcheck: &redis-healthcheck
+  test: ["CMD", "redis-cli", "ping"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+
+x-postgres-healthcheck: &postgres-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 10s
+
+# Redis base configuration
+x-redis-base: &redis-base
+  image: redis:7.2-alpine
+  restart: unless-stopped
+
+# PostgreSQL base configuration
+x-postgres-base: &postgres-base
+  image: postgres:15.5-alpine
+  restart: unless-stopped
+
+# Logging configurations
+x-logging-default: &logging-default
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-logging-production: &logging-production
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "5"
+    compress: "true"
+
+# Common labels
+x-labels-common: &labels-common
+  com.floodingnaque.project: "floodingnaque"
+  com.floodingnaque.maintainer: "Floodingnaque Team"
+
+# Resource limits
+x-resources-small: &resources-small
+  limits:
+    cpus: '0.5'
+    memory: 512M
+  reservations:
+    cpus: '0.1'
+    memory: 128M
+
+x-resources-medium: &resources-medium
+  limits:
+    cpus: '1'
+    memory: 1G
+  reservations:
+    cpus: '0.25'
+    memory: 256M
+
+x-resources-large: &resources-large
+  limits:
+    cpus: '2'
+    memory: 2G
+  reservations:
+    cpus: '0.5'
+    memory: 512M
+
+# Security options
+x-security-opts: &security-opts
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  # ===================
+  # Backend API Service
+  # ===================
+  backend:
+    <<: *backend-base
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: floodingnaque-api-dev
+    ports:
+      - "5000:5000"
+    environment:
+      - APP_ENV=development
+      - FLASK_DEBUG=True
+      - PORT=5000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:-floodingnaque}
+      # SSL mode 'require' for development (encrypted, no certificate needed)
+      - DB_SSL_MODE=require
+      - RATE_LIMIT_ENABLED=False
+      - SCHEDULER_ENABLED=True
+      - LOG_LEVEL=DEBUG
+    env_file:
+      - ./backend/.env.development
+    volumes:
+      # Mount code for development hot-reload
+      - ./backend/app:/app/app:ro
+      - ./backend/main.py:/app/main.py:ro
+      # Persistent data
+      - ./backend/models:/app/models
+      - ./backend/data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - floodingnaque-dev
+    healthcheck:
+      <<: *backend-healthcheck
+    deploy:
+      resources:
+        <<: *resources-medium
+    logging:
+      <<: *logging-default
+    # Modern Compose watch for automatic hot-reload (requires Docker Compose v2.22+)
+    develop:
+      watch:
+        - path: ./backend/app
+          action: sync+restart
+          target: /app/app
+        - path: ./backend/main.py
+          action: sync+restart
+          target: /app/main.py
+        - path: ./backend/requirements.txt
+          action: rebuild
+
+  # ===================
+  # PostgreSQL Database
+  # ===================
+  db:
+    <<: *postgres-base
+    container_name: floodingnaque-db-dev
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-floodingnaque}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - floodingnaque-dev
+    healthcheck:
+      <<: *postgres-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U postgres -d floodingnaque"]
+    logging:
+      <<: *logging-default
+
+  # ===================
+  # PgBouncer Connection Pooler
+  # ===================
+  pgbouncer:
+    build:
+      context: ./pgbouncer
+      dockerfile: Dockerfile
+    container_name: floodingnaque-pgbouncer-dev
+    restart: unless-stopped
+    ports:
+      - "6432:6432"
+    environment:
+      # Database connection
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=floodingnaque
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      - DB_SSL_MODE=disable
+      # Pool settings (development)
+      - PGBOUNCER_POOL_MODE=transaction
+      - PGBOUNCER_MAX_CLIENT_CONN=100
+      - PGBOUNCER_DEFAULT_POOL_SIZE=10
+      - PGBOUNCER_MIN_POOL_SIZE=2
+      - PGBOUNCER_RESERVE_POOL_SIZE=5
+      - PGBOUNCER_MAX_DB_CONNECTIONS=20
+      # Admin credentials (MUST be set via environment or .env.development file)
+      - PGBOUNCER_ADMIN_USER=${PGBOUNCER_ADMIN_USER:-pgbouncer_admin}
+      - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD:?PGBOUNCER_ADMIN_PASSWORD must be set}
+      - PGBOUNCER_STATS_USER=${PGBOUNCER_STATS_USER:-pgbouncer_stats}
+      - PGBOUNCER_STATS_PASSWORD=${PGBOUNCER_STATS_PASSWORD:?PGBOUNCER_STATS_PASSWORD must be set}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - floodingnaque-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging-default
+    profiles:
+      - pgbouncer
+
+# ===================
+# Networks
+# ===================
+networks:
+  floodingnaque-dev:
+    driver: bridge
+
+# ===================
+# Volumes
+# ===================
+volumes:
+  postgres_data_dev:

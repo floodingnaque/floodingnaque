@@ -36,7 +36,7 @@ This guide covers setting up TLS/SSL termination for Floodingnaque using Nginx a
 
 ### Step 1: Update Docker Compose
 
-The production setup already exposes port 5000. For nginx, update `docker-compose-production.yml` to only bind internally:
+The production setup already exposes port 5000. For nginx, update `compose.production.yaml` to only bind internally:
 
 ```yaml
 # Change this:
@@ -106,10 +106,10 @@ docker stop nginx-temp && docker rm nginx-temp
 
 ```bash
 # Start production services
-docker-compose -f docker-compose-production.yml up -d
+docker compose -f compose.production.yaml up -d
 
 # Start nginx with SSL
-docker-compose -f docker-compose-nginx.yml up -d
+docker compose -f compose.nginx.yaml up -d
 ```
 
 ### Step 5: Certificate Renewal
@@ -118,14 +118,14 @@ Certbot container auto-renews. Alternatively, add cron job:
 
 ```bash
 # /etc/cron.d/certbot-renew
-0 0,12 * * * root docker-compose -f /path/to/docker-compose-nginx.yml run --rm certbot renew --quiet && docker-compose -f /path/to/docker-compose-nginx.yml exec nginx nginx -s reload
+0 0,12 * * * root docker compose -f /path/to/compose.nginx.yaml run --rm certbot renew --quiet && docker compose -f /path/to/compose.nginx.yaml exec nginx nginx -s reload
 ```
 
 ---
 
 ## Option 2: Traefik (Alternative)
 
-For automatic certificate management, add to `docker-compose-production.yml`:
+For automatic certificate management, add to `compose.production.yaml`:
 
 ```yaml
 services:
@@ -220,13 +220,13 @@ curl -v https://api.floodingnaque.com/health
 
 ```bash
 # Check certificate status
-docker-compose -f docker-compose-nginx.yml run --rm certbot certificates
+docker compose -f compose.nginx.yaml run --rm certbot certificates
 
 # Force renewal
-docker-compose -f docker-compose-nginx.yml run --rm certbot renew --force-renewal
+docker compose -f compose.nginx.yaml run --rm certbot renew --force-renewal
 
 # Debug certificate issues
-docker-compose -f docker-compose-nginx.yml run --rm certbot certonly --dry-run \
+docker compose -f compose.nginx.yaml run --rm certbot certonly --dry-run \
   --webroot -w /var/www/certbot -d api.floodingnaque.com
 ```
 

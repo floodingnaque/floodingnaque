@@ -3,37 +3,70 @@
 # FLOODINGNAQUE - PgBouncer Entrypoint Script
 # =====================================================
 # Configures PgBouncer with environment variables
+# Supports Docker Secrets with _FILE suffix pattern
 # =====================================================
 
 set -e
 
 # =====================================================
+# Docker Secrets _FILE Pattern Support
+# =====================================================
+# Function to read secret from file if _FILE env var is set
+# Usage: read_secret "VAR_NAME" "default_value"
+# Checks VAR_NAME_FILE first, then VAR_NAME, then uses default
+read_secret() {
+    local var_name="$1"
+    local default_value="$2"
+    local file_var_name="${var_name}_FILE"
+    
+    # Get the value of the _FILE variable
+    eval "local file_path=\${$file_var_name:-}"
+    
+    if [ -n "$file_path" ] && [ -f "$file_path" ]; then
+        # Read from file, trim whitespace
+        cat "$file_path" | tr -d '\n\r'
+        return
+    fi
+    
+    # Fall back to direct environment variable
+    eval "local env_value=\${$var_name:-}"
+    if [ -n "$env_value" ]; then
+        echo "$env_value"
+        return
+    fi
+    
+    # Return default if nothing else works
+    echo "$default_value"
+}
+
+# =====================================================
 # Default Configuration Values
 # =====================================================
-: "${DB_HOST:=localhost}"
-: "${DB_PORT:=5432}"
-: "${DB_NAME:=floodingnaque}"
-: "${DB_USER:=postgres}"
-: "${DB_PASSWORD:=password}"
-: "${DB_SSL_MODE:=require}"
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-floodingnaque}"
+DB_USER="${DB_USER:-postgres}"
+# Support _FILE pattern for passwords
+DB_PASSWORD=$(read_secret "DB_PASSWORD" "password")
+DB_SSL_MODE="${DB_SSL_MODE:-require}"
 
 # Read replica defaults (fallback to primary)
-: "${DB_REPLICA_HOST:=$DB_HOST}"
-: "${DB_REPLICA_PORT:=$DB_PORT}"
+DB_REPLICA_HOST="${DB_REPLICA_HOST:-$DB_HOST}"
+DB_REPLICA_PORT="${DB_REPLICA_PORT:-$DB_PORT}"
 
-# PgBouncer settings
-: "${PGBOUNCER_POOL_MODE:=transaction}"
-: "${PGBOUNCER_MAX_CLIENT_CONN:=1000}"
-: "${PGBOUNCER_DEFAULT_POOL_SIZE:=25}"
-: "${PGBOUNCER_MIN_POOL_SIZE:=5}"
-: "${PGBOUNCER_RESERVE_POOL_SIZE:=10}"
-: "${PGBOUNCER_MAX_DB_CONNECTIONS:=50}"
+# PgBouncer settings (these don't need _FILE as they're not secrets)
+PGBOUNCER_POOL_MODE="${PGBOUNCER_POOL_MODE:-transaction}"
+PGBOUNCER_MAX_CLIENT_CONN="${PGBOUNCER_MAX_CLIENT_CONN:-1000}"
+PGBOUNCER_DEFAULT_POOL_SIZE="${PGBOUNCER_DEFAULT_POOL_SIZE:-25}"
+PGBOUNCER_MIN_POOL_SIZE="${PGBOUNCER_MIN_POOL_SIZE:-5}"
+PGBOUNCER_RESERVE_POOL_SIZE="${PGBOUNCER_RESERVE_POOL_SIZE:-10}"
+PGBOUNCER_MAX_DB_CONNECTIONS="${PGBOUNCER_MAX_DB_CONNECTIONS:-50}"
 
-# Admin users
-: "${PGBOUNCER_ADMIN_USER:=pgbouncer_admin}"
-: "${PGBOUNCER_ADMIN_PASSWORD:=admin_password_change_me}"
-: "${PGBOUNCER_STATS_USER:=pgbouncer_stats}"
-: "${PGBOUNCER_STATS_PASSWORD:=stats_password_change_me}"
+# Admin users - Support _FILE pattern for admin/stats passwords
+PGBOUNCER_ADMIN_USER="${PGBOUNCER_ADMIN_USER:-pgbouncer_admin}"
+PGBOUNCER_ADMIN_PASSWORD=$(read_secret "PGBOUNCER_ADMIN_PASSWORD" "admin_password_change_me")
+PGBOUNCER_STATS_USER="${PGBOUNCER_STATS_USER:-pgbouncer_stats}"
+PGBOUNCER_STATS_PASSWORD=$(read_secret "PGBOUNCER_STATS_PASSWORD" "stats_password_change_me")
 
 echo "========================================"
 echo "Floodingnaque PgBouncer Initialization"

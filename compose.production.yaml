@@ -1,22 +1,24 @@
 # =====================================================
 # Floodingnaque - Production Docker Compose
 # =====================================================
-# Usage: 
-#   docker-compose -f docker-compose-production.yml up -d --build
-#   docker-compose -f docker-compose-production.yml logs -f
-#   docker-compose -f docker-compose-production.yml down
+# Usage:
+#   docker compose -f compose.production.yaml up -d --build
+#   docker compose -f compose.production.yaml logs -f
+#   docker compose -f compose.production.yaml down
 #
 # With Nginx (for VPS with TLS termination):
-#   docker-compose -f docker-compose-production.yml --profile nginx up -d --build
+#   docker compose -f compose.production.yaml --profile nginx up -d --build
 #
 # With Prometheus monitoring:
-#   docker-compose -f docker-compose-production.yml --profile monitoring up -d
+#   docker compose -f compose.production.yaml --profile monitoring up -d
 #
 # With both Nginx and monitoring:
-#   docker-compose -f docker-compose-production.yml --profile nginx --profile monitoring up -d
+#   docker compose -f compose.production.yaml --profile nginx --profile monitoring up -d
 #
-# With Docker Secrets (recommended for production):
-#   docker-compose -f docker-compose-production.yml --profile secrets up -d
+# With Docker Secrets (RECOMMENDED for production):
+#   1. Create secrets directory: mkdir -p ./secrets
+#   2. Create secret files (see docs/DOCKER_SECRETS_SETUP.md)
+#   3. Run: docker compose -f compose.production.yaml --profile secrets up -d
 # =====================================================
 # NOTE: This configuration uses:
 #   - Supabase PostgreSQL for database
@@ -24,19 +26,105 @@
 #   - Datadog Agent for APM and infrastructure monitoring
 #   - Nginx reverse proxy with Let's Encrypt (optional, use --profile nginx)
 #   Ensure .env.production is properly configured with DD_API_KEY.
+#
+# This file inherits shared anchors from compose.yaml via include directive.
+# Requires Docker Compose v2.20+
 # =====================================================
 # SECURITY NOTES:
 #   - Backend port bound to localhost (127.0.0.1:5000) - only accessible via Nginx
 #   - Network segmentation: frontend, backend, monitoring networks
 #   - All containers run with no-new-privileges security option
-#   - For production secrets, consider using Docker Swarm secrets or HashiCorp Vault
+#   - Docker Secrets with _FILE pattern - secrets mounted at /run/secrets/
+#   - See docs/DOCKER_SECRETS_SETUP.md for secrets configuration
 # =====================================================
+
+include:
+  - compose.yaml
+
+name: floodingnaque-prod
+
+# ===================
+# YAML Anchors for Production
+# ===================
+# Note: YAML anchors cannot be shared via include directive, so we define
+# production-specific anchors here. The backend service inherits from compose.yaml.
+
+x-backend-healthcheck: &backend-healthcheck
+  test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+x-logging-default: &logging-default
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-logging-production: &logging-production
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "5"
+    compress: "true"
+
+x-resources-small: &resources-small
+  limits:
+    cpus: '0.5'
+    memory: 512M
+  reservations:
+    cpus: '0.1'
+    memory: 128M
+
+x-resources-large: &resources-large
+  limits:
+    cpus: '2'
+    memory: 2G
+  reservations:
+    cpus: '0.5'
+    memory: 512M
+
+x-security-opts: &security-opts
+  security_opt:
+    - no-new-privileges:true
+
+# ===================
+# Docker Secrets Top-Level Definition
+# ===================
+# File-based secrets for docker compose (non-Swarm mode)
+# These are mounted at /run/secrets/<secret_name> in containers
+# See docs/DOCKER_SECRETS_SETUP.md for setup instructions
+secrets:
+  secret_key:
+    file: ./secrets/secret_key.txt
+  jwt_secret_key:
+    file: ./secrets/jwt_secret_key.txt
+  database_url:
+    file: ./secrets/database_url.txt
+  redis_url:
+    file: ./secrets/redis_url.txt
+  dd_api_key:
+    file: ./secrets/dd_api_key.txt
+  owm_api_key:
+    file: ./secrets/owm_api_key.txt
+  pgbouncer_db_password:
+    file: ./secrets/pgbouncer_db_password.txt
+  pgbouncer_admin_password:
+    file: ./secrets/pgbouncer_admin_password.txt
+  pgbouncer_stats_password:
+    file: ./secrets/pgbouncer_stats_password.txt
+  model_signing_key:
+    file: ./secrets/model_signing_key.txt
 
 services:
   # ===================
   # Backend API Service
   # ===================
   backend:
+    extends:
+      file: compose.yaml
+      service: backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -47,10 +135,11 @@ services:
     container_name: floodingnaque-api-prod
     restart: always
     labels:
-      - "com.floodingnaque.service=api"
-      - "com.floodingnaque.description=Flood Prediction API"
-      - "com.floodingnaque.version=2.0.0"
-      - "com.floodingnaque.maintainer=Floodingnaque Team"
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "api"
+      com.floodingnaque.description: "Flood Prediction API"
+      com.floodingnaque.version: "2.0.0"
     ports:
       # Bind to localhost only - Nginx reverse proxy handles external traffic
       - "127.0.0.1:5000:5000"
@@ -61,45 +150,45 @@ services:
       - PORT=5000
       - HOST=0.0.0.0
       - PYTHONPATH=/app
-      
+
       # Security
       - AUTH_BYPASS_ENABLED=False
       - ENABLE_HTTPS=True
       - VERIFY_MODEL_INTEGRITY=True
       - REQUIRE_MODEL_SIGNATURE=True
-      
+
       # Database SSL Configuration (verify-full for production)
       - DB_SSL_MODE=verify-full
       - DB_SSL_CA_CERT=/app/certs/prod-ca-2021.crt
-      
+
       # Redis Cloud connections (loaded from .env.production)
       # REDIS_URL, CACHE_REDIS_URL, RATELIMIT_STORAGE_URL, CELERY_BROKER_URL, CELERY_RESULT_BACKEND
       # are configured in .env.production pointing to Redis Cloud
-      
+
       # Rate limiting
       - RATE_LIMIT_ENABLED=True
       - RATE_LIMIT_DEFAULT=100
       - RATE_LIMIT_WINDOW_SECONDS=3600
-      
+
       # CORS
       - CORS_ORIGINS=${CORS_ORIGINS:-https://floodingnaque.vercel.app,https://www.floodingnaque.com}
-      
+
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=json
       - LOG_FILE=/app/logs/floodingnaque.log
-      
+
       # Features
       - FEATURE_SCHEDULER_ENABLED=True
       - FEATURE_METRICS_ENABLED=True
       - FEATURE_API_DOCS_ENABLED=False
       - GRAPHQL_PLAYGROUND_ENABLED=False
       - GRAPHQL_INTROSPECTION_ENABLED=False
-      
+
       # Scheduler
       - SCHEDULER_ENABLED=True
       - SCHEDULER_TIMEZONE=Asia/Manila
-      
+
       # Gunicorn
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
@@ -107,19 +196,37 @@ services:
       - GUNICORN_WORKER_CLASS=sync
       - GUNICORN_MAX_REQUESTS=1000
       - GUNICORN_MAX_REQUESTS_JITTER=50
-      
+
       # Performance
       - DB_POOL_SIZE=20
       - DB_MAX_OVERFLOW=10
       - CACHE_DEFAULT_TIMEOUT=300
-      
+
       # Datadog APM
       - DD_ENV=production
       - DD_SERVICE=floodingnaque-api
       - DD_VERSION=2.0.0
       - DD_TRACE_AGENT_URL=unix:///var/run/datadog/apm.socket
       - DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket
-      
+
+      # Docker Secrets _FILE references (when using --profile secrets)
+      # These override the env_file values with file-based secrets
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+      - JWT_SECRET_KEY_FILE=/run/secrets/jwt_secret_key
+      - DATABASE_URL_FILE=/run/secrets/database_url
+      - REDIS_URL_FILE=/run/secrets/redis_url
+      - DD_API_KEY_FILE=/run/secrets/dd_api_key
+      - OWM_API_KEY_FILE=/run/secrets/owm_api_key
+      - MODEL_SIGNING_KEY_FILE=/run/secrets/model_signing_key
+
+    secrets:
+      - secret_key
+      - jwt_secret_key
+      - database_url
+      - redis_url
+      - dd_api_key
+      - owm_api_key
+      - model_signing_key
     env_file:
       - ./backend/.env.production
     volumes:
@@ -139,32 +246,18 @@ services:
       - floodingnaque-backend
       - floodingnaque-monitoring
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      <<: *backend-healthcheck
     deploy:
       resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+        <<: *resources-large
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
     logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
-        compress: "true"
-    security_opt:
-      - no-new-privileges:true
+      <<: *logging-production
+    <<: *security-opts
     read_only: true
     tmpfs:
       - /tmp:size=200M,mode=1777
@@ -184,9 +277,11 @@ services:
     container_name: floodingnaque-celery-prod
     restart: always
     labels:
-      - "com.floodingnaque.service=celery-worker"
-      - "com.floodingnaque.description=Background Task Worker"
-      - "com.floodingnaque.version=2.0.0"
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "celery-worker"
+      com.floodingnaque.description: "Background Task Worker"
+      com.floodingnaque.version: "2.0.0"
     command: >
       celery -A app.services.celery_app worker
       --loglevel=info
@@ -211,6 +306,14 @@ services:
       - DD_VERSION=2.0.0
       - DD_TRACE_AGENT_URL=unix:///var/run/datadog/apm.socket
       - DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket
+      # Docker Secrets _FILE references
+      - DATABASE_URL_FILE=/run/secrets/database_url
+      - REDIS_URL_FILE=/run/secrets/redis_url
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+    secrets:
+      - database_url
+      - redis_url
+      - secret_key
     env_file:
       - ./backend/.env.production
     volumes:
@@ -246,13 +349,8 @@ services:
         delay: 10s
         max_attempts: 3
     logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "3"
-        compress: "true"
-    security_opt:
-      - no-new-privileges:true
+      <<: *logging-production
+    <<: *security-opts
 
   # ===================
   # Celery Beat
@@ -268,9 +366,11 @@ services:
     container_name: floodingnaque-celery-beat-prod
     restart: always
     labels:
-      - "com.floodingnaque.service=celery-beat"
-      - "com.floodingnaque.description=Task Scheduler"
-      - "com.floodingnaque.version=2.0.0"
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "celery-beat"
+      com.floodingnaque.description: "Task Scheduler"
+      com.floodingnaque.version: "2.0.0"
     command: >
       celery -A app.services.celery_app beat
       --loglevel=info
@@ -289,6 +389,12 @@ services:
       - DD_VERSION=2.0.0
       - DD_TRACE_AGENT_URL=unix:///var/run/datadog/apm.socket
       - DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket
+      # Docker Secrets _FILE references
+      - DATABASE_URL_FILE=/run/secrets/database_url
+      - REDIS_URL_FILE=/run/secrets/redis_url
+    secrets:
+      - database_url
+      - redis_url
     env_file:
       - ./backend/.env.production
     volumes:
@@ -310,19 +416,10 @@ services:
       start_period: 30s
     deploy:
       resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
+        <<: *resources-small
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    security_opt:
-      - no-new-privileges:true
+      <<: *logging-default
+    <<: *security-opts
     tmpfs:
       - /tmp:size=50M,mode=1777
 
@@ -339,9 +436,11 @@ services:
     container_name: floodingnaque-pgbouncer-prod
     restart: always
     labels:
-      - "com.floodingnaque.service=pgbouncer"
-      - "com.floodingnaque.description=PostgreSQL Connection Pooler"
-      - "com.floodingnaque.version=1.21.0"
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "pgbouncer"
+      com.floodingnaque.description: "PostgreSQL Connection Pooler"
+      com.floodingnaque.version: "1.21.0"
     ports:
       - "127.0.0.1:6432:6432"
     environment:
@@ -367,6 +466,14 @@ services:
       - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD}
       - PGBOUNCER_STATS_USER=${PGBOUNCER_STATS_USER:-pgbouncer_stats}
       - PGBOUNCER_STATS_PASSWORD=${PGBOUNCER_STATS_PASSWORD}
+      # Docker Secrets _FILE references
+      - DB_PASSWORD_FILE=/run/secrets/pgbouncer_db_password
+      - PGBOUNCER_ADMIN_PASSWORD_FILE=/run/secrets/pgbouncer_admin_password
+      - PGBOUNCER_STATS_PASSWORD_FILE=/run/secrets/pgbouncer_stats_password
+    secrets:
+      - pgbouncer_db_password
+      - pgbouncer_admin_password
+      - pgbouncer_stats_password
     networks:
       - floodingnaque-backend
     profiles:
@@ -386,12 +493,8 @@ services:
           cpus: '0.1'
           memory: 64M
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    security_opt:
-      - no-new-privileges:true
+      <<: *logging-default
+    <<: *security-opts
 
   # ===================
   # Datadog Agent
@@ -401,8 +504,10 @@ services:
     container_name: floodingnaque-datadog-agent
     restart: always
     labels:
-      - "com.floodingnaque.service=datadog-agent"
-      - "com.floodingnaque.description=APM and Monitoring Agent"
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "datadog-agent"
+      com.floodingnaque.description: "APM and Monitoring Agent"
     environment:
       - DD_API_KEY=${DD_API_KEY}
       - DD_SITE=us5.datadoghq.com
@@ -417,6 +522,10 @@ services:
       - DD_PROCESS_AGENT_ENABLED=true
       - DD_ENV=production
       - DD_TAGS=project:floodingnaque,team:backend
+      # Docker Secrets _FILE reference
+      - DD_API_KEY_FILE=/run/secrets/dd_api_key
+    secrets:
+      - dd_api_key
     volumes:
       - /var/run/datadog:/var/run/datadog
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -441,12 +550,8 @@ services:
           cpus: '0.25'
           memory: 256M
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    security_opt:
-      - no-new-privileges:true
+      <<: *logging-default
+    <<: *security-opts
 
   # ===================
   # Prometheus Monitoring
@@ -456,8 +561,10 @@ services:
     container_name: floodingnaque-prometheus-prod
     restart: always
     labels:
-      - "com.floodingnaque.service=prometheus"
-      - "com.floodingnaque.description=Metrics Collection"
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "prometheus"
+      com.floodingnaque.description: "Metrics Collection"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -485,19 +592,10 @@ services:
       start_period: 30s
     deploy:
       resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
+        <<: *resources-small
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    security_opt:
-      - no-new-privileges:true
+      <<: *logging-default
+    <<: *security-opts
 
   # ===================
   # Nginx Reverse Proxy (TLS Termination)
@@ -508,8 +606,10 @@ services:
     container_name: floodingnaque-nginx-prod
     restart: always
     labels:
-      - "com.floodingnaque.service=nginx"
-      - "com.floodingnaque.description=Reverse Proxy with TLS"
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "nginx"
+      com.floodingnaque.description: "Reverse Proxy with TLS"
     ports:
       - "80:80"
       - "443:443"
@@ -540,22 +640,18 @@ services:
           cpus: '0.1'
           memory: 64M
     logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    security_opt:
-      - no-new-privileges:true
+      <<: *logging-default
+    <<: *security-opts
 
   # ===================
   # Certbot (Let's Encrypt)
   # ===================
   # Use with: --profile nginx
   # Initial certificate:
-  #   docker-compose -f docker-compose-production.yml --profile nginx run --rm certbot \
+  #   docker compose -f compose.production.yaml --profile nginx run --rm certbot \
   #     certonly --webroot -w /var/www/certbot -d api.floodingnaque.com --email your@email.com --agree-tos
   # Manual renewal:
-  #   docker-compose -f docker-compose-production.yml --profile nginx run --rm certbot renew
+  #   docker compose -f compose.production.yaml --profile nginx run --rm certbot renew
   certbot:
     image: certbot/certbot:latest
     container_name: floodingnaque-certbot-prod
@@ -573,10 +669,7 @@ services:
           cpus: '0.25'
           memory: 128M
     logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
+      <<: *logging-default
 
 # ===================
 # Networks (Segmented for Security)
@@ -590,7 +683,7 @@ networks:
       com.docker.network.bridge.enable_icc: "true"
       com.docker.network.bridge.enable_ip_masquerade: "true"
       com.docker.network.driver.mtu: "1500"
-  
+
   # Backend network - API, Celery workers, and internal services
   floodingnaque-backend:
     driver: bridge
@@ -600,7 +693,7 @@ networks:
       com.docker.network.bridge.enable_icc: "true"
       com.docker.network.bridge.enable_ip_masquerade: "true"
       com.docker.network.driver.mtu: "1500"
-  
+
   # Monitoring network - Prometheus, Datadog, and observability tools
   floodingnaque-monitoring:
     driver: bridge
@@ -640,34 +733,26 @@ volumes:
     driver: local
 
 # ===================
-# Docker Secrets (Optional - for Docker Swarm mode)
+# Docker Secrets Documentation
 # ===================
-# To use secrets instead of environment variables:
-# 1. Create secrets: docker secret create secret_key ./secrets/secret_key.txt
-# 2. Deploy with: docker stack deploy -c docker-compose-production.yml floodingnaque
+# Docker Secrets are now configured in this file. Secrets are defined at the top
+# level and referenced by services that need them.
 #
-# For docker-compose (non-Swarm), use file-based secrets:
-# secrets:
-#   secret_key:
-#     file: ./secrets/secret_key.txt
-#   jwt_secret_key:
-#     file: ./secrets/jwt_secret_key.txt
-#   database_url:
-#     file: ./secrets/database_url.txt
-#   redis_url:
-#     file: ./secrets/redis_url.txt
-#   dd_api_key:
-#     file: ./secrets/dd_api_key.txt
+# How it works:
+#   1. Secrets are defined in the 'secrets:' section at the top of this file
+#   2. Services reference secrets they need via their 'secrets:' key
+#   3. Environment variables with _FILE suffix point to /run/secrets/<name>
+#   4. The backend/app/utils/secrets.py reads files automatically
 #
-# Then reference in services:
-#   backend:
-#     secrets:
-#       - secret_key
-#       - jwt_secret_key
-#       - database_url
-#     environment:
-#       - SECRET_KEY_FILE=/run/secrets/secret_key
-#       - JWT_SECRET_KEY_FILE=/run/secrets/jwt_secret_key
-#       - DATABASE_URL_FILE=/run/secrets/database_url
+# Setup:
+#   1. Create secrets directory: mkdir -p ./secrets
+#   2. Create secret files (one secret per file, no trailing newline):
+#      echo -n "your-secret-value" > ./secrets/secret_key.txt
+#   3. Set proper permissions: chmod 600 ./secrets/*.txt
+#   4. Run: docker compose -f compose.production.yaml up -d
+#
+# For Docker Swarm deployments:
+#   docker secret create secret_key ./secrets/secret_key.txt
+#   docker stack deploy -c compose.production.yaml floodingnaque
 #
 # See docs/DOCKER_SECRETS_SETUP.md for detailed instructions.
