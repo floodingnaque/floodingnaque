@@ -44,12 +44,19 @@ function transformTokenResponse(response: {
 }
 
 /**
+ * Determine the post-login landing route based on user role.
+ */
+function getHomeRouteForUser(user: User): string {
+  return user.role === 'admin' ? '/admin' : '/';
+}
+
+/**
  * useAuth hook for authentication management
  */
 export function useAuth() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
+
   // Auth store state and actions
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -69,7 +76,7 @@ export function useAuth() {
       // Fetch user profile after successful login
       const userProfile = await authApi.getMe();
       setAuth(userProfile, tokens);
-      navigate('/');
+      navigate(getHomeRouteForUser(userProfile));
     },
   });
 
@@ -85,7 +92,7 @@ export function useAuth() {
       // Fetch user profile after successful registration
       const userProfile = await authApi.getMe();
       setAuth(userProfile, tokens);
-      navigate('/');
+      navigate(getHomeRouteForUser(userProfile));
     },
   });
 
@@ -150,33 +157,33 @@ export function useAuth() {
     // State
     user,
     isAuthenticated,
-    
+
     // Login
     login: loginMutation.mutate,
     loginAsync: loginMutation.mutateAsync,
     isLoggingIn: loginMutation.isPending,
     loginError: loginMutation.error,
-    
+
     // Register
     register: registerMutation.mutate,
     registerAsync: registerMutation.mutateAsync,
     isRegistering: registerMutation.isPending,
     registerError: registerMutation.error,
-    
+
     // Logout
     logout: logoutMutation.mutate,
     logoutAsync: logoutMutation.mutateAsync,
     isLoggingOut: logoutMutation.isPending,
-    
+
     // Profile
     profileQuery,
-    
+
     // Change password
     changePassword: changePasswordMutation.mutate,
     changePasswordAsync: changePasswordMutation.mutateAsync,
     isChangingPassword: changePasswordMutation.isPending,
     changePasswordError: changePasswordMutation.error,
-    
+
     // Update profile
     updateProfile: updateProfileMutation.mutate,
     updateProfileAsync: updateProfileMutation.mutateAsync,

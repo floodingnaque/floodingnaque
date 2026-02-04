@@ -1,6 +1,6 @@
 /**
  * Alert Store
- *
+ * 
  * Zustand store for managing real-time alerts from SSE connection.
  * Not persisted - alerts are ephemeral and fetched fresh on connection.
  */
@@ -83,7 +83,7 @@ export const useAlertStore = create<AlertStore>()((set, get) => ({
 
       // Add new alert at the beginning, maintain max limit
       const updatedAlerts = [alert, ...state.liveAlerts].slice(0, MAX_LIVE_ALERTS);
-
+      
       return {
         liveAlerts: updatedAlerts,
         unreadCount: state.unreadCount + 1,
@@ -96,7 +96,7 @@ export const useAlertStore = create<AlertStore>()((set, get) => ({
   },
 
   setConnected: (connected: boolean) => {
-    set({
+    set({ 
       isConnected: connected,
       // Clear error when successfully connected
       connectionError: connected ? null : get().connectionError,
@@ -104,7 +104,7 @@ export const useAlertStore = create<AlertStore>()((set, get) => ({
   },
 
   setConnectionError: (error: string | null) => {
-    set({
+    set({ 
       connectionError: error,
       isConnected: error ? false : get().isConnected,
     });

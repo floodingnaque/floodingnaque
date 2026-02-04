@@ -1,6 +1,6 @@
 /**
  * UI Store
- *
+ * 
  * Zustand store for managing UI state including sidebar state
  * and theme preferences. Persisted to localStorage.
  */
