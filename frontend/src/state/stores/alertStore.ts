@@ -1,6 +1,6 @@
 /**
  * Alert Store
- * 
+ *
  * Zustand store for managing real-time alerts from SSE connection.
  * Not persisted - alerts are ephemeral and fetched fresh on connection.
  */
@@ -83,7 +83,7 @@ export const useAlertStore = create<AlertStore>()((set, get) => ({
 
       // Add new alert at the beginning, maintain max limit
       const updatedAlerts = [alert, ...state.liveAlerts].slice(0, MAX_LIVE_ALERTS);
-      
+
       return {
         liveAlerts: updatedAlerts,
         unreadCount: state.unreadCount + 1,
@@ -96,7 +96,7 @@ export const useAlertStore = create<AlertStore>()((set, get) => ({
   },
 
   setConnected: (connected: boolean) => {
-    set({ 
+    set({
       isConnected: connected,
       // Clear error when successfully connected
       connectionError: connected ? null : get().connectionError,
@@ -104,7 +104,7 @@ export const useAlertStore = create<AlertStore>()((set, get) => ({
   },
 
   setConnectionError: (error: string | null) => {
-    set({ 
+    set({
       connectionError: error,
       isConnected: error ? false : get().isConnected,
     });
@@ -145,17 +145,31 @@ export const useAlertConnectionStatus = () =>
 
 /**
  * Action hooks
+ *
+ * Similar to the UI store, we avoid returning a freshly created object
+ * from the selector on every render, which can cause React's
+ * useSyncExternalStore to think the snapshot is unstable and
+ * contribute to infinite update warnings in StrictMode.
  */
-export const useAlertActions = () =>
-  useAlertStore((state) => ({
-    addAlert: state.addAlert,
-    markAllRead: state.markAllRead,
-    setConnected: state.setConnected,
-    setConnectionError: state.setConnectionError,
-    clearAlerts: state.clearAlerts,
-    removeAlert: state.removeAlert,
-    updateAlert: state.updateAlert,
-  }));
+export const useAlertActions = () => {
+  const addAlert = useAlertStore((state) => state.addAlert);
+  const markAllRead = useAlertStore((state) => state.markAllRead);
+  const setConnected = useAlertStore((state) => state.setConnected);
+  const setConnectionError = useAlertStore((state) => state.setConnectionError);
+  const clearAlerts = useAlertStore((state) => state.clearAlerts);
+  const removeAlert = useAlertStore((state) => state.removeAlert);
+  const updateAlert = useAlertStore((state) => state.updateAlert);
+
+  return {
+    addAlert,
+    markAllRead,
+    setConnected,
+    setConnectionError,
+    clearAlerts,
+    removeAlert,
+    updateAlert,
+  };
+};
 
 /**
  * Get alerts by risk level

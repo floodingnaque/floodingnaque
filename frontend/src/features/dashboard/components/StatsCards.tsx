@@ -143,8 +143,22 @@ function getAlertColorInfo(count: number): {
  * StatsCards displays a responsive grid of dashboard statistics
  */
 export function StatsCards({ stats }: StatsCardsProps) {
-  const riskInfo = getRiskLevelInfo(stats.avg_risk_level);
-  const alertInfo = getAlertColorInfo(stats.active_alerts);
+  // Guard against incomplete or undefined stats to avoid runtime errors
+  const safeTotalPredictions =
+    typeof stats?.total_predictions === 'number'
+      ? stats.total_predictions
+      : 0;
+  const safePredictionsToday =
+    typeof stats?.predictions_today === 'number'
+      ? stats.predictions_today
+      : 0;
+  const safeActiveAlerts =
+    typeof stats?.active_alerts === 'number' ? stats.active_alerts : 0;
+  const safeAvgRiskLevel =
+    typeof stats?.avg_risk_level === 'number' ? stats.avg_risk_level : 0;
+
+  const riskInfo = getRiskLevelInfo(safeAvgRiskLevel);
+  const alertInfo = getAlertColorInfo(safeActiveAlerts);
 
   // Mock percentage changes (in a real app, these would come from the API)
   const mockChanges = {
@@ -156,7 +170,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="Total Predictions"
-        value={stats.total_predictions.toLocaleString()}
+        value={safeTotalPredictions.toLocaleString()}
         icon={<Activity className="h-4 w-4" />}
         iconColor="text-blue-600"
         bgColor="bg-blue-100 dark:bg-blue-900/30"
@@ -166,7 +180,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
 
       <StatCard
         title="Today's Predictions"
-        value={stats.predictions_today}
+        value={safePredictionsToday}
         icon={<TrendingUp className="h-4 w-4" />}
         iconColor="text-green-600"
         bgColor="bg-green-100 dark:bg-green-900/30"
@@ -176,16 +190,16 @@ export function StatsCards({ stats }: StatsCardsProps) {
 
       <StatCard
         title="Active Alerts"
-        value={stats.active_alerts}
+        value={safeActiveAlerts}
         icon={<AlertTriangle className="h-4 w-4" />}
         iconColor={alertInfo.colorClass}
         bgColor={alertInfo.bgClass}
-        subtitle={stats.active_alerts === 0 ? 'All clear' : 'Requires attention'}
+        subtitle={safeActiveAlerts === 0 ? 'All clear' : 'Requires attention'}
       />
 
       <StatCard
         title="Avg Risk Level"
-        value={`${Math.round(stats.avg_risk_level)}%`}
+        value={`${Math.round(safeAvgRiskLevel)}%`}
         icon={<Shield className="h-4 w-4" />}
         iconColor={riskInfo.colorClass}
         bgColor={riskInfo.bgClass}

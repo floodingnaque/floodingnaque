@@ -337,3 +337,8 @@ backend/certs/*.json
 backend/models/*.json
 backend/reports/
 backend/scripts/archive/
+
+# Temporary Admin Scripts
+backend/create_admin.py
+backend/list_users.py
+backend/reset_admin_password.py

@@ -55,6 +55,7 @@ export function useAuth() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const setAuth = useAuthStore((state) => state.setAuth);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const setTokens = useAuthStore((state) => state.setTokens);
 
   /**
    * Login mutation
@@ -63,6 +64,8 @@ export function useAuth() {
     mutationFn: (credentials: LoginRequest) => authApi.login(credentials),
     onSuccess: async (data) => {
       const tokens = transformTokenResponse(data);
+      // Store tokens immediately so subsequent requests include Authorization
+      setTokens(tokens);
       // Fetch user profile after successful login
       const userProfile = await authApi.getMe();
       setAuth(userProfile, tokens);
@@ -77,6 +80,8 @@ export function useAuth() {
     mutationFn: (data: RegisterRequest) => authApi.register(data),
     onSuccess: async (data) => {
       const tokens = transformTokenResponse(data);
+      // Store tokens immediately so subsequent requests include Authorization
+      setTokens(tokens);
       // Fetch user profile after successful registration
       const userProfile = await authApi.getMe();
       setAuth(userProfile, tokens);

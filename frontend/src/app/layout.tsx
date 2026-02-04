@@ -77,11 +77,24 @@ const navItems: NavItem[] = [
 ];
 
 /**
- * Get initials from user name
+ * Get initials from user name.
+ * Safely handles missing or empty names.
  */
-function getInitials(name: string): string {
-  return name
+function getInitials(name?: string | null): string {
+  if (!name || typeof name !== 'string') {
+    return '?';
+  }
+
+  const parts = name
+    .trim()
     .split(' ')
+    .filter((part) => part.length > 0);
+
+  if (parts.length === 0) {
+    return '?';
+  }
+
+  return parts
     .map((part) => part[0])
     .join('')
     .toUpperCase()
@@ -228,12 +241,11 @@ export function Layout() {
   const { toggleTheme, collapseSidebar, setSidebarOpen } = useUIActions();
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
-  // Start SSE connection for real-time alerts
+  // Start SSE connection for real-time alerts.
+  // Disabled in local development to avoid noisy 404s when the
+  // backend SSE endpoint is not configured.
   const { isConnected, reconnect } = useAlertStream({
-    enabled: true,
-    onAlert: (alert) => {
-      console.log('New alert received:', alert);
-    },
+    enabled: false,
   });
 
   // Handle logout

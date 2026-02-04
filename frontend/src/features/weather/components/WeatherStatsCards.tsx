@@ -41,25 +41,29 @@ const statCards: StatCardConfig[] = [
   {
     title: 'Avg Humidity',
     icon: Droplets,
-    getValue: (stats) => `${stats.avg_humidity.toFixed(1)}%`,
+    getValue: (stats) =>
+      `${(stats.avg_humidity ?? 0).toFixed(1)}%`,
     iconColor: 'text-blue-500',
   },
   {
     title: 'Total Precipitation',
     icon: CloudRain,
-    getValue: (stats) => `${stats.total_precipitation.toFixed(2)} mm`,
+    getValue: (stats) =>
+      `${(stats.total_precipitation ?? 0).toFixed(2)} mm`,
     iconColor: 'text-cyan-500',
   },
   {
     title: 'Avg Wind Speed',
     icon: Wind,
-    getValue: (stats) => `${stats.avg_wind_speed.toFixed(1)} m/s`,
+    getValue: (stats) =>
+      `${(stats.avg_wind_speed ?? 0).toFixed(1)} m/s`,
     iconColor: 'text-gray-500',
   },
   {
     title: 'Record Count',
     icon: Database,
-    getValue: (stats) => stats.record_count.toLocaleString(),
+    getValue: (stats) =>
+      (stats.record_count ?? 0).toLocaleString(),
     iconColor: 'text-purple-500',
   },
 ];

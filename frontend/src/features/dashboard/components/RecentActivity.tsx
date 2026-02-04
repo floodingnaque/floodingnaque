@@ -86,14 +86,15 @@ export function RecentActivity({
   activities,
   maxItems = 10,
 }: RecentActivityProps) {
-  const displayActivities = activities.slice(0, maxItems);
-  const hasMore = activities.length > maxItems;
+  const safeActivities = Array.isArray(activities) ? activities : [];
+  const displayActivities = safeActivities.slice(0, maxItems);
+  const hasMore = safeActivities.length > maxItems;
 
   return (
     <Card className="h-full">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-        {activities.length > 0 && (
+        {safeActivities.length > 0 && (
           <Link to="/history">
             <Button variant="ghost" size="sm" className="gap-1">
               View all
@@ -108,13 +109,16 @@ export function RecentActivity({
         ) : (
           <div className="space-y-0">
             {displayActivities.map((activity, index) => (
-              <ActivityRow key={`${activity.timestamp}-${index}`} activity={activity} />
+              <ActivityRow
+                key={`${activity.timestamp}-${index}`}
+                activity={activity}
+              />
             ))}
             {hasMore && (
               <div className="pt-3 text-center">
                 <Link to="/history">
                   <Button variant="link" size="sm">
-                    View {activities.length - maxItems} more activities
+                    View {safeActivities.length - maxItems} more activities
                   </Button>
                 </Link>
               </div>

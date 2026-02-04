@@ -26,5 +26,8 @@
     "github.copilot.nextEditSuggestions.extendedRange": true,
     "problems.visibility": {
         "hint": false
-    }
+    },
+    "cursorpyright.analysis.extraPaths": [
+        "${workspaceFolder}/backend"
+    ]
 }

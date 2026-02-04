@@ -1,6 +1,6 @@
 /**
  * UI Store
- * 
+ *
  * Zustand store for managing UI state including sidebar state
  * and theme preferences. Persisted to localStorage.
  */
@@ -161,16 +161,29 @@ export const useSidebarCollapsed = () => useUIStore((state) => state.sidebarColl
 
 /**
  * Action hooks
+ *
+ * Note: We use separate selectors for each action to avoid returning
+ * a new object on every render, which can cause React's
+ * useSyncExternalStore to warn about unstable snapshots and can
+ * contribute to update loops in StrictMode.
  */
-export const useUIActions = () =>
-  useUIStore((state) => ({
-    toggleSidebar: state.toggleSidebar,
-    setSidebarOpen: state.setSidebarOpen,
-    collapseSidebar: state.collapseSidebar,
-    setSidebarCollapsed: state.setSidebarCollapsed,
-    toggleTheme: state.toggleTheme,
-    setTheme: state.setTheme,
-  }));
+export const useUIActions = () => {
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
+  const collapseSidebar = useUIStore((state) => state.collapseSidebar);
+  const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
+  const toggleTheme = useUIStore((state) => state.toggleTheme);
+  const setTheme = useUIStore((state) => state.setTheme);
+
+  return {
+    toggleSidebar,
+    setSidebarOpen,
+    collapseSidebar,
+    setSidebarCollapsed,
+    toggleTheme,
+    setTheme,
+  };
+};
 
 /**
  * Combined sidebar state hook
