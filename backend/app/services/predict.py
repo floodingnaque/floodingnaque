@@ -273,7 +273,7 @@ def list_available_models(models_dir: str = "models") -> List[Dict[str, Any]]:
         return []
 
     models: List[Dict[str, Any]] = []
-    for file in models_path.glob("flood_rf_model_v*.joblib"):
+    for file in models_path.glob("flood_model_v*.joblib"):
         try:
             version_str = file.stem.split("_v")[-1]
             version = int(version_str)
@@ -367,7 +367,7 @@ def _load_model(model_path: Optional[str] = None, force_reload: bool = False, ve
 
 def load_model_version(version: int, models_dir: str = "models", force_reload: bool = False) -> Any:
     """Load a specific model version."""
-    model_path = Path(models_dir) / f"flood_rf_model_v{version}.joblib"
+    model_path = Path(models_dir) / f"flood_model_v{version}.joblib"
     if not model_path.exists():
         raise FileNotFoundError(f"Model version {version} not found at {model_path}")
 

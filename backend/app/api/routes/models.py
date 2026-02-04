@@ -102,7 +102,9 @@ def list_models():
     try:
         models = list_available_models()
         current_info = get_current_model_info()
-        current_version = current_info.get("metadata", {}).get("version") if current_info else None
+        current_version = None
+        if current_info and current_info.get("metadata"):
+            current_version = current_info["metadata"].get("version")
 
         # Format response
         formatted_models = []

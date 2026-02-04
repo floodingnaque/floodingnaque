@@ -33,7 +33,7 @@ PREDICTION_CACHE_TTL = int(os.getenv("PREDICTION_CACHE_TTL", "300"))  # 5 minute
 PREDICTION_CACHE_ENABLED = os.getenv("PREDICTION_CACHE_ENABLED", "True").lower() == "true"
 
 
-@predict_bp.route("/predict", methods=["POST"])
+@predict_bp.route("/", methods=["POST"])
 @rate_limit_with_burst("60 per hour")
 @validate_request_size(endpoint_name="predict")  # 10KB limit for prediction payloads
 @require_api_key

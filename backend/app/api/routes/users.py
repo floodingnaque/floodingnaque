@@ -44,6 +44,12 @@ users_bp = Blueprint("users", __name__)
 # Configuration
 MAX_FAILED_LOGIN_ATTEMPTS = int(os.getenv("MAX_FAILED_LOGIN_ATTEMPTS", "5"))
 ACCOUNT_LOCKOUT_MINUTES = int(os.getenv("ACCOUNT_LOCKOUT_MINUTES", "15"))
+# Development-only auth bypass flag.
+# When AUTH_BYPASS_ENABLED=true, the /login endpoint will skip password
+# verification and log in any existing active user by email. This is
+# intended purely for local development and should NEVER be enabled
+# in production.
+AUTH_BYPASS_ENABLED = os.getenv("AUTH_BYPASS_ENABLED", "false").lower() == "true"
 
 
 def validate_email(email: str) -> bool:
@@ -247,40 +253,48 @@ def login():
                 logger.warning(f"Login attempt for non-existent user: {email} [{request_id}]")
                 return api_error("InvalidCredentials", "Invalid email or password", HTTP_UNAUTHORIZED, request_id)
 
-            # Check if account is locked
-            if user.is_locked():
-                remaining = (user.locked_until - datetime.now(timezone.utc)).total_seconds()
-                logger.warning(f"Login attempt for locked account: {email} [{request_id}]")
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "AccountLocked",
-                            "message": f"Account is locked. Try again in {int(remaining / 60)} minutes",
-                            "retry_after": int(remaining),
-                            "request_id": request_id,
-                        }
-                    ),
-                    423,
-                )
-
-            # Check if account is active
-            if not user.is_active:
-                return api_error("AccountDisabled", "Account is disabled", HTTP_FORBIDDEN, request_id)
-
-            # Verify password
-            if not verify_password(password, user.password_hash):
-                # Increment failed attempts
-                user.failed_login_attempts += 1
-
-                if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
-                    user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=ACCOUNT_LOCKOUT_MINUTES)
-                    logger.warning(f"Account locked due to failed attempts: {email} [{request_id}]")
-
+            # Optional development bypass: skip password verification entirely.
+            if AUTH_BYPASS_ENABLED:
                 logger.warning(
-                    f"Failed login attempt for {email} (attempt {user.failed_login_attempts}) [{request_id}]"
+                    "AUTH_BYPASS_ENABLED is TRUE - bypassing password verification for user '%s' [%s]",
+                    email,
+                    request_id,
                 )
-                return api_error("InvalidCredentials", "Invalid email or password", HTTP_UNAUTHORIZED, request_id)
+            else:
+                # Check if account is locked
+                if user.is_locked():
+                    remaining = (user.locked_until - datetime.now(timezone.utc)).total_seconds()
+                    logger.warning(f"Login attempt for locked account: {email} [{request_id}]")
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "AccountLocked",
+                                "message": f"Account is locked. Try again in {int(remaining / 60)} minutes",
+                                "retry_after": int(remaining),
+                                "request_id": request_id,
+                            }
+                        ),
+                        423,
+                    )
+
+                # Check if account is active
+                if not user.is_active:
+                    return api_error("AccountDisabled", "Account is disabled", HTTP_FORBIDDEN, request_id)
+
+                # Verify password
+                if not verify_password(password, user.password_hash):
+                    # Increment failed attempts
+                    user.failed_login_attempts += 1
+
+                    if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+                        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=ACCOUNT_LOCKOUT_MINUTES)
+                        logger.warning(f"Account locked due to failed attempts: {email} [{request_id}]")
+
+                    logger.warning(
+                        f"Failed login attempt for {email} (attempt {user.failed_login_attempts}) [{request_id}]"
+                    )
+                    return api_error("InvalidCredentials", "Invalid email or password", HTTP_UNAUTHORIZED, request_id)
 
             # Successful login - reset failed attempts and update login info
             user.failed_login_attempts = 0
