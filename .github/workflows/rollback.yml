@@ -74,7 +74,7 @@ jobs:
       url: ${{ env.STAGING_URL }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Rollback staging deployment
       run: |
@@ -113,7 +113,7 @@ jobs:
       url: ${{ env.PRODUCTION_URL }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Rollback production deployment
       run: |
@@ -154,10 +154,10 @@ jobs:
       issues: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Create rollback issue for tracking
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const title = `🔄 Rollback: ${context.payload.inputs.environment} → ${context.payload.inputs.image_tag}`;

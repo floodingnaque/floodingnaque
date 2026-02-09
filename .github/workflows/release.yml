@@ -30,7 +30,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0  # Full history for changelog generation
     
@@ -47,7 +47,7 @@ jobs:
     
     - name: Generate changelog
       id: changelog
-      uses: orhun/git-cliff-action@v3
+      uses: orhun/git-cliff-action@v4
       with:
         config: .github/cliff.toml
         args: --verbose --unreleased --tag ${{ steps.version.outputs.version }}
@@ -60,7 +60,7 @@ jobs:
         cat CHANGELOG.md
     
     - name: Upload changelog artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: changelog
         path: CHANGELOG.md
@@ -75,10 +75,10 @@ jobs:
     needs: generate-changelog
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Download changelog
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         name: changelog
     
@@ -104,13 +104,13 @@ jobs:
     if: github.event_name == 'push'  # Only on tag push, not manual
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-depth: 0
         ref: main
     
     - name: Download changelog
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         name: changelog
     
