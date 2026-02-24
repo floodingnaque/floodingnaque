@@ -417,6 +417,10 @@ services:
     deploy:
       resources:
         <<: *resources-small
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
     logging:
       <<: *logging-default
     <<: *security-opts
@@ -654,7 +658,7 @@ services:
   # Manual renewal:
   #   docker compose -f compose.production.yaml --profile nginx run --rm certbot renew
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/certbot:v2.11.0
     container_name: floodingnaque-certbot-prod
     volumes:
       - certbot_conf_prod:/etc/letsencrypt
@@ -689,7 +693,7 @@ networks:
   floodingnaque-backend:
     driver: bridge
     name: floodingnaque-backend-production
-    internal: false  # Set to true if no external access needed
+    internal: true  # Backend services accessed only via Nginx
     driver_opts:
       com.docker.network.bridge.enable_icc: "true"
       com.docker.network.bridge.enable_ip_masquerade: "true"

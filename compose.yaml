@@ -130,6 +130,7 @@ services:
   # ===================
   backend:
     <<: *backend-base
+    <<: *security-opts
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -142,7 +143,7 @@ services:
       - FLASK_DEBUG=True
       - PORT=5000
       - HOST=0.0.0.0
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-floodingnaque}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:-floodingnaque}
       # SSL mode 'require' for development (encrypted, no certificate needed)
       - DB_SSL_MODE=require
       - RATE_LIMIT_ENABLED=False
@@ -190,13 +191,14 @@ services:
   # ===================
   db:
     <<: *postgres-base
+    <<: *security-opts
     container_name: floodingnaque-db-dev
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-floodingnaque}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
     networks:
@@ -224,7 +226,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=floodingnaque
       - DB_USER=${POSTGRES_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - DB_SSL_MODE=disable
       # Pool settings (development)
       - PGBOUNCER_POOL_MODE=transaction

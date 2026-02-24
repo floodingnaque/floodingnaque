@@ -41,7 +41,7 @@ services:
       - PYTHONPATH=/app
       # DATABASE_URL is loaded from .env.staging file (points to Supabase)
       # Redis for rate limiting (optional in staging)
-      - RATE_LIMIT_STORAGE_URL=redis://:${REDIS_PASSWORD:-stg-r3d1s-s3cure-2026!}@redis:6379/0
+      - RATE_LIMIT_STORAGE_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0
       - RATE_LIMIT_ENABLED=True
       # Security
       - AUTH_BYPASS_ENABLED=False
@@ -84,17 +84,17 @@ services:
     image: redis:7.2-alpine
     container_name: floodingnaque-redis-staging
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-stg-r3d1s-s3cure-2026!}
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     ports:
       - "6379:6379"
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-stg-r3d1s-s3cure-2026!}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     volumes:
       - redis_data_staging:/data
     networks:
       - floodingnaque-staging
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-stg-r3d1s-s3cure-2026!}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

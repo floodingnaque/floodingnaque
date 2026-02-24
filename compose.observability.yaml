@@ -43,7 +43,7 @@ services:
     environment:
       # Admin credentials
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-floodingnaque}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD must be set}
       # Server settings
       - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-http://localhost:3000}
       - GF_SERVER_SERVE_FROM_SUB_PATH=false
@@ -135,11 +135,11 @@ services:
       com.floodingnaque.description: "Distributed Tracing"
     ports:
       # Jaeger UI
-      - "16686:16686"
+      - "127.0.0.1:16686:16686"
       # OTLP gRPC collector
-      - "4317:4317"
+      - "127.0.0.1:4317:4317"
       # OTLP HTTP collector
-      - "4318:4318"
+      - "127.0.0.1:4318:4318"
     environment:
       # In-memory storage (use Elasticsearch/Cassandra for production persistence)
       - SPAN_STORAGE_TYPE=badger

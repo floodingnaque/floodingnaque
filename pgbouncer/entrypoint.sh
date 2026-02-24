@@ -47,7 +47,11 @@ DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-floodingnaque}"
 DB_USER="${DB_USER:-postgres}"
 # Support _FILE pattern for passwords
-DB_PASSWORD=$(read_secret "DB_PASSWORD" "password")
+DB_PASSWORD=$(read_secret "DB_PASSWORD" "")
+if [ -z "$DB_PASSWORD" ]; then
+    echo "ERROR: DB_PASSWORD must be set (via DB_PASSWORD or DB_PASSWORD_FILE)" >&2
+    exit 1
+fi
 DB_SSL_MODE="${DB_SSL_MODE:-require}"
 
 # Read replica defaults (fallback to primary)

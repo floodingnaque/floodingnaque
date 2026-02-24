@@ -45,7 +45,7 @@ services:
     environment:
       - MLFLOW_TRACKING_URI=http://localhost:5000
       # PostgreSQL backend (production-like)
-      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@mlflow-db:5432/mlflow
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:${MLFLOW_DB_PASSWORD:?MLFLOW_DB_PASSWORD must be set}@mlflow-db:5432/mlflow
       # Artifact store
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
     volumes:
@@ -56,7 +56,7 @@ services:
         condition: service_healthy
     command: >  # pragma: allowlist secret
       mlflow server
-      --backend-store-uri postgresql://mlflow:mlflow@mlflow-db:5432/mlflow
+      --backend-store-uri postgresql://mlflow:${MLFLOW_DB_PASSWORD:?MLFLOW_DB_PASSWORD must be set}@mlflow-db:5432/mlflow
       --default-artifact-root /mlflow/artifacts
       --host 0.0.0.0
       --port 5000
@@ -78,7 +78,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mlflow
-      POSTGRES_PASSWORD: mlflow  # pragma: allowlist secret
+      POSTGRES_PASSWORD: ${MLFLOW_DB_PASSWORD:?MLFLOW_DB_PASSWORD must be set}  # Set via .env or environment
       POSTGRES_DB: mlflow
     volumes:
       - mlflow-db-data:/var/lib/postgresql/data
