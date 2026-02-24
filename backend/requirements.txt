@@ -135,7 +135,7 @@ retry-requests==2.0.0  # Retry logic for API calls
 
 # PAGASA/Web Scraping
 beautifulsoup4==4.12.3
-lxml==5.3.0
+lxml==6.0.2
 
 # NAMRIA Tide Tables (PDF/Excel parsing)
 tabula-py==2.9.3
