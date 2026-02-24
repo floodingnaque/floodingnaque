@@ -1,79 +1,267 @@
 """
 Unit tests for prediction service.
 
-Tests for app/services/predict.py
+Tests for app/services/risk_classifier.py — classify_risk_level(),
+format_alert_message(), and get_risk_thresholds().
 """
 
 import pytest
 
-# Import modules at top level for proper coverage tracking
-# Note: The actual predict service doesn't need to be imported here
-# as these tests are pure logic tests, but we keep consistent pattern
+from app.services.risk_classifier import (
+    RISK_LEVEL_COLORS,
+    RISK_LEVEL_DESCRIPTIONS,
+    RISK_LEVELS,
+    classify_risk_level,
+    format_alert_message,
+    get_risk_thresholds,
+)
 
 
-class TestPredictService:
-    """Tests for the prediction service."""
+# ── classify_risk_level ──────────────────────────────────────────────────
 
-    def test_risk_level_safe(self):
-        """Test that low probability returns Safe risk level."""
-        # Risk level 0 (Safe) is for probabilities 0.0 - 0.35
-        probability = 0.2
-        assert probability < 0.35
+class TestClassifyRiskLevel:
+    """Tests for classify_risk_level() function."""
 
-    def test_risk_level_alert(self):
-        """Test that medium probability returns Alert risk level."""
-        # Risk level 1 (Alert) is for probabilities 0.35 - 0.65
-        probability = 0.5
-        assert 0.35 <= probability < 0.65
+    # -- Safe level (risk_level 0) --
 
-    def test_risk_level_critical(self):
-        """Test that high probability returns Critical risk level."""
-        # Risk level 2 (Critical) is for probabilities 0.65 - 1.0
-        probability = 0.8
-        assert probability >= 0.65
+    def test_safe_with_low_flood_probability(self):
+        """No-flood prediction with low probability should return Safe."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.10, "no_flood": 0.90},
+        )
+        assert result["risk_level"] == 0
+        assert result["risk_label"] == "Safe"
+        assert result["risk_color"] == "#28a745"
+
+    def test_safe_no_probability_dict(self):
+        """No-flood prediction without probability dict defaults to Safe."""
+        result = classify_risk_level(prediction=0)
+        assert result["risk_level"] == 0
+        assert result["risk_label"] == "Safe"
+        assert result["confidence"] == 0.5  # default
+
+    def test_safe_with_low_precipitation(self):
+        """Low precipitation should not escalate to Alert."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.10, "no_flood": 0.90},
+            precipitation=5.0,
+        )
+        assert result["risk_level"] == 0
+
+    # -- Alert level (risk_level 1) --
+
+    def test_alert_moderate_flood_probability(self):
+        """No-flood prediction with flood_prob >= 0.30 should return Alert."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.35, "no_flood": 0.65},
+        )
+        assert result["risk_level"] == 1
+        assert result["risk_label"] == "Alert"
+        assert result["risk_color"] == "#ffc107"
+
+    def test_alert_moderate_precipitation(self):
+        """Moderate precipitation (10-30mm) triggers Alert even with low probability."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.10, "no_flood": 0.90},
+            precipitation=15.0,
+        )
+        assert result["risk_level"] == 1
+        assert result["risk_label"] == "Alert"
+
+    def test_alert_high_humidity_with_precipitation(self):
+        """High humidity (>85%) plus precipitation >5mm triggers Alert."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.10, "no_flood": 0.90},
+            precipitation=8.0,
+            humidity=90.0,
+        )
+        assert result["risk_level"] == 1
+
+    def test_alert_flood_predicted_moderate_prob(self):
+        """Flood prediction=1 with moderate probability returns Alert."""
+        result = classify_risk_level(
+            prediction=1,
+            probability={"flood": 0.55, "no_flood": 0.45},
+        )
+        assert result["risk_level"] == 1
+        assert result["risk_label"] == "Alert"
+
+    def test_alert_flood_predicted_low_prob(self):
+        """Flood prediction=1 with low probability still returns Alert (conservative)."""
+        result = classify_risk_level(
+            prediction=1,
+            probability={"flood": 0.30, "no_flood": 0.70},
+        )
+        assert result["risk_level"] == 1
+
+    # -- Critical level (risk_level 2) --
+
+    def test_critical_high_flood_probability(self):
+        """Flood prediction=1 with flood_prob >= 0.75 returns Critical."""
+        result = classify_risk_level(
+            prediction=1,
+            probability={"flood": 0.85, "no_flood": 0.15},
+        )
+        assert result["risk_level"] == 2
+        assert result["risk_label"] == "Critical"
+        assert result["risk_color"] == "#dc3545"
+
+    def test_critical_at_threshold(self):
+        """Exactly 0.75 flood probability should be Critical."""
+        result = classify_risk_level(
+            prediction=1,
+            probability={"flood": 0.75, "no_flood": 0.25},
+        )
+        assert result["risk_level"] == 2
+
+    def test_critical_no_probability_dict(self):
+        """Flood prediction=1 without probability dict defaults to 0.5 → Alert."""
+        result = classify_risk_level(prediction=1)
+        # 0.5 < 0.75 → Alert (not Critical)
+        assert result["risk_level"] == 1
+
+    # -- Output structure --
+
+    def test_output_keys(self):
+        """Return dict must contain all required keys."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.10, "no_flood": 0.90},
+        )
+        expected_keys = {
+            "risk_level",
+            "risk_label",
+            "risk_color",
+            "description",
+            "confidence",
+            "binary_prediction",
+            "probability",
+        }
+        assert set(result.keys()) == expected_keys
+
+    def test_confidence_is_rounded(self):
+        """Confidence should be rounded to 3 decimal places."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.123456, "no_flood": 0.876544},
+        )
+        assert result["confidence"] == 0.877  # no_flood rounded
+
+    def test_binary_prediction_preserved(self):
+        """Original binary prediction is stored in response."""
+        for pred in (0, 1):
+            result = classify_risk_level(prediction=pred)
+            assert result["binary_prediction"] == pred
+
+    def test_description_matches_label(self):
+        """Description should match the risk label."""
+        result = classify_risk_level(
+            prediction=1,
+            probability={"flood": 0.90, "no_flood": 0.10},
+        )
+        assert result["description"] == RISK_LEVEL_DESCRIPTIONS["Critical"]
 
 
-class TestWeatherValidation:
-    """Tests for weather data validation."""
+# ── Boundary / edge cases ────────────────────────────────────────────────
 
-    def test_valid_temperature_kelvin(self):
-        """Test valid temperature in Kelvin."""
-        temp = 298.15  # 25°C
-        assert 200.0 <= temp <= 330.0
+class TestRiskBoundaries:
+    """Edge-case tests around classification boundaries."""
 
-    def test_valid_humidity(self):
-        """Test valid humidity percentage."""
-        humidity = 65.0
-        assert 0.0 <= humidity <= 100.0
+    @pytest.mark.parametrize(
+        "flood_prob, expected_level",
+        [
+            (0.0, 0),
+            (0.29, 0),
+            (0.30, 1),   # boundary: 0.30 → Alert
+            (0.74, 1),
+            (1.0, 1),    # prediction=0, high prob → Alert (no Critical without prediction=1)
+        ],
+    )
+    def test_no_flood_prediction_thresholds(self, flood_prob, expected_level):
+        """Verify thresholds when binary prediction is 0."""
+        result = classify_risk_level(
+            prediction=0,
+            probability={"flood": flood_prob, "no_flood": 1 - flood_prob},
+        )
+        assert result["risk_level"] == expected_level
 
-    def test_valid_precipitation(self):
-        """Test valid precipitation amount."""
-        precipitation = 10.5  # mm
-        assert precipitation >= 0.0
+    @pytest.mark.parametrize(
+        "flood_prob, expected_level",
+        [
+            (0.10, 1),   # prediction=1 conservative → Alert
+            (0.50, 1),
+            (0.74, 1),
+            (0.75, 2),   # boundary: 0.75 → Critical
+            (0.99, 2),
+        ],
+    )
+    def test_flood_prediction_thresholds(self, flood_prob, expected_level):
+        """Verify thresholds when binary prediction is 1."""
+        result = classify_risk_level(
+            prediction=1,
+            probability={"flood": flood_prob, "no_flood": 1 - flood_prob},
+        )
+        assert result["risk_level"] == expected_level
 
 
-class TestCoordinateValidation:
-    """Tests for coordinate validation."""
+# ── format_alert_message ─────────────────────────────────────────────────
 
-    def test_valid_latitude(self):
-        """Test valid latitude value."""
-        lat = 14.4793  # Parañaque City
-        assert -90.0 <= lat <= 90.0
+class TestFormatAlertMessage:
+    """Tests for format_alert_message()."""
 
-    def test_valid_longitude(self):
-        """Test valid longitude value."""
-        lon = 121.0198  # Parañaque City
-        assert -180.0 <= lon <= 180.0
+    def test_message_includes_label_and_description(self):
+        risk_data = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.10, "no_flood": 0.90},
+        )
+        msg = format_alert_message(risk_data)
+        assert "Safe" in msg
+        assert "Confidence" in msg
 
-    def test_invalid_latitude(self):
-        """Test invalid latitude value."""
-        lat = 91.0
-        assert not (-90.0 <= lat <= 90.0)
+    def test_message_with_location(self):
+        risk_data = classify_risk_level(
+            prediction=1,
+            probability={"flood": 0.80, "no_flood": 0.20},
+        )
+        msg = format_alert_message(risk_data, location="Parañaque City")
+        assert "Parañaque City" in msg
 
-    def test_invalid_longitude(self):
-        """Test invalid longitude value."""
-        lon = 181.0
-        assert not (-180.0 <= lon <= 180.0)
+    def test_critical_action_callout(self):
+        risk_data = classify_risk_level(
+            prediction=1,
+            probability={"flood": 0.90, "no_flood": 0.10},
+        )
+        msg = format_alert_message(risk_data)
+        assert "TAKE IMMEDIATE ACTION" in msg
+
+    def test_alert_monitor_callout(self):
+        risk_data = classify_risk_level(
+            prediction=0,
+            probability={"flood": 0.40, "no_flood": 0.60},
+        )
+        msg = format_alert_message(risk_data)
+        assert "MONITOR CONDITIONS" in msg
+
+
+# ── get_risk_thresholds ──────────────────────────────────────────────────
+
+class TestGetRiskThresholds:
+    """Tests for get_risk_thresholds()."""
+
+    def test_returns_all_levels(self):
+        thresholds = get_risk_thresholds()
+        assert set(thresholds.keys()) == {"Safe", "Alert", "Critical"}
+
+    def test_threshold_values(self):
+        thresholds = get_risk_thresholds()
+        assert thresholds["Safe"]["flood_probability_max"] == 0.30
+        assert thresholds["Alert"]["flood_probability_min"] == 0.30
+        assert thresholds["Critical"]["flood_probability_min"] == 0.75
 
 
 if __name__ == "__main__":

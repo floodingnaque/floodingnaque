@@ -10,6 +10,7 @@ from app.models.db import (
     SatelliteWeatherCache,
     Session,
     TideDataCache,
+    User,
     WeatherData,
     Webhook,
     db_session,
@@ -35,5 +36,6 @@ __all__ = [
     "TideDataCache",
     "APIRequest",
     "EarthEngineRequest",
+    "User",
     "Webhook",
 ]
