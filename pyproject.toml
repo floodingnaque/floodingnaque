@@ -5,7 +5,7 @@
 name = "floodingnaque"
 version = "1.0.0"
 description = "Flood prediction and monitoring system for Paranaque"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 [tool.bandit]
 # Security linting configuration
@@ -14,7 +14,7 @@ skips = ["B101", "B104", "B311"]  # Skip assert warnings, hardcoded bindings, ra
 
 [tool.black]
 line-length = 120
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 extend-exclude = '''
 /(

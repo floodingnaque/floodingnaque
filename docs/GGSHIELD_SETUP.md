@@ -112,7 +112,7 @@ The hook is defined in `.pre-commit-config.yaml`:
 ### Install Pre-commit Hooks
 
 ```powershell
-cd d:\floodingnaque
+cd floodingnaque
 pre-commit install
 ```
 

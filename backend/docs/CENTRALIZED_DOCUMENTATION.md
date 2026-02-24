@@ -7423,7 +7423,7 @@ model.fit(X_train, y_train)
 score = model.score(X_test, y_test)
 scores.append(score)
 return np.mean(scores), np.std(scores)
-cd d:\floodingnaque\backend
+cd backend
 python scripts/preprocess_pagasa_data.py --station all
 python scripts/train_production.py \
 --data-path data/processed/pagasa_training_dataset.csv \

@@ -2,7 +2,7 @@
 
 Random Forest-Based Flood Detection and Alert System
 
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/github/license/KyaRhamil/floodingnaque)](LICENSE)
 [![Last Updated](https://img.shields.io/github/last-commit/KyaRhamil/floodingnaque)](#)
 
@@ -45,8 +45,8 @@ This enhancement provides significantly stronger thesis support compared to proj
 
 | Guide | Description |
 |-------|-------------|
-| [OFFICIAL_RECORDS_QUICK_START.md](OFFICIAL_RECORDS_QUICK_START.md) | Training with real flood data |
-| [RANDOM_FOREST_THESIS_READY.md](RANDOM_FOREST_THESIS_READY.md) | Complete thesis preparation guide |
+| [QUICKSTART.md](QUICKSTART.md) | Quick start guide |
+| [backend/docs/CENTRALIZED_DOCUMENTATION.md](backend/docs/CENTRALIZED_DOCUMENTATION.md) | Complete centralized documentation |
 
 ---
 
@@ -281,20 +281,13 @@ curl http://localhost:5000/api/models
 
 | Document | Description |
 |----------|-------------|
-| [RANDOM_FOREST_THESIS_READY.md](RANDOM_FOREST_THESIS_READY.md) | Quick start for thesis |
-| [OFFICIAL_RECORDS_QUICK_START.md](OFFICIAL_RECORDS_QUICK_START.md) | Training with official flood records |
-| [backend/docs/QUICK_REFERENCE.md](backend/docs/QUICK_REFERENCE.md) | Command cheat sheet |
-| [backend/docs/THESIS_GUIDE.md](backend/docs/THESIS_GUIDE.md) | Complete thesis guide |
+| [backend/docs/CENTRALIZED_DOCUMENTATION.md](backend/docs/CENTRALIZED_DOCUMENTATION.md) | Complete documentation (thesis guide, commands, training) |
 
 ### Detailed Guides
 
 | Document | Description |
 |----------|-------------|
-| [backend/docs/OFFICIAL_FLOOD_RECORDS_GUIDE.md](backend/docs/OFFICIAL_FLOOD_RECORDS_GUIDE.md) | Complete guide for official records training |
-| [backend/docs/IMPROVEMENTS_SUMMARY.md](backend/docs/IMPROVEMENTS_SUMMARY.md) | All improvements explained |
-| [backend/docs/SYSTEM_OVERVIEW.md](backend/docs/SYSTEM_OVERVIEW.md) | System architecture |
-| [backend/docs/MODEL_MANAGEMENT.md](backend/docs/MODEL_MANAGEMENT.md) | Model versioning |
-| [backend/docs/BACKEND_COMPLETE.md](backend/docs/BACKEND_COMPLETE.md) | Full documentation |
+| [backend/docs/CENTRALIZED_DOCUMENTATION.md](backend/docs/CENTRALIZED_DOCUMENTATION.md) | Full documentation (records guide, system overview, model management) |
 
 ### Infrastructure & DevOps
 

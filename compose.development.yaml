@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile
       target: development
       args:
-        PYTHON_VERSION: "3.13"
+        PYTHON_VERSION: "3.12"
     image: floodingnaque-api:development
     container_name: floodingnaque-api-dev
     ports:

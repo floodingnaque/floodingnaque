@@ -228,7 +228,7 @@ google-cloud-*.json
 gcp-*.json
 
 # Service account keys - Project-specific
-floodingnaque-googe-cloud-*.json
+floodingnaque-google-cloud-*.json
 floodingnaque-google-cloud-*.json
 *.iam.gserviceaccount.com.json
 backend/*-service-account*.json

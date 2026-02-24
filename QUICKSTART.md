@@ -3,7 +3,7 @@
 ## Prerequisites
 
 Before starting, ensure you have:
-- ✅ Python 3.9+ installed
+- ✅ Python 3.12+ installed
 - ✅ Node.js 18+ and npm installed
 - ✅ PostgreSQL database (or use SQLite for development)
 
@@ -14,7 +14,7 @@ Before starting, ensure you have:
 1. **Activate the virtual environment:**
    ```powershell
    # From the project root
-   cd d:\floodingnaque
+   # From the project root
    .\venv\Scripts\Activate.ps1
    ```
 
@@ -39,7 +39,7 @@ Before starting, ensure you have:
 ### Option B: Using the PowerShell Script
 
 ```powershell
-cd d:\floodingnaque\backend
+cd backend
 .\start_server.ps1
 ```
 
@@ -55,7 +55,7 @@ You should see a JSON response indicating the server is healthy.
 
 2. **Navigate to the frontend directory:**
    ```powershell
-   cd d:\floodingnaque\frontend
+   cd frontend
    ```
 
 3. **Install dependencies (if not already done):**
@@ -97,7 +97,7 @@ If you need to create an admin user directly:
 
 1. **Open a terminal in the backend directory:**
    ```powershell
-   cd d:\floodingnaque\backend
+   cd backend
    .\venv\Scripts\Activate.ps1
    ```
 
@@ -200,7 +200,7 @@ You should be redirected to the dashboard!
 ### Backend
 ```powershell
 # Start backend
-cd d:\floodingnaque\backend
+cd backend
 .\venv\Scripts\Activate.ps1
 python main.py
 
@@ -211,7 +211,7 @@ curl http://localhost:5000/api/v1/health
 ### Frontend
 ```powershell
 # Start frontend
-cd d:\floodingnaque\frontend
+cd frontend
 npm run dev
 
 # Build for production

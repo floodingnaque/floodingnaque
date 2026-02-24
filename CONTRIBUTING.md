@@ -48,7 +48,7 @@ Thank you for your interest in contributing to Floodingnaque! This document outl
 We follow PEP 8 for Python code. Key points:
 
 - Use 4 spaces for indentation
-- Limit lines to 79 characters
+- Limit lines to 120 characters
 - Use descriptive variable and function names
 - Write docstrings for all public classes and functions
 - Import statements should be at the top of the file, grouped logically

@@ -20,7 +20,7 @@ The progressive training system generates six model versions with incremental fe
 ### 1. Train All Versions (v1-v6)
 
 ```powershell
-cd d:\floodingnaque\backend
+cd backend
 .\models\run_training_pipeline.ps1 -Progressive6
 ```
 
@@ -80,7 +80,7 @@ feature_count_vs_performance.png              # Features vs F1 score
 After training, compare all versions:
 
 ```powershell
-cd d:\floodingnaque\backend
+cd backend
 python scripts\compare_progressive_models.py
 ```
 

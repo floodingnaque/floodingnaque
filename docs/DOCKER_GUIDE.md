@@ -106,7 +106,7 @@ This guide covers the full Docker ecosystem for Floodingnaque, including local d
 
 ```powershell
 # Clone and navigate
-cd d:\floodingnaque
+cd floodingnaque
 
 # Set required environment variable
 $env:POSTGRES_PASSWORD = "your_secure_password_here"
