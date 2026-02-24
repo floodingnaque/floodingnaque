@@ -8,16 +8,16 @@ global:
   external_labels:
     monitor: 'floodingnaque-monitor'
 
-# Alertmanager configuration (optional)
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets:
-#           - alertmanager:9093
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
 
-# Rule files (optional)
-# rule_files:
-#   - "alerts/*.yml"
+# Rule files
+rule_files:
+  - "alerts/*.yml"
 
 # Scrape configurations
 scrape_configs:

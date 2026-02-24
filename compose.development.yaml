@@ -58,6 +58,7 @@ services:
     volumes:
       # Mount code for development hot-reload
       - ./backend/app:/app/app:ro
+      - ./backend/config:/app/config:ro
       - ./backend/main.py:/app/main.py:ro
       # Persistent data
       - ./backend/models:/app/models

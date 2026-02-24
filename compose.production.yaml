@@ -454,10 +454,10 @@ services:
       # Read replica (optional)
       - DB_REPLICA_HOST=${DB_REPLICA_HOST:-}
       - DB_REPLICA_PORT=${DB_REPLICA_PORT:-5432}
-      # Pool settings
+      # Pool settings (tuned for Supabase Pro ~60 connections)
       - PGBOUNCER_POOL_MODE=${PGBOUNCER_POOL_MODE:-transaction}
-      - PGBOUNCER_MAX_CLIENT_CONN=${PGBOUNCER_MAX_CLIENT_CONN:-1000}
-      - PGBOUNCER_DEFAULT_POOL_SIZE=${PGBOUNCER_DEFAULT_POOL_SIZE:-25}
+      - PGBOUNCER_MAX_CLIENT_CONN=${PGBOUNCER_MAX_CLIENT_CONN:-200}
+      - PGBOUNCER_DEFAULT_POOL_SIZE=${PGBOUNCER_DEFAULT_POOL_SIZE:-35}
       - PGBOUNCER_MIN_POOL_SIZE=${PGBOUNCER_MIN_POOL_SIZE:-5}
       - PGBOUNCER_RESERVE_POOL_SIZE=${PGBOUNCER_RESERVE_POOL_SIZE:-10}
       - PGBOUNCER_MAX_DB_CONNECTIONS=${PGBOUNCER_MAX_DB_CONNECTIONS:-50}
@@ -576,6 +576,7 @@ services:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts:/etc/prometheus/alerts:ro
       - prometheus_data_prod:/prometheus
     networks:
       - floodingnaque-monitoring

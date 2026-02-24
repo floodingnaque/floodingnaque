@@ -1,0 +1,70 @@
+# =====================================================
+# Prometheus Alert Rules for Floodingnaque
+# =====================================================
+
+groups:
+  - name: floodingnaque-api
+    rules:
+      # API is down
+      - alert: APIDown
+        expr: up{job="floodingnaque-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "Floodingnaque API is down"
+          description: "The backend API has been unreachable for more than 1 minute."
+
+      # High error rate (>5% of requests returning 5xx)
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="floodingnaque-api",status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="floodingnaque-api"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High API error rate"
+          description: "More than 5% of API requests are returning 5xx errors over the last 5 minutes."
+
+      # Slow response times (p95 > 2s)
+      - alert: SlowResponses
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="floodingnaque-api"}[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "Slow API response times"
+          description: "The 95th percentile response time exceeds 2 seconds."
+
+  - name: infrastructure
+    rules:
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="floodingnaque-api"} > 1.5e+9
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High memory usage on API"
+          description: "Backend memory usage exceeds 1.5GB."
+
+      # Prometheus target down
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scrape target {{ $labels.job }} is down"
+          description: "{{ $labels.instance }} has been unreachable for more than 5 minutes."

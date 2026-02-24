@@ -9,18 +9,23 @@
 #   docker compose -f compose.mlflow.yaml up -d
 #
 # Access:
-#   MLflow UI: http://localhost:5000
+#   MLflow UI: http://localhost:5001
 #   Artifact store: ./mlflow/artifacts
-#   Backend store: PostgreSQL or SQLite
+#   Backend store: PostgreSQL
 #
 # Stop:
 #   docker compose -f compose.mlflow.yaml down
 #
 # With data cleanup:
 #   docker compose -f compose.mlflow.yaml down -v
+#
+# This file inherits shared anchors from compose.yaml via include directive.
+# Requires Docker Compose v2.20+
 
 include:
   - compose.yaml
+
+name: floodingnaque-mlflow
 
 services:
   # ==========================================================================
@@ -30,8 +35,13 @@ services:
     image: ghcr.io/mlflow/mlflow:v2.10.0
     container_name: floodingnaque-mlflow
     restart: unless-stopped
+    labels:
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "mlflow"
+      com.floodingnaque.description: "ML Experiment Tracking"
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - MLFLOW_TRACKING_URI=http://localhost:5000
       # PostgreSQL backend (production-like)
@@ -108,6 +118,19 @@ services:
   #     timeout: 10s
   #     retries: 3
 
+# ===================
+# Networks
+# ===================
+networks:
+  mlflow-network:
+    driver: bridge
+    name: floodingnaque-mlflow
 
-
-
+# ===================
+# Volumes
+# ===================
+volumes:
+  mlflow-artifacts:
+    name: floodingnaque-mlflow-artifacts
+  mlflow-db-data:
+    name: floodingnaque-mlflow-db-data

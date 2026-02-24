@@ -1,0 +1,189 @@
+# =====================================================
+# Floodingnaque - Observability Stack
+# =====================================================
+# Grafana dashboards, Alertmanager alerting, and Jaeger tracing.
+# Use alongside compose.production.yaml (or any env compose file).
+#
+# Usage:
+#   docker compose -f compose.production.yaml -f compose.observability.yaml up -d
+#
+#   Or with monitoring profile (Prometheus already in production):
+#   docker compose -f compose.production.yaml -f compose.observability.yaml \
+#     --profile monitoring up -d
+#
+# Access:
+#   Grafana:      http://localhost:3000  (admin / ${GF_SECURITY_ADMIN_PASSWORD})
+#   Alertmanager: http://localhost:9093
+#   Jaeger UI:    http://localhost:16686
+#
+# This file inherits shared anchors from compose.yaml via include directive.
+# Requires Docker Compose v2.20+
+# =====================================================
+
+include:
+  - compose.yaml
+
+name: floodingnaque-observability
+
+services:
+  # ===================
+  # Grafana - Dashboards & Visualization
+  # ===================
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: floodingnaque-grafana
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "grafana"
+      com.floodingnaque.description: "Dashboards & Visualization"
+    ports:
+      - "3000:3000"
+    environment:
+      # Admin credentials
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-floodingnaque}
+      # Server settings
+      - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-http://localhost:3000}
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      # Auth
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_BASIC_ENABLED=true
+      # Install plugins
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+      # Logging
+      - GF_LOG_MODE=console
+      - GF_LOG_LEVEL=warn
+      # Alerting
+      - GF_UNIFIED_ALERTING_ENABLED=true
+      - GF_ALERTING_ENABLED=false
+    volumes:
+      # Provisioned datasources
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      # Pre-built dashboards
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      # Persistent data (user-created dashboards, preferences)
+      - grafana_data:/var/lib/grafana
+    networks:
+      - floodingnaque-observability
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # ===================
+  # Alertmanager - Alert Routing & Deduplication
+  # ===================
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: floodingnaque-alertmanager
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "alertmanager"
+      com.floodingnaque.description: "Alert Routing & Notifications"
+    ports:
+      - "127.0.0.1:9093:9093"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.listen-address=:9093'
+      - '--cluster.listen-address='
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - floodingnaque-observability
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+
+  # ===================
+  # Jaeger - Distributed Tracing
+  # ===================
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: floodingnaque-jaeger
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "jaeger"
+      com.floodingnaque.description: "Distributed Tracing"
+    ports:
+      # Jaeger UI
+      - "16686:16686"
+      # OTLP gRPC collector
+      - "4317:4317"
+      # OTLP HTTP collector
+      - "4318:4318"
+    environment:
+      # In-memory storage (use Elasticsearch/Cassandra for production persistence)
+      - SPAN_STORAGE_TYPE=badger
+      - BADGER_EPHEMERAL=false
+      - BADGER_DIRECTORY_VALUE=/badger/data
+      - BADGER_DIRECTORY_KEY=/badger/key
+      # Collector settings
+      - COLLECTOR_OTLP_ENABLED=true
+      # Query service
+      - QUERY_BASE_PATH=/
+    volumes:
+      - jaeger_data:/badger
+    networks:
+      - floodingnaque-observability
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:14269/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+# ===================
+# Networks
+# ===================
+networks:
+  floodingnaque-observability:
+    driver: bridge
+    name: floodingnaque-observability
+
+# ===================
+# Volumes
+# ===================
+volumes:
+  grafana_data:
+    name: floodingnaque-grafana-data
+  alertmanager_data:
+    name: floodingnaque-alertmanager-data
+  jaeger_data:
+    name: floodingnaque-jaeger-data

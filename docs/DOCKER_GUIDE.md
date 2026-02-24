@@ -172,8 +172,6 @@ docker compose -f compose.production.yaml `
 | `compose.production.yaml` | Full production | All services | Live deployment |
 | `compose.mlflow.yaml` | ML tracking | MLflow, PostgreSQL | Experiment tracking |
 
-> **Note:** `compose.prod-legacy.yaml.deprecated` exists for backward compatibility but is superseded by `compose.production.yaml`. It will be removed in a future release.
-
 *\* = Optional via profile*
 
 ### Combining Compose Files
@@ -211,11 +209,13 @@ services:
 
 | Anchor | Purpose |
 |--------|--------|
-| `x-logging-default` / `x-logging-production` | Log rotation settings (10m/50m) |
-| `x-resources-small/medium/large` | CPU/memory limits |
+| `x-backend-base` | Base build config, restart policy, core env vars |
 | `x-backend-healthcheck` | Standard health check configuration |
-| `x-postgres-healthcheck` | PostgreSQL health check |
-| `x-redis-healthcheck` | Redis health check |
+| `x-redis-healthcheck` / `x-postgres-healthcheck` | Database health checks |
+| `x-redis-base` / `x-postgres-base` | Base image + restart policy |
+| `x-logging-default` / `x-logging-production` | Log rotation settings (10m/50m) |
+| `x-labels-common` | Shared project labels |
+| `x-resources-small/medium/large` | CPU/memory limits |
 | `x-security-opts` | Security hardening (no-new-privileges) |
 
 > **Requirements:** Docker Compose v2.20+ (for `include` directive support)

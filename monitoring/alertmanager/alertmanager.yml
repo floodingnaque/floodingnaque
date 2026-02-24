@@ -1,0 +1,106 @@
+# =====================================================
+# Alertmanager Configuration for Floodingnaque
+# =====================================================
+# Routes alerts from Prometheus to notification channels.
+# Customize receivers with your Slack webhook, email, or PagerDuty.
+#
+# Docs: https://prometheus.io/docs/alerting/latest/configuration/
+# =====================================================
+
+global:
+  # Default SMTP settings (for email notifications)
+  # smtp_smarthost: 'smtp.gmail.com:587'
+  # smtp_from: 'alerts@floodingnaque.com'
+  # smtp_auth_username: 'alerts@floodingnaque.com'
+  # smtp_auth_password: 'app-password'
+  # smtp_require_tls: true
+
+  resolve_timeout: 5m
+
+# Notification templates
+# templates:
+#   - '/etc/alertmanager/templates/*.tmpl'
+
+# Alert routing tree
+route:
+  # Default receiver
+  receiver: 'default-receiver'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'service']
+
+  # Wait before sending initial notification (batch alerts)
+  group_wait: 30s
+
+  # Wait before sending updates to existing groups
+  group_interval: 5m
+
+  # Wait before re-sending a resolved alert
+  repeat_interval: 4h
+
+  # Child routes for severity-based routing
+  routes:
+    # Critical alerts — immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-receiver'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Warning alerts — normal cadence
+    - match:
+        severity: warning
+      receiver: 'default-receiver'
+      repeat_interval: 4h
+
+# Inhibition rules — suppress lower-severity alerts when critical fires
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# Notification receivers
+receivers:
+  # Default — log to stdout (replace with Slack/email in production)
+  - name: 'default-receiver'
+    # Uncomment and configure for Slack:
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+    #     channel: '#floodingnaque-alerts'
+    #     title: '{{ .GroupLabels.alertname }}'
+    #     text: >-
+    #       {{ range .Alerts }}
+    #       *Alert:* {{ .Annotations.summary }}
+    #       *Severity:* {{ .Labels.severity }}
+    #       *Description:* {{ .Annotations.description }}
+    #       {{ end }}
+
+    # Uncomment for email:
+    # email_configs:
+    #   - to: 'team@floodingnaque.com'
+    #     send_resolved: true
+
+    # Webhook (for custom integrations)
+    webhook_configs:
+      - url: 'http://localhost:9095/alertmanager'
+        send_resolved: true
+
+  # Critical — more aggressive notification
+  - name: 'critical-receiver'
+    # Uncomment and configure:
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+    #     channel: '#floodingnaque-critical'
+    #     title: ':rotating_light: CRITICAL: {{ .GroupLabels.alertname }}'
+    #     text: >-
+    #       {{ range .Alerts }}
+    #       *Alert:* {{ .Annotations.summary }}
+    #       *Instance:* {{ .Labels.instance }}
+    #       *Description:* {{ .Annotations.description }}
+    #       {{ end }}
+
+    webhook_configs:
+      - url: 'http://localhost:9095/alertmanager'
+        send_resolved: true
