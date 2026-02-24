@@ -6,10 +6,11 @@ Defines background tasks for async processing.
 
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models.db import get_db_session
 from app.services.celery_app import celery_app
+from app.utils.secrets import get_secret
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -56,7 +57,7 @@ def model_retraining(self, model_id=None):
             "precision": 0.89,
             "recall": 0.94,
             "f1_score": 0.91,
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
         }
 
         logger.info(f"Model retraining completed: {result}")
@@ -115,7 +116,7 @@ def process_weather_data(self, data_batch):
             "total_records": len(data_batch),
             "processed": processed_count,
             "failed": failed_count,
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
         }
 
         logger.info(f"Data processing completed: {result}")
@@ -159,7 +160,7 @@ def send_notification(self, notification_type, recipient, message):
             "notification_type": notification_type,
             "recipient": recipient,
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat(),
         }
 
         logger.info(f"Notification sent successfully: {result}")
@@ -185,7 +186,7 @@ def cleanup_old_results():
         # 3. Clean up any orphaned tasks
 
         logger.info("Cleanup completed successfully")
-        return {"status": "completed", "cleaned_at": datetime.utcnow().isoformat()}
+        return {"status": "completed", "cleaned_at": datetime.now(timezone.utc).isoformat()}
 
     except Exception as e:
         logger.error(f"Cleanup failed: {str(e)}")
@@ -203,7 +204,7 @@ def health_check():
             session.execute("SELECT 1")
 
         # Check Redis connectivity (if configured)
-        redis_url = os.getenv("CELERY_BROKER_URL", "")
+        redis_url = get_secret("CELERY_BROKER_URL") or ""
         if redis_url and "redis" in redis_url.lower():
             from urllib.parse import urlparse
 
@@ -221,13 +222,13 @@ def health_check():
         logger.info("Health check passed")
         return {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "checks": {"database": "ok", "redis": "ok"},
         }
 
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
-        return {"status": "unhealthy", "timestamp": datetime.utcnow().isoformat(), "error": str(e)}
+        return {"status": "unhealthy", "timestamp": datetime.now(timezone.utc).isoformat(), "error": str(e)}
 
 
 # Example usage functions

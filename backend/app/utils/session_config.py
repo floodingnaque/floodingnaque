@@ -10,6 +10,8 @@ import os
 from datetime import timedelta
 from typing import Any, Dict
 
+from app.utils.secrets import get_secret
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ def get_session_config() -> Dict[str, Any]:
         Dict with session configuration settings
     """
     is_production = os.getenv("APP_ENV", "development").lower() in ("production", "prod", "staging", "stage")
-    redis_url = os.getenv("REDIS_URL", os.getenv("RATE_LIMIT_STORAGE_URL", ""))
+    redis_url = get_secret("REDIS_URL") or get_secret("RATE_LIMIT_STORAGE_URL") or ""
 
     config = {
         # Base session settings
@@ -154,7 +156,7 @@ def validate_session_health() -> Dict[str, Any]:
     Returns:
         Dict with health status information
     """
-    redis_url = os.getenv("REDIS_URL", os.getenv("RATE_LIMIT_STORAGE_URL", ""))
+    redis_url = get_secret("REDIS_URL") or get_secret("RATE_LIMIT_STORAGE_URL") or ""
 
     result = {
         "status": "unknown",

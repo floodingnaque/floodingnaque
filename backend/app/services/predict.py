@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 import joblib
 import pandas as pd
 from app.services.risk_classifier import classify_risk_level
+from app.utils.secrets import get_secret
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL_PATH = os.path.join("models", "flood_rf_model.joblib")
 
 # HMAC key for model signing (should be set in environment)
-_MODEL_SIGNING_KEY = os.getenv("MODEL_SIGNING_KEY", "")
+_MODEL_SIGNING_KEY = get_secret("MODEL_SIGNING_KEY", default="")
 
 
 class ModelLoader:

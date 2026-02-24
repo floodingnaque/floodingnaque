@@ -59,6 +59,27 @@ repos:
         files: ^backend/.*\.py$
         exclude: ^backend/tests/.*\.py$
 
+  # Frontend linting with ESLint
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: npx --prefix frontend eslint --max-warnings 0
+        language: system
+        types_or: [javascript, jsx, ts, tsx]
+        files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
+
+  # Frontend type checking with TypeScript
+  - repo: local
+    hooks:
+      - id: tsc
+        name: tsc
+        entry: npx --prefix frontend tsc -b --noEmit
+        language: system
+        types_or: [ts, tsx]
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
   # YAML validation
   - repo: local
     hooks:

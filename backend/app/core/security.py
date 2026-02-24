@@ -12,6 +12,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
+from app.utils.secrets import get_secret
+
 try:
     import jwt
 
@@ -232,7 +234,7 @@ class SecurityViolation(Exception):
 # =============================================================================
 
 # JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret-key-change-in-production"))
+JWT_SECRET_KEY = get_secret("JWT_SECRET_KEY") or get_secret("SECRET_KEY", default="dev-secret-key-change-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15"))  # 15 minutes
 JWT_REFRESH_TOKEN_EXPIRES = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES_DAYS", "7"))  # 7 days

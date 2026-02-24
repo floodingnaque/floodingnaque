@@ -7,6 +7,7 @@ Sets up Celery for background task processing.
 import os
 
 from app.utils.logging import get_logger
+from app.utils.secrets import get_secret
 from celery import Celery
 
 logger = get_logger(__name__)
@@ -17,8 +18,8 @@ celery_app = Celery("floodingnaque")
 # Configure Celery
 celery_app.conf.update(
     # Broker settings
-    broker_url=os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1"),
-    result_backend=os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2"),
+    broker_url=get_secret("CELERY_BROKER_URL", default="redis://localhost:6379/1"),
+    result_backend=get_secret("CELERY_RESULT_BACKEND", default="redis://localhost:6379/2"),
     # Task settings
     task_serializer="json",
     accept_content=["json"],
@@ -56,7 +57,7 @@ celery_app.conf.update(
 
 # Optional: Import tasks to register them
 try:
-    pass
+    from app.services import tasks  # noqa: F401
 
     logger.info("Celery tasks module loaded")
 except ImportError as e:

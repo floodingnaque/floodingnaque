@@ -31,6 +31,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.utils.secrets import get_secret
+
 logger = logging.getLogger(__name__)
 
 
@@ -357,7 +359,7 @@ def check_database() -> HealthCheckResult:
         from app.models.db import get_db_session
         from sqlalchemy import text
 
-        database_url = os.getenv("DATABASE_URL", "")
+        database_url = get_secret("DATABASE_URL", default="")
         is_sqlite = database_url.startswith("sqlite") or not database_url
 
         with get_db_session() as session:

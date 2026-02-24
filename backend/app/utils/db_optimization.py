@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
+from app.utils.secrets import get_secret
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -36,7 +38,7 @@ class DatabaseConfig:
 
     def __init__(self):
         # Primary (write) database
-        self.primary_url = os.getenv("DATABASE_URL", "")
+        self.primary_url = get_secret("DATABASE_URL", default="")
 
         # Read replica (defaults to primary if not set)
         self.replica_url = os.getenv("DATABASE_REPLICA_URL", self.primary_url)

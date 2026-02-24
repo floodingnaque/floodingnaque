@@ -13,6 +13,8 @@ from datetime import timedelta
 from functools import wraps
 from typing import Any, Callable, Optional, Union
 
+from app.utils.secrets import get_secret
+
 logger = logging.getLogger(__name__)
 
 # Redis client singleton
@@ -35,7 +37,7 @@ def get_redis_client():
     if _redis_client is not None:
         return _redis_client
 
-    redis_url = os.getenv("REDIS_URL") or os.getenv("RATE_LIMIT_STORAGE_URL", "")
+    redis_url = get_secret("REDIS_URL") or get_secret("RATE_LIMIT_STORAGE_URL") or ""
 
     if not redis_url or "redis" not in redis_url.lower():
         _cache_enabled = False

@@ -26,29 +26,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Create virtual environment
 RUN python -m venv /opt/venv
 
-# Install build dependencies and Rust in a single layer
+# Install build dependencies (Rust NOT required — cryptography 42+ ships manylinux wheels)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
-        cargo \
-        curl \
         g++ \
         gcc \
+        gfortran \
         libffi-dev \
-        libpq-dev \
-        rustc && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    . $HOME/.cargo/env && \
-    rustup update && \
-    rustup component add rustc
+        libpq-dev
 
 # Copy and install Python dependencies
 WORKDIR /build
 COPY requirements.txt .
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    . $HOME/.cargo/env && \
     pip install --upgrade pip setuptools wheel && \
     pip install -r requirements.txt
 
@@ -102,6 +95,7 @@ COPY --from=builder /opt/venv /opt/venv
 # Copy application code
 COPY --chown=appuser:appgroup alembic/ ./alembic/
 COPY --chown=appuser:appgroup app/ ./app/
+COPY --chown=appuser:appgroup config/ ./config/
 COPY --chown=appuser:appgroup models/ ./models/
 COPY --chown=appuser:appgroup data/synthetic_dataset.csv ./data/
 COPY --chown=appuser:appgroup alembic.ini main.py ./

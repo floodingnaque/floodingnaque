@@ -7,6 +7,7 @@ import requests
 from app.models.db import WeatherData, get_db_session
 from app.utils.circuit_breaker import CircuitOpenError, openweathermap_breaker, retry_with_backoff, weatherstack_breaker
 from app.utils.correlation import inject_correlation_headers
+from app.utils.secrets import get_secret
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +78,9 @@ def ingest_data(lat=None, lon=None):
         dict: Weather data dictionary
     """
     # API keys from environment variables
-    owm_api_key = os.getenv("OWM_API_KEY")
+    owm_api_key = get_secret("OWM_API_KEY")
     # Note: METEOSTAT_API_KEY can also be used for Weatherstack API
-    weatherstack_api_key = os.getenv("METEOSTAT_API_KEY") or os.getenv("WEATHERSTACK_API_KEY")
+    weatherstack_api_key = get_secret("METEOSTAT_API_KEY") or get_secret("WEATHERSTACK_API_KEY")
 
     # Default location: Parañaque City, Philippines (from environment or hardcoded default)
     if lat is None:
