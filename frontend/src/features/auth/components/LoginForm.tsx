@@ -9,7 +9,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 import { useAuth } from '../hooks/useAuth';
+import { useAuthStore } from '@/state/stores/authStore';
 
 /**
  * Login form validation schema
@@ -55,6 +57,18 @@ interface LoginFormProps {
  */
 export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const { login, isLoggingIn, loginError } = useAuth();
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  // Navigate after login based on role. This runs inside the component tree
+  // where useNavigate is always connected to the router — unlike calling
+  // navigate() inside a mutation onSuccess which can be stale/disconnected.
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate(user.role === 'admin' ? '/admin' : '/', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const {
     register,

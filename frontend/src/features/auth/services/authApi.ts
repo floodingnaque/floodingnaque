@@ -52,10 +52,13 @@ export const authApi = {
   },
 
   /**
-   * Get the current authenticated user's profile
+   * Get the current authenticated user's profile.
+   * The backend returns { success, user } — we unwrap to a flat User here
+   * so every consumer receives the correct shape with role intact.
    */
   getMe: async (): Promise<User> => {
-    return api.get<User>(endpoints.auth.me);
+    const response = await api.get<{ success: boolean; user: User }>(endpoints.auth.me);
+    return (response as unknown as { user: User }).user ?? response;
   },
 
   /**

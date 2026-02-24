@@ -44,13 +44,6 @@ function transformTokenResponse(response: {
 }
 
 /**
- * Determine the post-login landing route based on user role.
- */
-function getHomeRouteForUser(user: User): string {
-  return user.role === 'admin' ? '/admin' : '/';
-}
-
-/**
  * useAuth hook for authentication management
  */
 export function useAuth() {
@@ -62,21 +55,19 @@ export function useAuth() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const setAuth = useAuthStore((state) => state.setAuth);
   const clearAuth = useAuthStore((state) => state.clearAuth);
-  const setTokens = useAuthStore((state) => state.setTokens);
 
   /**
    * Login mutation
    */
   const loginMutation = useMutation({
     mutationFn: (credentials: LoginRequest) => authApi.login(credentials),
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       const tokens = transformTokenResponse(data);
-      // Store tokens immediately so subsequent requests include Authorization
-      setTokens(tokens);
-      // Fetch user profile after successful login
-      const userProfile = await authApi.getMe();
+      // Use the user embedded in the login response directly.
+      // Navigation is handled by LoginForm's useEffect which runs
+      // inside the component tree where useNavigate is always valid.
+      const userProfile: User = (data as unknown as { user: User }).user;
       setAuth(userProfile, tokens);
-      navigate(getHomeRouteForUser(userProfile));
     },
   });
 
@@ -85,14 +76,10 @@ export function useAuth() {
    */
   const registerMutation = useMutation({
     mutationFn: (data: RegisterRequest) => authApi.register(data),
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       const tokens = transformTokenResponse(data);
-      // Store tokens immediately so subsequent requests include Authorization
-      setTokens(tokens);
-      // Fetch user profile after successful registration
-      const userProfile = await authApi.getMe();
+      const userProfile: User = (data as unknown as { user: User }).user;
       setAuth(userProfile, tokens);
-      navigate(getHomeRouteForUser(userProfile));
     },
   });
 

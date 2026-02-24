@@ -966,7 +966,12 @@ class User(Base):
         """Check if user account is locked."""
         if self.locked_until is None:
             return False
-        return datetime.now(timezone.utc) < self.locked_until
+        locked_until = self.locked_until
+        # SQLite returns naive datetimes even for timezone=True columns.
+        # Treat any naive datetime as UTC so the comparison is always valid.
+        if locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) < locked_until
 
 
 class Webhook(Base):

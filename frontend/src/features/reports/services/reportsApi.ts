@@ -44,31 +44,37 @@ function getAuthHeader(): Record<string, string> {
  */
 export const reportsApi = {
   /**
+   * Determine the correct export endpoint based on report type
+   */
+  _getExportUrl(params: ReportParams, format: 'csv' | 'json' | 'pdf'): string {
+    const endpoint =
+      params.report_type === 'predictions'
+        ? API_ENDPOINTS.export.predictions
+        : API_ENDPOINTS.export.weather;
+
+    const searchParams = new URLSearchParams({ format });
+    if (params.start_date) searchParams.set('start_date', params.start_date);
+    if (params.end_date) searchParams.set('end_date', params.end_date);
+
+    return `${API_CONFIG.baseUrl}${endpoint}?${searchParams.toString()}`;
+  },
+
+  /**
    * Export report as PDF
    *
    * @param params - Report configuration parameters
    * @returns Blob containing the PDF file
-   *
-   * @example
-   * const blob = await reportsApi.exportPDF({
-   *   report_type: 'predictions',
-   *   start_date: '2026-01-01',
-   *   end_date: '2026-01-31'
-   * });
    */
   exportPDF: async (params: ReportParams): Promise<Blob> => {
-    const response = await axios.post(
-      `${API_CONFIG.baseUrl}${API_ENDPOINTS.export.pdf}`,
-      params,
-      {
-        responseType: 'blob',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader(),
-        },
-        timeout: API_CONFIG.timeout * 2, // Longer timeout for report generation
-      }
-    );
+    const url = reportsApi._getExportUrl(params, 'pdf');
+    const response = await axios.get(url, {
+      responseType: 'blob',
+      headers: {
+        ...getAuthHeader(),
+        Accept: 'application/pdf',
+      },
+      timeout: API_CONFIG.timeout * 2,
+    });
     return response.data;
   },
 
@@ -77,27 +83,16 @@ export const reportsApi = {
    *
    * @param params - Report configuration parameters
    * @returns Blob containing the CSV file
-   *
-   * @example
-   * const blob = await reportsApi.exportCSV({
-   *   report_type: 'alerts',
-   *   start_date: '2026-01-01',
-   *   end_date: '2026-01-31'
-   * });
    */
   exportCSV: async (params: ReportParams): Promise<Blob> => {
-    const response = await axios.post(
-      `${API_CONFIG.baseUrl}${API_ENDPOINTS.export.csv}`,
-      params,
-      {
-        responseType: 'blob',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader(),
-        },
-        timeout: API_CONFIG.timeout * 2, // Longer timeout for report generation
-      }
-    );
+    const url = reportsApi._getExportUrl(params, 'csv');
+    const response = await axios.get(url, {
+      responseType: 'blob',
+      headers: {
+        ...getAuthHeader(),
+      },
+      timeout: API_CONFIG.timeout * 2,
+    });
     return response.data;
   },
 };

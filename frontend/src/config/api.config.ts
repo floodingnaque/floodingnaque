@@ -17,7 +17,7 @@ export const API_ENDPOINTS = {
     me: '/api/v1/auth/me',
   },
   predict: {
-    predict: '/api/v1/predict/predict',
+    predict: '/api/v1/predict',
   },
   data: {
     weather: '/api/v1/data/data',
@@ -34,8 +34,8 @@ export const API_ENDPOINTS = {
     stats: '/api/v1/dashboard/stats',
   },
   export: {
-    pdf: '/api/v1/export/pdf',
-    csv: '/api/v1/export/csv',
+    weather: '/api/v1/export/weather',
+    predictions: '/api/v1/export/predictions',
   },
 } as const;
 

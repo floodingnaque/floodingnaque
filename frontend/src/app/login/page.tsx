@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Droplets } from 'lucide-react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,19 +20,17 @@ import { RegisterForm } from '@/features/auth/components/RegisterForm';
  */
 export function LoginPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [activeTab, setActiveTab] = useState<string>('login');
 
-  // Get the redirect path from location state, default to dashboard
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
-
-  // Redirect if already authenticated
+  // Redirect if already authenticated (e.g. user hits /login via back button).
+  // We do NOT use `from` here — role-based destination is handled by useAuth.ts.
+  // Using `from` here caused LoginPage to override navigate('/admin') with navigate('/').
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate]);
 
   // Don't render the form if redirecting
   if (isAuthenticated) {

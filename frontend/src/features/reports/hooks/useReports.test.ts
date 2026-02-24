@@ -102,7 +102,13 @@ describe('useExportPDF', () => {
 
   it('should handle PDF export error', async () => {
     server.use(
-      http.post('*/api/v1/export/pdf', () => {
+      http.get('*/api/v1/export/predictions', () => {
+        return HttpResponse.json(
+          { code: 'EXPORT_FAILED', message: 'Export failed' },
+          { status: 500 }
+        );
+      }),
+      http.get('*/api/v1/export/weather', () => {
         return HttpResponse.json(
           { code: 'EXPORT_FAILED', message: 'Export failed' },
           { status: 500 }
@@ -183,7 +189,13 @@ describe('useExportCSV', () => {
 
   it('should handle CSV export error', async () => {
     server.use(
-      http.post('*/api/v1/export/csv', () => {
+      http.get('*/api/v1/export/predictions', () => {
+        return HttpResponse.json(
+          { code: 'EXPORT_FAILED', message: 'Export failed' },
+          { status: 500 }
+        );
+      }),
+      http.get('*/api/v1/export/weather', () => {
         return HttpResponse.json(
           { code: 'EXPORT_FAILED', message: 'Export failed' },
           { status: 500 }
@@ -202,7 +214,10 @@ describe('useExportCSV', () => {
 
   it('should handle network error during export', async () => {
     server.use(
-      http.post('*/api/v1/export/csv', () => {
+      http.get('*/api/v1/export/predictions', () => {
+        return HttpResponse.error();
+      }),
+      http.get('*/api/v1/export/weather', () => {
         return HttpResponse.error();
       })
     );

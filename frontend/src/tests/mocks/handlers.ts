@@ -95,11 +95,11 @@ export const authHandlers = [
   http.post(`${baseUrl}/api/v1/auth/login`, async ({ request }) => {
     await delay(100);
     const body = await request.json() as { email: string; password: string };
-    
+
     if (body.email === 'test@example.com' && body.password === 'password123') {
       return HttpResponse.json(createMockTokens());
     }
-    
+
     return HttpResponse.json(
       { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' },
       { status: 401 }
@@ -110,14 +110,14 @@ export const authHandlers = [
   http.post(`${baseUrl}/api/v1/auth/register`, async ({ request }) => {
     await delay(100);
     const body = await request.json() as { email: string; password: string; name: string };
-    
+
     if (body.email === 'existing@example.com') {
       return HttpResponse.json(
         { code: 'EMAIL_EXISTS', message: 'Email already registered' },
         { status: 409 }
       );
     }
-    
+
     return HttpResponse.json(createMockTokens(), { status: 201 });
   }),
 
@@ -125,14 +125,14 @@ export const authHandlers = [
   http.get(`${baseUrl}/api/v1/auth/me`, async ({ request }) => {
     await delay(50);
     const authHeader = request.headers.get('Authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return HttpResponse.json(
         { code: 'UNAUTHORIZED', message: 'Not authenticated' },
         { status: 401 }
       );
     }
-    
+
     return HttpResponse.json(createMockUser());
   }),
 
@@ -162,12 +162,12 @@ export const predictionHandlers = [
       precipitation: number;
       wind_speed: number;
     };
-    
+
     // Calculate risk based on input
     let riskLevel: 0 | 1 | 2 = 0;
     let riskLabel: 'Safe' | 'Alert' | 'Critical' = 'Safe';
     let probability = 0.2;
-    
+
     if (body.precipitation > 50 || body.humidity > 90) {
       riskLevel = 2;
       riskLabel = 'Critical';
@@ -177,7 +177,7 @@ export const predictionHandlers = [
       riskLabel = 'Alert';
       probability = 0.6;
     }
-    
+
     return HttpResponse.json(createMockPrediction({
       risk_level: riskLevel,
       risk_label: riskLabel,
@@ -197,11 +197,11 @@ export const alertsHandlers = [
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
-    
-    const alerts = Array.from({ length: limit }, (_, i) => 
+
+    const alerts = Array.from({ length: limit }, (_, i) =>
       createMockAlert({ id: (page - 1) * limit + i + 1 })
     );
-    
+
     return HttpResponse.json({
       success: true,
       data: alerts,
@@ -218,11 +218,11 @@ export const alertsHandlers = [
     await delay(50);
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get('limit') || '10');
-    
+
     const alerts = Array.from({ length: Math.min(limit, 5) }, (_, i) =>
       createMockAlert({ id: i + 1 })
     );
-    
+
     return HttpResponse.json({
       success: true,
       data: alerts,
@@ -233,11 +233,11 @@ export const alertsHandlers = [
   // Get alert history
   http.get(`${baseUrl}/api/v1/alerts/history`, async () => {
     await delay(100);
-    
+
     const alerts = Array.from({ length: 10 }, (_, i) =>
       createMockAlert({ id: i + 1 })
     );
-    
+
     return HttpResponse.json({
       alerts,
       summary: {
@@ -281,7 +281,7 @@ export const weatherHandlers = [
     await delay(100);
     const url = new URL(request.url);
     const isStats = url.searchParams.get('stats') === 'true';
-    
+
     // If requesting stats, return aggregated statistics
     if (isStats) {
       return HttpResponse.json({
@@ -301,15 +301,15 @@ export const weatherHandlers = [
         },
       });
     }
-    
+
     // Otherwise return paginated weather data
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '50');
-    
+
     const data = Array.from({ length: limit }, (_, i) =>
       createMockWeatherData({ id: (page - 1) * limit + i + 1 })
     );
-    
+
     return HttpResponse.json({
       success: true,
       data,
@@ -327,14 +327,14 @@ export const weatherHandlers = [
     const url = new URL(request.url);
     const days = parseInt(url.searchParams.get('days') || '1');
     const hoursCount = days * 24;
-    
+
     const data = Array.from({ length: hoursCount }, (_, i) =>
       createMockWeatherData({
         id: i + 1,
         recorded_at: new Date(Date.now() + i * 3600000).toISOString(),
       })
     );
-    
+
     return HttpResponse.json({
       success: true,
       data,
@@ -358,34 +358,75 @@ export const dashboardHandlers = [
 // ============================================================================
 
 export const exportHandlers = [
-  // Export PDF
-  http.post(`${baseUrl}/api/v1/export/pdf`, async () => {
+  // Export predictions (PDF, CSV, or JSON) – matches GET /api/v1/export/predictions?format=...
+  http.get(`${baseUrl}/api/v1/export/predictions`, async ({ request }) => {
     await delay(200);
-    
-    // Create a mock PDF blob
-    const pdfContent = '%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
-    const blob = new Blob([pdfContent], { type: 'application/pdf' });
-    
-    return new HttpResponse(blob, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="report.pdf"',
-      },
+    const url = new URL(request.url);
+    const format = url.searchParams.get('format') ?? 'json';
+
+    if (format === 'pdf') {
+      const pdfContent = '%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
+      const blob = new Blob([pdfContent], { type: 'application/pdf' });
+      return new HttpResponse(blob, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="predictions_report.pdf"',
+        },
+      });
+    }
+
+    if (format === 'csv') {
+      const csvContent = 'id,timestamp,prediction,risk_level,confidence\n1,2026-01-01T00:00:00,0.85,high,0.92\n';
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      return new HttpResponse(blob, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="predictions_report.csv"',
+        },
+      });
+    }
+
+    // JSON (default)
+    return HttpResponse.json({
+      data: [{ id: 1, timestamp: '2026-01-01T00:00:00', prediction: 0.85, risk_level: 'high', confidence: 0.92 }],
+      count: 1,
+      format: 'json',
     });
   }),
 
-  // Export CSV
-  http.post(`${baseUrl}/api/v1/export/csv`, async () => {
+  // Export weather (PDF, CSV, or JSON) – matches GET /api/v1/export/weather?format=...
+  http.get(`${baseUrl}/api/v1/export/weather`, async ({ request }) => {
     await delay(200);
-    
-    const csvContent = 'date,risk_level,location\n2026-01-01,1,Test Location\n';
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    
-    return new HttpResponse(blob, {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename="report.csv"',
-      },
+    const url = new URL(request.url);
+    const format = url.searchParams.get('format') ?? 'json';
+
+    if (format === 'pdf') {
+      const pdfContent = '%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
+      const blob = new Blob([pdfContent], { type: 'application/pdf' });
+      return new HttpResponse(blob, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="weather_report.pdf"',
+        },
+      });
+    }
+
+    if (format === 'csv') {
+      const csvContent = 'id,timestamp,temperature,humidity,precipitation\n1,2026-01-01T00:00:00,28.5,75.0,12.3\n';
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      return new HttpResponse(blob, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="weather_report.csv"',
+        },
+      });
+    }
+
+    // JSON (default)
+    return HttpResponse.json({
+      data: [{ id: 1, timestamp: '2026-01-01T00:00:00', temperature: 28.5, humidity: 75.0, precipitation: 12.3 }],
+      count: 1,
+      format: 'json',
     });
   }),
 ];
