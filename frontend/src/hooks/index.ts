@@ -12,3 +12,9 @@ export {
   usePrefersDarkMode,
   usePrefersReducedMotion,
 } from './useMediaQuery';
+
+export {
+  useGeolocation,
+  type GeolocationCoordinates,
+  type UseGeolocationReturn,
+} from './useGeolocation';

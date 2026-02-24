@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
   },
   predict: {
     predict: '/api/v1/predict',
+    predictByLocation: '/api/v1/predict/location',
   },
   data: {
     weather: '/api/v1/data/data',

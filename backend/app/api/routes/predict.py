@@ -21,6 +21,7 @@ from app.utils.cache import (
     make_weather_hash,
 )
 from app.utils.validation import InputValidator, validate_request_size
+from app.utils.weather_fetch import WeatherFetchError, fetch_weather_by_coordinates
 from flask import Blueprint, g, jsonify, request
 from werkzeug.exceptions import BadRequest
 
@@ -260,4 +261,228 @@ def predict():
         return api_error("ModelNotFound", "Requested model not found", HTTP_NOT_FOUND, request_id)
     except Exception as e:
         logger.error(f"Error in predict endpoint [{request_id}]: {e}", exc_info=True)
+        return api_error("PredictionFailed", "An error occurred during prediction", HTTP_INTERNAL_ERROR, request_id)
+
+
+@predict_bp.route("/location", methods=["POST"])
+@rate_limit_with_burst("60 per hour")
+@validate_request_size(endpoint_name="predict")
+@require_api_key
+def predict_by_location():
+    """
+    Predict flood risk based on GPS coordinates.
+
+    Accepts latitude/longitude, fetches current weather from OpenWeatherMap,
+    then runs the flood prediction model on the retrieved data.
+
+    Request Body:
+        latitude (float): Latitude in decimal degrees (required, -90 to 90)
+        longitude (float): Longitude in decimal degrees (required, -180 to 180)
+
+    Returns:
+        200: Prediction result with risk level, confidence, and weather data
+        400: Validation error (invalid coordinates)
+        404: Model not found
+        500: Prediction or weather fetch failed
+    ---
+    tags:
+      - Predictions
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - latitude
+            - longitude
+          properties:
+            latitude:
+              type: number
+              description: Latitude in decimal degrees
+              example: 14.4793
+            longitude:
+              type: number
+              description: Longitude in decimal degrees
+              example: 121.0198
+    responses:
+      200:
+        description: Successful location-based prediction
+        schema:
+          type: object
+          properties:
+            prediction:
+              type: integer
+              description: Binary prediction (0=no flood, 1=flood)
+            flood_risk:
+              type: string
+              enum: [low, high]
+            risk_level:
+              type: integer
+              description: Risk level (0=Safe, 1=Alert, 2=Critical)
+            risk_label:
+              type: string
+              enum: [Safe, Alert, Critical]
+            probability:
+              type: number
+              description: Flood probability (0-1)
+            confidence:
+              type: number
+              description: Model confidence score
+            weather_data:
+              type: object
+              description: Weather data fetched for the location
+      400:
+        description: Validation error
+      404:
+        description: Model not found
+      500:
+        description: Prediction or weather fetch failed
+    security:
+      - api_key: []
+      - bearer_auth: []
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        # Parse JSON body
+        try:
+            input_data = request.get_json(force=True, silent=True)
+        except BadRequest as e:
+            logger.error(f"BadRequest parsing JSON in predict/location [{request_id}]: {str(e)}")
+            return api_error("InvalidJSON", "Please check your request body.", HTTP_BAD_REQUEST, request_id)
+
+        if not input_data:
+            return api_error("NoInput", "No input data provided", HTTP_BAD_REQUEST, request_id)
+
+        # Validate coordinates
+        latitude = input_data.get("latitude")
+        longitude = input_data.get("longitude")
+
+        if latitude is None or longitude is None:
+            return api_error(
+                "ValidationError",
+                "Both 'latitude' and 'longitude' are required.",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+        except (ValueError, TypeError):
+            return api_error(
+                "ValidationError",
+                "Latitude and longitude must be valid numbers.",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        if not (-90 <= latitude <= 90):
+            return api_error(
+                "ValidationError",
+                "Latitude must be between -90 and 90 degrees.",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+        if not (-180 <= longitude <= 180):
+            return api_error(
+                "ValidationError",
+                "Longitude must be between -180 and 180 degrees.",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        # Fetch weather data from OpenWeatherMap
+        weather_data = fetch_weather_by_coordinates(latitude, longitude)
+
+        # Build prediction input (same format as manual predict endpoint)
+        prediction_input = {
+            "temperature": weather_data["temperature"],
+            "humidity": weather_data["humidity"],
+            "precipitation": weather_data["precipitation"],
+            "wind_speed": weather_data.get("wind_speed", 0),
+            "pressure": weather_data.get("pressure"),
+        }
+
+        # Check prediction cache
+        cache_hit = False
+        weather_hash = None
+        if PREDICTION_CACHE_ENABLED and is_cache_enabled():
+            weather_hash = make_weather_hash(prediction_input)
+            cached_result = get_cached_prediction(weather_hash)
+            if cached_result:
+                logger.debug(f"Location prediction cache HIT [{request_id}]: {weather_hash}")
+                cached_result["request_id"] = request_id
+                cached_result["cache_hit"] = True
+                cached_result["weather_data"] = weather_data
+                return jsonify(cached_result), HTTP_OK
+
+        # Run prediction
+        prediction = predict_flood(
+            prediction_input,
+            return_proba=True,
+            return_risk_level=True,
+        )
+
+        # Build response
+        if isinstance(prediction, dict):
+            response = {
+                "success": True,
+                "prediction": prediction["prediction"],
+                "flood_risk": "high" if prediction["prediction"] == 1 else "low",
+                "model_version": prediction.get("model_version"),
+                "request_id": request_id,
+                "weather_data": weather_data,
+            }
+            if "probability" in prediction:
+                response["probability"] = prediction["probability"]
+            if "risk_label" in prediction:
+                response["risk_level"] = prediction.get("risk_level")
+                response["risk_label"] = prediction.get("risk_label")
+                response["risk_color"] = prediction.get("risk_color")
+                response["risk_description"] = prediction.get("risk_description")
+                response["confidence"] = prediction.get("confidence")
+        else:
+            response = {
+                "success": True,
+                "prediction": prediction,
+                "flood_risk": "high" if prediction == 1 else "low",
+                "request_id": request_id,
+                "weather_data": weather_data,
+            }
+
+        # Cache result
+        if PREDICTION_CACHE_ENABLED and weather_hash and is_cache_enabled():
+            cache_prediction_result(weather_hash, response, PREDICTION_CACHE_TTL)
+
+        response["cache_hit"] = False
+        return jsonify(response), HTTP_OK
+
+    except WeatherFetchError as e:
+        logger.error(f"Weather fetch failed [{request_id}]: {e}")
+        return api_error(
+            "WeatherFetchFailed",
+            str(e),
+            HTTP_INTERNAL_ERROR,
+            request_id,
+        )
+    except ValidationError as e:
+        logger.error(f"Validation error in predict/location [{request_id}]: {e}")
+        return api_error(
+            "ValidationError",
+            "Input validation failed",
+            HTTP_BAD_REQUEST,
+            request_id,
+            errors=getattr(e, "errors", None),
+        )
+    except FileNotFoundError as e:
+        logger.error(f"Model not found [{request_id}]: {e}")
+        return api_error("ModelNotFound", "Requested model not found", HTTP_NOT_FOUND, request_id)
+    except Exception as e:
+        logger.error(f"Error in predict/location endpoint [{request_id}]: {e}", exc_info=True)
         return api_error("PredictionFailed", "An error occurred during prediction", HTTP_INTERNAL_ERROR, request_id)

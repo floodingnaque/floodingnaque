@@ -6,6 +6,15 @@ export interface PredictionRequest {
   pressure?: number; // hPa (optional)
 }
 
+/**
+ * Location-based prediction request.
+ * Sends coordinates and the backend fetches weather data automatically.
+ */
+export interface LocationPredictionRequest {
+  latitude: number; // Decimal degrees
+  longitude: number; // Decimal degrees
+}
+
 export interface PredictionResponse {
   prediction: 0 | 1;
   probability: number;
@@ -16,6 +25,15 @@ export interface PredictionResponse {
   features_used: string[];
   timestamp: string;
   request_id: string;
+  /** Weather data fetched from API (present in location-based predictions) */
+  weather_data?: {
+    temperature: number; // Kelvin
+    humidity: number;
+    precipitation: number;
+    wind_speed?: number;
+    pressure?: number;
+    source: string;
+  };
 }
 
 export type RiskLevel = 0 | 1 | 2;

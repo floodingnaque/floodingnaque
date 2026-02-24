@@ -11,6 +11,10 @@ export { RiskDisplay } from './components/RiskDisplay';
 
 // Hooks
 export { usePrediction, type UsePredictionOptions } from './hooks/usePrediction';
+export {
+  useLocationPrediction,
+  type UseLocationPredictionOptions,
+} from './hooks/useLocationPrediction';
 
 // Services
 export { predictionApi } from './services/predictionApi';
