@@ -229,7 +229,6 @@ function StatCard({
 export default function AdminPage() {
   const navigate = useNavigate();
   const user = useUser();
-console.log('AdminPage rendered, user:', user, 'role:', user?.role);
 
   // Redirect non-admin users to dashboard
   useEffect(() => {

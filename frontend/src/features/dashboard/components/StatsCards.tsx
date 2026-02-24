@@ -5,6 +5,7 @@
  * Each card shows a metric with an icon, value, and optional trend indicator.
  */
 
+import { memo } from 'react';
 import { Activity, TrendingUp, AlertTriangle, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -142,7 +143,7 @@ function getAlertColorInfo(count: number): {
 /**
  * StatsCards displays a responsive grid of dashboard statistics
  */
-export function StatsCards({ stats }: StatsCardsProps) {
+export const StatsCards = memo(function StatsCards({ stats }: StatsCardsProps) {
   // Guard against incomplete or undefined stats to avoid runtime errors
   const safeTotalPredictions =
     typeof stats?.total_predictions === 'number'
@@ -207,7 +208,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       />
     </div>
   );
-}
+});
 
 /**
  * Skeleton loading state for StatsCards

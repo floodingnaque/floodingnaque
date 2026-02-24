@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +70,12 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     }
   }, [isAuthenticated, user, navigate]);
 
+  // Auto-focus first field on mount
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    emailRef.current?.focus();
+  }, []);
+
   const {
     register,
     handleSubmit,
@@ -81,6 +87,9 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
       password: '',
     },
   });
+
+  // Combine react-hook-form ref with our focus ref
+  const { ref: emailRegRef, ...emailRegRest } = register('email');
 
   const onSubmit = (data: LoginFormData) => {
     login(data);
@@ -103,8 +112,8 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* API Error Alert */}
           {errorMessage && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+            <Alert variant="destructive" role="alert" aria-live="assertive">
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
@@ -118,11 +127,18 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
               placeholder="name@example.com"
               autoComplete="email"
               disabled={isLoggingIn}
-              {...register('email')}
+              {...emailRegRest}
+              ref={(e) => {
+                emailRegRef(e);
+                emailRef.current = e;
+              }}
               aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'email-error' : undefined}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p id="email-error" className="text-sm text-destructive" role="alert">
+                {errors.email.message}
+              </p>
             )}
           </div>
 
@@ -137,9 +153,10 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
               disabled={isLoggingIn}
               {...register('password')}
               aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? 'password-error' : undefined}
             />
             {errors.password && (
-              <p className="text-sm text-destructive">
+              <p id="password-error" className="text-sm text-destructive" role="alert">
                 {errors.password.message}
               </p>
             )}

@@ -10,6 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,12 @@ interface RegisterFormProps {
 export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const { register: registerUser, isRegistering, registerError } = useAuth();
 
+  // Auto-focus first field on mount
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, []);
+
   const {
     register,
     handleSubmit,
@@ -72,6 +79,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       password: '',
     },
   });
+
+  // Combine react-hook-form ref with our focus ref
+  const { ref: nameRegRef, ...nameRegRest } = register('name');
 
   const onSubmit = (data: RegisterFormData) => {
     registerUser(data);
@@ -94,8 +104,8 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* API Error Alert */}
           {errorMessage && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+            <Alert variant="destructive" role="alert" aria-live="assertive">
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
@@ -109,11 +119,18 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
               placeholder="John Doe"
               autoComplete="name"
               disabled={isRegistering}
-              {...register('name')}
+              {...nameRegRest}
+              ref={(e) => {
+                nameRegRef(e);
+                nameRef.current = e;
+              }}
               aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? 'register-name-error' : undefined}
             />
             {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
+              <p id="register-name-error" className="text-sm text-destructive" role="alert">
+                {errors.name.message}
+              </p>
             )}
           </div>
 
@@ -128,9 +145,12 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
               disabled={isRegistering}
               {...register('email')}
               aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'register-email-error' : undefined}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p id="register-email-error" className="text-sm text-destructive" role="alert">
+                {errors.email.message}
+              </p>
             )}
           </div>
 
@@ -145,9 +165,10 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
               disabled={isRegistering}
               {...register('password')}
               aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? 'register-password-error' : undefined}
             />
             {errors.password && (
-              <p className="text-sm text-destructive">
+              <p id="register-password-error" className="text-sm text-destructive" role="alert">
                 {errors.password.message}
               </p>
             )}

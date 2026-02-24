@@ -5,7 +5,7 @@
  * responsive header, and content area. Integrates SSE alerts.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Home,
@@ -50,6 +50,7 @@ import { useAuthStore, useUser } from '@/state';
 import { useAlertStream } from '@/features/alerts/hooks/useAlertStream';
 import { ConnectionStatus } from '@/features/alerts/components/ConnectionStatus';
 import { LiveAlertsBanner } from '@/features/alerts/components/LiveAlertsBanner';
+import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { useUnreadCount } from '@/state/stores/alertStore';
 
 /**
@@ -128,14 +129,20 @@ function SidebarNav({
   const unreadCount = useUnreadCount();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
+  const [showLogout, setShowLogout] = useState(false);
 
   const handleLogout = useCallback(() => {
+    setShowLogout(true);
+  }, []);
+
+  const confirmLogout = useCallback(() => {
     clearAuth();
+    setShowLogout(false);
     navigate('/login');
   }, [clearAuth, navigate]);
 
   return (
-    <nav className="flex flex-col h-full">
+    <nav className="flex flex-col h-full" aria-label="Main navigation">
       {/* Navigation Links */}
       <div className="flex-1 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
@@ -218,9 +225,20 @@ function SidebarNav({
               className={cn('w-full', collapsed && 'w-9 h-9')}
               onClick={handleLogout}
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" aria-hidden="true" />
               {!collapsed && <span className="ml-2">Logout</span>}
             </Button>
+
+            {/* Logout Confirmation Dialog */}
+            <ConfirmDialog
+              open={showLogout}
+              onOpenChange={setShowLogout}
+              title="Logout"
+              description="Are you sure you want to logout?"
+              confirmLabel="Logout"
+              variant="destructive"
+              onConfirm={confirmLogout}
+            />
           </div>
         )}
       </div>
@@ -240,6 +258,7 @@ export function Layout() {
   const sidebarOpen = useSidebarOpen();
   const { toggleTheme, collapseSidebar, setSidebarOpen } = useUIActions();
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // Start SSE connection for real-time alerts.
   // Disabled in local development to avoid noisy 404s when the
@@ -250,7 +269,12 @@ export function Layout() {
 
   // Handle logout
   const handleLogout = useCallback(() => {
+    setShowLogoutDialog(true);
+  }, []);
+
+  const confirmLogout = useCallback(() => {
     clearAuth();
+    setShowLogoutDialog(false);
     navigate('/login');
   }, [clearAuth, navigate]);
 
@@ -269,6 +293,14 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Skip Navigation Link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* Live Alerts Banner */}
       <LiveAlertsBanner onViewAll={handleViewAlerts} className="z-50" />
 
@@ -305,10 +337,11 @@ export function Layout() {
           {/* Collapse Toggle */}
           <div className="border-t p-2">
             <Button
-              variant="ghost"
-              size="sm"
+              variant=\"ghost\"
+              size=\"sm\"
               onClick={collapseSidebar}
               className={cn('w-full', sidebarCollapsed && 'w-full justify-center')}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {sidebarCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
@@ -387,6 +420,7 @@ export function Layout() {
                       variant="ghost"
                       size="icon"
                       className="rounded-full"
+                      aria-label="User menu"
                     >
                       <Avatar className="h-8 w-8">
                         <AvatarImage src="" alt={user.name} />
@@ -429,11 +463,22 @@ export function Layout() {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto">
+          <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
             <Outlet />
           </main>
         </div>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        title="Logout"
+        description="Are you sure you want to logout?"
+        confirmLabel="Logout"
+        variant="destructive"
+        onConfirm={confirmLogout}
+      />
     </div>
   );
 }

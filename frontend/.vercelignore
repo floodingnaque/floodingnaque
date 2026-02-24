@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Source & dev files
+.git/
+src/tests/
+e2e/
+coverage/
+playwright-report/
+
+# Dev environment
+.env.development
+.env.local
+.env
+
+# Documentation
+*.md
+!README.md
+
+# Config files not needed in deploy
+vitest.config.ts
+playwright.config.ts
+tsconfig.node.json

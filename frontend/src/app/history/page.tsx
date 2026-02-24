@@ -5,7 +5,7 @@
  * interactive charts, and sortable data tables.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { BarChart3, Table2, RefreshCw, CloudSun } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import { useWeatherData, useWeatherStats } from '@/features/weather/hooks/useWeather';
 import { WeatherStatsCards } from '@/features/weather/components/WeatherStatsCards';
-import { WeatherChart } from '@/features/weather/components/WeatherChart';
-import { WeatherTable } from '@/features/weather/components/WeatherTable';
 import { DateRangeFilter, type DateRange } from '@/features/weather/components/DateRangeFilter';
 import type { WeatherDataParams, WeatherSource } from '@/types';
+
+// Lazy-load heavy chart/table components
+const WeatherChart = lazy(() =>
+  import('@/features/weather/components/WeatherChart').then((m) => ({ default: m.WeatherChart }))
+);
+const WeatherTable = lazy(() =>
+  import('@/features/weather/components/WeatherTable').then((m) => ({ default: m.WeatherTable }))
+);
+
+/** Fallback skeleton while chart/table loads */
+function DataViewSkeleton() {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <Skeleton className="h-[400px] w-full rounded-md" />
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * Default pagination settings
@@ -80,21 +98,21 @@ export default function HistoryPage() {
   });
 
   // Handle source filter change
-  const handleSourceChange = (value: string) => {
+  const handleSourceChange = useCallback((value: string) => {
     setSource(value as WeatherSource | 'all');
     setPage(1);
-  };
+  }, []);
 
   // Handle date range change
-  const handleDateRangeChange = (range: DateRange) => {
+  const handleDateRangeChange = useCallback((range: DateRange) => {
     setDateRange(range);
     setPage(1);
-  };
+  }, []);
 
   // Handle refresh
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
   // Pagination
   const totalPages = weatherData?.pages || 1;
@@ -196,17 +214,18 @@ export default function HistoryPage() {
       )}
 
       {/* Data Display - Chart or Table */}
-      {!isError && viewMode === 'chart' && (
-        <WeatherChart
-          data={weatherData?.data || []}
-          isLoading={isLoadingData}
-          title="Weather Trends Over Time"
-        />
-      )}
+      <Suspense fallback={<DataViewSkeleton />}>
+        {!isError && viewMode === 'chart' && (
+          <WeatherChart
+            data={weatherData?.data || []}
+            isLoading={isLoadingData}
+            title="Weather Trends Over Time"
+          />
+        )}
 
-      {!isError && viewMode === 'table' && (
-        <>
-          <WeatherTable
+        {!isError && viewMode === 'table' && (
+          <>
+            <WeatherTable
             data={weatherData?.data || []}
             isLoading={isLoadingData}
           />
@@ -241,7 +260,8 @@ export default function HistoryPage() {
             </div>
           )}
         </>
-      )}
+        )}
+      </Suspense>
     </div>
   );
 }

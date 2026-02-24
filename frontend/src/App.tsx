@@ -5,57 +5,63 @@
  * Integrates protected routes, layout, and toast notifications.
  */
 
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import { Toaster } from '@/components/ui/sonner';
+import { PageLoader } from '@/components/feedback/PageLoader';
+import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
+import { RouteErrorBoundary, NotFoundFallback } from '@/components/feedback/RouteErrorBoundary';
 
-// Layout
+// Layout & Auth (loaded eagerly — always needed)
 import { Layout } from '@/app/layout';
-
-// Auth Components
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 
-// Page Components
-import { LoginPage } from '@/app/login/page';
-import { DashboardPage } from '@/app/page';
-import PredictPage from '@/app/predict/page';
-import AlertsPage from '@/app/alerts/page';
-import HistoryPage from '@/app/history/page';
-import ReportsPage from '@/app/reports/page';
-import SettingsPage from '@/app/settings/page';
-import AdminPage from '@/app/admin/page';
+// Lazy-loaded page components (code-split per route)
+const LoginPage    = lazy(() => import('@/app/login/page'));
+const DashboardPage = lazy(() =>
+  import('@/app/page').then((m) => ({ default: m.DashboardPage }))
+);
+const PredictPage  = lazy(() => import('@/app/predict/page'));
+const AlertsPage   = lazy(() => import('@/app/alerts/page'));
+const HistoryPage  = lazy(() => import('@/app/history/page'));
+const ReportsPage  = lazy(() => import('@/app/reports/page'));
+const SettingsPage = lazy(() => import('@/app/settings/page'));
+const AdminPage    = lazy(() => import('@/app/admin/page'));
 
 /**
  * Main App component with route configuration
  */
 function App() {
   return (
-    <>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<LoginPage />} />
+    <ErrorBoundary>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<LoginPage />} />
 
-        {/* Protected Routes with Layout */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-            {/* Dashboard - Index Route */}
-            <Route index element={<DashboardPage />} />
+          {/* Protected Routes with Layout */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              {/* Dashboard - Index Route */}
+              <Route index element={<RouteErrorBoundary><DashboardPage /></RouteErrorBoundary>} />
 
-            {/* Main Application Routes */}
-            <Route path="/predict" element={<PredictPage />} />
-            <Route path="/alerts" element={<AlertsPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+              {/* Main Application Routes */}
+              <Route path="/predict" element={<RouteErrorBoundary><PredictPage /></RouteErrorBoundary>} />
+              <Route path="/alerts" element={<RouteErrorBoundary><AlertsPage /></RouteErrorBoundary>} />
+              <Route path="/history" element={<RouteErrorBoundary><HistoryPage /></RouteErrorBoundary>} />
+              <Route path="/reports" element={<RouteErrorBoundary><ReportsPage /></RouteErrorBoundary>} />
+              <Route path="/settings" element={<RouteErrorBoundary><SettingsPage /></RouteErrorBoundary>} />
 
-            {/* Admin Route (additional role check in AdminPage) */}
-            <Route path="/admin" element={<AdminPage />} />
+              {/* Admin Route (additional role check in AdminPage) */}
+              <Route path="/admin" element={<RouteErrorBoundary><AdminPage /></RouteErrorBoundary>} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Catch-all redirect to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* 404 – Not Found */}
+          <Route path="*" element={<NotFoundFallback />} />
+        </Routes>
+      </Suspense>
 
       {/* Toast Notifications */}
       <Toaster
@@ -64,7 +70,7 @@ function App() {
         richColors
         closeButton
       />
-    </>
+    </ErrorBoundary>
   );
 }
 

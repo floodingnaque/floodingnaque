@@ -5,6 +5,7 @@
  * Color-coded by risk level with links to the full alerts page.
  */
 
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -144,7 +145,7 @@ function EmptyState() {
 /**
  * RecentAlerts displays the latest flood alerts in a compact format
  */
-export function RecentAlerts({
+export const RecentAlerts = memo(function RecentAlerts({
   alerts,
   maxAlerts = 5,
   isLoading = false,
@@ -196,7 +197,7 @@ export function RecentAlerts({
       </CardContent>
     </Card>
   );
-}
+});
 
 /**
  * Skeleton loading state for RecentAlerts

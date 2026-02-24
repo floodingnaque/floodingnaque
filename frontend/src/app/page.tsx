@@ -22,34 +22,10 @@ import {
   type AlertData,
 } from '@/features/dashboard/components/RecentAlerts';
 import { QuickActionsCompact } from '@/features/dashboard/components/QuickActions';
+import { useRecentAlerts } from '@/features/alerts';
 
-/**
- * Mock alerts data (placeholder until alerts hook is available from WS7)
- * In production, this would come from useRecentAlerts hook
- */
-const mockAlerts: AlertData[] = [
-  {
-    id: 1,
-    message: 'High flood risk detected in Metro Manila due to continuous rainfall',
-    risk_level: 75,
-    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    location: 'Metro Manila',
-  },
-  {
-    id: 2,
-    message: 'Moderate risk warning for Pampanga River Basin - water levels rising',
-    risk_level: 55,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    location: 'Pampanga',
-  },
-  {
-    id: 3,
-    message: 'Low risk advisory: Monitor water levels in Laguna de Bay',
-    risk_level: 25,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    location: 'Laguna',
-  },
-];
+/** Map API RiskLevel (0 | 1 | 2) → 0-100 score for the RecentAlerts component */
+const RISK_SCORE: Record<number, number> = { 0: 15, 1: 50, 2: 75 };
 
 /**
  * Dashboard page component with responsive layout
@@ -62,6 +38,17 @@ export function DashboardPage() {
     error,
     refetch,
   } = useDashboardStats();
+
+  const { data: recentAlerts, isLoading: alertsLoading } = useRecentAlerts(5);
+
+  /** Convert API alerts to the AlertData shape expected by RecentAlerts */
+  const dashboardAlerts: AlertData[] = (recentAlerts ?? []).map((a) => ({
+    id: a.id,
+    message: a.message,
+    risk_level: RISK_SCORE[a.risk_level] ?? a.risk_level,
+    created_at: a.created_at,
+    location: a.location,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,10 +100,10 @@ export function DashboardPage() {
           {/* Right Column - Alerts & Quick Actions (1/3 width on desktop) */}
           <div className="space-y-6">
             {/* Recent Alerts */}
-            {isLoading ? (
+            {isLoading || alertsLoading ? (
               <RecentAlertsSkeleton />
             ) : (
-              <RecentAlerts alerts={mockAlerts} maxAlerts={5} />
+              <RecentAlerts alerts={dashboardAlerts} maxAlerts={5} />
             )}
 
             {/* Quick Actions */}

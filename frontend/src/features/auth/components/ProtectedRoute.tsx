@@ -18,8 +18,6 @@ export function ProtectedRoute() {
   const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-  console.log('ProtectedRoute:', isAuthenticated, location.pathname);
-
   if (!isAuthenticated) {
     // Redirect to login, preserving the intended destination
     return <Navigate to="/login" state={{ from: location }} replace />;

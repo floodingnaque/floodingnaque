@@ -5,6 +5,7 @@
  * icons, descriptions, and relative timestamps.
  */
 
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,7 +83,7 @@ function EmptyState() {
 /**
  * RecentActivity displays a scrollable list of recent system activities
  */
-export function RecentActivity({
+export const RecentActivity = memo(function RecentActivity({
   activities,
   maxItems = 10,
 }: RecentActivityProps) {
@@ -128,7 +129,7 @@ export function RecentActivity({
       </CardContent>
     </Card>
   );
-}
+});
 
 /**
  * Skeleton loading state for RecentActivity
