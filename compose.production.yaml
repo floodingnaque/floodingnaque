@@ -558,6 +558,115 @@ services:
     <<: *security-opts
 
   # ===================
+  # Infrastructure Metric Exporters
+  # ===================
+  # These expose /metrics endpoints for Prometheus to scrape.
+  # Enable with: --profile monitoring
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: floodingnaque-postgres-exporter
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.service: "postgres-exporter"
+    environment:
+      - DATA_SOURCE_URI=${PGBOUNCER_DB_HOST:-db}:${PGBOUNCER_DB_PORT:-5432}/${PGBOUNCER_DB_NAME:-postgres}?sslmode=${DB_SSL_MODE:-require}
+      - DATA_SOURCE_USER=${PGBOUNCER_DB_USER:-postgres}
+      - DATA_SOURCE_PASS=${PGBOUNCER_DB_PASSWORD}
+    networks:
+      - floodingnaque-backend
+      - floodingnaque-monitoring
+    profiles:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      <<: *logging-default
+    <<: *security-opts
+
+  # PgBouncer Exporter
+  pgbouncer-exporter:
+    image: quay.io/prometheuscommunity/pgbouncer-exporter:v0.8.0
+    container_name: floodingnaque-pgbouncer-exporter
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.service: "pgbouncer-exporter"
+    environment:
+      - PGBOUNCER_EXPORTER_HOST=pgbouncer
+      - PGBOUNCER_EXPORTER_PORT=6432
+      - PGBOUNCER_EXPORTER_USER=${PGBOUNCER_STATS_USER:-pgbouncer_stats}
+      - PGBOUNCER_EXPORTER_PASS=${PGBOUNCER_STATS_PASSWORD}
+    networks:
+      - floodingnaque-backend
+      - floodingnaque-monitoring
+    depends_on:
+      - pgbouncer
+    profiles:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      <<: *logging-default
+    <<: *security-opts
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: floodingnaque-redis-exporter
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.service: "redis-exporter"
+    environment:
+      - REDIS_ADDR=${REDIS_EXPORTER_URL:-redis://redis:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    networks:
+      - floodingnaque-backend
+      - floodingnaque-monitoring
+    profiles:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      <<: *logging-default
+    <<: *security-opts
+
+  # Nginx Prometheus Exporter
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1.0
+    container_name: floodingnaque-nginx-exporter
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.service: "nginx-exporter"
+    command:
+      - '--nginx.scrape-uri=http://nginx:8080/stub_status'
+    networks:
+      - floodingnaque-frontend
+      - floodingnaque-monitoring
+    depends_on:
+      - nginx
+    profiles:
+      - monitoring
+      - nginx
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      <<: *logging-default
+    <<: *security-opts
+
+  # ===================
   # Prometheus Monitoring
   # ===================
   prometheus:

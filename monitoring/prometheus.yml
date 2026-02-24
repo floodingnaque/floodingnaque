@@ -36,7 +36,22 @@ scrape_configs:
         target_label: instance
         replacement: 'floodingnaque-api'
 
-  # Redis (if redis_exporter is enabled)
-  # - job_name: 'redis'
-  #   static_configs:
-  #     - targets: ['redis-exporter:9121']
+  # PostgreSQL (via postgres_exporter sidecar)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # PgBouncer (via pgbouncer_exporter sidecar)
+  - job_name: 'pgbouncer'
+    static_configs:
+      - targets: ['pgbouncer-exporter:9127']
+
+  # Redis (via redis_exporter sidecar)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # Nginx (via nginx-prometheus-exporter sidecar)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']

@@ -67,6 +67,7 @@ services:
       - grafana_data:/var/lib/grafana
     networks:
       - floodingnaque-observability
+      - floodingnaque-monitoring
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health || exit 1"]
       interval: 30s
@@ -106,6 +107,7 @@ services:
       - alertmanager_data:/alertmanager
     networks:
       - floodingnaque-observability
+      - floodingnaque-monitoring
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
       interval: 30s
@@ -176,6 +178,11 @@ networks:
   floodingnaque-observability:
     driver: bridge
     name: floodingnaque-observability
+  # Reference the production monitoring network so Grafana/Alertmanager
+  # can reach Prometheus and backend services
+  floodingnaque-monitoring:
+    external: true
+    name: floodingnaque-monitoring-production
 
 # ===================
 # Volumes

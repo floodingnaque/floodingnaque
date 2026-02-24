@@ -1,8 +1,14 @@
 # =====================================================
 # Prometheus Alert Rules for Floodingnaque
 # =====================================================
+# Metric names use the 'floodingnaque_' prefix to match
+# the prometheus_flask_exporter defaults_prefix setting.
+# =====================================================
 
 groups:
+  # ==========================================================================
+  # API Health Alerts
+  # ==========================================================================
   - name: floodingnaque-api
     rules:
       # API is down
@@ -20,9 +26,9 @@ groups:
       - alert: HighErrorRate
         expr: |
           (
-            sum(rate(http_requests_total{job="floodingnaque-api",status=~"5.."}[5m]))
+            sum(rate(floodingnaque_http_request_total{job="floodingnaque-api",status=~"5.."}[5m]))
             /
-            sum(rate(http_requests_total{job="floodingnaque-api"}[5m]))
+            sum(rate(floodingnaque_http_request_total{job="floodingnaque-api"}[5m]))
           ) > 0.05
         for: 5m
         labels:
@@ -30,13 +36,29 @@ groups:
           service: api
         annotations:
           summary: "High API error rate"
-          description: "More than 5% of API requests are returning 5xx errors over the last 5 minutes."
+          description: "More than 5% of API requests are returning 5xx errors over the last 5 minutes. Current value: {{ $value | humanizePercentage }}."
+
+      # Very high error rate (>15% — critical)
+      - alert: CriticalErrorRate
+        expr: |
+          (
+            sum(rate(floodingnaque_http_request_total{job="floodingnaque-api",status=~"5.."}[5m]))
+            /
+            sum(rate(floodingnaque_http_request_total{job="floodingnaque-api"}[5m]))
+          ) > 0.15
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "Critical API error rate"
+          description: "More than 15% of API requests are returning 5xx errors. Current value: {{ $value | humanizePercentage }}."
 
       # Slow response times (p95 > 2s)
       - alert: SlowResponses
         expr: |
           histogram_quantile(0.95,
-            sum(rate(http_request_duration_seconds_bucket{job="floodingnaque-api"}[5m])) by (le)
+            sum(rate(floodingnaque_http_request_duration_seconds_bucket{job="floodingnaque-api"}[5m])) by (le)
           ) > 2
         for: 10m
         labels:
@@ -44,8 +66,165 @@ groups:
           service: api
         annotations:
           summary: "Slow API response times"
-          description: "The 95th percentile response time exceeds 2 seconds."
+          description: "The 95th percentile response time exceeds 2 seconds. Current p95: {{ $value | humanizeDuration }}."
 
+  # ==========================================================================
+  # Prediction / ML Model Alerts
+  # ==========================================================================
+  - name: floodingnaque-predictions
+    rules:
+      # Prediction latency too high (p95 > 5s)
+      - alert: HighPredictionLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(floodingnaque_prediction_duration_seconds_bucket[5m])) by (le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: prediction
+        annotations:
+          summary: "High prediction latency"
+          description: "The 95th percentile prediction latency exceeds 5 seconds. Current p95: {{ $value | humanizeDuration }}."
+
+      # No predictions in 30 minutes (model may be failing silently)
+      - alert: NoPredictions
+        expr: |
+          sum(rate(floodingnaque_predictions_total[30m])) == 0
+          and
+          sum(rate(floodingnaque_http_request_total[30m])) > 0
+        for: 30m
+        labels:
+          severity: warning
+          service: prediction
+        annotations:
+          summary: "No predictions generated"
+          description: "No flood predictions have been generated in the last 30 minutes while the API is receiving traffic. The model may be failing."
+
+      # Model accuracy dropped
+      - alert: ModelAccuracyDegraded
+        expr: floodingnaque_model_accuracy < 0.70
+        for: 5m
+        labels:
+          severity: warning
+          service: prediction
+        annotations:
+          summary: "Model accuracy degraded"
+          description: "The flood prediction model accuracy has dropped below 70%. Current accuracy: {{ $value | humanizePercentage }}."
+
+  # ==========================================================================
+  # Circuit Breaker Alerts
+  # ==========================================================================
+  - name: floodingnaque-circuit-breaker
+    rules:
+      # Circuit breaker open (external API dependency down)
+      - alert: CircuitBreakerOpen
+        expr: floodingnaque_circuit_breaker_state == 1
+        for: 2m
+        labels:
+          severity: warning
+          service: external-api
+        annotations:
+          summary: "Circuit breaker open for {{ $labels.api }}"
+          description: "The circuit breaker for external API '{{ $labels.api }}' has been open for more than 2 minutes. The API dependency may be down."
+
+  # ==========================================================================
+  # Database Alerts
+  # ==========================================================================
+  - name: floodingnaque-database
+    rules:
+      # DB connection pool exhaustion warning
+      - alert: DBPoolExhaustion
+        expr: |
+          floodingnaque_db_pool_connections{status="checked_out"}
+          /
+          (floodingnaque_db_pool_connections{status="checked_out"} + floodingnaque_db_pool_connections{status="checked_in"})
+          > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "More than 85% of database connections are checked out. Pool may be exhausted soon."
+
+      # DB connection pool overflow active
+      - alert: DBPoolOverflow
+        expr: floodingnaque_db_pool_connections{status="overflow"} > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database connection pool overflow active"
+          description: "The database connection pool is using overflow connections ({{ $value }}). Consider increasing pool size."
+
+      # Slow database queries (p95 > 500ms)
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(floodingnaque_db_query_duration_seconds_bucket[5m])) by (le)
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Slow database queries"
+          description: "The 95th percentile database query time exceeds 500ms. Current p95: {{ $value | humanizeDuration }}."
+
+      # PostgreSQL exporter — database down
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL exporter is unreachable. The database may be down."
+
+      # PgBouncer — connection pool down
+      - alert: PgBouncerDown
+        expr: up{job="pgbouncer"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "PgBouncer is down"
+          description: "PgBouncer exporter is unreachable. The connection pooler may be down."
+
+  # ==========================================================================
+  # Cache (Redis) Alerts
+  # ==========================================================================
+  - name: floodingnaque-cache
+    rules:
+      # Redis down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis exporter is unreachable. Caching layer may be unavailable."
+
+      # Low cache hit rate
+      - alert: LowCacheHitRate
+        expr: floodingnaque_cache_hit_rate{cache_type="redis"} < 50
+        for: 15m
+        labels:
+          severity: warning
+          service: cache
+        annotations:
+          summary: "Low Redis cache hit rate"
+          description: "Redis cache hit rate is below 50% ({{ $value }}%). Cache may be ineffective or improperly configured."
+
+  # ==========================================================================
+  # Infrastructure Alerts
+  # ==========================================================================
   - name: infrastructure
     rules:
       # High memory usage
@@ -57,9 +236,9 @@ groups:
           service: api
         annotations:
           summary: "High memory usage on API"
-          description: "Backend memory usage exceeds 1.5GB."
+          description: "Backend memory usage exceeds 1.5GB. Current: {{ $value | humanize1024 }}B."
 
-      # Prometheus target down
+      # Any Prometheus scrape target down
       - alert: TargetDown
         expr: up == 0
         for: 5m
@@ -68,3 +247,67 @@ groups:
         annotations:
           summary: "Scrape target {{ $labels.job }} is down"
           description: "{{ $labels.instance }} has been unreachable for more than 5 minutes."
+
+      # Nginx down
+      - alert: NginxDown
+        expr: up{job="nginx"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: nginx
+        annotations:
+          summary: "Nginx is down"
+          description: "Nginx exporter is unreachable. The reverse proxy may be down."
+
+      # High CPU usage (container CPU > 80% of limit)
+      - alert: HighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total{job="floodingnaque-api"}[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High CPU usage on API"
+          description: "Backend CPU usage is consistently high. Current rate: {{ $value }}."
+
+      # Disk space — Prometheus storage
+      - alert: PrometheusStorageHigh
+        expr: |
+          (prometheus_tsdb_storage_blocks_bytes / (1024 * 1024 * 1024)) > 8
+        for: 5m
+        labels:
+          severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus storage usage high"
+          description: "Prometheus TSDB is using more than 8GB of disk space."
+
+      # Prometheus rule evaluation failures
+      - alert: PrometheusRuleFailures
+        expr: increase(prometheus_rule_evaluation_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: prometheus
+        annotations:
+          summary: "Prometheus rule evaluation failures"
+          description: "Prometheus has had rule evaluation failures in the last 5 minutes."
+
+  # ==========================================================================
+  # Watchdog (Deadman Switch)
+  # ==========================================================================
+  - name: watchdog
+    rules:
+      # This alert ALWAYS fires. If it stops firing, Prometheus is broken.
+      # Alertmanager should have a route to suppress this (it's informational).
+      # If your on-call system stops receiving Watchdog, Prometheus is down.
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Watchdog - Prometheus is alive"
+          description: >-
+            This is a deadman switch alert. It should always be firing.
+            If this alert is not firing, Prometheus alerting pipeline is broken.

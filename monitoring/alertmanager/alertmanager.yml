@@ -8,12 +8,15 @@
 # =====================================================
 
 global:
-  # Default SMTP settings (for email notifications)
-  # smtp_smarthost: 'smtp.gmail.com:587'
-  # smtp_from: 'alerts@floodingnaque.com'
-  # smtp_auth_username: 'alerts@floodingnaque.com'
-  # smtp_auth_password: 'app-password'
-  # smtp_require_tls: true
+  # SMTP settings for email notifications
+  # Set these via environment variables or replace with your values:
+  #   ALERTMANAGER_SMTP_HOST, ALERTMANAGER_SMTP_FROM,
+  #   ALERTMANAGER_SMTP_USER, ALERTMANAGER_SMTP_PASSWORD
+  smtp_smarthost: '{{ .Env.ALERTMANAGER_SMTP_HOST | default "smtp.gmail.com:587" }}'
+  smtp_from: '{{ .Env.ALERTMANAGER_SMTP_FROM | default "alerts@floodingnaque.com" }}'
+  smtp_auth_username: '{{ .Env.ALERTMANAGER_SMTP_USER | default "" }}'
+  smtp_auth_password: '{{ .Env.ALERTMANAGER_SMTP_PASSWORD | default "" }}'
+  smtp_require_tls: true
 
   resolve_timeout: 5m
 
@@ -40,6 +43,12 @@ route:
 
   # Child routes for severity-based routing
   routes:
+    # Watchdog (deadman switch) — routed to null receiver to suppress noise
+    - match:
+        alertname: Watchdog
+      receiver: 'watchdog-receiver'
+      repeat_interval: 1m
+
     # Critical alerts — immediate notification
     - match:
         severity: critical
@@ -63,11 +72,16 @@ inhibit_rules:
 
 # Notification receivers
 receivers:
-  # Default — log to stdout (replace with Slack/email in production)
+  # Default — email notifications for warnings
   - name: 'default-receiver'
-    # Uncomment and configure for Slack:
+    email_configs:
+      - to: '{{ .Env.ALERTMANAGER_NOTIFY_EMAIL | default "team@floodingnaque.com" }}'
+        send_resolved: true
+        headers:
+          Subject: '[Floodingnaque][{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+    # Optional Slack integration (uncomment and set ALERTMANAGER_SLACK_WEBHOOK env var):
     # slack_configs:
-    #   - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+    #   - api_url: '{{ .Env.ALERTMANAGER_SLACK_WEBHOOK }}'
     #     channel: '#floodingnaque-alerts'
     #     title: '{{ .GroupLabels.alertname }}'
     #     text: >-
@@ -77,21 +91,16 @@ receivers:
     #       *Description:* {{ .Annotations.description }}
     #       {{ end }}
 
-    # Uncomment for email:
-    # email_configs:
-    #   - to: 'team@floodingnaque.com'
-    #     send_resolved: true
-
-    # Webhook (for custom integrations)
-    webhook_configs:
-      - url: 'http://localhost:9095/alertmanager'
-        send_resolved: true
-
-  # Critical — more aggressive notification
+  # Critical — immediate email notification
   - name: 'critical-receiver'
-    # Uncomment and configure:
+    email_configs:
+      - to: '{{ .Env.ALERTMANAGER_NOTIFY_EMAIL | default "team@floodingnaque.com" }}'
+        send_resolved: true
+        headers:
+          Subject: '[Floodingnaque][CRITICAL] {{ .GroupLabels.alertname }}'
+    # Optional Slack for critical alerts:
     # slack_configs:
-    #   - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+    #   - api_url: '{{ .Env.ALERTMANAGER_SLACK_WEBHOOK }}'
     #     channel: '#floodingnaque-critical'
     #     title: ':rotating_light: CRITICAL: {{ .GroupLabels.alertname }}'
     #     text: >-
@@ -101,6 +110,5 @@ receivers:
     #       *Description:* {{ .Annotations.description }}
     #       {{ end }}
 
-    webhook_configs:
-      - url: 'http://localhost:9095/alertmanager'
-        send_resolved: true
+  # Watchdog — null receiver (deadman switch only needs to exist in external system)
+  - name: 'watchdog-receiver'
