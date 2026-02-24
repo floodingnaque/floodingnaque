@@ -337,8 +337,8 @@ export function Layout() {
           {/* Collapse Toggle */}
           <div className="border-t p-2">
             <Button
-              variant=\"ghost\"
-              size=\"sm\"
+              variant="ghost"
+              size="sm"
               onClick={collapseSidebar}
               className={cn('w-full', sidebarCollapsed && 'w-full justify-center')}
               aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}

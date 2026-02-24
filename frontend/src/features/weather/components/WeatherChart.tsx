@@ -49,9 +49,9 @@ interface TooltipProps {
  * Map data keys to color classes
  */
 const colorClasses: Record<string, string> = {
-  temperature: 'text-orange-500',
-  humidity: 'text-cyan-500',
-  precipitation: 'text-blue-500',
+  temperature: 'text-foreground',
+  humidity: 'text-muted-foreground',
+  precipitation: 'text-foreground/70',
 };
 
 function CustomTooltip({ active, payload, label }: TooltipProps) {
@@ -195,7 +195,7 @@ export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: Weat
               yAxisId="right"
               dataKey="precipitation"
               name="Precipitation"
-              fill="#3b82f6"
+              fill="#64748b"
               opacity={0.6}
               radius={[4, 4, 0, 0]}
             />
@@ -206,7 +206,7 @@ export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: Weat
               type="monotone"
               dataKey="temperature"
               name="Temperature"
-              stroke="#f97316"
+              stroke="#1e293b"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 6 }}
@@ -218,7 +218,7 @@ export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: Weat
               type="monotone"
               dataKey="humidity"
               name="Humidity"
-              stroke="#06b6d4"
+              stroke="#94a3b8"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 6 }}

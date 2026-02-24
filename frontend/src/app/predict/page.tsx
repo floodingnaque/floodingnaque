@@ -38,9 +38,9 @@ export default function PredictPage() {
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3 mb-4">
           {predictionResult ? (
-            <ShieldAlert className="h-10 w-10 text-blue-600" />
+            <ShieldAlert className="h-10 w-10 text-foreground" />
           ) : (
-            <CloudRain className="h-10 w-10 text-blue-600" />
+            <CloudRain className="h-10 w-10 text-foreground" />
           )}
           <h1 className="text-3xl font-bold tracking-tight">
             Flood Risk Prediction

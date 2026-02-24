@@ -14,6 +14,15 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 export type Theme = 'light' | 'dark';
 
 /**
+ * Notification preferences
+ */
+export interface NotificationPreferences {
+  emailAlerts: boolean;
+  pushNotifications: boolean;
+  weeklyDigest: boolean;
+}
+
+/**
  * UI store state interface
  */
 interface UIState {
@@ -23,6 +32,8 @@ interface UIState {
   sidebarCollapsed: boolean;
   /** Current theme */
   theme: Theme;
+  /** Notification preferences */
+  notifications: NotificationPreferences;
 }
 
 /**
@@ -41,6 +52,10 @@ interface UIActions {
   toggleTheme: () => void;
   /** Set theme explicitly */
   setTheme: (theme: Theme) => void;
+  /** Toggle a notification preference */
+  toggleNotification: (key: keyof NotificationPreferences) => void;
+  /** Set notification preferences explicitly */
+  setNotifications: (prefs: Partial<NotificationPreferences>) => void;
 }
 
 /**
@@ -67,6 +82,11 @@ const initialState: UIState = {
   sidebarOpen: false,
   sidebarCollapsed: false,
   theme: 'light', // Will be overridden by persist or system preference
+  notifications: {
+    emailAlerts: true,
+    pushNotifications: true,
+    weeklyDigest: false,
+  },
 };
 
 /**
@@ -103,14 +123,29 @@ export const useUIStore = create<UIStore>()(
         set({ theme });
         applyTheme(theme);
       },
+
+      toggleNotification: (key: keyof NotificationPreferences) => {
+        set((state) => ({
+          notifications: {
+            ...state.notifications,
+            [key]: !state.notifications[key],
+          },
+        }));
+      },
+
+      setNotifications: (prefs: Partial<NotificationPreferences>) => {
+        set((state) => ({
+          notifications: { ...state.notifications, ...prefs },
+        }));
+      },
     }),
     {
       name: 'ui-storage',
       storage: createJSONStorage(() => localStorage),
-      // Persist sidebar collapsed state and theme
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,
+        notifications: state.notifications,
       }),
       // Apply theme on rehydration
       onRehydrateStorage: () => (state) => {
@@ -158,6 +193,7 @@ if (typeof window !== 'undefined') {
 export const useTheme = () => useUIStore((state) => state.theme);
 export const useSidebarOpen = () => useUIStore((state) => state.sidebarOpen);
 export const useSidebarCollapsed = () => useUIStore((state) => state.sidebarCollapsed);
+export const useNotifications = () => useUIStore((state) => state.notifications);
 
 /**
  * Action hooks
@@ -174,6 +210,8 @@ export const useUIActions = () => {
   const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
   const toggleTheme = useUIStore((state) => state.toggleTheme);
   const setTheme = useUIStore((state) => state.setTheme);
+  const toggleNotification = useUIStore((state) => state.toggleNotification);
+  const setNotifications = useUIStore((state) => state.setNotifications);
 
   return {
     toggleSidebar,
@@ -182,6 +220,8 @@ export const useUIActions = () => {
     setSidebarCollapsed,
     toggleTheme,
     setTheme,
+    toggleNotification,
+    setNotifications,
   };
 };
 

@@ -14,6 +14,8 @@ import type {
   RegisterRequest,
   ChangePasswordRequest,
   UpdateProfileRequest,
+  PasswordResetRequest,
+  PasswordResetConfirmRequest,
   User,
   AuthTokens,
 } from '@/types';
@@ -140,6 +142,20 @@ export function useAuth() {
     },
   });
 
+  /**
+   * Request password reset mutation
+   */
+  const requestPasswordResetMutation = useMutation({
+    mutationFn: (data: PasswordResetRequest) => authApi.requestPasswordReset(data),
+  });
+
+  /**
+   * Confirm password reset mutation
+   */
+  const confirmPasswordResetMutation = useMutation({
+    mutationFn: (data: PasswordResetConfirmRequest) => authApi.confirmPasswordReset(data),
+  });
+
   return {
     // State
     user,
@@ -176,6 +192,15 @@ export function useAuth() {
     updateProfileAsync: updateProfileMutation.mutateAsync,
     isUpdatingProfile: updateProfileMutation.isPending,
     updateProfileError: updateProfileMutation.error,
+
+    // Password reset
+    requestPasswordReset: requestPasswordResetMutation.mutate,
+    isRequestingPasswordReset: requestPasswordResetMutation.isPending,
+    requestPasswordResetError: requestPasswordResetMutation.error,
+
+    confirmPasswordReset: confirmPasswordResetMutation.mutate,
+    isConfirmingPasswordReset: confirmPasswordResetMutation.isPending,
+    confirmPasswordResetError: confirmPasswordResetMutation.error,
   };
 }
 

@@ -19,6 +19,7 @@ import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 
 // Lazy-loaded page components (code-split per route)
 const LoginPage    = lazy(() => import('@/app/login/page'));
+const ForgotPasswordPage = lazy(() => import('@/app/forgot-password/page'));
 const DashboardPage = lazy(() =>
   import('@/app/page').then((m) => ({ default: m.DashboardPage }))
 );
@@ -39,6 +40,7 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Protected Routes with Layout */}
           <Route element={<ProtectedRoute />}>

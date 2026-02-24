@@ -28,14 +28,14 @@ function getActivityIcon(type: ActivityItem['type']) {
   if (type === 'alert') {
     return {
       icon: <AlertTriangle className="h-4 w-4" />,
-      bgColor: 'bg-amber-100 dark:bg-amber-900/30',
-      iconColor: 'text-amber-600',
+      bgColor: 'bg-muted',
+      iconColor: 'text-muted-foreground',
     };
   }
   return {
     icon: <Activity className="h-4 w-4" />,
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
-    iconColor: 'text-blue-600',
+    bgColor: 'bg-muted',
+    iconColor: 'text-muted-foreground',
   };
 }
 

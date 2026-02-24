@@ -15,6 +15,8 @@ export const API_ENDPOINTS = {
     refresh: '/api/v1/auth/refresh',
     logout: '/api/v1/auth/logout',
     me: '/api/v1/auth/me',
+    passwordResetRequest: '/api/v1/auth/password-reset/request',
+    passwordResetConfirm: '/api/v1/auth/password-reset/confirm',
   },
   predict: {
     predict: '/api/v1/predict',
@@ -33,6 +35,15 @@ export const API_ENDPOINTS = {
   },
   dashboard: {
     stats: '/api/v1/dashboard/stats',
+  },
+  health: {
+    status: '/api/v1/health',
+    live: '/api/v1/health/live',
+  },
+  predictions: {
+    list: '/api/v1/predictions',
+    stats: '/api/v1/predictions/stats',
+    recent: '/api/v1/predictions/recent',
   },
   export: {
     weather: '/api/v1/export/weather',

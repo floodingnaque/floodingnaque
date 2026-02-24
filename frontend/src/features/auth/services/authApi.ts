@@ -15,6 +15,8 @@ import type {
   RefreshTokenRequest,
   ChangePasswordRequest,
   UpdateProfileRequest,
+  PasswordResetRequest,
+  PasswordResetConfirmRequest,
 } from '@/types';
 
 const { endpoints } = API_CONFIG;
@@ -73,6 +75,21 @@ export const authApi = {
    */
   updateProfile: async (data: UpdateProfileRequest): Promise<User> => {
     return api.patch<User>(endpoints.auth.me, data);
+  },
+
+  /**
+   * Request a password reset token (sent via email).
+   * Always returns success to prevent email enumeration.
+   */
+  requestPasswordReset: async (data: PasswordResetRequest): Promise<void> => {
+    return api.post<void>(endpoints.auth.passwordResetRequest, data);
+  },
+
+  /**
+   * Confirm a password reset using the emailed token
+   */
+  confirmPasswordReset: async (data: PasswordResetConfirmRequest): Promise<void> => {
+    return api.post<void>(endpoints.auth.passwordResetConfirm, data);
   },
 };
 

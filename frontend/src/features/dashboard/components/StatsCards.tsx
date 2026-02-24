@@ -161,32 +161,24 @@ export const StatsCards = memo(function StatsCards({ stats }: StatsCardsProps) {
   const riskInfo = getRiskLevelInfo(safeAvgRiskLevel);
   const alertInfo = getAlertColorInfo(safeActiveAlerts);
 
-  // Mock percentage changes (in a real app, these would come from the API)
-  const mockChanges = {
-    totalPredictions: { value: 12, isPositive: true },
-    predictionsToday: { value: 8, isPositive: true },
-  };
-
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="Total Predictions"
         value={safeTotalPredictions.toLocaleString()}
         icon={<Activity className="h-4 w-4" />}
-        iconColor="text-blue-600"
-        bgColor="bg-blue-100 dark:bg-blue-900/30"
-        change={mockChanges.totalPredictions}
-        subtitle="from last month"
+        iconColor="text-foreground"
+        bgColor="bg-muted"
+        subtitle="all time"
       />
 
       <StatCard
         title="Today's Predictions"
         value={safePredictionsToday}
         icon={<TrendingUp className="h-4 w-4" />}
-        iconColor="text-green-600"
-        bgColor="bg-green-100 dark:bg-green-900/30"
-        change={mockChanges.predictionsToday}
-        subtitle="from yesterday"
+        iconColor="text-foreground"
+        bgColor="bg-muted"
+        subtitle="since midnight"
       />
 
       <StatCard

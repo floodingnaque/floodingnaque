@@ -12,7 +12,7 @@ import { useAuthStore } from '@/state/stores/authStore';
 /**
  * Report types available for export
  */
-export type ReportType = 'predictions' | 'alerts' | 'weather';
+export type ReportType = 'predictions' | 'weather';
 
 /**
  * Parameters for generating reports

@@ -131,7 +131,7 @@ export default function AlertsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
-          <Bell className="h-8 w-8 text-blue-600" />
+          <Bell className="h-8 w-8 text-foreground" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
             <p className="text-muted-foreground">

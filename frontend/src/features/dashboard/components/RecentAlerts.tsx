@@ -78,7 +78,7 @@ function AlertRow({ alert }: { alert: AlertData }) {
 
   return (
     <Link
-      to={`/alerts/${alert.id}`}
+      to="/alerts"
       className="block group"
     >
       <div className="flex items-start gap-3 py-3 px-2 -mx-2 rounded-md border-b last:border-b-0 hover:bg-muted/50 transition-colors">

@@ -95,7 +95,7 @@ export default function ReportsPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border p-3">
                     <div className="flex items-center gap-2 font-medium">
-                      <FileText className="h-4 w-4 text-red-500" />
+                      <FileText className="h-4 w-4 text-foreground" />
                       PDF Format
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -105,7 +105,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="rounded-lg border p-3">
                     <div className="flex items-center gap-2 font-medium">
-                      <Download className="h-4 w-4 text-green-500" />
+                      <Download className="h-4 w-4 text-foreground" />
                       CSV Format
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">

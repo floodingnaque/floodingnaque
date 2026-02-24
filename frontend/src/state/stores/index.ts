@@ -6,4 +6,4 @@
 
 export { useAuthStore, useUser, useIsAuthenticated, useAccessToken, useAuthActions } from './authStore';
 export { useAlertStore, useLiveAlerts, useUnreadCount, useAlertConnectionStatus, useAlertActions, useAlertsByRiskLevel, useHighRiskAlertsCount } from './alertStore';
-export { useUIStore, useTheme, useSidebarOpen, useSidebarCollapsed, useUIActions, useSidebarState, type Theme } from './uiStore';
+export { useUIStore, useTheme, useSidebarOpen, useSidebarCollapsed, useNotifications, useUIActions, useSidebarState, type Theme, type NotificationPreferences } from './uiStore';

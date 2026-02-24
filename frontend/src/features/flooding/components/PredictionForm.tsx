@@ -243,7 +243,7 @@ export function PredictionForm({ onSuccess }: PredictionFormProps) {
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader className="space-y-1">
         <div className="flex items-center gap-2">
-          <CloudRain className="h-6 w-6 text-blue-600" />
+          <CloudRain className="h-6 w-6 text-foreground" />
           <CardTitle className="text-2xl font-bold">
             Flood Risk Prediction
           </CardTitle>

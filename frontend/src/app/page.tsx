@@ -57,7 +57,7 @@ export function DashboardPage() {
         {/* Header */}
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
+            <div className="p-2 rounded-lg bg-muted">
               <Droplets className="h-6 w-6 text-primary" />
             </div>
             <div>

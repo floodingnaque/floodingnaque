@@ -4,7 +4,7 @@
  * User settings page with profile, password, preferences, and account management.
  */
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,7 +19,6 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -47,6 +46,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useTheme, useNotifications, useUIActions, type NotificationPreferences } from '@/state';
 
 /**
  * Profile form validation schema
@@ -78,7 +78,10 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
  * SettingsPage - User settings and preferences
  */
 export default function SettingsPage() {
-  const { theme, setTheme } = useTheme();
+  const theme = useTheme();
+  const { toggleTheme } = useUIActions();
+  const notifications = useNotifications();
+  const { toggleNotification } = useUIActions();
   const {
     user,
     updateProfile,
@@ -88,13 +91,6 @@ export default function SettingsPage() {
     logout,
     isLoggingOut,
   } = useAuth();
-
-  // Notification preferences state
-  const [notifications, setNotifications] = useState({
-    emailAlerts: true,
-    pushNotifications: true,
-    weeklyDigest: false,
-  });
 
   // Profile form
   const profileForm = useForm<ProfileFormValues>({
@@ -165,18 +161,16 @@ export default function SettingsPage() {
     logout();
   }, [logout]);
 
-  // Toggle notification preference
-  const toggleNotification = useCallback(
-    (key: keyof typeof notifications) => {
-      setNotifications((prev) => {
-        const newValue = !prev[key];
-        toast.success('Preference Updated', {
-          description: `${key.replace(/([A-Z])/g, ' $1').trim()} has been ${newValue ? 'enabled' : 'disabled'}.`,
-        });
-        return { ...prev, [key]: newValue };
+  // Toggle notification preference (persisted via Zustand → localStorage)
+  const handleToggleNotification = useCallback(
+    (key: keyof NotificationPreferences) => {
+      toggleNotification(key);
+      const newValue = !notifications[key];
+      toast.success('Preference Updated', {
+        description: `${key.replace(/([A-Z])/g, ' $1').trim()} has been ${newValue ? 'enabled' : 'disabled'}.`,
       });
     },
-    []
+    [toggleNotification, notifications],
   );
 
   return (
@@ -358,7 +352,7 @@ export default function SettingsPage() {
             </div>
             <Switch
               checked={theme === 'dark'}
-              onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+              onCheckedChange={() => toggleTheme()}
             />
           </div>
 
@@ -381,7 +375,7 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={notifications.emailAlerts}
-                  onCheckedChange={() => toggleNotification('emailAlerts')}
+                  onCheckedChange={() => handleToggleNotification('emailAlerts')}
                 />
               </div>
 
@@ -394,7 +388,7 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={notifications.pushNotifications}
-                  onCheckedChange={() => toggleNotification('pushNotifications')}
+                  onCheckedChange={() => handleToggleNotification('pushNotifications')}
                 />
               </div>
 
@@ -407,7 +401,7 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={notifications.weeklyDigest}
-                  onCheckedChange={() => toggleNotification('weeklyDigest')}
+                  onCheckedChange={() => handleToggleNotification('weeklyDigest')}
                 />
               </div>
             </div>

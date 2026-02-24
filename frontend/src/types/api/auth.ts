@@ -43,6 +43,22 @@ export interface UpdateProfileRequest {
 }
 
 /**
+ * Request a password reset email
+ */
+export interface PasswordResetRequest {
+  email: string;
+}
+
+/**
+ * Confirm a password reset with the emailed token
+ */
+export interface PasswordResetConfirmRequest {
+  email: string;
+  token: string;
+  new_password: string;
+}
+
+/**
  * Auth tokens structure used by the auth store
  */
 export interface AuthTokens {

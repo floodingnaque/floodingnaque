@@ -40,10 +40,10 @@ interface SortState {
  * Source badge color mapping
  */
 const sourceColors: Record<WeatherSource, string> = {
-  OWM: 'bg-orange-100 text-orange-800 hover:bg-orange-100',
-  Manual: 'bg-gray-100 text-gray-800 hover:bg-gray-100',
-  Meteostat: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-  Google: 'bg-green-100 text-green-800 hover:bg-green-100',
+  OWM: 'bg-muted text-muted-foreground hover:bg-muted',
+  Manual: 'bg-muted text-muted-foreground hover:bg-muted',
+  Meteostat: 'bg-muted text-muted-foreground hover:bg-muted',
+  Google: 'bg-muted text-muted-foreground hover:bg-muted',
 };
 
 /**

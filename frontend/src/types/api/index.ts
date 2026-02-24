@@ -8,27 +8,9 @@ export * from './alert';
 export * from './auth';
 
 // ============================================================================
-// Legacy Types (retained for backward compatibility)
+// Export Types
 // ============================================================================
 
-// Dashboard Types
-export interface DashboardStats {
-  totalPredictions: number;
-  activeAlerts: number;
-  highRiskAreas: number;
-  systemHealth: {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    uptime: number;
-    lastCheck: string;
-  };
-  recentActivity: {
-    predictions24h: number;
-    alertsTriggered24h: number;
-    usersActive24h: number;
-  };
-}
-
-// Export Types
 export interface ExportOptions {
   format: 'pdf' | 'csv';
   dateRange?: {
