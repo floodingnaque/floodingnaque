@@ -1,20 +1,7 @@
 name: Security Scan
 
 on:
-  push:
-    branches: [main, develop]
-    paths:
-      - 'backend/**/*.py'
-      - 'backend/requirements*.txt'
-      - '.github/workflows/security-scan.yml'
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'backend/**/*.py'
-      - 'backend/requirements*.txt'
-  schedule:
-    # Run weekly security scans on Monday at 6:00 AM UTC
-    - cron: '0 6 * * 1'
+  # Called by CI workflow
   workflow_call:
     # Allow this workflow to be called by other workflows
     inputs:
@@ -28,6 +15,11 @@ on:
         required: false
         type: string
         default: 'critical'
+  # Scheduled weekly security scan
+  schedule:
+    # Run weekly security scans on Monday at 6:00 AM UTC
+    - cron: '0 6 * * 1'
+  # Manual trigger
   workflow_dispatch:
     inputs:
       scan_type:
@@ -42,6 +34,10 @@ on:
 permissions:
   contents: read
   security-events: write
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
 
 env:
   PYTHON_VERSION: '3.11'
@@ -60,6 +56,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Required for scanning commit history
+          persist-credentials: false
       
       - name: Run ggshield secret scan
         uses: GitGuardian/ggshield-action@v1
@@ -79,6 +76,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -153,6 +152,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -172,7 +173,7 @@ jobs:
             --desc on \
             --format json \
             --output pip-audit-results.json \
-            2>&1 | tee pip-audit-output.txt || true
+            2>&1 | tee pip-audit-output.txt
 
       - name: Run pip-audit on dev requirements
         id: pip_audit_dev
@@ -223,6 +224,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -295,6 +298,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -340,6 +345,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4

@@ -18,6 +18,10 @@ permissions:
   issues: write  # Required for creating tracking issues
   actions: read
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.inputs.version }}"
+  cancel-in-progress: false
+
 env:
   PYTHON_VERSION: '3.11'
 
@@ -30,6 +34,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,31 +50,40 @@ jobs:
 
       - name: Check staging status
         id: check
+        env:
+          MODEL_VERSION: ${{ github.event.inputs.version }}
+          FORCE_PROMOTE: ${{ github.event.inputs.force }}
         run: |
+          # Validate version format
+          if ! echo "$MODEL_VERSION" | grep -qE '^[0-9]+(\.[0-9]+)*$'; then
+            echo "::error::Invalid version format. Expected numeric version (e.g., 6 or 1.2.3)"
+            exit 1
+          fi
+
           cd backend
           python -c "
-          import sys
+          import sys, os
           sys.path.insert(0, '.')
           from scripts.enterprise.model_registry import create_registry, ModelStage
           from pathlib import Path
 
           registry = create_registry(Path('models'))
-          version = ${{ github.event.inputs.version }}
+          version = os.environ['MODEL_VERSION']
 
           if version not in registry.versions:
               print('::error::Version not found in registry')
-              print('can_promote=false', file=open('$GITHUB_OUTPUT', 'a'))
+              print('can_promote=false', file=open(os.environ['GITHUB_OUTPUT'], 'a'))
               sys.exit(1)
 
           model_version = registry.versions[version]
 
           if model_version.stage != ModelStage.STAGING:
               print(f'::warning::Model is in {model_version.stage.value}, not staging')
-              if '${{ github.event.inputs.force }}' != 'true':
-                  print('can_promote=false', file=open('$GITHUB_OUTPUT', 'a'))
+              if os.environ['FORCE_PROMOTE'] != 'true':
+                  print('can_promote=false', file=open(os.environ['GITHUB_OUTPUT'], 'a'))
                   sys.exit(1)
 
-          print('can_promote=true', file=open('$GITHUB_OUTPUT', 'a'))
+          print('can_promote=true', file=open(os.environ['GITHUB_OUTPUT'], 'a'))
           "
 
   promote-production:
@@ -80,6 +95,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -93,17 +110,20 @@ jobs:
           pip install pyyaml
 
       - name: Promote to production
+        env:
+          MODEL_VERSION: ${{ github.event.inputs.version }}
+          FORCE_PROMOTE: ${{ github.event.inputs.force }}
         run: |
           cd backend
           python -c "
-          import sys
+          import sys, os
           sys.path.insert(0, '.')
           from scripts.enterprise.model_registry import create_registry, ModelStage
           from pathlib import Path
 
           registry = create_registry(Path('models'))
-          version = ${{ github.event.inputs.version }}
-          force = '${{ github.event.inputs.force }}' == 'true'
+          version = os.environ['MODEL_VERSION']
+          force = os.environ['FORCE_PROMOTE'] == 'true'
 
           success, message = registry.promote(version, ModelStage.PRODUCTION, force=force)
           print(message)

@@ -23,6 +23,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.inputs.environment }}"
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -75,18 +79,36 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Rollback staging deployment
+      env:
+        DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
+        DEPLOY_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        ROLLBACK_REASON: ${{ github.event.inputs.reason }}
       run: |
-        echo "🔄 Rolling back STAGING to: ${{ github.event.inputs.image_tag }}"
-        echo "📝 Reason: ${{ github.event.inputs.reason }}"
+        echo "🔄 Rolling back STAGING to: $IMAGE_TAG"
+        echo "📝 Reason: $ROLLBACK_REASON"
         echo "👤 Triggered by: ${{ github.actor }}"
-        # Add your staging rollback steps here:
-        # - SSH and docker compose pull with specific tag
-        # - Cloud provider CLI rollback
-        # Example:
-        # docker compose -f compose.staging.yaml pull
-        # docker compose -f compose.staging.yaml up -d
+
+        # Set up SSH
+        mkdir -p ~/.ssh
+        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+        # Rollback via SSH - pull specific tag and restart
+        ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << ROLLBACK_SCRIPT
+          cd /opt/floodingnaque
+          export IMAGE_TAG="$IMAGE_TAG"
+          docker compose -f compose.staging.yaml pull
+          docker compose -f compose.staging.yaml up -d --remove-orphans
+        ROLLBACK_SCRIPT
+
+        rm -f ~/.ssh/deploy_key
 
     - name: Verify rollback health
       run: |
@@ -114,19 +136,37 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Rollback production deployment
+      env:
+        DEPLOY_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+        DEPLOY_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+        DEPLOY_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        ROLLBACK_REASON: ${{ github.event.inputs.reason }}
       run: |
-        echo "🔄 Rolling back PRODUCTION to: ${{ github.event.inputs.image_tag }}"
-        echo "📝 Reason: ${{ github.event.inputs.reason }}"
+        echo "🔄 Rolling back PRODUCTION to: $IMAGE_TAG"
+        echo "📝 Reason: $ROLLBACK_REASON"
         echo "👤 Triggered by: ${{ github.actor }}"
         echo "⚠️  This is a PRODUCTION rollback"
-        # Add your production rollback steps here:
-        # - SSH and docker compose pull with specific tag
-        # - Cloud provider CLI rollback
-        # Example:
-        # docker compose -f compose.production.yaml pull
-        # docker compose -f compose.production.yaml up -d
+
+        # Set up SSH
+        mkdir -p ~/.ssh
+        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+        # Rollback via SSH - pull specific tag and restart
+        ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << ROLLBACK_SCRIPT
+          cd /opt/floodingnaque
+          export IMAGE_TAG="$IMAGE_TAG"
+          docker compose -f compose.production.yaml pull
+          docker compose -f compose.production.yaml up -d --remove-orphans
+        ROLLBACK_SCRIPT
+
+        rm -f ~/.ssh/deploy_key
 
     - name: Verify rollback health
       run: |
@@ -155,6 +195,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Create rollback issue for tracking
       uses: actions/github-script@v7

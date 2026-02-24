@@ -81,10 +81,10 @@ updates:
       include: "scope"
 
   # ==========================================================================
-  # npm Dependencies (Frontend/Tooling)
+  # npm Dependencies (Frontend)
   # ==========================================================================
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/frontend"
     schedule:
       interval: "weekly"
       day: "wednesday"

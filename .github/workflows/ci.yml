@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: '3.11'
   REGISTRY: ghcr.io
@@ -33,6 +37,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Validate base compose.yaml
       run: docker compose config > /dev/null
@@ -76,6 +82,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -149,6 +157,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -177,7 +187,7 @@ jobs:
         cd backend
         # Uses mypy.ini configuration for consistent type checking
         mypy --config-file mypy.ini
-      continue-on-error: true  # Set to false once type coverage is improved
+      continue-on-error: false  # Type errors block CI
 
     - name: Test with pytest
       run: |
@@ -193,7 +203,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
+        fail_ci_if_error: true
 
   # ==========================================================================
   # Load Testing (Smoke Test for PRs)
@@ -208,6 +218,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -266,6 +278,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Set up Python
       uses: actions/setup-python@v5

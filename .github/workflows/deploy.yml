@@ -1,8 +1,11 @@
 name: Deploy
 
 on:
-  push:
-    branches: [ main ]
+  # Only deploy after CI workflow completes successfully on main
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -23,6 +26,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -31,11 +38,25 @@ env:
 
 jobs:
   # ==========================================================================
+  # CI Gate Check — abort if CI workflow failed
+  # ==========================================================================
+  ci-gate:
+    name: CI Gate Check
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    steps:
+      - name: CI passed
+        run: echo "CI gate passed — proceeding with deployment"
+
+  # ==========================================================================
   # Build and Push Docker Image
   # ==========================================================================
   build-and-push:
     name: Build & Push Image
     runs-on: ubuntu-latest
+    needs: ci-gate
     permissions:
       contents: read
       packages: write
@@ -46,6 +67,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Set variables
       id: vars
@@ -152,18 +175,38 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Deploy to staging
       id: deploy
+      env:
+        DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
+        DEPLOY_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        IMAGE_DIGEST: ${{ needs.build-and-push.outputs.image_digest }}
       run: |
         echo "🚀 Deploying to staging server..."
-        echo "Image: ${{ needs.build-and-push.outputs.image_tag }}"
-        echo "Digest: ${{ needs.build-and-push.outputs.image_digest }}"
-        echo "SHA: ${{ needs.build-and-push.outputs.short_sha }}"
-        # Add your staging deployment steps here:
-        # - SSH deployment
-        # - Docker Compose pull & up
-        # - Cloud provider CLI deployment
+        echo "Image: $IMAGE_TAG"
+        echo "Digest: $IMAGE_DIGEST"
+
+        # Set up SSH
+        mkdir -p ~/.ssh
+        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+        # Deploy via SSH
+        ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << 'DEPLOY_SCRIPT'
+          cd /opt/floodingnaque
+          docker compose -f compose.staging.yaml pull
+          docker compose -f compose.staging.yaml up -d --remove-orphans
+          docker image prune -f
+        DEPLOY_SCRIPT
+
+        # Cleanup
+        rm -f ~/.ssh/deploy_key
         echo "deployed=true" >> $GITHUB_OUTPUT
 
     - name: Notify staging deployment
@@ -228,18 +271,38 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Deploy to production
       id: deploy
+      env:
+        DEPLOY_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+        DEPLOY_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+        DEPLOY_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        IMAGE_DIGEST: ${{ needs.build-and-push.outputs.image_digest }}
       run: |
         echo "🚀 Deploying to PRODUCTION server..."
-        echo "Image: ${{ needs.build-and-push.outputs.image_tag }}"
-        echo "Digest: ${{ needs.build-and-push.outputs.image_digest }}"
-        echo "SHA: ${{ needs.build-and-push.outputs.short_sha }}"
-        # Add your production deployment steps here:
-        # - SSH deployment
-        # - Docker Compose pull & up
-        # - Cloud provider CLI deployment
+        echo "Image: $IMAGE_TAG"
+        echo "Digest: $IMAGE_DIGEST"
+
+        # Set up SSH
+        mkdir -p ~/.ssh
+        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+        # Deploy via SSH
+        ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << 'DEPLOY_SCRIPT'
+          cd /opt/floodingnaque
+          docker compose -f compose.production.yaml pull
+          docker compose -f compose.production.yaml up -d --remove-orphans
+          docker image prune -f
+        DEPLOY_SCRIPT
+
+        # Cleanup
+        rm -f ~/.ssh/deploy_key
         echo "url=${{ env.PRODUCTION_URL }}" >> $GITHUB_OUTPUT
 
     - name: Post-deploy health check

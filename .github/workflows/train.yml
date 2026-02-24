@@ -36,6 +36,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.inputs.version || 'scheduled' }}"
+  cancel-in-progress: false
+
 env:
   PYTHON_VERSION: '3.11'
   MLFLOW_TRACKING_URI: 'mlruns'
@@ -49,6 +53,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -99,6 +105,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -180,6 +188,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -218,6 +228,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -237,26 +249,28 @@ jobs:
           path: backend/
 
       - name: Promote to staging
+        env:
+          MODEL_VERSION: ${{ github.event.inputs.version || '6' }}
         run: |
           cd backend
-          VERSION="${{ github.event.inputs.version || '6' }}"
 
           python -c "
-          import sys
+          import sys, os
           sys.path.insert(0, '.')
           from scripts.enterprise.model_registry import create_registry, ModelStage
           from pathlib import Path
 
           registry = create_registry(Path('models'))
+          version = os.environ['MODEL_VERSION']
 
           # Check if version exists in registry
-          if $VERSION in registry.versions:
-              success, message = registry.promote($VERSION, ModelStage.STAGING)
+          if version in registry.versions:
+              success, message = registry.promote(version, ModelStage.STAGING)
               print(message)
               if not success:
                   sys.exit(1)
           else:
-              print(f'Version $VERSION not found in registry')
+              print(f'Version {version} not found in registry')
               sys.exit(1)
           "
 
