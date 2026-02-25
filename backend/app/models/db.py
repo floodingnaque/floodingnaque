@@ -272,8 +272,24 @@ def _get_scoped_session() -> scoped_session:
         return _Session
 
 
-# Backward-compatible alias
-db_session = property(lambda self: _get_scoped_session())  # type: ignore[arg-type]
+# ── Backward-compatible aliases ───────────────────────────────────────────
+# Many modules do ``from app.models.db import Session`` or ``db_session``.
+# Both need to be importable *before* the engine exists, so we use a thin
+# proxy that defers to ``_get_scoped_session()`` on first real access.
+
+
+class _SessionProxy:
+    """Lazy proxy so ``Session`` / ``db_session`` work at module level."""
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        return _get_scoped_session()(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        return getattr(_get_scoped_session(), name)
+
+
+Session = _SessionProxy()  # type: ignore[assignment]
+db_session = _SessionProxy()  # type: ignore[assignment]
 
 
 from app.models.alert import AlertHistory  # noqa: E402, F401
