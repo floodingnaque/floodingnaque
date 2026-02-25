@@ -376,7 +376,9 @@ def refresh_token():
 
         with get_db_session() as session:
             user = (
-                session.query(User).filter(User.id == user_id, User.is_deleted.is_(False), User.is_active.is_(True)).first()
+                session.query(User)
+                .filter(User.id == user_id, User.is_deleted.is_(False), User.is_active.is_(True))
+                .first()
             )
 
             if not user:

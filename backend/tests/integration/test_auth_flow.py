@@ -11,10 +11,10 @@ from unittest.mock import patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _generate_strong_api_key() -> str:
     """Generate an API key that passes entropy / format checks."""
@@ -25,15 +25,26 @@ def _generate_strong_api_key() -> str:
 # Fixtures: auth-enabled Flask app
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def auth_app():
     """Flask app with authentication ENABLED (not bypassed)."""
     # Temporarily override env BEFORE importing the app
-    saved = {k: os.environ.get(k) for k in (
-        "AUTH_BYPASS_ENABLED", "VALID_API_KEYS", "RATE_LIMIT_ENABLED",
-        "STARTUP_HEALTH_CHECK", "SCHEDULER_ENABLED", "ENV_VALIDATION_ENABLED",
-        "TESTING", "APP_ENV", "SECRET_KEY", "FLASK_DEBUG",
-    )}
+    saved = {
+        k: os.environ.get(k)
+        for k in (
+            "AUTH_BYPASS_ENABLED",
+            "VALID_API_KEYS",
+            "RATE_LIMIT_ENABLED",
+            "STARTUP_HEALTH_CHECK",
+            "SCHEDULER_ENABLED",
+            "ENV_VALIDATION_ENABLED",
+            "TESTING",
+            "APP_ENV",
+            "SECRET_KEY",
+            "FLASK_DEBUG",
+        )
+    }
 
     test_key = _generate_strong_api_key()
 
@@ -50,9 +61,11 @@ def auth_app():
 
     # Invalidate cached keys so the new VALID_API_KEYS is picked up
     from app.api.middleware.auth import invalidate_api_key_cache
+
     invalidate_api_key_cache()
 
     from app.api.app import create_app
+
     application = create_app()
     application.config["TESTING"] = True
 
@@ -87,14 +100,19 @@ def valid_api_key(auth_app):
 # Tests: missing / invalid key → 401
 # ---------------------------------------------------------------------------
 
+
 class TestAuthMissingKey:
     """Requests without an API key should be rejected."""
 
     def test_predict_without_key_returns_401(self, auth_client):
         """POST /api/v1/predict without X-API-Key header → 401."""
-        resp = auth_client.post("/api/v1/predict", json={
-            "latitude": 14.48, "longitude": 121.02,
-        })
+        resp = auth_client.post(
+            "/api/v1/predict",
+            json={
+                "latitude": 14.48,
+                "longitude": 121.02,
+            },
+        )
         assert resp.status_code == 401
         data = resp.get_json()
         assert "API key required" in data.get("error", "")
@@ -124,6 +142,7 @@ class TestAuthInvalidKey:
 # Tests: valid key → passes auth (endpoint may still 4xx/5xx for other reasons)
 # ---------------------------------------------------------------------------
 
+
 class TestAuthValidKey:
     """Requests with a legitimate API key pass the auth layer."""
 
@@ -151,6 +170,7 @@ class TestAuthValidKey:
 # ---------------------------------------------------------------------------
 # Tests: IP lockout after repeated failures
 # ---------------------------------------------------------------------------
+
 
 class TestAuthLockout:
     """IP lockout after too many failed attempts."""
@@ -191,6 +211,7 @@ class TestAuthLockout:
 # Tests: key expiration & revocation
 # ---------------------------------------------------------------------------
 
+
 class TestAuthKeyLifecycle:
     """Expiration and revocation checks during real request flow."""
 
@@ -198,10 +219,11 @@ class TestAuthKeyLifecycle:
         """A revoked key should return 401 even though it is otherwise valid."""
         from app.api.middleware.auth import (
             _clear_failed_attempts,
+            _revoked_api_keys,
             invalidate_api_key_cache,
             revoke_api_key,
-            _revoked_api_keys,
         )
+
         _clear_failed_attempts("127.0.0.1")
 
         revoke_api_key(valid_api_key)
@@ -220,11 +242,13 @@ class TestAuthKeyLifecycle:
     def test_expired_key_is_rejected(self, auth_client, valid_api_key):
         """An expired key should return 401."""
         import time
+
         from app.api.middleware.auth import (
             _api_key_expirations,
             _clear_failed_attempts,
             set_api_key_expiration,
         )
+
         _clear_failed_attempts("127.0.0.1")
 
         # Expire the key 10 seconds in the past

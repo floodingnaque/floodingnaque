@@ -75,8 +75,7 @@ def _resolve_db_url() -> str:
     app_env = os.getenv("APP_ENV", "development").lower()
     if app_env in ("production", "prod", "staging", "stage"):
         raise ValueError(
-            f"DATABASE_URL must be set for {app_env}! "
-            "Configure a Supabase PostgreSQL connection string."
+            f"DATABASE_URL must be set for {app_env}! " "Configure a Supabase PostgreSQL connection string."
         )
     logger.warning("DATABASE_URL not set — using SQLite for development only")
     return "sqlite:///data/floodingnaque.db"
@@ -175,9 +174,12 @@ def get_engine() -> Engine:
                 connect_args=connect_args if connect_args else {},
             )
             logger.info(
-                "Database pool configured: size=%s, overflow=%s, "
-                "recycle=%ss, timeout=%ss, pre_ping=%s",
-                pool_size, max_overflow, pool_recycle, DB_POOL_TIMEOUT, DB_POOL_PRE_PING,
+                "Database pool configured: size=%s, overflow=%s, " "recycle=%ss, timeout=%ss, pre_ping=%s",
+                pool_size,
+                max_overflow,
+                pool_recycle,
+                DB_POOL_TIMEOUT,
+                DB_POOL_PRE_PING,
             )
             _attach_pool_events(eng)
 
@@ -188,6 +190,7 @@ def get_engine() -> Engine:
 # ── Backward-compatible ``engine`` accessor ───────────────────────────────
 # Many modules do ``from app.models.db import engine``.  We keep that
 # working by making ``engine`` a module-level attribute resolved lazily.
+
 
 class _EngineProxy:
     """Thin descriptor so ``engine`` can be accessed at module level."""
@@ -273,16 +276,17 @@ def _get_scoped_session() -> scoped_session:
 db_session = property(lambda self: _get_scoped_session())  # type: ignore[arg-type]
 
 
+from app.models.alert import AlertHistory  # noqa: E402, F401
+from app.models.api_request import APIRequest, EarthEngineRequest  # noqa: E402, F401
+from app.models.cache import SatelliteWeatherCache, TideDataCache  # noqa: E402, F401
+from app.models.model_registry import ModelRegistry  # noqa: E402, F401
+from app.models.prediction import Prediction  # noqa: E402, F401
+from app.models.user import User  # noqa: E402, F401
+
 # ---------------------------------------------------------------------------
 # Import model classes so they are registered with Base.metadata.
 # ---------------------------------------------------------------------------
 from app.models.weather import WeatherData  # noqa: E402, F401
-from app.models.prediction import Prediction  # noqa: E402, F401
-from app.models.alert import AlertHistory  # noqa: E402, F401
-from app.models.model_registry import ModelRegistry  # noqa: E402, F401
-from app.models.cache import SatelliteWeatherCache, TideDataCache  # noqa: E402, F401
-from app.models.api_request import APIRequest, EarthEngineRequest  # noqa: E402, F401
-from app.models.user import User  # noqa: E402, F401
 from app.models.webhook import Webhook  # noqa: E402, F401
 
 

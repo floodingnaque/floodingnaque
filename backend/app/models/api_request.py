@@ -2,9 +2,8 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Index, Integer, String, Text
-
 from app.models.db import Base
+from sqlalchemy import Boolean, Column, DateTime, Float, Index, Integer, String, Text
 
 
 class APIRequest(Base):

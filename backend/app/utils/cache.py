@@ -3,8 +3,7 @@
 import warnings as _warnings
 
 _warnings.warn(
-    "Importing from app.utils.cache is deprecated. "
-    "Use app.utils.resilience.cache instead.",
+    "Importing from app.utils.cache is deprecated. " "Use app.utils.resilience.cache instead.",
     DeprecationWarning,
     stacklevel=2,
 )

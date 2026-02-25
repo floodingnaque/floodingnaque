@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ============================================================================
 # Database Fixtures with Proper Cleanup
 # ============================================================================

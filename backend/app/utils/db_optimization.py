@@ -19,7 +19,6 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional
 
 from app.utils.secrets import get_secret
-
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker

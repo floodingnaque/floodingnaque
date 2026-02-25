@@ -253,7 +253,9 @@ def get_prediction_by_id(prediction_id):
     try:
         with get_db_session() as session:
             prediction = (
-                session.query(Prediction).filter(Prediction.id == prediction_id, Prediction.is_deleted.is_(False)).first()
+                session.query(Prediction)
+                .filter(Prediction.id == prediction_id, Prediction.is_deleted.is_(False))
+                .first()
             )
 
             if not prediction:
@@ -324,7 +326,9 @@ def delete_prediction(prediction_id):
     try:
         with get_db_session() as session:
             prediction = (
-                session.query(Prediction).filter(Prediction.id == prediction_id, Prediction.is_deleted.is_(False)).first()
+                session.query(Prediction)
+                .filter(Prediction.id == prediction_id, Prediction.is_deleted.is_(False))
+                .first()
             )
 
             if not prediction:

@@ -3,8 +3,7 @@
 import warnings as _warnings
 
 _warnings.warn(
-    "Importing from app.utils.metrics is deprecated. "
-    "Use app.utils.observability.metrics instead.",
+    "Importing from app.utils.metrics is deprecated. " "Use app.utils.observability.metrics instead.",
     DeprecationWarning,
     stacklevel=2,
 )

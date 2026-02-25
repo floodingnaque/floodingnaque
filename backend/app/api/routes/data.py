@@ -10,6 +10,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from app.api.middleware.auth import require_api_key
+from app.api.middleware.rate_limit import get_endpoint_limit, limiter
 from app.models.db import WeatherData, get_db_session
 from app.utils.api_constants import (
     HTTP_BAD_REQUEST,
@@ -26,7 +27,6 @@ from app.utils.query_optimizer import (
     query_cache_get,
     query_cache_set,
 )
-from app.api.middleware.rate_limit import get_endpoint_limit, limiter
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy import asc, desc
 

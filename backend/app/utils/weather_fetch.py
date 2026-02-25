@@ -44,10 +44,7 @@ def fetch_weather_by_coordinates(lat: float, lon: float) -> dict:
     if not owm_api_key:
         raise WeatherFetchError("OWM_API_KEY is not configured on the server.")
 
-    owm_url = (
-        f"https://api.openweathermap.org/data/2.5/weather"
-        f"?lat={lat}&lon={lon}&appid={owm_api_key}"
-    )
+    owm_url = f"https://api.openweathermap.org/data/2.5/weather" f"?lat={lat}&lon={lon}&appid={owm_api_key}"
 
     try:
 
@@ -57,9 +54,7 @@ def fetch_weather_by_coordinates(lat: float, lon: float) -> dict:
             exceptions=(requests.exceptions.RequestException,),
         )
         def _call_owm():
-            headers = inject_correlation_headers(
-                {"User-Agent": "FloodingNaque/2.0 (Location Prediction)"}
-            )
+            headers = inject_correlation_headers({"User-Agent": "FloodingNaque/2.0 (Location Prediction)"})
             response = requests.get(owm_url, timeout=OWM_TIMEOUT, headers=headers)
             response.raise_for_status()
             return response.json()
@@ -68,14 +63,10 @@ def fetch_weather_by_coordinates(lat: float, lon: float) -> dict:
 
     except CircuitOpenError:
         logger.error("OpenWeatherMap circuit breaker is open — cannot fetch weather.")
-        raise WeatherFetchError(
-            "Weather service is temporarily unavailable. Please try again later."
-        )
+        raise WeatherFetchError("Weather service is temporarily unavailable. Please try again later.")
     except requests.exceptions.RequestException as exc:
         logger.error(f"OpenWeatherMap request failed for ({lat}, {lon}): {exc}")
-        raise WeatherFetchError(
-            "Failed to fetch weather data. Please check your connection and try again."
-        )
+        raise WeatherFetchError("Failed to fetch weather data. Please check your connection and try again.")
 
     # Validate response structure
     if "main" not in owm_data:

@@ -2,9 +2,8 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, Index, Integer, String
-
 from app.models.db import Base
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, Index, Integer, String
 
 
 class SatelliteWeatherCache(Base):
