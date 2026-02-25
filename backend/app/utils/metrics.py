@@ -9,4 +9,3 @@ _warnings.warn(
 )
 
 from app.utils.observability.metrics import *  # noqa: F401, F403, E402
-from app.utils.observability.metrics import __all__  # noqa: F401, E402

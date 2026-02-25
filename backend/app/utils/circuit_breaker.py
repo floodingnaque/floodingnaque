@@ -9,4 +9,3 @@ _warnings.warn(
 )
 
 from app.utils.resilience.circuit_breaker import *  # noqa: F401, F403, E402
-from app.utils.resilience.circuit_breaker import __all__  # noqa: F401, E402

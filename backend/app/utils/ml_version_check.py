@@ -9,4 +9,3 @@ _warnings.warn(
 )
 
 from app.utils.ml.ml_version_check import *  # noqa: F401, F403, E402
-from app.utils.ml.ml_version_check import __all__  # noqa: F401, E402
