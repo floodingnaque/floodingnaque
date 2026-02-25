@@ -14,7 +14,7 @@ import { API_ENDPOINTS } from '@/config/api.config';
 /**
  * Report types available for export
  */
-export type ReportType = 'predictions' | 'weather';
+export type ReportType = 'predictions' | 'weather' | 'alerts';
 
 /**
  * Parameters for generating reports

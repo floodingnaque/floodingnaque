@@ -41,6 +41,11 @@ const REPORT_TYPES: { value: ReportType; label: string; description: string }[] 
     label: 'Weather Data',
     description: 'Weather observations and forecast data',
   },
+  {
+    value: 'alerts',
+    label: 'Flood Alerts',
+    description: 'Alert history and acknowledgement records',
+  },
 ];
 
 /**
@@ -55,7 +60,7 @@ const EXPORT_FORMATS: { value: 'pdf' | 'csv'; label: string; icon: typeof FileTe
  * Form validation schema
  */
 const reportFormSchema = z.object({
-  reportType: z.enum(['predictions', 'weather']),
+  reportType: z.enum(['predictions', 'weather', 'alerts']),
   format: z.enum(['pdf', 'csv']),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
