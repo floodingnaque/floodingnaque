@@ -129,7 +129,7 @@ If you need to create an admin user directly:
                admin = User(
                    email='admin@floodingnaque.com',
                    full_name='Admin User',
-                   password_hash=hash_password('admin123'),
+                   password_hash=hash_password('CHANGE_ME_BEFORE_USE'),
                    role='admin',
                    is_active=True,
                    is_verified=True
@@ -138,7 +138,7 @@ If you need to create an admin user directly:
                db.add(admin)
                print('Admin user created successfully!')
                print('Email: admin@floodingnaque.com')
-               print('Password: admin123')
+               print('Password: <the password you set above>')
                print('Please change this password after first login!')
        except Exception as e:
            print(f'Error: {e}')
@@ -156,7 +156,7 @@ If you need to create an admin user directly:
 2. Click on the **Login** tab
 3. Enter your credentials:
    - **Email**: admin@floodingnaque.com
-   - **Password**: admin123 (or the password you set)
+   - **Password**: *(the password you set in the admin creation script)*
 4. Click **Login**
 
 You should be redirected to the dashboard!

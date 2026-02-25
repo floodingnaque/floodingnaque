@@ -1,14 +1,15 @@
 /**
  * Authentication Store
  *
- * Zustand store for managing authentication state including
- * user data, tokens, and authentication status.
- * Persisted to localStorage.
+ * Zustand store for managing authentication state.
+ * Tokens are stored in httpOnly cookies (set by the server) and
+ * are never accessible to JavaScript. Only user metadata and a
+ * CSRF token are kept in memory / persisted.
  */
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { User, AuthTokens } from '@/types';
+import type { User } from '@/types';
 import { initializeAuthStore } from '@/lib/api-client';
 
 /**
@@ -17,26 +18,22 @@ import { initializeAuthStore } from '@/lib/api-client';
 interface AuthState {
   /** Current authenticated user */
   user: User | null;
-  /** JWT access token */
-  accessToken: string | null;
-  /** JWT refresh token */
-  refreshToken: string | null;
-  /** Whether user is authenticated (derived from accessToken) */
+  /** Whether user is authenticated */
   isAuthenticated: boolean;
+  /** CSRF token issued by the server for state-changing requests */
+  csrfToken: string | null;
 }
 
 /**
  * Auth store actions interface
  */
 interface AuthActions {
-  /** Set authentication data (user and tokens) */
-  setAuth: (user: User, tokens: AuthTokens) => void;
-  /** Update tokens only */
-  setTokens: (tokens: AuthTokens) => void;
-  /** Clear all authentication data */
+  /** Set authentication data after login / register */
+  setAuth: (user: User, csrfToken?: string) => void;
+  /** Update the CSRF token (e.g. after refresh) */
+  setCsrfToken: (csrfToken: string) => void;
+  /** Clear all authentication data (logout) */
   clearAuth: () => void;
-  /** Get the current access token */
-  getAccessToken: () => string | null;
 }
 
 /**
@@ -49,57 +46,49 @@ type AuthStore = AuthState & AuthActions;
  */
 const initialState: AuthState = {
   user: null,
-  accessToken: null,
-  refreshToken: null,
   isAuthenticated: false,
+  csrfToken: null,
 };
 
 /**
  * Auth store with persistence
+ *
+ * Only the `user` object is persisted so the UI can render
+ * immediately while the browser sends the httpOnly cookie
+ * for actual authentication.
  */
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState,
 
-      setAuth: (user: User, tokens: AuthTokens) => {
+      setAuth: (user: User, csrfToken?: string) => {
         set({
           user,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
           isAuthenticated: true,
+          ...(csrfToken != null ? { csrfToken } : {}),
         });
       },
 
-      setTokens: (tokens: AuthTokens) => {
-        set({
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          isAuthenticated: !!tokens.accessToken,
-        });
+      setCsrfToken: (csrfToken: string) => {
+        set({ csrfToken });
       },
 
       clearAuth: () => {
         set(initialState);
       },
-
-      getAccessToken: () => {
-        return get().accessToken;
-      },
     }),
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Only persist tokens, user will be fetched on app load
+      // Persist only non-sensitive metadata — never tokens
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
       }),
-      // Rehydrate isAuthenticated from persisted tokens
+      // Rehydrate isAuthenticated from persisted user
       onRehydrateStorage: () => (state) => {
         if (state) {
-          state.isAuthenticated = !!state.accessToken;
+          state.isAuthenticated = !!state.user;
         }
       },
     }
@@ -114,7 +103,7 @@ initializeAuthStore(useAuthStore);
  */
 export const useUser = () => useAuthStore((state) => state.user);
 export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated);
-export const useAccessToken = () => useAuthStore((state) => state.accessToken);
+export const useCsrfToken = () => useAuthStore((state) => state.csrfToken);
 
 /**
  * Action hooks
@@ -122,7 +111,7 @@ export const useAccessToken = () => useAuthStore((state) => state.accessToken);
 export const useAuthActions = () =>
   useAuthStore((state) => ({
     setAuth: state.setAuth,
-    setTokens: state.setTokens,
+    setCsrfToken: state.setCsrfToken,
     clearAuth: state.clearAuth,
   }));
 

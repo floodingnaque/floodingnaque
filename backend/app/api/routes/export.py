@@ -7,7 +7,7 @@ in CSV, JSON, and PDF formats.
 
 import csv
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO, StringIO
 from typing import Any
 
@@ -105,7 +105,7 @@ def _build_pdf(title: str, subtitle: str, headers: list[str], rows: list[list[An
     story.append(table)
 
     generated_at = Paragraph(
-        f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}  |  " f"Records: {len(rows)}",
+        f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}  |  " f"Records: {len(rows)}",
         ParagraphStyle("Footer", parent=styles["Normal"], fontSize=7, textColor=colors.grey, spaceBefore=8),
     )
     story.append(generated_at)
@@ -220,7 +220,7 @@ def export_weather():
                 csv_data,
                 mimetype="text/csv",
                 headers={
-                    "Content-Disposition": f'attachment; filename=weather_data_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.csv'
+                    "Content-Disposition": f'attachment; filename=weather_data_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
                 },
             )
 
@@ -272,7 +272,7 @@ def export_weather():
                     pdf_bytes,
                     mimetype="application/pdf",
                     headers={
-                        "Content-Disposition": f'attachment; filename=weather_data_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.pdf',
+                        "Content-Disposition": f'attachment; filename=weather_data_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.pdf',
                         "Content-Length": str(len(pdf_bytes)),
                     },
                 )
@@ -415,7 +415,7 @@ def export_predictions():
                 csv_data,
                 mimetype="text/csv",
                 headers={
-                    "Content-Disposition": f'attachment; filename=predictions_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.csv'
+                    "Content-Disposition": f'attachment; filename=predictions_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
                 },
             )
 
@@ -465,7 +465,7 @@ def export_predictions():
                     pdf_bytes,
                     mimetype="application/pdf",
                     headers={
-                        "Content-Disposition": f'attachment; filename=predictions_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.pdf',
+                        "Content-Disposition": f'attachment; filename=predictions_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.pdf',
                         "Content-Length": str(len(pdf_bytes)),
                     },
                 )

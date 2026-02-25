@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Type
 
@@ -302,7 +302,7 @@ def log_slow_query(statement: str, parameters: Any, duration_ms: float):
     global _slow_queries
 
     entry = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "statement": statement[:500],  # Truncate long queries
         "duration_ms": round(duration_ms, 2),
         "parameters": str(parameters)[:200] if parameters else None,
@@ -351,6 +351,8 @@ def explain_query(session: Session, query: Query, analyze: bool = True) -> Dict[
         statement = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
 
         # Run EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) for detailed output
+        # NOTE: EXPLAIN cannot use bind parameters for the target statement,
+        # but `statement` is compiled by SQLAlchemy (not user input).
         explain_cmd = "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)" if analyze else "EXPLAIN (FORMAT JSON)"
         result = session.execute(text(f"{explain_cmd} {statement}"))
 
@@ -682,7 +684,7 @@ def get_database_health(session: Session) -> Dict[str, Any]:
         "status": "healthy",
         "checks": {},
         "recommendations": [],
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
     # 1. Connection pool health

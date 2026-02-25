@@ -3,11 +3,13 @@
  *
  * Provides API methods for generating and exporting reports
  * in PDF and CSV formats.
+ *
+ * Uses the shared api client from api-client.ts so all requests
+ * benefit from the token refresh interceptor and CSRF handling.
  */
 
-import axios from 'axios';
-import { API_CONFIG, API_ENDPOINTS } from '@/config/api.config';
-import { useAuthStore } from '@/state/stores/authStore';
+import api from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/config/api.config';
 
 /**
  * Report types available for export
@@ -29,14 +31,19 @@ export interface ReportParams {
 }
 
 /**
- * Get authorization header for blob requests
+ * Build the export endpoint path (relative) with query string.
  */
-function getAuthHeader(): Record<string, string> {
-  const token = useAuthStore.getState().accessToken;
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
+function getExportPath(params: ReportParams, format: 'csv' | 'json' | 'pdf'): string {
+  const endpoint =
+    params.report_type === 'predictions'
+      ? API_ENDPOINTS.export.predictions
+      : API_ENDPOINTS.export.weather;
+
+  const searchParams = new URLSearchParams({ format });
+  if (params.start_date) searchParams.set('start_date', params.start_date);
+  if (params.end_date) searchParams.set('end_date', params.end_date);
+
+  return `${endpoint}?${searchParams.toString()}`;
 }
 
 /**
@@ -44,38 +51,17 @@ function getAuthHeader(): Record<string, string> {
  */
 export const reportsApi = {
   /**
-   * Determine the correct export endpoint based on report type
-   */
-  _getExportUrl(params: ReportParams, format: 'csv' | 'json' | 'pdf'): string {
-    const endpoint =
-      params.report_type === 'predictions'
-        ? API_ENDPOINTS.export.predictions
-        : API_ENDPOINTS.export.weather;
-
-    const searchParams = new URLSearchParams({ format });
-    if (params.start_date) searchParams.set('start_date', params.start_date);
-    if (params.end_date) searchParams.set('end_date', params.end_date);
-
-    return `${API_CONFIG.baseUrl}${endpoint}?${searchParams.toString()}`;
-  },
-
-  /**
    * Export report as PDF
    *
    * @param params - Report configuration parameters
    * @returns Blob containing the PDF file
    */
   exportPDF: async (params: ReportParams): Promise<Blob> => {
-    const url = reportsApi._getExportUrl(params, 'pdf');
-    const response = await axios.get(url, {
+    const path = getExportPath(params, 'pdf');
+    return api.get<Blob>(path, {
       responseType: 'blob',
-      headers: {
-        ...getAuthHeader(),
-        Accept: 'application/pdf',
-      },
-      timeout: API_CONFIG.timeout * 2,
+      headers: { Accept: 'application/pdf' },
     });
-    return response.data;
   },
 
   /**
@@ -85,15 +71,10 @@ export const reportsApi = {
    * @returns Blob containing the CSV file
    */
   exportCSV: async (params: ReportParams): Promise<Blob> => {
-    const url = reportsApi._getExportUrl(params, 'csv');
-    const response = await axios.get(url, {
+    const path = getExportPath(params, 'csv');
+    return api.get<Blob>(path, {
       responseType: 'blob',
-      headers: {
-        ...getAuthHeader(),
-      },
-      timeout: API_CONFIG.timeout * 2,
     });
-    return response.data;
   },
 };
 

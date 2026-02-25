@@ -5,7 +5,7 @@ Defines GraphQL types, queries, and mutations for the Floodingnaque API.
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import graphene
@@ -205,7 +205,7 @@ class Query(ObjectType):
 
             return HealthStatusType(
                 status="healthy" if db_status.get("connected") and model_status == "healthy" else "unhealthy",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 checks={"database": db_status, "model": model_status, "cache": cache_stats},
                 model_available=model_status == "healthy",
                 database_connected=db_status.get("connected", False),
@@ -214,7 +214,7 @@ class Query(ObjectType):
             logger.error(f"GraphQL health query failed: {str(e)}")
             return HealthStatusType(
                 status="unhealthy",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 checks={"error": str(e)},
                 model_available=False,
                 database_connected=False,
@@ -286,7 +286,7 @@ class Query(ObjectType):
 
             return FloodPredictionType(
                 id=str(prediction.get("id", "unknown")),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 latitude=latitude,
                 longitude=longitude,
                 flood_risk=prediction.get("flood_risk", 0.0),
@@ -298,7 +298,7 @@ class Query(ObjectType):
             logger.error(f"GraphQL flood prediction query failed: {str(e)}")
             return FloodPredictionType(
                 id="error",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 latitude=latitude,
                 longitude=longitude,
                 flood_risk=0.0,
@@ -377,12 +377,12 @@ class Query(ObjectType):
                 progress=status.get("progress", 0),
                 result=status.get("result"),
                 error=None,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
         except Exception as e:
             logger.error(f"GraphQL task status query failed: {str(e)}")
             return TaskStatusType(
-                task_id=task_id, status="error", progress=0, result=None, error=str(e), created_at=datetime.utcnow()
+                task_id=task_id, status="error", progress=0, result=None, error=str(e), created_at=datetime.now(timezone.utc)
             )
 
     def resolve_system_info(self, info):
@@ -396,7 +396,7 @@ class Query(ObjectType):
                 "platform": platform.system(),
                 "platform_version": platform.version()[:50] if platform.version() else "unknown",
                 "graphql_enabled": GRAPHQL_ENABLED,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         except Exception as e:
             logger.error(f"GraphQL system info query failed: {str(e)}")
@@ -578,7 +578,7 @@ class Mutation(ObjectType):
 
             with get_db_session() as session:
                 weather_data = (
-                    session.query(WeatherData).filter(WeatherData.id == id, WeatherData.is_deleted == False).first()
+                    session.query(WeatherData).filter(WeatherData.id == id, WeatherData.is_deleted.is_(False)).first()
                 )
 
                 if not weather_data:
@@ -629,7 +629,7 @@ class Mutation(ObjectType):
 
             with get_db_session() as session:
                 weather_data = (
-                    session.query(WeatherData).filter(WeatherData.id == id, WeatherData.is_deleted == False).first()
+                    session.query(WeatherData).filter(WeatherData.id == id, WeatherData.is_deleted.is_(False)).first()
                 )
 
                 if not weather_data:
@@ -665,7 +665,7 @@ class Mutation(ObjectType):
             deleted_ids = []
             with get_db_session() as session:
                 records = (
-                    session.query(WeatherData).filter(WeatherData.id.in_(ids), WeatherData.is_deleted == False).all()
+                    session.query(WeatherData).filter(WeatherData.id.in_(ids), WeatherData.is_deleted.is_(False)).all()
                 )
 
                 for record in records:
@@ -745,7 +745,7 @@ class Mutation(ObjectType):
             from app.models.db import Webhook, get_db_session
 
             with get_db_session() as session:
-                webhook = session.query(Webhook).filter(Webhook.id == id, Webhook.is_deleted == False).first()
+                webhook = session.query(Webhook).filter(Webhook.id == id, Webhook.is_deleted.is_(False)).first()
 
                 if not webhook:
                     return WebhookResultType(
@@ -798,7 +798,7 @@ class Mutation(ObjectType):
             from app.models.db import Webhook, get_db_session
 
             with get_db_session() as session:
-                webhook = session.query(Webhook).filter(Webhook.id == id, Webhook.is_deleted == False).first()
+                webhook = session.query(Webhook).filter(Webhook.id == id, Webhook.is_deleted.is_(False)).first()
 
                 if not webhook:
                     return MutationResultType(
@@ -825,7 +825,7 @@ class Mutation(ObjectType):
             from app.models.db import Webhook, get_db_session
 
             with get_db_session() as session:
-                webhook = session.query(Webhook).filter(Webhook.id == id, Webhook.is_deleted == False).first()
+                webhook = session.query(Webhook).filter(Webhook.id == id, Webhook.is_deleted.is_(False)).first()
 
                 if not webhook:
                     return WebhookResultType(
@@ -864,12 +864,12 @@ class Mutation(ObjectType):
                 progress=0,
                 result=result,
                 error=None,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
         except Exception as e:
             logger.error(f"GraphQL model retraining mutation failed: {str(e)}")
             return TaskStatusType(
-                task_id="error", status="error", progress=0, result=None, error=str(e), created_at=datetime.utcnow()
+                task_id="error", status="error", progress=0, result=None, error=str(e), created_at=datetime.now(timezone.utc)
             )
 
     def resolve_trigger_data_processing(self, info, data_batch):
@@ -888,12 +888,12 @@ class Mutation(ObjectType):
                 progress=0,
                 result=result,
                 error=None,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
         except Exception as e:
             logger.error(f"GraphQL data processing mutation failed: {str(e)}")
             return TaskStatusType(
-                task_id="error", status="error", progress=0, result=None, error=str(e), created_at=datetime.utcnow()
+                task_id="error", status="error", progress=0, result=None, error=str(e), created_at=datetime.now(timezone.utc)
             )
 
 

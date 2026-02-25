@@ -3,6 +3,7 @@
 import logging
 import os
 import secrets as python_secrets  # Renamed to avoid conflict with our secrets module
+import threading
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
@@ -401,13 +402,16 @@ class Config:
         return cls()
 
 
-# Global config instance (lazy initialization)
+# Global config instance (lazy initialization, thread-safe)
 _config: Optional[Config] = None
+_config_lock = threading.Lock()
 
 
 def get_config() -> Config:
-    """Get the global config instance."""
+    """Get the global config instance (thread-safe)."""
     global _config
     if _config is None:
-        _config = Config.from_env()
+        with _config_lock:
+            if _config is None:
+                _config = Config.from_env()
     return _config

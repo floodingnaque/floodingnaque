@@ -11,7 +11,7 @@ from app.services.tasks import get_task_status, trigger_data_processing, trigger
 from app.utils.api_constants import HTTP_BAD_REQUEST, HTTP_NOT_FOUND, HTTP_OK
 from app.utils.api_responses import api_error, api_success
 from app.utils.logging import get_logger
-from app.utils.rate_limit import get_endpoint_limit, limiter
+from app.api.middleware.rate_limit import get_endpoint_limit, limiter
 from flask import Blueprint, g, request
 
 logger = get_logger(__name__)

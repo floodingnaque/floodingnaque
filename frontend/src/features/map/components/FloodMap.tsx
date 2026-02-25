@@ -136,7 +136,18 @@ export const FloodMap = forwardRef<FloodMapRef, FloodMapProps>(
           heightClass,
           className
         )}
+        role="region"
+        aria-label="Flood risk map"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            mapRef.current?.getContainer().focus();
+          }
+        }}
       >
+        <p className="sr-only">
+          Interactive map showing flood risk zones. Use mouse or touch to pan and zoom.
+        </p>
         <MapContainer
           center={center}
           zoom={zoom}

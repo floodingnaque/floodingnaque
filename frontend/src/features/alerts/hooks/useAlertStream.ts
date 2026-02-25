@@ -3,11 +3,17 @@
  *
  * SSE (Server-Sent Events) hook for real-time alert updates.
  * Manages EventSource connection with automatic reconnection.
+ *
+ * Authentication: Because the browser's EventSource API does not
+ * support custom headers, we fetch a short-lived ticket from the
+ * server and pass it as a query parameter over HTTPS.
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAlertStore } from '@/state/stores/alertStore';
 import { API_CONFIG } from '@/config/api.config';
+import api from '@/lib/api-client';
+import { captureException } from '@/lib/sentry';
 import type { Alert, SSEAlertEvent, SSEAlertData } from '@/types';
 
 /**
@@ -87,11 +93,21 @@ export function useAlertStream(
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
-   * Get the SSE endpoint URL
+   * Fetch a short-lived SSE ticket from the server and build the
+   * SSE endpoint URL with the ticket as a query parameter.
+   *
+   * The ticket is a single-use, time-limited token that the SSE
+   * endpoint validates in lieu of an Authorization header.
    */
-  const getSseUrl = useCallback((): string => {
+  const getSseUrl = useCallback(async (): Promise<string> => {
     const baseUrl = API_CONFIG.sseUrl || API_CONFIG.baseUrl;
-    return `${baseUrl}${API_CONFIG.endpoints.sse.alerts}`;
+    const sseBase = `${baseUrl}${API_CONFIG.endpoints.sse.alerts}`;
+
+    // Obtain a short-lived ticket (authenticated via httpOnly cookie)
+    const { ticket } = await api.post<{ ticket: string }>(
+      `${API_CONFIG.endpoints.sse.alerts}/ticket`,
+    );
+    return `${sseBase}?ticket=${encodeURIComponent(ticket)}`;
   }, []);
 
   /**
@@ -122,7 +138,7 @@ export function useAlertStream(
   /**
    * Create and configure EventSource connection
    */
-  const createConnection = useCallback(() => {
+  const createConnection = useCallback(async () => {
     // Clean up any existing connection
     cleanup();
 
@@ -131,10 +147,8 @@ export function useAlertStream(
     }
 
     try {
-      const url = getSseUrl();
-      const eventSource = new EventSource(url, {
-        withCredentials: true,
-      });
+      const url = await getSseUrl();
+      const eventSource = new EventSource(url);
       eventSourceRef.current = eventSource;
 
       // Connection opened
@@ -153,7 +167,7 @@ export function useAlertStream(
           addAlert(data.alert);
           onAlert?.(data.alert);
         } catch (parseError) {
-          console.error('Failed to parse alert event:', parseError);
+          captureException(parseError, { context: 'SSE alert event parse' });
         }
       });
 
@@ -179,7 +193,7 @@ export function useAlertStream(
             }
           }
         } catch (parseError) {
-          console.error('Failed to parse connection event:', parseError);
+          captureException(parseError, { context: 'SSE connection event parse' });
         }
       });
 
@@ -224,7 +238,7 @@ export function useAlertStream(
         });
       };
     } catch (error) {
-      console.error('Failed to create EventSource:', error);
+      captureException(error, { context: 'SSE EventSource creation' });
       setConnectionError('Failed to establish SSE connection');
     }
   }, [

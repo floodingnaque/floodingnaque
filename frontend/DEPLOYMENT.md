@@ -4,37 +4,65 @@
 
 | Environment | URL |
 |-------------|-----|
-| Production  | https://floodingnaque.vercel.app |
-| Staging     | https://floodingnaque-staging.vercel.app *(if created)* |
-| Backend API | https://floodingnaque-api.railway.app |
+| Production  | `https://YOUR_DOMAIN` (self-hosted VPS) |
+| Staging     | `https://staging.YOUR_DOMAIN` *(if configured)* |
+| Backend API | `https://api.YOUR_DOMAIN` |
+| Frontend    | Served by Nginx from the same VPS |
 
 ## Monitoring
 
 | Service     | URL |
 |-------------|-----|
-| Sentry      | https://sentry.io/organizations/YOUR_ORG/projects/floodingnaque/ |
-| Vercel      | https://vercel.com/YOUR_TEAM/floodingnaque |
-| UptimeRobot | https://uptimerobot.com/dashboard *(optional)* |
+| Grafana     | `http://YOUR_VPS_IP:3000` (behind VPN / SSH tunnel) |
+| Prometheus  | `http://YOUR_VPS_IP:9090` (internal only) |
+| Alertmanager| `http://YOUR_VPS_IP:9093` (internal only) |
+| Sentry      | `https://sentry.io/organizations/YOUR_ORG/projects/floodingnaque/` *(optional)* |
+| UptimeRobot | `https://uptimerobot.com/dashboard` *(optional)* |
+
+## Architecture
+
+The application is deployed on a self-hosted VPS using Docker Compose:
+
+- **Nginx** handles TLS termination (Let's Encrypt) and serves the built frontend static files
+- **Backend API** runs behind Nginx on port 5000
+- **PostgreSQL** via Supabase (external) or a local container
+- **Redis** for caching and Celery broker
+- **Prometheus + Grafana + Alertmanager** for monitoring (see `compose.observability.yaml`)
 
 ## Deployment
 
-- **Auto-deploy** on push to `main` branch (via Vercel GitHub integration).
-- **Preview deploys** are created automatically for every pull request.
+```powershell
+# Build the frontend
+cd frontend
+npm run build  # produces dist/
+
+# Deploy to VPS (scp, rsync, or CI/CD)
+scp -r dist/ user@YOUR_VPS:/opt/floodingnaque/frontend/dist/
+
+# On the VPS — start all services
+cd /opt/floodingnaque
+docker compose -f compose.production.yaml --profile nginx --profile monitoring up -d --build
+
+# Optional — add observability stack
+docker compose -f compose.production.yaml -f compose.observability.yaml \
+  --profile nginx --profile monitoring up -d --build
+```
+
 - Build command: `npm run build`
 - Output directory: `dist`
 - Framework: Vite
 
 ## Environment Variables
 
-Set in **Vercel → Project Settings → Environment Variables**:
+Set in `frontend/.env.production` (build-time) or pass via CI:
 
-| Variable                  | Scopes                           | Notes                            |
-|---------------------------|----------------------------------|----------------------------------|
-| `VITE_API_BASE_URL`       | Production, Preview, Development | Backend API root URL             |
-| `VITE_SSE_URL`            | Production, Preview, Development | SSE endpoint for live alerts     |
-| `VITE_SENTRY_DSN`         | Production                       | From sentry.io project settings  |
-| `VITE_SENTRY_ENVIRONMENT` | Production                       | `production`                     |
-| `VITE_APP_VERSION`        | Production                       | `1.0.0`                          |
+| Variable                  | Notes                            |
+|---------------------------|----------------------------------|
+| `VITE_API_BASE_URL`       | Backend API root URL (e.g. `https://api.YOUR_DOMAIN`) |
+| `VITE_SSE_URL`            | SSE endpoint for live alerts     |
+| `VITE_SENTRY_DSN`         | From sentry.io project settings *(optional)* |
+| `VITE_SENTRY_ENVIRONMENT` | `production`                     |
+| `VITE_APP_VERSION`        | `1.0.0`                          |
 
 > **Note:** Do not commit real values to the repository. The checked-in
 > `.env.production` contains only placeholder/default values.
@@ -58,48 +86,69 @@ After each production deploy, verify:
 
 ## Rollback
 
-1. Go to **Vercel Dashboard → Deployments**.
-2. Find the previous working deployment.
-3. Click **"…" → "Promote to Production"**.
+1. SSH into your VPS.
+2. Check out the previous working commit or restore the previous Docker image tag.
+3. Restart:
+   ```bash
+   docker compose -f compose.production.yaml --profile nginx up -d --build
+   ```
 
-## Custom Domain (Optional)
+## Custom Domain
 
-1. In Vercel: **Project Settings → Domains → Add**.
-2. Enter your domain (e.g., `floodingnaque.com`).
-3. Configure DNS records as instructed by Vercel.
-4. SSL is auto-provisioned.
+1. Point your domain's A record to your VPS IP address.
+2. Update `nginx/floodingnaque.conf` with the domain.
+3. Obtain a TLS certificate via Certbot (see [TLS_SETUP.md](../docs/TLS_SETUP.md)).
+4. SSL is provisioned by Let's Encrypt.
 
 ## Setup Steps (First Time)
 
-### Option A — CLI
+### 1. Provision a VPS
+
+- Ubuntu 22.04+ LTS recommended
+- Minimum 4GB RAM, 2 vCPUs, 40GB SSD
+- Open ports 80, 443, and 22 (SSH)
+
+### 2. Install Docker
+
+```bash
+# Install Docker Engine + Compose plugin
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+```
+
+### 3. Clone and Configure
+
+```bash
+cd /opt
+git clone https://github.com/KyaRhamil/floodingnaque.git
+cd floodingnaque
+
+# Copy and edit environment files
+cp backend/.env.example backend/.env.production
+# Edit backend/.env.production with production secrets
+```
+
+### 4. Build Frontend and Deploy
 
 ```bash
 cd frontend
-npm i -g vercel
-vercel login
-vercel --prod
+npm ci && npm run build
+cd ..
+
+# Start production stack
+docker compose -f compose.production.yaml --profile nginx --profile monitoring up -d --build
 ```
 
-### Option B — GitHub Integration (Recommended)
-
-1. Go to [vercel.com/dashboard](https://vercel.com/dashboard).
-2. Click **"Add New Project"**.
-3. Import from GitHub: `KyaRhamil/floodingnaque`.
-4. Set **Root Directory** to `frontend`.
-5. Set **Framework Preset** to `Vite`.
-6. Add environment variables (see table above).
-7. Deploy.
-
-### Sentry Setup
+### Sentry Setup (Optional)
 
 1. Create a project at [sentry.io](https://sentry.io) (React platform).
 2. Copy the DSN.
-3. Add it as `VITE_SENTRY_DSN` in Vercel env vars.
-4. Configure alert rules for new errors.
+3. Add it as `VITE_SENTRY_DSN` in `frontend/.env.production`.
+4. Rebuild and redeploy the frontend.
 
 ### Uptime Monitoring (Optional)
 
 1. Create a free account at [uptimerobot.com](https://uptimerobot.com).
-2. Add an HTTP(s) monitor for `https://floodingnaque.vercel.app`.
+2. Add an HTTP(s) monitor for `https://YOUR_DOMAIN`.
 3. Set interval to 5 minutes.
 4. Add your email as alert contact.

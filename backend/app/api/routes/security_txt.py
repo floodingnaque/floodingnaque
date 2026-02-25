@@ -58,10 +58,10 @@ def get_security_txt_content() -> str:
     - SECURITY_TXT_EXPIRES: Expiration date (ISO 8601 format)
     - SECURITY_CANONICAL_URL: Canonical URL for this file
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     # Default expiration is 1 year from now
-    default_expires = (datetime.utcnow() + timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    default_expires = (datetime.now(timezone.utc) + timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     contact_email = os.getenv("SECURITY_CONTACT_EMAIL", "security@floodingnaque.com")
     policy_url = os.getenv("SECURITY_POLICY_URL", "https://floodingnaque.com/security-policy")

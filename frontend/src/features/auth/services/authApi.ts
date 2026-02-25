@@ -3,14 +3,19 @@
  *
  * Provides all authentication-related API calls including
  * login, register, token refresh, and profile management.
+ * Responses are validated at runtime with Zod schemas.
  */
 
 import api from '@/lib/api-client';
 import { API_CONFIG } from '@/config/api.config';
+import {
+  AuthResponseSchema,
+  MeResponseSchema,
+  type AuthResponse,
+} from '@/types/api/auth.schemas';
 import type {
   LoginRequest,
   RegisterRequest,
-  TokenResponse,
   User,
   RefreshTokenRequest,
   ChangePasswordRequest,
@@ -26,24 +31,29 @@ const { endpoints } = API_CONFIG;
  */
 export const authApi = {
   /**
-   * Login with email and password
+   * Login with email and password.
+   * The response is validated against AuthResponseSchema at runtime.
    */
-  login: async (credentials: LoginRequest): Promise<TokenResponse> => {
-    return api.post<TokenResponse>(endpoints.auth.login, credentials);
+  login: async (credentials: LoginRequest): Promise<AuthResponse> => {
+    const raw = await api.post<unknown>(endpoints.auth.login, credentials);
+    return AuthResponseSchema.parse(raw);
   },
 
   /**
-   * Register a new user account
+   * Register a new user account.
+   * The response is validated against AuthResponseSchema at runtime.
    */
-  register: async (data: RegisterRequest): Promise<TokenResponse> => {
-    return api.post<TokenResponse>(endpoints.auth.register, data);
+  register: async (data: RegisterRequest): Promise<AuthResponse> => {
+    const raw = await api.post<unknown>(endpoints.auth.register, data);
+    return AuthResponseSchema.parse(raw);
   },
 
   /**
    * Refresh the access token using a refresh token
    */
-  refresh: async (data: RefreshTokenRequest): Promise<TokenResponse> => {
-    return api.post<TokenResponse>(endpoints.auth.refresh, data);
+  refresh: async (data: RefreshTokenRequest): Promise<AuthResponse> => {
+    const raw = await api.post<unknown>(endpoints.auth.refresh, data);
+    return AuthResponseSchema.parse(raw);
   },
 
   /**
@@ -55,12 +65,13 @@ export const authApi = {
 
   /**
    * Get the current authenticated user's profile.
-   * The backend returns { success, user } — we unwrap to a flat User here
-   * so every consumer receives the correct shape with role intact.
+   * The response is validated against MeResponseSchema at runtime,
+   * eliminating the previous unsafe double-cast.
    */
   getMe: async (): Promise<User> => {
-    const response = await api.get<{ success: boolean; user: User }>(endpoints.auth.me);
-    return (response as unknown as { user: User }).user ?? response;
+    const raw = await api.get<unknown>(endpoints.auth.me);
+    const parsed = MeResponseSchema.parse(raw);
+    return parsed.user;
   },
 
   /**

@@ -9,7 +9,7 @@ CSP reports are sent by browsers when a resource violates the Content-Security-P
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.middleware import limiter
 from flask import Blueprint, Response, jsonify, request
@@ -81,7 +81,7 @@ def csp_report():
 
         # Create structured log entry
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "type": "csp_violation",
             "client_ip": request.headers.get("X-Forwarded-For", request.remote_addr),
             "user_agent": request.headers.get("User-Agent", "unknown"),
@@ -173,7 +173,7 @@ def csp_report_to():
                 body = report.get("body", {})
 
                 log_entry = {
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "type": "csp_violation_report_to",
                     "age_ms": report.get("age", 0),
                     "url": report.get("url", "unknown"),

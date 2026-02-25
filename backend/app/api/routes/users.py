@@ -50,6 +50,8 @@ ACCOUNT_LOCKOUT_MINUTES = int(os.getenv("ACCOUNT_LOCKOUT_MINUTES", "15"))
 # intended purely for local development and should NEVER be enabled
 # in production.
 AUTH_BYPASS_ENABLED = os.getenv("AUTH_BYPASS_ENABLED", "false").lower() == "true"
+if AUTH_BYPASS_ENABLED and os.getenv("APP_ENV", "").lower() == "production":
+    raise RuntimeError("AUTH_BYPASS_ENABLED must not be set in production")
 
 
 def validate_email(email: str) -> bool:
@@ -146,7 +148,7 @@ def register():
 
         with get_db_session() as session:
             # Check if email already exists
-            existing_user = session.query(User).filter(User.email == email, User.is_deleted == False).first()
+            existing_user = session.query(User).filter(User.email == email, User.is_deleted.is_(False)).first()
 
             if existing_user:
                 return api_error("EmailExists", "An account with this email already exists", HTTP_CONFLICT, request_id)
@@ -246,7 +248,7 @@ def login():
             return api_error("ValidationError", "Email and password are required", HTTP_BAD_REQUEST, request_id)
 
         with get_db_session() as session:
-            user = session.query(User).filter(User.email == email, User.is_deleted == False).first()
+            user = session.query(User).filter(User.email == email, User.is_deleted.is_(False)).first()
 
             # User not found - use generic message to prevent enumeration
             if not user:
@@ -374,7 +376,7 @@ def refresh_token():
 
         with get_db_session() as session:
             user = (
-                session.query(User).filter(User.id == user_id, User.is_deleted == False, User.is_active == True).first()
+                session.query(User).filter(User.id == user_id, User.is_deleted.is_(False), User.is_active.is_(True)).first()
             )
 
             if not user:
@@ -499,7 +501,7 @@ def request_password_reset():
         with get_db_session() as session:
             user = (
                 session.query(User)
-                .filter(User.email == email, User.is_deleted == False, User.is_active == True)
+                .filter(User.email == email, User.is_deleted.is_(False), User.is_active.is_(True))
                 .first()
             )
 
@@ -574,7 +576,7 @@ def confirm_password_reset():
             return api_error("ValidationError", "; ".join(password_errors), HTTP_BAD_REQUEST, request_id)
 
         with get_db_session() as session:
-            user = session.query(User).filter(User.email == email, User.is_deleted == False).first()
+            user = session.query(User).filter(User.email == email, User.is_deleted.is_(False)).first()
 
             if not user:
                 return api_error("InvalidToken", "Invalid or expired reset token", HTTP_BAD_REQUEST, request_id)
@@ -645,7 +647,7 @@ def get_current_user():
         user_id = int(payload.get("sub"))
 
         with get_db_session() as session:
-            user = session.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+            user = session.query(User).filter(User.id == user_id, User.is_deleted.is_(False)).first()
 
             if not user:
                 return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)

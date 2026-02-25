@@ -57,31 +57,31 @@ def get_dashboard_summary():
 
         with get_db_session() as session:
             # Weather data stats
-            total_weather_data = session.query(WeatherData).filter(WeatherData.is_deleted == False).count()
+            total_weather_data = session.query(WeatherData).filter(WeatherData.is_deleted.is_(False)).count()
 
             weather_today = (
                 session.query(WeatherData)
-                .filter(WeatherData.is_deleted == False, WeatherData.created_at >= today)
+                .filter(WeatherData.is_deleted.is_(False), WeatherData.created_at >= today)
                 .count()
             )
 
             # Prediction stats
-            total_predictions = session.query(Prediction).filter(Prediction.is_deleted == False).count()
+            total_predictions = session.query(Prediction).filter(Prediction.is_deleted.is_(False)).count()
 
             predictions_today = (
-                session.query(Prediction).filter(Prediction.is_deleted == False, Prediction.created_at >= today).count()
+                session.query(Prediction).filter(Prediction.is_deleted.is_(False), Prediction.created_at >= today).count()
             )
 
             predictions_week = (
                 session.query(Prediction)
-                .filter(Prediction.is_deleted == False, Prediction.created_at >= week_ago)
+                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= week_ago)
                 .count()
             )
 
             # Risk level distribution (last 30 days)
             risk_distribution = (
                 session.query(Prediction.risk_level, func.count(Prediction.id))
-                .filter(Prediction.is_deleted == False, Prediction.created_at >= month_ago)
+                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= month_ago)
                 .group_by(Prediction.risk_level)
                 .all()
             )
@@ -96,18 +96,18 @@ def get_dashboard_summary():
                     risk_stats["critical"] = count
 
             # Alert stats
-            total_alerts = session.query(AlertHistory).filter(AlertHistory.is_deleted == False).count()
+            total_alerts = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False)).count()
 
             alerts_today = (
                 session.query(AlertHistory)
-                .filter(AlertHistory.is_deleted == False, AlertHistory.created_at >= today)
+                .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= today)
                 .count()
             )
 
             critical_alerts_24h = (
                 session.query(AlertHistory)
                 .filter(
-                    AlertHistory.is_deleted == False,
+                    AlertHistory.is_deleted.is_(False),
                     AlertHistory.risk_level == 2,
                     AlertHistory.created_at >= now - timedelta(hours=24),
                 )
@@ -117,7 +117,7 @@ def get_dashboard_summary():
             # Latest weather data
             latest_weather = (
                 session.query(WeatherData)
-                .filter(WeatherData.is_deleted == False)
+                .filter(WeatherData.is_deleted.is_(False))
                 .order_by(desc(WeatherData.timestamp))
                 .first()
             )
@@ -134,7 +134,7 @@ def get_dashboard_summary():
             # Latest prediction
             latest_prediction = (
                 session.query(Prediction)
-                .filter(Prediction.is_deleted == False)
+                .filter(Prediction.is_deleted.is_(False))
                 .order_by(desc(Prediction.created_at))
                 .first()
             )
@@ -246,7 +246,7 @@ def get_statistics():
             if not metric or metric == "predictions":
                 predictions = (
                     session.query(Prediction)
-                    .filter(Prediction.is_deleted == False, Prediction.created_at >= start_date)
+                    .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= start_date)
                     .order_by(Prediction.created_at)
                     .all()
                 )
@@ -291,7 +291,7 @@ def get_statistics():
             if not metric or metric == "alerts":
                 alerts = (
                     session.query(AlertHistory)
-                    .filter(AlertHistory.is_deleted == False, AlertHistory.created_at >= start_date)
+                    .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= start_date)
                     .order_by(AlertHistory.created_at)
                     .all()
                 )
@@ -321,7 +321,7 @@ def get_statistics():
             if not metric or metric == "weather":
                 weather_data = (
                     session.query(WeatherData)
-                    .filter(WeatherData.is_deleted == False, WeatherData.timestamp >= start_date)
+                    .filter(WeatherData.is_deleted.is_(False), WeatherData.timestamp >= start_date)
                     .order_by(WeatherData.timestamp)
                     .all()
                 )
@@ -391,7 +391,7 @@ def get_recent_activity():
             # Get recent predictions
             predictions = (
                 session.query(Prediction)
-                .filter(Prediction.is_deleted == False)
+                .filter(Prediction.is_deleted.is_(False))
                 .order_by(desc(Prediction.created_at))
                 .limit(limit // 2)
                 .all()
@@ -400,7 +400,7 @@ def get_recent_activity():
             # Get recent alerts
             alerts = (
                 session.query(AlertHistory)
-                .filter(AlertHistory.is_deleted == False)
+                .filter(AlertHistory.is_deleted.is_(False))
                 .order_by(desc(AlertHistory.created_at))
                 .limit(limit // 2)
                 .all()

@@ -105,11 +105,8 @@ docker stop nginx-temp && docker rm nginx-temp
 ### Step 4: Deploy with Full SSL
 
 ```bash
-# Start production services
-docker compose -f compose.production.yaml up -d
-
-# Start nginx with SSL
-docker compose -f compose.nginx.yaml up -d
+# Start production services with nginx
+docker compose -f compose.production.yaml --profile nginx up -d
 ```
 
 ### Step 5: Certificate Renewal
@@ -118,7 +115,7 @@ Certbot container auto-renews. Alternatively, add cron job:
 
 ```bash
 # /etc/cron.d/certbot-renew
-0 0,12 * * * root docker compose -f /path/to/compose.nginx.yaml run --rm certbot renew --quiet && docker compose -f /path/to/compose.nginx.yaml exec nginx nginx -s reload
+0 0,12 * * * root docker compose -f /path/to/compose.production.yaml --profile nginx run --rm certbot renew --quiet && docker compose -f /path/to/compose.production.yaml --profile nginx exec nginx nginx -s reload
 ```
 
 ---
@@ -132,7 +129,7 @@ services:
   traefik:
     image: traefik:v2.10
     command:
-      - "--api.insecure=true"
+      - "--api.insecure=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
@@ -220,13 +217,13 @@ curl -v https://api.floodingnaque.com/health
 
 ```bash
 # Check certificate status
-docker compose -f compose.nginx.yaml run --rm certbot certificates
+docker compose -f compose.production.yaml --profile nginx run --rm certbot certificates
 
 # Force renewal
-docker compose -f compose.nginx.yaml run --rm certbot renew --force-renewal
+docker compose -f compose.production.yaml --profile nginx run --rm certbot renew --force-renewal
 
 # Debug certificate issues
-docker compose -f compose.nginx.yaml run --rm certbot certonly --dry-run \
+docker compose -f compose.production.yaml --profile nginx run --rm certbot certonly --dry-run \
   --webroot -w /var/www/certbot -d api.floodingnaque.com
 ```
 

@@ -5,7 +5,7 @@ Endpoint for processing multiple flood predictions in a single request.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.middleware.auth import require_api_key
 from app.api.middleware.rate_limit import limiter
@@ -206,7 +206,7 @@ def batch_predict():
 
         # Prepare response
         response = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "total_requested": len(predictions_input),
             "successful": len(results),
             "failed": len(errors),

@@ -4,7 +4,7 @@ Database Integration Tests.
 Tests for ORM models, database operations, and migrations.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -64,7 +64,7 @@ class TestWeatherDataModel:
                 temperature=298.15,
                 humidity=75.0,
                 precipitation=5.0,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
             )
 
             # Use getattr for runtime value access
@@ -167,8 +167,8 @@ class TestDatabaseQueries:
         mock_get_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_get_session.return_value.__exit__ = MagicMock(return_value=None)
 
-        start_date = datetime.utcnow() - timedelta(days=7)
-        end_date = datetime.utcnow()
+        start_date = datetime.now(timezone.utc) - timedelta(days=7)
+        end_date = datetime.now(timezone.utc)
 
         with mock_get_session() as session:
             query = session.query()

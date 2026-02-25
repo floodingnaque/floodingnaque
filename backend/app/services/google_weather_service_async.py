@@ -26,11 +26,11 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from app.services.google_weather_types import SatellitePrecipitation, WeatherReanalysis
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 # Lazy imports to avoid startup errors if packages not installed
@@ -81,37 +81,6 @@ def _lazy_import_bigquery():
             logger.warning("google-cloud-bigquery not installed. Run: pip install google-cloud-bigquery")
             return None
     return bigquery
-
-
-@dataclass
-class SatellitePrecipitation:
-    """Satellite precipitation observation data structure."""
-
-    timestamp: datetime
-    latitude: float
-    longitude: float
-    precipitation_rate: float  # mm/hour
-    accumulation_1h: Optional[float] = None  # mm
-    accumulation_3h: Optional[float] = None  # mm
-    accumulation_24h: Optional[float] = None  # mm
-    data_quality: Optional[float] = None  # 0-1 quality score
-    dataset: str = "GPM"  # GPM, CHIRPS, ERA5
-    source: str = "earth_engine"
-
-
-@dataclass
-class WeatherReanalysis:
-    """ERA5 reanalysis data structure."""
-
-    timestamp: datetime
-    latitude: float
-    longitude: float
-    temperature: float  # Celsius
-    humidity: float  # Percentage
-    precipitation: float  # mm
-    wind_speed: Optional[float] = None  # m/s
-    pressure: Optional[float] = None  # hPa
-    source: str = "era5"
 
 
 class AsyncGoogleWeatherService:
@@ -355,7 +324,7 @@ class AsyncGoogleWeatherService:
 
         lat = lat or self.default_lat
         lon = lon or self.default_lon
-        end_date = end_date or datetime.utcnow()
+        end_date = end_date or datetime.now(timezone.utc)
         start_date = start_date or (end_date - timedelta(hours=24))
 
         import time
@@ -483,7 +452,7 @@ class AsyncGoogleWeatherService:
 
         lat = lat or self.default_lat
         lon = lon or self.default_lon
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
 
         def _fetch_chirps():
@@ -566,7 +535,7 @@ class AsyncGoogleWeatherService:
 
         lat = lat or self.default_lat
         lon = lon or self.default_lon
-        end_date = datetime.utcnow()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(hours=hours)
 
         def _fetch_era5():
@@ -664,7 +633,7 @@ class AsyncGoogleWeatherService:
             "latitude": lat,
             "longitude": lon,
             "source": "earth_engine",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Fetch GPM and ERA5 data concurrently

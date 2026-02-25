@@ -3,6 +3,8 @@
  *
  * Comprehensive authentication hook providing login, register,
  * logout mutations, profile queries, and auth state management.
+ * Auth tokens are stored in httpOnly cookies — the store only
+ * tracks user metadata and a CSRF token.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,7 +19,6 @@ import type {
   PasswordResetRequest,
   PasswordResetConfirmRequest,
   User,
-  AuthTokens,
 } from '@/types';
 
 /**
@@ -27,23 +28,6 @@ export const authQueryKeys = {
   all: ['auth'] as const,
   profile: () => [...authQueryKeys.all, 'profile'] as const,
 };
-
-/**
- * Transform TokenResponse to AuthTokens format used by the store
- */
-function transformTokenResponse(response: {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
-}): AuthTokens {
-  return {
-    accessToken: response.access_token,
-    refreshToken: response.refresh_token,
-    tokenType: response.token_type,
-    expiresIn: response.expires_in,
-  };
-}
 
 /**
  * useAuth hook for authentication management
@@ -60,16 +44,16 @@ export function useAuth() {
 
   /**
    * Login mutation
+   *
+   * `authApi.login` now returns a Zod-validated `AuthResponse`
+   * that carries `user` as a first-class field — no unsafe casts.
    */
   const loginMutation = useMutation({
     mutationFn: (credentials: LoginRequest) => authApi.login(credentials),
     onSuccess: (data) => {
-      const tokens = transformTokenResponse(data);
-      // Use the user embedded in the login response directly.
-      // Navigation is handled by LoginForm's useEffect which runs
-      // inside the component tree where useNavigate is always valid.
-      const userProfile: User = (data as unknown as { user: User }).user;
-      setAuth(userProfile, tokens);
+      // Tokens are set as httpOnly cookies by the server.
+      // We only persist the user + optional CSRF token.
+      setAuth(data.user, data.csrf_token);
     },
   });
 
@@ -79,9 +63,7 @@ export function useAuth() {
   const registerMutation = useMutation({
     mutationFn: (data: RegisterRequest) => authApi.register(data),
     onSuccess: (data) => {
-      const tokens = transformTokenResponse(data);
-      const userProfile: User = (data as unknown as { user: User }).user;
-      setAuth(userProfile, tokens);
+      setAuth(data.user, data.csrf_token);
     },
   });
 
@@ -127,16 +109,8 @@ export function useAuth() {
   const updateProfileMutation = useMutation({
     mutationFn: (data: UpdateProfileRequest) => authApi.updateProfile(data),
     onSuccess: (updatedUser: User) => {
-      // Update user in store
-      const currentState = useAuthStore.getState();
-      if (currentState.accessToken && currentState.refreshToken) {
-        setAuth(updatedUser, {
-          accessToken: currentState.accessToken,
-          refreshToken: currentState.refreshToken,
-          tokenType: 'Bearer',
-          expiresIn: 3600,
-        });
-      }
+      // Update user in store — tokens remain in httpOnly cookies
+      setAuth(updatedUser);
       // Invalidate profile query to refetch
       queryClient.invalidateQueries({ queryKey: authQueryKeys.profile() });
     },

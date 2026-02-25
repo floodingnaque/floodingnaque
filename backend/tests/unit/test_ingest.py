@@ -118,7 +118,7 @@ class TestTimestampHandling:
 
     def test_timestamp_format_iso(self):
         """Test timestamp is in ISO format."""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         # ISO format should contain 'T' separator
         assert "T" in timestamp or "-" in timestamp

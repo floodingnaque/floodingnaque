@@ -13,29 +13,15 @@ Features:
 
 import logging
 import os
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from app.services.meteostat_types import WeatherObservation
 from app.utils.circuit_breaker import CircuitOpenError, meteostat_breaker
 from meteostat import Daily, Hourly, Point, Stations
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class WeatherObservation:
-    """Weather observation data structure."""
-
-    timestamp: datetime
-    temperature: float  # Celsius
-    humidity: float  # Percentage (0-100)
-    precipitation: float  # mm
-    wind_speed: Optional[float] = None  # m/s
-    pressure: Optional[float] = None  # hPa
-    station_id: Optional[str] = None
-    source: str = "meteostat"
 
 
 class MeteostatService:

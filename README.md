@@ -357,13 +357,19 @@ python main.py
 
 ### Performance Metrics (with Grid Search Optimization)
 
-| Metric | Expected Value |
-|--------|----------------|
-| Accuracy | 95%+ |
-| Precision | 95%+ |
-| Recall | 95%+ |
-| F1 Score | 95%+ |
-| ROC-AUC | 0.98+ |
+| Metric | Expected Minimum | Notes |
+|--------|-------------------|-------|
+| Accuracy | 95%+ | Held-out test set (20% stratified split) |
+| Precision | 95%+ | Weighted average across classes |
+| Recall | 95%+ | Weighted average across classes |
+| F1 Score | 95%+ | Weighted average across classes |
+| ROC-AUC | 0.98+ | Area under ROC curve |
+
+> **Note:** The thesis reports 100% on the official DRRMO records dataset.
+> Perfect scores on small, well-separated datasets are expected for Random
+> Forest but do not guarantee the same on unseen real-world data.  The
+> cross-validation scores in the training output provide a more robust
+> generalisation estimate.
 
 ### Feature Importance (Example)
 

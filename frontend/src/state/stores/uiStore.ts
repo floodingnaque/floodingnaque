@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Theme type
@@ -227,14 +228,19 @@ export const useUIActions = () => {
 
 /**
  * Combined sidebar state hook
+ *
+ * Uses `useShallow` so that Zustand performs a shallow equality check
+ * on the returned object, preventing unnecessary re-renders.
  */
 export const useSidebarState = () =>
-  useUIStore((state) => ({
-    isOpen: state.sidebarOpen,
-    isCollapsed: state.sidebarCollapsed,
-    toggle: state.toggleSidebar,
-    setOpen: state.setSidebarOpen,
-    toggleCollapse: state.collapseSidebar,
-  }));
+  useUIStore(
+    useShallow((state) => ({
+      isOpen: state.sidebarOpen,
+      isCollapsed: state.sidebarCollapsed,
+      toggle: state.toggleSidebar,
+      setOpen: state.setSidebarOpen,
+      toggleCollapse: state.collapseSidebar,
+    }))
+  );
 
 export default useUIStore;

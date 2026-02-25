@@ -26,7 +26,7 @@ from app.utils.query_optimizer import (
     query_cache_get,
     query_cache_set,
 )
-from app.utils.rate_limit import get_endpoint_limit, limiter
+from app.api.middleware.rate_limit import get_endpoint_limit, limiter
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy import asc, desc
 
@@ -120,7 +120,7 @@ def get_weather_data():
             return jsonify(cached_result), HTTP_OK
 
         with get_db_session() as session:
-            query = session.query(WeatherData).filter(WeatherData.is_deleted == False)
+            query = session.query(WeatherData).filter(WeatherData.is_deleted.is_(False))
 
             # Filter by source if provided
             if source_filter:
@@ -675,7 +675,7 @@ def get_weather_data_by_id(data_id):
     try:
         with get_db_session() as session:
             weather_data = (
-                session.query(WeatherData).filter(WeatherData.id == data_id, WeatherData.is_deleted == False).first()
+                session.query(WeatherData).filter(WeatherData.id == data_id, WeatherData.is_deleted.is_(False)).first()
             )
 
             if not weather_data:
@@ -732,7 +732,7 @@ def update_weather_data(data_id):
 
         with get_db_session() as session:
             weather_data = (
-                session.query(WeatherData).filter(WeatherData.id == data_id, WeatherData.is_deleted == False).first()
+                session.query(WeatherData).filter(WeatherData.id == data_id, WeatherData.is_deleted.is_(False)).first()
             )
 
             if not weather_data:
@@ -830,7 +830,7 @@ def delete_weather_data(data_id):
     try:
         with get_db_session() as session:
             weather_data = (
-                session.query(WeatherData).filter(WeatherData.id == data_id, WeatherData.is_deleted == False).first()
+                session.query(WeatherData).filter(WeatherData.id == data_id, WeatherData.is_deleted.is_(False)).first()
             )
 
             if not weather_data:
@@ -951,7 +951,7 @@ def bulk_delete_weather_data():
                 )
 
         with get_db_session() as session:
-            query = session.query(WeatherData).filter(WeatherData.is_deleted == False)
+            query = session.query(WeatherData).filter(WeatherData.is_deleted.is_(False))
 
             # Apply filters
             if ids:

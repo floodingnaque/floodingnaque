@@ -4,11 +4,11 @@ Kubernetes Health Probe Endpoints.
 Provides liveness and readiness probes for Kubernetes deployments.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.utils.api_constants import HTTP_OK, HTTP_SERVICE_UNAVAILABLE
 from app.utils.logging import get_logger
-from app.utils.rate_limit import limiter
+from app.api.middleware.rate_limit import limiter
 from flask import Blueprint, g, jsonify
 
 logger = get_logger(__name__)
@@ -36,7 +36,7 @@ def liveness_probe():
             jsonify(
                 {
                     "status": "healthy",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "probe": "liveness",
                     "request_id": request_id,
                 }
@@ -50,7 +50,7 @@ def liveness_probe():
             jsonify(
                 {
                     "status": "unhealthy",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "probe": "liveness",
                     "error": "Application not responding",
                     "request_id": request_id,
@@ -77,7 +77,7 @@ def readiness_probe():
     try:
         checks = {
             "api": "ready",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "probe": "readiness",
             "request_id": request_id,
         }
@@ -118,7 +118,7 @@ def readiness_probe():
             jsonify(
                 {
                     "status": "not_ready",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "probe": "readiness",
                     "error": "Readiness check failed",
                     "request_id": request_id,

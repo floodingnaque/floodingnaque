@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.middleware import get_cors_origins, init_rate_limiter, setup_request_logging, setup_security_headers
 from app.api.middleware.request_logger import setup_request_logging_middleware
@@ -370,7 +370,7 @@ def create_app(config_override: dict = None) -> Flask:
                 "detail": message,
                 "code": error_code,
                 "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             },
         }
 

@@ -396,7 +396,7 @@ def get_recent_alerts_for_stream():
         since = request.args.get("since", type=str)
 
         with get_db_session() as session:
-            query = session.query(AlertHistory).filter(AlertHistory.is_deleted == False)
+            query = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False))
 
             if since:
                 try:

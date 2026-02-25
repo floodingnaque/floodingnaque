@@ -419,9 +419,19 @@ class TrainingStrategy(ABC):
         return cast(RandomForestClassifier, search.best_estimator_)
 
     def evaluate_model(
-        self, model: Union[RandomForestClassifier, CalibratedClassifierCV], X_test: pd.DataFrame, y_test: pd.Series
+        self,
+        model: Union[RandomForestClassifier, CalibratedClassifierCV],
+        X_test: pd.DataFrame,
+        y_test: pd.Series,
+        X_full: Optional[pd.DataFrame] = None,
+        y_full: Optional[pd.Series] = None,
     ) -> Dict[str, float]:
-        """Evaluate model performance."""
+        """Evaluate model performance.
+
+        Held-out metrics (accuracy, precision, recall, F1, ROC-AUC) are computed
+        on the test set.  Cross-validation is run on the **full** dataset when
+        provided, giving a more robust generalisation estimate.
+        """
         y_pred = model.predict(X_test)
         y_pred_proba = model.predict_proba(X_test)[:, 1]
 
@@ -433,15 +443,28 @@ class TrainingStrategy(ABC):
             "roc_auc": float(roc_auc_score(y_test, y_pred_proba)),
         }
 
-        # Cross-validation scores on full data
-        X_full = pd.concat([X_test, X_test])  # Placeholder - proper CV should use full data
-        cv_scores = cross_val_score(
-            model, X_test, y_test, cv=min(self.config.cv_folds, len(y_test) // 2), scoring="f1_weighted", n_jobs=-1
-        )
-        metrics["cv_mean"] = float(cv_scores.mean())
-        metrics["cv_std"] = float(cv_scores.std())
+        # Cross-validation on the full dataset for robust generalisation estimate
+        cv_X = X_full if X_full is not None else X_test
+        cv_y = y_full if y_full is not None else y_test
+        n_folds = min(self.config.cv_folds, len(cv_y) // 2)
+        if n_folds >= 2:
+            cv_scores = cross_val_score(
+                model,
+                cv_X,
+                cv_y,
+                cv=StratifiedKFold(n_folds, shuffle=True, random_state=self.config.random_state),
+                scoring="f1_weighted",
+                n_jobs=-1,
+            )
+            metrics["cv_mean"] = float(cv_scores.mean())
+            metrics["cv_std"] = float(cv_scores.std())
+        else:
+            metrics["cv_mean"] = metrics["f1_score"]
+            metrics["cv_std"] = 0.0
 
         logger.info(f"Metrics: F1={metrics['f1_score']:.4f}, ROC-AUC={metrics['roc_auc']:.4f}")
+        if X_full is not None:
+            logger.info(f"CV ({n_folds}-fold on full data): mean={metrics['cv_mean']:.4f} +/- {metrics['cv_std']:.4f}")
 
         return metrics
 
@@ -525,7 +548,7 @@ class BasicTrainingStrategy(TrainingStrategy):
             model.fit(X_train, y_train)
 
         # Evaluate
-        metrics = self.evaluate_model(model, X_test, y_test)
+        metrics = self.evaluate_model(model, X_test, y_test, X_full=X, y_full=y)
         self.metrics = metrics
         self.model = model
 
@@ -571,7 +594,7 @@ class PAGASATrainingStrategy(TrainingStrategy):
             model.fit(X_train, y_train)
 
         # Evaluate
-        metrics = self.evaluate_model(model, X_test, y_test)
+        metrics = self.evaluate_model(model, X_test, y_test, X_full=X, y_full=y)
         self.metrics = metrics
         self.model = model
 
@@ -625,7 +648,7 @@ class ProductionTrainingStrategy(TrainingStrategy):
         calibrated_model.fit(X_train, y_train)
 
         # Evaluate calibrated model
-        metrics = self.evaluate_model(calibrated_model, X_test, y_test)
+        metrics = self.evaluate_model(calibrated_model, X_test, y_test, X_full=X, y_full=y)
         self.metrics = metrics
         self.model = calibrated_model
 
@@ -710,7 +733,7 @@ class ProgressiveTrainingStrategy(TrainingStrategy):
             model = self.create_model()
             model.fit(X_train, y_train)
 
-            metrics = self.evaluate_model(model, X_test, y_test)
+            metrics = self.evaluate_model(model, X_test, y_test, X_full=X, y_full=y)
 
             # Save
             model_name = f"flood_rf_model_v{p}_{version_info['name']}"
@@ -766,7 +789,7 @@ class EnhancedTrainingStrategy(TrainingStrategy):
             model.fit(X_train, y_train)
 
         # Evaluate
-        metrics = self.evaluate_model(model, X_test, y_test)
+        metrics = self.evaluate_model(model, X_test, y_test, X_full=X, y_full=y)
         self.metrics = metrics
         self.model = model
 

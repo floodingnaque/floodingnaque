@@ -15,34 +15,13 @@ API Documentation: https://www.worldtides.info/apidocs
 
 import logging
 import os
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import requests
+from app.services.worldtides_types import TideData, TideExtreme
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class TideData:
-    """Tide observation data structure."""
-
-    timestamp: datetime
-    height: float  # meters relative to datum
-    type: Optional[str] = None  # 'high', 'low', or None for regular height
-    datum: str = "MSL"  # Mean Sea Level
-    source: str = "worldtides"
-
-
-@dataclass
-class TideExtreme:
-    """Tide extreme (high/low) data structure."""
-
-    timestamp: datetime
-    height: float  # meters
-    type: str  # 'High' or 'Low'
-    datum: str = "MSL"
 
 
 class WorldTidesService:

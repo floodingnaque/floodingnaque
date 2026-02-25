@@ -35,7 +35,7 @@ repos:
         types: [python]
         files: ^backend/.*\.py$
 
-  # Type checking with mypy (opt-in - run with: pre-commit run mypy --all-files)
+  # Type checking with mypy
   - repo: local
     hooks:
       - id: mypy
@@ -45,7 +45,6 @@ repos:
         types: [python]
         args: ['--ignore-missing-imports', '--no-error-summary', '--config-file', 'backend/mypy.ini']
         files: ^backend/app/.*\.py$
-        stages: [manual]  # Opt-in until type annotations are improved
 
   # Security checks with bandit
   - repo: local

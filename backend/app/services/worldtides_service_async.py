@@ -18,36 +18,15 @@ API Documentation: https://www.worldtides.info/apidocs
 import asyncio
 import logging
 import os
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import aiohttp
+from app.services.worldtides_types import TideData, TideExtreme
 from app.utils.correlation import inject_correlation_headers
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class TideData:
-    """Tide observation data structure."""
-
-    timestamp: datetime
-    height: float  # meters relative to datum
-    type: Optional[str] = None  # 'high', 'low', or None for regular height
-    datum: str = "MSL"  # Mean Sea Level
-    source: str = "worldtides"
-
-
-@dataclass
-class TideExtreme:
-    """Tide extreme (high/low) data structure."""
-
-    timestamp: datetime
-    height: float  # meters
-    type: str  # 'High' or 'Low'
-    datum: str = "MSL"
 
 
 class AsyncWorldTidesService:

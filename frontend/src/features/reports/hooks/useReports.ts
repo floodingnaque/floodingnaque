@@ -7,6 +7,7 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { captureException } from '@/lib/sentry';
 import { reportsApi, type ReportParams, type ReportType } from '../services/reportsApi';
 
 /**
@@ -86,7 +87,7 @@ export function useExportPDF() {
       });
     },
     onError: (error: Error) => {
-      console.error('PDF export failed:', error);
+      captureException(error, { context: 'PDF export' });
       toast.error('Export Failed', {
         description: error.message || 'Failed to generate PDF report. Please try again.',
       });
@@ -119,7 +120,7 @@ export function useExportCSV() {
       });
     },
     onError: (error: Error) => {
-      console.error('CSV export failed:', error);
+      captureException(error, { context: 'CSV export' });
       toast.error('Export Failed', {
         description: error.message || 'Failed to generate CSV report. Please try again.',
       });

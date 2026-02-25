@@ -1,9 +1,19 @@
 """
-Rate Limit Utilities.
+Rate Limit Utilities — DEPRECATED.
 
-Re-exports rate limiting components from the middleware for convenience.
-This module provides a simpler import path for route handlers.
+Import directly from ``app.api.middleware.rate_limit`` instead.
+This shim is kept only for backward compatibility and will be
+removed in a future release.
 """
+
+import warnings
+
+warnings.warn(
+    "Importing from app.utils.rate_limit is deprecated. "
+    "Use app.api.middleware.rate_limit instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from app.api.middleware.rate_limit import (
     BURST_ENABLED,

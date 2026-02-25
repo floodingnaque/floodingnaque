@@ -3,7 +3,7 @@
 # Aligned with black/isort line length
 
 max-line-length = 120
-max-complexity = 25
+max-complexity = 15
 
 # Extend ignore to handle code style preferences
 extend-ignore =
@@ -15,14 +15,8 @@ extend-ignore =
     E203,
     # E402: module level import not at top (many scripts need sys.path setup)
     E402,
-    # E712: comparison to True/False (required for SQLAlchemy filter clauses)
-    E712,
-    # F401: imported but unused (may be used by tests or for re-exports)
-    F401,
     # F541: f-string without placeholders (minor style issue)
     F541,
-    # F841: local variable assigned but never used (may be for debugging or future use)
-    F841,
     # SIM102: Use a single if-statement (sometimes readability is better with nested)
     SIM102,
     # SIM105: Use contextlib.suppress (explicit try/except can be clearer)
@@ -35,8 +29,6 @@ extend-ignore =
     B039,
     # B042: Exception class __init__ (existing pattern in codebase)
     B042,
-    # C901: Function too complex (addressed separately when needed)
-    C901,
     # C401: Unnecessary generator (minor style preference)
     C401,
     # C420: Unnecessary dict comprehension (minor style preference)
@@ -94,12 +86,14 @@ per-file-ignores =
     # Route files may have longer lines for complex decorators
     app/api/routes/*: E501,
     # Service files may have complex logic
-    app/services/*: E501,F841,
+    app/services/*: E501,
     # Config files may have long lines
     app/core/config.py: E501,
     # Model files may have long column definitions
     app/models/*: E501,
-    # Utility files may have complex patterns
-    app/utils/*: E402,E501,F401,F841,
+    # db.py re-exports models for backward compatibility
+    app/models/db.py: F401,
+    # Utility files may need non-top-level imports
+    app/utils/*: E402,E501,
     # Load test files
     tests/load/*: E402,F401,F541,

@@ -1,4 +1,10 @@
-"""Utility functions and helpers."""
+"""Utility functions and helpers.
+
+Sub-packages:
+    - observability: logging, metrics, tracing, correlation, sentry
+    - resilience: circuit breakers, caching
+    - ml: ML version checking
+"""
 
 from app.utils.api_errors import (  # Backward compatibility aliases
     AppException,
@@ -29,17 +35,7 @@ from app.utils.api_responses import (
     api_paginated,
     api_success,
 )
-from app.utils.cache import cache_delete, cache_get, cache_set, cached, get_cache_stats, is_cache_enabled
-from app.utils.circuit_breaker import (
-    CircuitBreaker,
-    CircuitOpenError,
-    CircuitState,
-    meteostat_breaker,
-    openweathermap_breaker,
-    retry_with_backoff,
-    weatherstack_breaker,
-)
-from app.utils.logging import (
+from app.utils.observability.logging import (
     LogContext,
     clear_request_context,
     get_logger,
@@ -49,21 +45,14 @@ from app.utils.logging import (
     set_request_context,
     setup_logging,
 )
-from app.utils.metrics import (
+from app.utils.observability.metrics import (
     get_metrics,
     init_prometheus_metrics,
     record_alert_sent,
     record_external_api_call,
     record_prediction,
 )
-from app.utils.secrets import (
-    get_secret,
-    get_secret_or_env,
-    mask_secret,
-    read_secret_file,
-    validate_secrets,
-)
-from app.utils.sentry import (
+from app.utils.observability.sentry import (
     add_breadcrumb,
     capture_exception,
     capture_message,
@@ -72,7 +61,7 @@ from app.utils.sentry import (
     set_tag,
     set_user_context,
 )
-from app.utils.tracing import (
+from app.utils.observability.tracing import (
     Span,
     SpanContext,
     TraceContext,
@@ -82,6 +71,30 @@ from app.utils.tracing import (
     set_current_trace,
     trace_operation,
     trace_operation_async,
+)
+from app.utils.resilience.cache import (
+    cache_delete,
+    cache_get,
+    cache_set,
+    cached,
+    get_cache_stats,
+    is_cache_enabled,
+)
+from app.utils.resilience.circuit_breaker import (
+    CircuitBreaker,
+    CircuitOpenError,
+    CircuitState,
+    meteostat_breaker,
+    openweathermap_breaker,
+    retry_with_backoff,
+    weatherstack_breaker,
+)
+from app.utils.secrets import (
+    get_secret,
+    get_secret_or_env,
+    mask_secret,
+    read_secret_file,
+    validate_secrets,
 )
 from app.utils.validation import validate_coordinates, validate_weather_data
 

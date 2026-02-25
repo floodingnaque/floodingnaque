@@ -210,7 +210,7 @@ def deliver_webhook_with_retry(
         with get_db_session() as session:
             webhook = (
                 session.query(Webhook)
-                .filter(Webhook.id == webhook_id, Webhook.is_deleted == False, Webhook.is_active == True)
+                .filter(Webhook.id == webhook_id, Webhook.is_deleted.is_(False), Webhook.is_active.is_(True))
                 .first()
             )
 
@@ -297,7 +297,7 @@ def broadcast_to_webhooks(event_type: str, data: Dict[str, Any]) -> Dict[str, An
         Summary of broadcast results
     """
     with get_db_session() as session:
-        webhooks = session.query(Webhook).filter(Webhook.is_deleted == False, Webhook.is_active == True).all()
+        webhooks = session.query(Webhook).filter(Webhook.is_deleted.is_(False), Webhook.is_active.is_(True)).all()
 
         matching_webhooks = []
         for webhook in webhooks:

@@ -560,11 +560,11 @@ def validate_startup_health(
     Raises:
         RuntimeError: If raise_on_failure is True and critical failures found
     """
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     start_time = time.time()
     report = StartupHealthReport(
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
     # Run checks

@@ -9,7 +9,7 @@ import os
 import statistics
 import time
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.middleware.auth import require_api_key
 from app.models.db import get_db_session, get_pool_status
@@ -31,7 +31,7 @@ from app.utils.query_optimizer import (
     get_unused_indexes,
     run_maintenance_recommendations,
 )
-from app.utils.rate_limit import limiter
+from app.api.middleware.rate_limit import limiter
 from flask import Blueprint, g, jsonify, request
 
 logger = get_logger(__name__)
@@ -128,7 +128,7 @@ def performance_dashboard():
 
     try:
         dashboard = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "request_id": request_id,
             # Response Time Statistics
             "response_times": get_response_time_stats(),

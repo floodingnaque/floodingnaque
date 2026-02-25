@@ -8,6 +8,8 @@ import os
 import time
 from datetime import datetime, timezone
 
+from sqlalchemy import text
+
 from app.models.db import get_db_session
 from app.services.celery_app import celery_app
 from app.utils.secrets import get_secret
@@ -201,7 +203,7 @@ def health_check():
     try:
         # Check database connectivity
         with get_db_session() as session:
-            session.execute("SELECT 1")
+            session.execute(text("SELECT 1"))
 
         # Check Redis connectivity (if configured)
         redis_url = get_secret("CELERY_BROKER_URL") or ""

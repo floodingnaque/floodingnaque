@@ -97,7 +97,10 @@ COPY --chown=appuser:appgroup alembic/ ./alembic/
 COPY --chown=appuser:appgroup app/ ./app/
 COPY --chown=appuser:appgroup config/ ./config/
 COPY --chown=appuser:appgroup models/ ./models/
-COPY --chown=appuser:appgroup data/synthetic_dataset.csv ./data/
+# NOTE: Dataset CSV is mounted as a volume at runtime, not baked into the image.
+# Mount: -v /path/to/data:/app/data
+# In compose.yaml, declare under volumes:
+#   - ./backend/data/synthetic_dataset.csv:/app/data/synthetic_dataset.csv:ro
 COPY --chown=appuser:appgroup alembic.ini main.py ./
 
 # Switch to non-root user
@@ -164,7 +167,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Install development dependencies
 COPY requirements-dev.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements-dev.txt || true
+    pip install -r requirements-dev.txt
 
 # Set development environment
 ENV APP_ENV=development \

@@ -237,7 +237,7 @@ def v1_data():
         with get_db_session() as session:
             query = (
                 session.query(WeatherData)
-                .filter(WeatherData.is_deleted == False)  # noqa: E712 - SQLAlchemy comparison
+                .filter(WeatherData.is_deleted.is_(False))
                 .order_by(WeatherData.timestamp.desc())
                 .limit(limit)
                 .offset(offset)

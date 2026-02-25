@@ -31,7 +31,7 @@ import time
 import traceback
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 
@@ -103,7 +103,7 @@ class StructuredError:
     exception_message: str = ""
     context: Dict[str, Any] = field(default_factory=dict)
     traceback: Optional[str] = None
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     recoverable: bool = False
     retry_after_seconds: Optional[int] = None
 

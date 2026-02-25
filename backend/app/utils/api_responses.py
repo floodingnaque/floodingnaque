@@ -11,7 +11,7 @@ disclosure through error messages, stack traces, and exception details
 import html
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from flask import Response, g, jsonify
@@ -383,7 +383,7 @@ def api_error(
             "status": status_code,
             "detail": safe_message,
             "code": error_code,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         },
     }
 

@@ -124,7 +124,7 @@ def get_predictions():
             return api_error("ValidationError", "order must be asc or desc", HTTP_BAD_REQUEST, request_id)
 
         with get_db_session() as session:
-            query = session.query(Prediction).filter(Prediction.is_deleted == False)
+            query = session.query(Prediction).filter(Prediction.is_deleted.is_(False))
 
             # Apply filters
             if risk_level is not None:
@@ -253,7 +253,7 @@ def get_prediction_by_id(prediction_id):
     try:
         with get_db_session() as session:
             prediction = (
-                session.query(Prediction).filter(Prediction.id == prediction_id, Prediction.is_deleted == False).first()
+                session.query(Prediction).filter(Prediction.id == prediction_id, Prediction.is_deleted.is_(False)).first()
             )
 
             if not prediction:
@@ -324,7 +324,7 @@ def delete_prediction(prediction_id):
     try:
         with get_db_session() as session:
             prediction = (
-                session.query(Prediction).filter(Prediction.id == prediction_id, Prediction.is_deleted == False).first()
+                session.query(Prediction).filter(Prediction.id == prediction_id, Prediction.is_deleted.is_(False)).first()
             )
 
             if not prediction:
@@ -391,7 +391,7 @@ def get_prediction_stats():
             # Total predictions in period
             total = (
                 session.query(Prediction)
-                .filter(Prediction.is_deleted == False, Prediction.created_at >= cutoff_date)
+                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= cutoff_date)
                 .count()
             )
 
@@ -399,7 +399,7 @@ def get_prediction_stats():
             flood_count = (
                 session.query(Prediction)
                 .filter(
-                    Prediction.is_deleted == False, Prediction.created_at >= cutoff_date, Prediction.prediction == 1
+                    Prediction.is_deleted.is_(False), Prediction.created_at >= cutoff_date, Prediction.prediction == 1
                 )
                 .count()
             )
@@ -408,7 +408,7 @@ def get_prediction_stats():
             safe_count = (
                 session.query(Prediction)
                 .filter(
-                    Prediction.is_deleted == False, Prediction.created_at >= cutoff_date, Prediction.risk_level == 0
+                    Prediction.is_deleted.is_(False), Prediction.created_at >= cutoff_date, Prediction.risk_level == 0
                 )
                 .count()
             )
@@ -416,7 +416,7 @@ def get_prediction_stats():
             alert_count = (
                 session.query(Prediction)
                 .filter(
-                    Prediction.is_deleted == False, Prediction.created_at >= cutoff_date, Prediction.risk_level == 1
+                    Prediction.is_deleted.is_(False), Prediction.created_at >= cutoff_date, Prediction.risk_level == 1
                 )
                 .count()
             )
@@ -424,7 +424,7 @@ def get_prediction_stats():
             critical_count = (
                 session.query(Prediction)
                 .filter(
-                    Prediction.is_deleted == False, Prediction.created_at >= cutoff_date, Prediction.risk_level == 2
+                    Prediction.is_deleted.is_(False), Prediction.created_at >= cutoff_date, Prediction.risk_level == 2
                 )
                 .count()
             )
@@ -435,7 +435,7 @@ def get_prediction_stats():
             avg_confidence = (
                 session.query(func.avg(Prediction.confidence))
                 .filter(
-                    Prediction.is_deleted == False,
+                    Prediction.is_deleted.is_(False),
                     Prediction.created_at >= cutoff_date,
                     Prediction.confidence.isnot(None),
                 )
@@ -501,7 +501,7 @@ def get_recent_predictions():
         with get_db_session() as session:
             predictions = (
                 session.query(Prediction)
-                .filter(Prediction.is_deleted == False)
+                .filter(Prediction.is_deleted.is_(False))
                 .order_by(desc(Prediction.created_at))
                 .limit(limit)
                 .all()
@@ -619,7 +619,7 @@ def bulk_delete_predictions():
                 )
 
         with get_db_session() as session:
-            query = session.query(Prediction).filter(Prediction.is_deleted == False)
+            query = session.query(Prediction).filter(Prediction.is_deleted.is_(False))
 
             # Apply filters
             if ids:

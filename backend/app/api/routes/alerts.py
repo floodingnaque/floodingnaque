@@ -80,7 +80,7 @@ def get_alerts():
             return api_error("ValidationError", "Limit must be at least 1", HTTP_BAD_REQUEST, request_id)
 
         with get_db_session() as session:
-            query = session.query(AlertHistory).filter(AlertHistory.is_deleted == False)
+            query = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False))
 
             # Apply filters
             if risk_level is not None:
@@ -185,7 +185,7 @@ def get_alert_by_id(alert_id):
         with get_db_session() as session:
             alert = (
                 session.query(AlertHistory)
-                .filter(AlertHistory.id == alert_id, AlertHistory.is_deleted == False)
+                .filter(AlertHistory.id == alert_id, AlertHistory.is_deleted.is_(False))
                 .first()
             )
 
@@ -254,7 +254,7 @@ def get_alert_history():
 
         with get_db_session() as session:
             query = session.query(AlertHistory).filter(
-                AlertHistory.is_deleted == False, AlertHistory.created_at >= cutoff_date
+                AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= cutoff_date
             )
 
             if risk_level is not None:
@@ -374,26 +374,26 @@ def get_alert_stats():
 
         with get_db_session() as session:
             # Total alerts all time
-            total_all_time = session.query(AlertHistory).filter(AlertHistory.is_deleted == False).count()
+            total_all_time = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False)).count()
 
             # Alerts today
             alerts_today = (
                 session.query(AlertHistory)
-                .filter(AlertHistory.is_deleted == False, AlertHistory.created_at >= today)
+                .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= today)
                 .count()
             )
 
             # Alerts this week
             alerts_week = (
                 session.query(AlertHistory)
-                .filter(AlertHistory.is_deleted == False, AlertHistory.created_at >= week_ago)
+                .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= week_ago)
                 .count()
             )
 
             # Alerts this month
             alerts_month = (
                 session.query(AlertHistory)
-                .filter(AlertHistory.is_deleted == False, AlertHistory.created_at >= month_ago)
+                .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= month_ago)
                 .count()
             )
 
@@ -401,7 +401,7 @@ def get_alert_stats():
             critical_24h = (
                 session.query(AlertHistory)
                 .filter(
-                    AlertHistory.is_deleted == False,
+                    AlertHistory.is_deleted.is_(False),
                     AlertHistory.risk_level == 2,
                     AlertHistory.created_at >= datetime.now(timezone.utc) - timedelta(hours=24),
                 )
@@ -411,7 +411,7 @@ def get_alert_stats():
             # Most recent alert
             latest_alert = (
                 session.query(AlertHistory)
-                .filter(AlertHistory.is_deleted == False)
+                .filter(AlertHistory.is_deleted.is_(False))
                 .order_by(desc(AlertHistory.created_at))
                 .first()
             )

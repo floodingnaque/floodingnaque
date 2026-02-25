@@ -18,11 +18,11 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from app.services.meteostat_types import WeatherObservation
 from app.utils.circuit_breaker import CircuitOpenError
 from meteostat import Daily, Hourly, Point, Stations
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -62,20 +62,6 @@ def _estimate_humidity_for_date(date: datetime) -> float:
         if 3 <= month <= 5:
             return 72.0
         return 75.0
-
-
-@dataclass
-class WeatherObservation:
-    """Weather observation data structure."""
-
-    timestamp: datetime
-    temperature: Optional[float] = None  # Celsius
-    humidity: Optional[float] = None  # Percentage (0-100)
-    precipitation: Optional[float] = None  # mm
-    wind_speed: Optional[float] = None  # m/s
-    pressure: Optional[float] = None  # hPa
-    station_id: Optional[str] = None
-    source: str = "meteostat"
 
 
 class AsyncMeteostatService:

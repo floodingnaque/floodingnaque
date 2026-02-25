@@ -21,12 +21,11 @@ from app.services.celery_app import celery_app
 # System evaluation for thesis validation
 from app.services.evaluation import SystemEvaluator
 
+# Google Weather/Earth Engine data types (shared)
+from app.services.google_weather_types import SatellitePrecipitation, WeatherReanalysis
+
 # Google Weather/Earth Engine service (synchronous)
-from app.services.google_weather_service import (
-    GoogleWeatherService,
-    SatellitePrecipitation,
-    WeatherReanalysis,
-)
+from app.services.google_weather_service import GoogleWeatherService
 
 # Google Weather/Earth Engine service (async with retry logic)
 from app.services.google_weather_service_async import (
@@ -38,6 +37,9 @@ from app.services.google_weather_service_async import (
 
 # Core prediction and ingestion services
 from app.services.ingest import ingest_data
+
+# Meteostat data types (shared)
+from app.services.meteostat_types import WeatherObservation
 
 # Meteostat weather service (synchronous)
 from app.services.meteostat_service import (
@@ -68,12 +70,11 @@ from app.services.risk_classifier import (
     get_risk_thresholds,
 )
 
+# WorldTides data types (shared)
+from app.services.worldtides_types import TideData, TideExtreme
+
 # WorldTides service for coastal flood prediction (synchronous)
-from app.services.worldtides_service import (
-    TideData,
-    TideExtreme,
-    WorldTidesService,
-)
+from app.services.worldtides_service import WorldTidesService
 
 # WorldTides service (async with aiohttp, connection pooling, and retry logic)
 from app.services.worldtides_service_async import (
@@ -96,6 +97,7 @@ __all__ = [
     "send_flood_alert",
     # Meteostat service
     "MeteostatService",
+    "WeatherObservation",
     "get_meteostat_service",
     "get_historical_weather",
     "get_meteostat_weather_for_ingest",

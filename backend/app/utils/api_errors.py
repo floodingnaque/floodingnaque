@@ -4,7 +4,7 @@ API Error Classes.
 Custom exception classes for API error handling following RFC 7807 Problem Details.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 
@@ -28,7 +28,7 @@ class AppException(Exception):
         self.errors = errors or []
         self.instance = instance
         self.help_url = help_url
-        self.timestamp = datetime.utcnow().isoformat() + "Z"
+        self.timestamp = datetime.now(timezone.utc).isoformat() + "Z"
         super().__init__(self.message)
 
     def to_dict(self, include_debug: bool = False) -> dict:
