@@ -62,7 +62,7 @@ describe('PredictionForm', () => {
     it('should render form title', () => {
       render(<PredictionForm />);
 
-      expect(screen.getByText('Weather Parameters')).toBeInTheDocument();
+      expect(screen.getByText('Flood Risk Prediction')).toBeInTheDocument();
     });
 
     it('should render temperature input', () => {
@@ -251,8 +251,9 @@ describe('PredictionForm', () => {
       mockUsePrediction.isPending = true;
       render(<PredictionForm />);
 
-      expect(screen.getByRole('button', { name: /analyzing/i })).toBeInTheDocument();
-      expect(screen.getByRole('button')).toBeDisabled();
+      const analyzingBtn = screen.getByRole('button', { name: /analyzing/i });
+      expect(analyzingBtn).toBeInTheDocument();
+      expect(analyzingBtn).toBeDisabled();
     });
 
     it('should disable inputs when predicting', () => {

@@ -44,7 +44,7 @@ describe('Prediction Flow Integration', () => {
       let capturedRequest: Record<string, unknown> | null = null;
 
       server.use(
-        http.post('*/api/v1/predict/predict', async ({ request }) => {
+        http.post('*/api/v1/predict', async ({ request }) => {
           capturedRequest = await request.json() as Record<string, unknown>;
           return HttpResponse.json(createMockPrediction());
         })
@@ -70,7 +70,7 @@ describe('Prediction Flow Integration', () => {
   describe('Risk Level Scenarios', () => {
     it('should return Safe for low-risk conditions', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           return HttpResponse.json(
             createMockPrediction({
               prediction: 0,
@@ -105,7 +105,7 @@ describe('Prediction Flow Integration', () => {
 
     it('should return Alert for moderate-risk conditions', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           return HttpResponse.json(
             createMockPrediction({
               prediction: 1,
@@ -140,7 +140,7 @@ describe('Prediction Flow Integration', () => {
 
     it('should return Critical for high-risk conditions', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           return HttpResponse.json(
             createMockPrediction({
               prediction: 1,
@@ -177,7 +177,7 @@ describe('Prediction Flow Integration', () => {
   describe('Error Handling', () => {
     it('should display error when prediction fails', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           return HttpResponse.json(
             { code: 'MODEL_ERROR', message: 'Prediction model unavailable' },
             { status: 500 }
@@ -204,7 +204,7 @@ describe('Prediction Flow Integration', () => {
 
     it('should handle network errors gracefully', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           return HttpResponse.error();
         })
       );
@@ -228,9 +228,9 @@ describe('Prediction Flow Integration', () => {
 
     it('should handle timeout errors', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
-          // Simulate timeout by never responding (MSW will eventually timeout)
-          await new Promise((resolve) => setTimeout(resolve, 35000));
+        http.post('*/api/v1/predict', async () => {
+          // Simulate a very slow response
+          await new Promise((resolve) => setTimeout(resolve, 5000));
           return HttpResponse.json(createMockPrediction());
         })
       );
@@ -245,15 +245,17 @@ describe('Prediction Flow Integration', () => {
       // Start the prediction
       await user.click(screen.getByRole('button', { name: /predict/i }));
 
-      // Button should be disabled while pending
-      expect(screen.getByRole('button')).toBeDisabled();
+      // Button should change to "Analyzing..." and be disabled while pending
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /analyzing/i })).toBeDisabled();
+      });
     });
   });
 
   describe('Loading States', () => {
     it('should show loading indicator during prediction', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           await new Promise((resolve) => setTimeout(resolve, 300));
           return HttpResponse.json(createMockPrediction());
         })
@@ -270,14 +272,14 @@ describe('Prediction Flow Integration', () => {
       user.click(screen.getByRole('button', { name: /predict/i }));
 
       await waitFor(() => {
-        const button = screen.getByRole('button');
+        const button = screen.getByRole('button', { name: /predict|analyzing/i });
         expect(button).toBeDisabled();
       });
     });
 
     it('should disable form inputs while loading', async () => {
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           await new Promise((resolve) => setTimeout(resolve, 300));
           return HttpResponse.json(createMockPrediction());
         })
@@ -307,7 +309,7 @@ describe('Prediction Flow Integration', () => {
       });
 
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           return HttpResponse.json(mockResponse);
         })
       );
@@ -337,7 +339,7 @@ describe('Prediction Flow Integration', () => {
       });
 
       server.use(
-        http.post('*/api/v1/predict/predict', async () => {
+        http.post('*/api/v1/predict', async () => {
           return HttpResponse.json(mockResponse);
         })
       );
@@ -366,7 +368,7 @@ describe('Multiple Predictions', () => {
     const predictions: PredictionResponse[] = [];
 
     server.use(
-      http.post('*/api/v1/predict/predict', async () => {
+      http.post('*/api/v1/predict', async () => {
         return HttpResponse.json(createMockPrediction());
       })
     );

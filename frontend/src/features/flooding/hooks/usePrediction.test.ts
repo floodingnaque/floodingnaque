@@ -118,7 +118,7 @@ describe('usePrediction', () => {
 
   it('should handle prediction error', async () => {
     server.use(
-      http.post('*/api/v1/predict/predict', () => {
+      http.post('*/api/v1/predict', () => {
         return HttpResponse.json(
           { code: 'PREDICTION_FAILED', message: 'Model unavailable' },
           { status: 500 }
@@ -144,7 +144,7 @@ describe('usePrediction', () => {
 
   it('should handle network error', async () => {
     server.use(
-      http.post('*/api/v1/predict/predict', () => {
+      http.post('*/api/v1/predict', () => {
         return HttpResponse.error();
       })
     );

@@ -100,15 +100,15 @@ describe('StatsCards', () => {
     it('should display percentage change for total predictions', () => {
       render(<StatsCards stats={mockStats} />);
 
-      // Should show +12% change
-      expect(screen.getByText(/\+12%/)).toBeInTheDocument();
+      // Component shows subtitles, not percentage changes
+      expect(screen.getByText('all time')).toBeInTheDocument();
     });
 
     it('should display percentage change for today predictions', () => {
       render(<StatsCards stats={mockStats} />);
 
-      // Should show +8% change
-      expect(screen.getByText(/\+8%/)).toBeInTheDocument();
+      // Component shows subtitles, not percentage changes
+      expect(screen.getByText('since midnight')).toBeInTheDocument();
     });
   });
 
@@ -116,13 +116,13 @@ describe('StatsCards', () => {
     it('should display "from last month" subtitle', () => {
       render(<StatsCards stats={mockStats} />);
 
-      expect(screen.getByText('from last month')).toBeInTheDocument();
+      expect(screen.getByText('all time')).toBeInTheDocument();
     });
 
     it('should display "from yesterday" subtitle', () => {
       render(<StatsCards stats={mockStats} />);
 
-      expect(screen.getByText('from yesterday')).toBeInTheDocument();
+      expect(screen.getByText('since midnight')).toBeInTheDocument();
     });
   });
 

@@ -154,7 +154,7 @@ export const authHandlers = [
 // ============================================================================
 
 export const predictionHandlers = [
-  http.post(`${baseUrl}/api/v1/predict/predict`, async ({ request }) => {
+  http.post(`${baseUrl}/api/v1/predict`, async ({ request }) => {
     await delay(150);
     const body = await request.json() as {
       temperature: number;
