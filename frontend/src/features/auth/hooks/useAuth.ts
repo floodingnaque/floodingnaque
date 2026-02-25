@@ -3,8 +3,8 @@
  *
  * Comprehensive authentication hook providing login, register,
  * logout mutations, profile queries, and auth state management.
- * Auth tokens are stored in httpOnly cookies — the store only
- * tracks user metadata and a CSRF token.
+ * Access and refresh tokens are stored in memory and sent as
+ * Authorization: Bearer headers.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -51,9 +51,9 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: (credentials: LoginRequest) => authApi.login(credentials),
     onSuccess: (data) => {
-      // Tokens are set as httpOnly cookies by the server.
-      // We only persist the user + optional CSRF token.
-      setAuth(data.user, data.csrf_token);
+      // Store user metadata and tokens in the auth store.
+      // Tokens are kept in memory and attached via Authorization header.
+      setAuth(data.user, data.csrf_token, data.access_token, data.refresh_token);
     },
   });
 
@@ -63,7 +63,7 @@ export function useAuth() {
   const registerMutation = useMutation({
     mutationFn: (data: RegisterRequest) => authApi.register(data),
     onSuccess: (data) => {
-      setAuth(data.user, data.csrf_token);
+      setAuth(data.user, data.csrf_token, data.access_token, data.refresh_token);
     },
   });
 
@@ -109,7 +109,7 @@ export function useAuth() {
   const updateProfileMutation = useMutation({
     mutationFn: (data: UpdateProfileRequest) => authApi.updateProfile(data),
     onSuccess: (updatedUser: User) => {
-      // Update user in store — tokens remain in httpOnly cookies
+      // Update user in store — keep existing tokens
       setAuth(updatedUser);
       // Invalidate profile query to refetch
       queryClient.invalidateQueries({ queryKey: authQueryKeys.profile() });

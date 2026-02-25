@@ -23,8 +23,11 @@ import type { ApiError } from '@/types';
 type AuthStoreApi = {
   getState: () => {
     csrfToken: string | null;
+    accessToken: string | null;
+    refreshToken: string | null;
     clearAuth: () => void;
     setCsrfToken: (csrfToken: string) => void;
+    setAccessToken: (accessToken: string) => void;
   };
 };
 
@@ -59,6 +62,13 @@ const CSRF_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Attach JWT access token as Authorization header
+    const accessToken = authStore?.getState().accessToken;
+    if (accessToken && config.headers) {
+      config.headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    // Attach CSRF token for state-changing requests
     const method = (config.method ?? '').toLowerCase();
     if (CSRF_METHODS.has(method) && config.headers) {
       const csrfToken = authStore?.getState().csrfToken;
@@ -117,12 +127,18 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // The refresh endpoint reads the httpOnly refresh cookie
+        // Send the refresh token in the request body
+        const refreshToken = authStore?.getState().refreshToken;
         const { data } = await axios.post(
           `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.auth.refresh}`,
-          {},
+          { refresh_token: refreshToken },
           { withCredentials: true },
         );
+
+        // Update the access token in the store
+        if (data.access_token) {
+          authStore?.getState().setAccessToken(data.access_token);
+        }
 
         // If the server returns a new CSRF token, update the store
         if (data.csrf_token) {

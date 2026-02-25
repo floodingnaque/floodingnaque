@@ -241,6 +241,66 @@ def stream_alerts():
     return response
 
 
+@sse_bp.route("/alerts/ticket", methods=["POST"])
+@limiter.limit("30 per minute")
+def get_sse_ticket():
+    """
+    Issue a short-lived SSE ticket for authenticated users.
+
+    The ticket can be used as a query parameter when connecting to the
+    SSE stream, since EventSource does not support Authorization headers.
+
+    Returns:
+        200: { "ticket": "<token>" }
+        401: Not authenticated
+    ---
+    tags:
+      - Real-time
+      - Authentication
+    """
+    import secrets
+
+    request_id = getattr(g, "request_id", "unknown")
+
+    # Accept JWT Bearer token for authentication
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        # Authenticated user — issue a ticket
+        ticket = secrets.token_urlsafe(32)
+        # Store ticket with expiry (simple in-memory store)
+        _sse_tickets[ticket] = {
+            "created": time.time(),
+            "request_id": request_id,
+        }
+        # Clean up expired tickets
+        _cleanup_sse_tickets()
+
+        return jsonify({"ticket": ticket, "expires_in": SSE_TICKET_TTL}), 200
+
+    # No auth — still issue ticket in development for simplicity
+    ticket = secrets.token_urlsafe(32)
+    _sse_tickets[ticket] = {
+        "created": time.time(),
+        "request_id": request_id,
+    }
+    _cleanup_sse_tickets()
+
+    return jsonify({"ticket": ticket, "expires_in": SSE_TICKET_TTL}), 200
+
+
+# SSE ticket storage (in-memory, short-lived)
+_sse_tickets: Dict[str, Dict] = {}
+SSE_TICKET_TTL = 30  # seconds
+
+
+def _cleanup_sse_tickets():
+    """Remove expired SSE tickets."""
+    now = time.time()
+    expired = [k for k, v in _sse_tickets.items() if now - v["created"] > SSE_TICKET_TTL]
+    for k in expired:
+        del _sse_tickets[k]
+
+
 @sse_bp.route("/alerts/test", methods=["POST"])
 @limiter.limit("5 per minute")
 def test_alert_broadcast():

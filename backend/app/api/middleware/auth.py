@@ -518,6 +518,90 @@ def validate_api_key_simple(api_key: str) -> bool:
     return is_valid
 
 
+def require_auth(f):
+    """
+    Decorator that requires a valid JWT Bearer token.
+
+    Reads the Authorization header for a Bearer token, decodes it,
+    and sets g.current_user_id, g.current_user_email, and g.current_user_role.
+
+    Usage:
+        @app.route('/protected')
+        @require_auth
+        def protected_endpoint():
+            user_id = g.current_user_id
+            ...
+    """
+    from app.core.security import decode_token
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return (
+                jsonify(
+                    {"error": "Authorization required", "message": "Bearer token required in Authorization header"}
+                ),
+                401,
+            )
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+        if error:
+            return jsonify({"error": "InvalidToken", "message": error}), 401
+
+        g.authenticated = True
+        g.current_user_id = int(payload.get("sub"))
+        g.current_user_email = payload.get("email")
+        g.current_user_role = payload.get("role")
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+def require_auth_or_api_key(f):
+    """
+    Decorator that accepts either a JWT Bearer token or an API key.
+
+    Checks Authorization: Bearer first, then falls back to X-API-Key.
+    This allows browser-based users (JWT) and machine clients (API key)
+    to share the same endpoints.
+    """
+    from app.core.security import decode_token
+
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Try JWT Bearer token first
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+            payload, error = decode_token(token)
+            if not error:
+                g.authenticated = True
+                g.current_user_id = int(payload.get("sub"))
+                g.current_user_email = payload.get("email")
+                g.current_user_role = payload.get("role")
+                return f(*args, **kwargs)
+
+        # Fall back to API key
+        api_key = request.headers.get("X-API-Key")
+        if api_key:
+            is_valid, _ = validate_api_key(api_key)
+            if is_valid:
+                g.authenticated = True
+                g.api_key_hash = _hash_api_key_pbkdf2(api_key)[:8]
+                return f(*args, **kwargs)
+
+        # Neither auth method succeeded
+        logger.warning(f"Missing authentication for {request.method} {request.path} from {request.remote_addr}")
+        return (
+            jsonify({"error": "Authentication required", "message": "Provide a Bearer token or X-API-Key header"}),
+            401,
+        )
+
+    return decorated
+
+
 def require_api_key(f):
     """
     Decorator that requires a valid API key for endpoint access.

@@ -2,9 +2,8 @@
  * Authentication Store
  *
  * Zustand store for managing authentication state.
- * Tokens are stored in httpOnly cookies (set by the server) and
- * are never accessible to JavaScript. Only user metadata and a
- * CSRF token are kept in memory / persisted.
+ * Access and refresh tokens are kept in memory (never persisted).
+ * Only user metadata is persisted to localStorage.
  */
 
 import { create } from 'zustand';
@@ -22,6 +21,10 @@ interface AuthState {
   isAuthenticated: boolean;
   /** CSRF token issued by the server for state-changing requests */
   csrfToken: string | null;
+  /** JWT access token (in-memory only, never persisted) */
+  accessToken: string | null;
+  /** JWT refresh token (in-memory only, never persisted) */
+  refreshToken: string | null;
 }
 
 /**
@@ -29,9 +32,11 @@ interface AuthState {
  */
 interface AuthActions {
   /** Set authentication data after login / register */
-  setAuth: (user: User, csrfToken?: string) => void;
+  setAuth: (user: User, csrfToken?: string, accessToken?: string, refreshToken?: string) => void;
   /** Update the CSRF token (e.g. after refresh) */
   setCsrfToken: (csrfToken: string) => void;
+  /** Update the access token (e.g. after refresh) */
+  setAccessToken: (accessToken: string) => void;
   /** Clear all authentication data (logout) */
   clearAuth: () => void;
 }
@@ -48,6 +53,8 @@ const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
   csrfToken: null,
+  accessToken: null,
+  refreshToken: null,
 };
 
 /**
@@ -62,16 +69,22 @@ export const useAuthStore = create<AuthStore>()(
     (set) => ({
       ...initialState,
 
-      setAuth: (user: User, csrfToken?: string) => {
+      setAuth: (user: User, csrfToken?: string, accessToken?: string, refreshToken?: string) => {
         set({
           user,
           isAuthenticated: true,
           ...(csrfToken != null ? { csrfToken } : {}),
+          ...(accessToken != null ? { accessToken } : {}),
+          ...(refreshToken != null ? { refreshToken } : {}),
         });
       },
 
       setCsrfToken: (csrfToken: string) => {
         set({ csrfToken });
+      },
+
+      setAccessToken: (accessToken: string) => {
+        set({ accessToken });
       },
 
       clearAuth: () => {

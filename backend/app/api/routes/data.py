@@ -98,11 +98,15 @@ def get_weather_data():
             return api_error("ValidationError", "Limit must be between 1 and 1000", HTTP_BAD_REQUEST, request_id)
 
         # Validate sort parameters
-        valid_sort_fields = ["timestamp", "temperature", "humidity", "precipitation", "created_at"]
+        valid_sort_fields = ["timestamp", "recorded_at", "temperature", "humidity", "precipitation", "created_at"]
         if sort_by not in valid_sort_fields:
             return api_error(
                 "ValidationError", f"sort_by must be one of: {valid_sort_fields}", HTTP_BAD_REQUEST, request_id
             )
+
+        # Map recorded_at alias to timestamp
+        if sort_by == "recorded_at":
+            sort_by = "timestamp"
 
         if order not in ["asc", "desc"]:
             return api_error("ValidationError", "order must be asc or desc", HTTP_BAD_REQUEST, request_id)

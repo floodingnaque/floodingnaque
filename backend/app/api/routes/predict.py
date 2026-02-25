@@ -8,7 +8,7 @@ Includes input validation, security measures, and response caching.
 import logging
 import os
 
-from app.api.middleware.auth import require_api_key
+from app.api.middleware.auth import require_auth_or_api_key
 from app.api.middleware.rate_limit import rate_limit_with_burst
 from app.api.schemas.weather import parse_json_safely
 from app.core.constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR, HTTP_NOT_FOUND, HTTP_OK
@@ -37,7 +37,7 @@ PREDICTION_CACHE_ENABLED = os.getenv("PREDICTION_CACHE_ENABLED", "True").lower()
 @predict_bp.route("/", methods=["POST"])
 @rate_limit_with_burst("60 per hour")
 @validate_request_size(endpoint_name="predict")  # 10KB limit for prediction payloads
-@require_api_key
+@require_auth_or_api_key
 def predict():
     """
     Predict flood risk based on weather data.
@@ -267,7 +267,7 @@ def predict():
 @predict_bp.route("/location", methods=["POST"])
 @rate_limit_with_burst("60 per hour")
 @validate_request_size(endpoint_name="predict")
-@require_api_key
+@require_auth_or_api_key
 def predict_by_location():
     """
     Predict flood risk based on GPS coordinates.
