@@ -2,10 +2,9 @@
 
 from datetime import datetime, timezone
 
+from app.models.db import Base
 from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
-
-from app.models.db import Base
 
 
 class WeatherData(Base):

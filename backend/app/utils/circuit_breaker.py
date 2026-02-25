@@ -3,8 +3,7 @@
 import warnings as _warnings
 
 _warnings.warn(
-    "Importing from app.utils.circuit_breaker is deprecated. "
-    "Use app.utils.resilience.circuit_breaker instead.",
+    "Importing from app.utils.circuit_breaker is deprecated. " "Use app.utils.resilience.circuit_breaker instead.",
     DeprecationWarning,
     stacklevel=2,
 )

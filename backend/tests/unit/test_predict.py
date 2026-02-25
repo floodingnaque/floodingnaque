@@ -6,7 +6,6 @@ format_alert_message(), and get_risk_thresholds().
 """
 
 import pytest
-
 from app.services.risk_classifier import (
     RISK_LEVEL_COLORS,
     RISK_LEVEL_DESCRIPTIONS,
@@ -16,8 +15,8 @@ from app.services.risk_classifier import (
     get_risk_thresholds,
 )
 
-
 # ── classify_risk_level ──────────────────────────────────────────────────
+
 
 class TestClassifyRiskLevel:
     """Tests for classify_risk_level() function."""
@@ -169,6 +168,7 @@ class TestClassifyRiskLevel:
 
 # ── Boundary / edge cases ────────────────────────────────────────────────
 
+
 class TestRiskBoundaries:
     """Edge-case tests around classification boundaries."""
 
@@ -177,9 +177,9 @@ class TestRiskBoundaries:
         [
             (0.0, 0),
             (0.29, 0),
-            (0.30, 1),   # boundary: 0.30 → Alert
+            (0.30, 1),  # boundary: 0.30 → Alert
             (0.74, 1),
-            (1.0, 1),    # prediction=0, high prob → Alert (no Critical without prediction=1)
+            (1.0, 1),  # prediction=0, high prob → Alert (no Critical without prediction=1)
         ],
     )
     def test_no_flood_prediction_thresholds(self, flood_prob, expected_level):
@@ -193,10 +193,10 @@ class TestRiskBoundaries:
     @pytest.mark.parametrize(
         "flood_prob, expected_level",
         [
-            (0.10, 1),   # prediction=1 conservative → Alert
+            (0.10, 1),  # prediction=1 conservative → Alert
             (0.50, 1),
             (0.74, 1),
-            (0.75, 2),   # boundary: 0.75 → Critical
+            (0.75, 2),  # boundary: 0.75 → Critical
             (0.99, 2),
         ],
     )
@@ -210,6 +210,7 @@ class TestRiskBoundaries:
 
 
 # ── format_alert_message ─────────────────────────────────────────────────
+
 
 class TestFormatAlertMessage:
     """Tests for format_alert_message()."""
@@ -249,6 +250,7 @@ class TestFormatAlertMessage:
 
 
 # ── get_risk_thresholds ──────────────────────────────────────────────────
+
 
 class TestGetRiskThresholds:
     """Tests for get_risk_thresholds()."""

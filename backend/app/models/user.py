@@ -2,9 +2,8 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Index, Integer, String
-
 from app.models.db import Base
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Index, Integer, String
 
 
 class User(Base):

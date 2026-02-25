@@ -382,7 +382,12 @@ class Query(ObjectType):
         except Exception as e:
             logger.error(f"GraphQL task status query failed: {str(e)}")
             return TaskStatusType(
-                task_id=task_id, status="error", progress=0, result=None, error=str(e), created_at=datetime.now(timezone.utc)
+                task_id=task_id,
+                status="error",
+                progress=0,
+                result=None,
+                error=str(e),
+                created_at=datetime.now(timezone.utc),
             )
 
     def resolve_system_info(self, info):
@@ -869,7 +874,12 @@ class Mutation(ObjectType):
         except Exception as e:
             logger.error(f"GraphQL model retraining mutation failed: {str(e)}")
             return TaskStatusType(
-                task_id="error", status="error", progress=0, result=None, error=str(e), created_at=datetime.now(timezone.utc)
+                task_id="error",
+                status="error",
+                progress=0,
+                result=None,
+                error=str(e),
+                created_at=datetime.now(timezone.utc),
             )
 
     def resolve_trigger_data_processing(self, info, data_batch):
@@ -893,7 +903,12 @@ class Mutation(ObjectType):
         except Exception as e:
             logger.error(f"GraphQL data processing mutation failed: {str(e)}")
             return TaskStatusType(
-                task_id="error", status="error", progress=0, result=None, error=str(e), created_at=datetime.now(timezone.utc)
+                task_id="error",
+                status="error",
+                progress=0,
+                result=None,
+                error=str(e),
+                created_at=datetime.now(timezone.utc),
             )
 
 

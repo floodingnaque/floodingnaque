@@ -58,9 +58,11 @@ def _build_ssl_context(
     logger.info(
         "SSL mode '%s': %s",
         db_ssl_mode,
-        "full certificate and hostname verification"
-        if db_ssl_mode == "verify-full"
-        else "certificate verification without hostname check",
+        (
+            "full certificate and hostname verification"
+            if db_ssl_mode == "verify-full"
+            else "certificate verification without hostname check"
+        ),
     )
 
     if db_ssl_ca_cert:

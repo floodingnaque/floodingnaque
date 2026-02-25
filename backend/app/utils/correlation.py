@@ -3,8 +3,7 @@
 import warnings as _warnings
 
 _warnings.warn(
-    "Importing from app.utils.correlation is deprecated. "
-    "Use app.utils.observability.correlation instead.",
+    "Importing from app.utils.correlation is deprecated. " "Use app.utils.observability.correlation instead.",
     DeprecationWarning,
     stacklevel=2,
 )

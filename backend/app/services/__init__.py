@@ -21,9 +21,6 @@ from app.services.celery_app import celery_app
 # System evaluation for thesis validation
 from app.services.evaluation import SystemEvaluator
 
-# Google Weather/Earth Engine data types (shared)
-from app.services.google_weather_types import SatellitePrecipitation, WeatherReanalysis
-
 # Google Weather/Earth Engine service (synchronous)
 from app.services.google_weather_service import GoogleWeatherService
 
@@ -35,11 +32,11 @@ from app.services.google_weather_service_async import (
     get_satellite_precipitation_async,
 )
 
+# Google Weather/Earth Engine data types (shared)
+from app.services.google_weather_types import SatellitePrecipitation, WeatherReanalysis
+
 # Core prediction and ingestion services
 from app.services.ingest import ingest_data
-
-# Meteostat data types (shared)
-from app.services.meteostat_types import WeatherObservation
 
 # Meteostat weather service (synchronous)
 from app.services.meteostat_service import (
@@ -58,6 +55,9 @@ from app.services.meteostat_service_async import (
     get_meteostat_weather_for_ingest_async,
     save_meteostat_data_to_db_async,
 )
+
+# Meteostat data types (shared)
+from app.services.meteostat_types import WeatherObservation
 from app.services.predict import ModelLoader, get_current_model_info, predict_flood
 
 # Risk classification
@@ -70,9 +70,6 @@ from app.services.risk_classifier import (
     get_risk_thresholds,
 )
 
-# WorldTides data types (shared)
-from app.services.worldtides_types import TideData, TideExtreme
-
 # WorldTides service for coastal flood prediction (synchronous)
 from app.services.worldtides_service import WorldTidesService
 
@@ -84,6 +81,9 @@ from app.services.worldtides_service_async import (
     get_tide_extremes_async,
     get_tide_for_prediction_async,
 )
+
+# WorldTides data types (shared)
+from app.services.worldtides_types import TideData, TideExtreme
 
 __all__ = [
     # Core services

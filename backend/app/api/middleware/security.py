@@ -164,10 +164,7 @@ def get_cors_origins():
     if not origins_str:
         # Default to allowing localhost for development
         if is_debug_mode():  # Use centralized check
-            logger.warning(
-                "CORS: using permissive debug origins — "
-                "set CORS_ORIGINS explicitly for production"
-            )
+            logger.warning("CORS: using permissive debug origins — " "set CORS_ORIGINS explicitly for production")
             return ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5000"]
         else:
             # In production, must explicitly set CORS_ORIGINS

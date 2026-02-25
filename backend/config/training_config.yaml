@@ -20,12 +20,12 @@ _anchors:
     - temperature
     - humidity
     - precipitation
-  
+
   # Basic categorical features
   basic_categorical: &basic_categorical
     - is_monsoon_season
     - month
-  
+
   # Extended categorical features
   extended_categorical: &extended_categorical
     - is_monsoon_season
@@ -33,7 +33,7 @@ _anchors:
     - weather_type
     - season
     - station_id
-  
+
   # Interaction features (engineered)
   interaction_features: &interaction_features
     - temp_humidity_interaction
@@ -41,13 +41,13 @@ _anchors:
     - temp_precip_interaction
     - monsoon_precip_interaction
     - saturation_risk
-  
+
   # Basic interaction subset
   basic_interactions: &basic_interactions
     - temp_humidity_interaction
     - humidity_precip_interaction
     - saturation_risk
-  
+
   # Rolling/temporal features
   rolling_features: &rolling_features
     - precip_3day_sum
@@ -56,17 +56,17 @@ _anchors:
     - precip_lag1
     - precip_lag2
     - rain_streak
-  
+
   # Core rolling features subset
   core_rolling: &core_rolling
     - precip_3day_sum
     - precip_7day_sum
     - rain_streak
-  
+
   # External API features
   external_features: &external_features
     - tide_height
-  
+
   # Base phase features (phases 1-3)
   base_phase_features: &base_phase_features
     - temperature
@@ -74,7 +74,7 @@ _anchors:
     - precipitation
     - is_monsoon_season
     - month
-  
+
   # Full official features (phase 4)
   full_official_features: &full_official_features
     - temperature
@@ -85,7 +85,7 @@ _anchors:
     - temp_humidity_interaction
     - humidity_precip_interaction
     - saturation_risk
-  
+
   # PAGASA merged features (phase 5)
   pagasa_features: &pagasa_features
     - temperature
@@ -100,7 +100,7 @@ _anchors:
     - temp_humidity_interaction
     - humidity_precip_interaction
     - monsoon_precip_interaction
-  
+
   # External API merged features (phase 6)
   external_merged_features: &external_merged_features
     - temperature
@@ -135,11 +135,11 @@ data:
   test_size: 0.2
   validation_size: 0.1
   stratify: true
-  
+
   # Data quality thresholds
   min_samples: 100
   max_missing_ratio: 0.1
-  
+
   # Feature columns - using anchors for consistency
   core_features: *core_features
   interaction_features: *interaction_features
@@ -149,7 +149,7 @@ data:
 # Model Settings
 model:
   type: "RandomForestClassifier"
-  
+
   # Default parameters (enterprise standard)
   default_params:
     n_estimators: 200
@@ -159,7 +159,7 @@ model:
     class_weight: "balanced_subsample"  # Enterprise: handles imbalance per tree
     max_features: "sqrt"
     n_jobs: -1
-    
+
   # Optuna hyperparameter optimization
   optuna:
     enabled: true
@@ -167,7 +167,7 @@ model:
     timeout_minutes: 30
     sampler: "TPE"  # Tree-structured Parzen Estimator
     pruner: "MedianPruner"
-    
+
     # Search space
     search_space:
       n_estimators: [100, 400]
@@ -175,21 +175,21 @@ model:
       min_samples_split: [2, 20]
       min_samples_leaf: [1, 10]
       max_features: ["sqrt", "log2", 0.5, 0.7]
-    
+
   # Grid search parameters (fallback if Optuna disabled)
   grid_search:
     enabled: false
     n_iter: 50  # For RandomizedSearchCV
     cv_folds: 10
     scoring: "f1_weighted"
-    
+
     param_grid:
       n_estimators: [100, 150, 200, 250, 300]
       max_depth: [10, 15, 20, 25, null]
       min_samples_split: [2, 5, 10]
       min_samples_leaf: [1, 2, 4]
       max_features: ["sqrt", "log2", 0.5, 0.7]
-      
+
   # Model calibration
   calibration:
     enabled: true
@@ -200,7 +200,7 @@ model:
 imbalance:
   # Primary strategy: class_weight (built into RandomForest)
   strategy: "class_weight"  # Options: "class_weight", "smotenc", "hybrid"
-  
+
   # SMOTENC settings (if strategy is "smotenc" or "hybrid")
   smotenc:
     enabled: false  # Enable via --with-smote flag
@@ -212,7 +212,7 @@ imbalance:
 metrics:
   # F2 score prioritizes recall (missing floods is worse than false alarms)
   primary: "f2"  # Options: "f1", "f2", "recall", "roc_auc"
-  
+
   # All metrics to track
   track:
     - accuracy
@@ -222,7 +222,7 @@ metrics:
     - f2_score  # Recall-weighted F-score
     - roc_auc
     - brier_score  # Probability calibration quality
-    
+
   # Thresholds for alerts
   alerts:
     min_f2_score: 0.80
@@ -233,7 +233,7 @@ metrics:
 cross_validation:
   folds: 10
   shuffle: true
-  
+
   # Temporal walk-forward validation
   temporal:
     enabled: true
@@ -248,13 +248,13 @@ ensemble:
     cv_folds: 5
     stack_method: "predict_proba"  # Use probabilities, not hard predictions
     passthrough: false  # Only use model predictions, not raw features
-    
+
   # Meta-learner
   meta_learner:
     type: "LogisticRegression"
     max_iter: 1000
     class_weight: "balanced"
-    
+
   # Base models from phases
   base_phases: [4, 5, 6]  # Official, PAGASA, External APIs
   include_station_models: true
@@ -266,13 +266,13 @@ stations:
     lon: 120.968
     elevation_m: 15
     notes: "Coastal, tidal influence"
-    
+
   - name: "NAIA"
     lat: 14.505
     lon: 121.005
     elevation_m: 21
     notes: "Airport area, drainage infrastructure"
-    
+
   - name: "Science Garden"
     lat: 14.645
     lon: 121.044
@@ -285,7 +285,7 @@ mlflow:
   experiment_name: "floodingnaque_progressive_training"
   auto_log: true
   log_models: true
-  
+
   # Tags for experiment organization
   tags:
     project: "floodingnaque"
@@ -302,7 +302,7 @@ registry:
     - development
     - staging
     - production
-    
+
   # Promotion criteria (updated for F2 primary metric)
   promotion_criteria:
     staging:
@@ -315,7 +315,7 @@ registry:
       min_f1_score: 0.85
       min_roc_auc: 0.90
       max_cv_std: 0.03
-      
+
   # Artifact retention
   retention:
     max_versions_per_stage: 5
@@ -324,19 +324,19 @@ registry:
 # Drift Detection
 drift:
   enabled: true
-  
+
   # Population Stability Index (PSI) thresholds
   psi:
     warning_threshold: 0.1  # Minor drift
     alert_threshold: 0.2    # Significant drift - trigger retraining
-    
+
   # Features to monitor
   monitored_features:
     - temperature
     - humidity
     - precipitation
     - precip_3day_sum
-    
+
   # Retraining triggers
   retrain_on:
     - psi_alert
@@ -369,7 +369,7 @@ validation:
     precip_7day_sum:
       min: 0.0
       max: 1500.0
-      
+
   # Target validation
   target:
     column: "flood"
@@ -387,35 +387,35 @@ phases:
     data_type: "official_records"
     model_type: null  # Use default model
     calibrate: false
-  
+
   phase_1:
     <<: *base_phase
     name: "Baseline_2022"
     description: "Official Records 2022 Only"
     data_file: "cumulative_v2_up_to_2022.csv"
     features: *base_phase_features
-    
+
   phase_2:
     <<: *base_phase
     name: "Extended_2023"
     description: "Official Records 2022-2023"
     data_file: "cumulative_v2_up_to_2023.csv"
     features: *base_phase_features
-    
+
   phase_3:
     <<: *base_phase
     name: "Extended_2024"
     description: "Official Records 2022-2024"
     data_file: "cumulative_v2_up_to_2024.csv"
     features: *base_phase_features
-    
+
   phase_4:
     <<: *base_phase
     name: "Full_Official"
     description: "Official Records 2022-2025 (Complete)"
     data_file: "cumulative_v2_up_to_2025.csv"
     features: *full_official_features
-    
+
   phase_5:
     name: "PAGASA_Merged"
     description: "Official + PAGASA Weather Data Merged"
@@ -424,7 +424,7 @@ phases:
       - "pagasa_training_dataset.csv"
     data_type: "pagasa_merged"
     features: *pagasa_features
-    
+
   phase_6:
     name: "External_APIs"
     description: "All sources + External APIs (GEE, Meteostat, WorldTides)"
@@ -436,7 +436,7 @@ phases:
       - "fetched_worldtides.csv"
     data_type: "external_merged"
     features: *external_merged_features
-    
+
   phase_7:
     name: "Station_Specific"
     description: "Station-specific models (Port Area, NAIA, Science Garden)"
@@ -444,7 +444,7 @@ phases:
     data_type: "station_specific"
     model_type: "station_specific"
     stations: ["Port Area", "NAIA", "Science Garden"]
-    
+
   phase_8:
     name: "ULTIMATE_Ensemble"
     description: "Stacking Ensemble with Calibration"
@@ -473,7 +473,7 @@ resources:
   # Memory limits (GB)
   # -1 = auto-detect (80% of available memory, leaving 2GB free)
   max_memory_gb: -1
-  
+
   # CPU management
   # -1 = auto-detect (n_cpus - 1, leaving one core for system)
   max_workers: -1

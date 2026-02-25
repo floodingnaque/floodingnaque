@@ -69,7 +69,9 @@ def get_dashboard_summary():
             total_predictions = session.query(Prediction).filter(Prediction.is_deleted.is_(False)).count()
 
             predictions_today = (
-                session.query(Prediction).filter(Prediction.is_deleted.is_(False), Prediction.created_at >= today).count()
+                session.query(Prediction)
+                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= today)
+                .count()
             )
 
             predictions_week = (

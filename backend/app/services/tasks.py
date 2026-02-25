@@ -8,12 +8,11 @@ import os
 import time
 from datetime import datetime, timezone
 
-from sqlalchemy import text
-
 from app.models.db import get_db_session
 from app.services.celery_app import celery_app
-from app.utils.secrets import get_secret
 from app.utils.logging import get_logger
+from app.utils.secrets import get_secret
+from sqlalchemy import text
 
 logger = get_logger(__name__)
 

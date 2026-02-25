@@ -2,10 +2,9 @@
 
 from datetime import datetime, timezone
 
+from app.models.db import Base
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
-
-from app.models.db import Base
 
 
 class AlertHistory(Base):

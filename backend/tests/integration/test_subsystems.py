@@ -17,20 +17,31 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ============================================================================
 # 1. RATE LIMITING — exercise the real limiter on a live Flask app
 # ============================================================================
 
+
 @pytest.fixture()
 def rate_limited_app():
     """Flask app with rate limiting ENABLED and a tight limit."""
-    saved = {k: os.environ.get(k) for k in (
-        "RATE_LIMIT_ENABLED", "RATE_LIMIT_DEFAULT", "RATE_LIMIT_STORAGE",
-        "AUTH_BYPASS_ENABLED", "VALID_API_KEYS",
-        "STARTUP_HEALTH_CHECK", "SCHEDULER_ENABLED", "ENV_VALIDATION_ENABLED",
-        "TESTING", "APP_ENV", "SECRET_KEY", "FLASK_DEBUG",
-    )}
+    saved = {
+        k: os.environ.get(k)
+        for k in (
+            "RATE_LIMIT_ENABLED",
+            "RATE_LIMIT_DEFAULT",
+            "RATE_LIMIT_STORAGE",
+            "AUTH_BYPASS_ENABLED",
+            "VALID_API_KEYS",
+            "STARTUP_HEALTH_CHECK",
+            "SCHEDULER_ENABLED",
+            "ENV_VALIDATION_ENABLED",
+            "TESTING",
+            "APP_ENV",
+            "SECRET_KEY",
+            "FLASK_DEBUG",
+        )
+    }
 
     os.environ["RATE_LIMIT_ENABLED"] = "true"
     os.environ["RATE_LIMIT_DEFAULT"] = "3/minute"
@@ -46,9 +57,11 @@ def rate_limited_app():
     os.environ["FLASK_DEBUG"] = "true"
 
     from app.api.middleware.auth import invalidate_api_key_cache
+
     invalidate_api_key_cache()
 
     from app.api.app import create_app
+
     application = create_app()
     application.config["TESTING"] = True
 
@@ -88,16 +101,21 @@ class TestRateLimitingIntegration:
 # 2. SCHEDULER — init_scheduler() registers jobs without errors
 # ============================================================================
 
+
 class TestSchedulerIntegration:
     """Scheduler initialisation path is exercised."""
 
     def test_init_scheduler_registers_jobs(self):
         """init_scheduler() should register at least one APScheduler job."""
-        with patch.dict(os.environ, {
-            "SCHEDULER_ENABLED": "true",
-            "DATA_INGEST_INTERVAL_HOURS": "6",
-        }):
-            from app.services.scheduler import init_scheduler, scheduler as bg_scheduler
+        with patch.dict(
+            os.environ,
+            {
+                "SCHEDULER_ENABLED": "true",
+                "DATA_INGEST_INTERVAL_HOURS": "6",
+            },
+        ):
+            from app.services.scheduler import init_scheduler
+            from app.services.scheduler import scheduler as bg_scheduler
 
             # scheduler.start() requires a running thread — just test init
             # which registers jobs on the internal scheduler
@@ -122,6 +140,7 @@ class TestSchedulerIntegration:
 # 3. STARTUP HEALTH — run the full health check pipeline
 # ============================================================================
 
+
 class TestStartupHealthIntegration:
     """validate_startup_health() runs all checks and returns a report."""
 
@@ -133,7 +152,7 @@ class TestStartupHealthIntegration:
             check_env=True,
             check_model=True,
             check_database_conn=False,  # no real DB in CI
-            check_redis_conn=False,     # no real Redis in CI
+            check_redis_conn=False,  # no real Redis in CI
             raise_on_failure=False,
             log_results=False,
         )
@@ -184,6 +203,7 @@ class TestStartupHealthIntegration:
 # 4. ENV VALIDATION — exercise the validator with real and missing vars
 # ============================================================================
 
+
 class TestEnvValidationIntegration:
     """validate_all_env_vars() runs with real env context."""
 
@@ -216,9 +236,7 @@ class TestEnvValidationIntegration:
                     log_results=False,
                 )
 
-                secret_results = [
-                    r for r in report.results if r.name == "SECRET_KEY"
-                ]
+                secret_results = [r for r in report.results if r.name == "SECRET_KEY"]
                 if secret_results:
                     assert not secret_results[0].valid or secret_results[0].severity is not None
             finally:

@@ -3,8 +3,7 @@
 import warnings as _warnings
 
 _warnings.warn(
-    "Importing from app.utils.tracing is deprecated. "
-    "Use app.utils.observability.tracing instead.",
+    "Importing from app.utils.tracing is deprecated. " "Use app.utils.observability.tracing instead.",
     DeprecationWarning,
     stacklevel=2,
 )
