@@ -16,7 +16,7 @@ from typing import Any, Dict, Generator
 
 from app.api.middleware.rate_limit import limiter
 from app.models.db import AlertHistory, get_db_session
-from flask import Blueprint, Response, g, request, stream_with_context
+from flask import Blueprint, Response, g, jsonify, request, stream_with_context
 from sqlalchemy import desc
 
 logger = logging.getLogger(__name__)
