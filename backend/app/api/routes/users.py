@@ -131,7 +131,8 @@ def register():
 
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
-        full_name = data.get("full_name", "").strip()
+        # Accept both 'full_name' and 'name' from the frontend
+        full_name = (data.get("full_name") or data.get("name") or "").strip()
         phone_number = data.get("phone_number", "").strip()
 
         # Validate email

@@ -7,6 +7,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
+  full_name?: string;
 }
 
 export interface TokenResponse {
@@ -24,13 +25,16 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  full_name?: string | null;
   role: UserRole;
   is_active: boolean;
-  created_at: string;
-  updated_at?: string;
+  is_verified?: boolean;
+  created_at: string | null;
+  updated_at?: string | null;
+  last_login_at?: string | null;
 }
 
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'user' | 'admin' | 'operator';
 
 export interface ChangePasswordRequest {
   current_password: string;

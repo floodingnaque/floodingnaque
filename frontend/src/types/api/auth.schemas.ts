@@ -15,10 +15,13 @@ export const UserSchema = z.object({
   id: z.number(),
   email: z.string(),
   name: z.string(),
-  role: z.enum(['user', 'admin']),
+  full_name: z.string().nullable().optional(),
+  role: z.enum(['user', 'admin', 'operator']),
   is_active: z.boolean(),
-  created_at: z.string(),
-  updated_at: z.string().optional(),
+  is_verified: z.boolean().optional(),
+  created_at: z.string().nullable(),
+  updated_at: z.string().nullable().optional(),
+  last_login_at: z.string().nullable().optional(),
 });
 
 // ---------------------------------------------------------------------------

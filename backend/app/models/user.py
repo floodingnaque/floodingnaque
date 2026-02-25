@@ -70,11 +70,14 @@ class User(Base):
             "id": self.id,
             "email": self.email,
             "full_name": self.full_name,
+            # Alias expected by the frontend
+            "name": self.full_name or "",
             "role": self.role,
             "is_active": self.is_active,
             "is_verified": self.is_verified,
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
         if include_sensitive:
             result["phone_number"] = self.phone_number
