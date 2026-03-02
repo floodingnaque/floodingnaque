@@ -33,7 +33,7 @@ scipy==1.14.1  # Used internally by scikit-learn
 
 # Gradient Boosting Frameworks (XGBoost & LightGBM)
 xgboost==2.1.3  # Extreme Gradient Boosting - optimised trees, GPU support
-lightgbm==4.5.0  # Microsoft LightGBM - fast histogram-based gradient boosting
+lightgbm==4.6.0  # Microsoft LightGBM - fast histogram-based gradient boosting
 
 # ============================================================================
 # SCHEDULING & BACKGROUND TASKS
