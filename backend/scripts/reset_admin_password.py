@@ -19,7 +19,7 @@ from app.models.db import get_db_session  # noqa: E402
 from app.models.user import User  # noqa: E402
 
 DEFAULT_EMAIL = "admin@floodingnaque.com"
-DEFAULT_PASSWORD = "FloodNaque2026!"
+DEFAULT_PASSWORD = "Admin_floodingnaque_2025!"
 
 
 def main() -> None:
