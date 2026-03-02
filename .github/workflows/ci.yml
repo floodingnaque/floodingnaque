@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -81,7 +81,7 @@ jobs:
       security-events: write  # Required for uploading SARIF results
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -89,7 +89,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Build Docker image for scanning
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ./backend
         target: production
@@ -100,7 +100,7 @@ jobs:
         cache-to: type=gha,mode=max
 
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@0.34.2
       with:
         image-ref: 'floodingnaque-api:scan-${{ github.sha }}'
         format: 'table'
@@ -111,7 +111,7 @@ jobs:
         output: 'trivy-results.txt'
 
     - name: Run Trivy scanner (SARIF output)
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@0.34.2
       with:
         image-ref: 'floodingnaque-api:scan-${{ github.sha }}'
         format: 'sarif'
@@ -121,7 +121,7 @@ jobs:
         severity: 'CRITICAL,HIGH'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
@@ -156,12 +156,12 @@ jobs:
         python-version: ['3.13']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
@@ -236,12 +236,12 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.13'
         cache: 'pip'
@@ -283,7 +283,7 @@ jobs:
         python -m tests.load.load_test_suite --test-type smoke --host http://localhost:5000 --ci
 
     - name: Upload load test report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: load-test-report
@@ -302,12 +302,12 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.13'
         cache: 'pip'
@@ -349,7 +349,7 @@ jobs:
         python -m tests.load.load_test_suite --test-type load --host http://localhost:5000 --ci
 
     - name: Upload load test report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: full-load-test-report
@@ -369,7 +369,7 @@ jobs:
       packages: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -393,7 +393,7 @@ jobs:
           type=raw,value=latest
 
     - name: Build and push Docker image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ./backend
         target: production

@@ -66,7 +66,7 @@ jobs:
       short_sha: ${{ steps.vars.outputs.short_sha }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -105,7 +105,7 @@ jobs:
 
     - name: Build and push
       id: build
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ./backend
         file: ./backend/Dockerfile
@@ -132,7 +132,7 @@ jobs:
 
     steps:
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@0.34.2
       with:
         image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest'
         format: 'sarif'
@@ -140,7 +140,7 @@ jobs:
         severity: 'CRITICAL,HIGH'
 
     - name: Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       if: always()
       with:
         sarif_file: 'trivy-deploy-results.sarif'
@@ -174,7 +174,7 @@ jobs:
       deployed: ${{ steps.deploy.outputs.deployed }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -318,7 +318,7 @@ jobs:
       url: ${{ env.PRODUCTION_URL }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         persist-credentials: false
 
