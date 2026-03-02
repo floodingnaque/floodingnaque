@@ -10,6 +10,27 @@ import os
 import signal
 import sys
 import threading
+from pathlib import Path
+
+# Load .env BEFORE any app imports so module-level code (e.g. security.py)
+# can read SECRET_KEY / JWT_SECRET_KEY from the environment.
+from dotenv import load_dotenv
+
+_base_dir = Path(__file__).resolve().parent
+_app_env = os.getenv("APP_ENV", "development").lower()
+_env_map = {
+    "development": ".env.development",
+    "dev": ".env.development",
+    "staging": ".env.staging",
+    "stage": ".env.staging",
+    "production": ".env.production",
+    "prod": ".env.production",
+}
+_env_file = _base_dir / _env_map.get(_app_env, ".env.development")
+if _env_file.exists():
+    load_dotenv(_env_file, override=False)
+else:
+    load_dotenv(_base_dir / ".env", override=False)
 
 from app.api.app import create_app
 from app.core.config import is_debug_mode
