@@ -6,6 +6,7 @@ Includes input validation and security measures.
 """
 
 import logging
+import os
 
 from app.api.middleware.auth import require_api_key
 from app.api.middleware.rate_limit import get_endpoint_limit, limiter
@@ -199,3 +200,79 @@ def ingest():
     except Exception as e:
         logger.error(f"Error in ingest endpoint [{request_id}]: {str(e)}", exc_info=True)
         return api_error("IngestionFailed", "An error occurred during data ingestion", HTTP_INTERNAL_ERROR, request_id)
+
+
+@ingest_bp.route("/trigger", methods=["POST"])
+@limiter.limit("4 per minute")
+@require_api_key
+def trigger_ingest():
+    """
+    Manually trigger an immediate weather data ingestion.
+
+    Use this during rapidly changing conditions (e.g. approaching typhoon)
+    instead of waiting for the next scheduled run.
+
+    Request Body (optional):
+        lat (float): Latitude (-90 to 90)
+        lon (float): Longitude (-180 to 180)
+
+    Returns:
+        200: Ingestion triggered and completed
+        429: Rate limited
+        500: Ingestion failed
+    ---
+    tags:
+      - Data Ingestion
+    responses:
+      200:
+        description: Manual ingestion completed
+    security:
+      - api_key: []
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        body = request.get_json(force=True, silent=True) or {}
+
+        lat = body.get("lat")
+        lon = body.get("lon")
+
+        if lat is not None or lon is not None:
+            try:
+                lat, lon = InputValidator.validate_coordinates(lat, lon)
+            except ValidationError as e:
+                return api_error("ValidationError", str(e), HTTP_BAD_REQUEST, request_id)
+        else:
+            lat = float(os.getenv("DEFAULT_LATITUDE", "14.4793"))
+            lon = float(os.getenv("DEFAULT_LONGITUDE", "121.0198"))
+
+        data = ingest_data(lat=lat, lon=lon)
+
+        # Also invalidate weather cache so predictions use fresh data
+        invalidated = 0
+        try:
+            from app.utils.resilience.cache import invalidate_weather_cache
+
+            invalidated = invalidate_weather_cache()
+        except Exception:
+            logger.warning("Cache invalidation failed after manual ingest", exc_info=True)
+
+        return (
+            jsonify(
+                {
+                    "message": "Manual ingestion completed",
+                    "data": {
+                        "temperature": data.get("temperature"),
+                        "humidity": data.get("humidity"),
+                        "precipitation": data.get("precipitation"),
+                        "timestamp": data.get("timestamp").isoformat() if data.get("timestamp") else None,
+                    },
+                    "cache_keys_invalidated": invalidated,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
+    except Exception as e:
+        logger.error(f"Manual ingest trigger failed [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("IngestionFailed", "Manual ingestion failed", HTTP_INTERNAL_ERROR, request_id)

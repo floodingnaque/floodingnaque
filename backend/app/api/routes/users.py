@@ -24,6 +24,7 @@ from app.core.security import (
     verify_password_reset_token,
 )
 from app.models.db import User, get_db_session
+from app.services.email import send_password_reset_email
 from app.utils.api_constants import (
     HTTP_BAD_REQUEST,
     HTTP_CONFLICT,
@@ -258,6 +259,9 @@ def login():
 
             # Optional development bypass: skip password verification entirely.
             if AUTH_BYPASS_ENABLED:
+                assert os.getenv("APP_ENV", "").lower() != "production", (
+                    "AUTH_BYPASS must never be active in production"
+                )
                 logger.warning(
                     "AUTH_BYPASS_ENABLED is TRUE - bypassing password verification for user '%s' [%s]",
                     email,
@@ -325,7 +329,7 @@ def login():
                     "access_token": access_token,
                     "refresh_token": refresh_token,
                     "token_type": "Bearer",
-                    "expires_in": 15 * 60,  # 15 minutes in seconds
+                    "expires_in": int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")) * 60,
                     "user": user_data,
                     "request_id": request_id,
                 }
@@ -405,7 +409,7 @@ def refresh_token():
                     "success": True,
                     "access_token": access_token,
                     "token_type": "Bearer",
-                    "expires_in": 15 * 60,
+                    "expires_in": int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")) * 60,
                     "request_id": request_id,
                 }
             ),
@@ -509,17 +513,18 @@ def request_password_reset():
             )
 
             if user:
-                # Generate reset token
+                # Generate reset token and store its hash (never store plain text)
                 token, expires = create_password_reset_token()
-                user.password_reset_token = token
+                import hashlib as _hashlib
+
+                user.password_reset_token = _hashlib.sha256(token.encode()).hexdigest()
                 user.password_reset_expires = expires
 
                 # In production, send email with reset link
                 logger.info(f"Password reset requested [{request_id}]")
                 # Note: Never log reset tokens - send via secure email channel only
 
-                # TODO: Integrate email service to send reset link
-                # send_password_reset_email(email, token)
+                send_password_reset_email(email, token)
 
         return success_response, HTTP_OK
 
@@ -584,8 +589,11 @@ def confirm_password_reset():
             if not user:
                 return api_error("InvalidToken", "Invalid or expired reset token", HTTP_BAD_REQUEST, request_id)
 
-            # Verify reset token
-            if not verify_password_reset_token(user.password_reset_token, token, user.password_reset_expires):
+            # Verify reset token (compare hash since we stored hashed)
+            import hashlib as _hashlib
+
+            token_hash = _hashlib.sha256(token.encode()).hexdigest()
+            if not verify_password_reset_token(user.password_reset_token, token_hash, user.password_reset_expires):
                 return api_error("InvalidToken", "Invalid or expired reset token", HTTP_BAD_REQUEST, request_id)
 
             # Update password
@@ -620,6 +628,7 @@ def confirm_password_reset():
 
 
 @users_bp.route("/me", methods=["GET"])
+@limiter.limit("60 per minute")
 def get_current_user():
     """
     Get current authenticated user profile.
@@ -662,3 +671,155 @@ def get_current_user():
     except Exception as e:
         logger.error(f"Get user error [{request_id}]: {str(e)}", exc_info=True)
         return api_error("UserFetchFailed", "Failed to fetch user profile", HTTP_INTERNAL_ERROR, request_id)
+
+
+@users_bp.route("/me", methods=["DELETE"])
+@limiter.limit("5 per hour")
+def delete_current_user():
+    """
+    Delete the current authenticated user's account (GDPR right to erasure).
+
+    Performs a soft-delete so that referential integrity is maintained
+    while personal data is scrubbed.  Tokens are invalidated immediately.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Returns:
+        200: Account deleted
+        401: Not authenticated
+    ---
+    tags:
+      - Privacy & GDPR
+    responses:
+      200:
+        description: Account deleted successfully
+      401:
+        description: Not authenticated
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Authorization header required", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+
+        with get_db_session() as session:
+            user = session.query(User).filter(User.id == user_id, User.is_deleted.is_(False)).first()
+
+            if not user:
+                return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+            email = user.email
+
+            # Soft-delete the account
+            user.soft_delete()
+
+            # Scrub PII fields
+            user.full_name = None
+            user.phone_number = None
+            user.last_login_ip = None
+
+            # Invalidate all tokens
+            user.refresh_token_hash = None
+            user.refresh_token_expires = None
+            user.password_reset_token = None
+            user.password_reset_expires = None
+
+        logger.info(f"User account deleted (GDPR erasure): {email} [{request_id}]")
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Your account has been deleted and personal data erased.",
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(f"Account deletion error [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("DeletionFailed", "Failed to delete account", HTTP_INTERNAL_ERROR, request_id)
+
+
+@users_bp.route("/me/export", methods=["GET"])
+@limiter.limit("5 per hour")
+def export_current_user_data():
+    """
+    Export all personal data for the current authenticated user (GDPR right of access / data portability).
+
+    Returns a JSON document containing every piece of personal data
+    the system stores for this user.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Returns:
+        200: JSON with all user data
+        401: Not authenticated
+    ---
+    tags:
+      - Privacy & GDPR
+    responses:
+      200:
+        description: User data export
+      401:
+        description: Not authenticated
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Authorization header required", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+
+        with get_db_session() as session:
+            user = session.query(User).filter(User.id == user_id, User.is_deleted.is_(False)).first()
+
+            if not user:
+                return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+            export_data = {
+                "export_generated_at": datetime.now(timezone.utc).isoformat(),
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "full_name": user.full_name,
+                    "phone_number": user.phone_number,
+                    "role": user.role,
+                    "is_active": user.is_active,
+                    "is_verified": user.is_verified,
+                    "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
+                    "last_login_ip": user.last_login_ip,
+                    "created_at": user.created_at.isoformat() if user.created_at else None,
+                    "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+                },
+            }
+
+        logger.info(f"User data exported (GDPR portability): user_id={user_id} [{request_id}]")
+
+        response = jsonify({"success": True, "data": export_data, "request_id": request_id})
+        response.headers["Content-Disposition"] = "attachment; filename=user_data_export.json"
+        return response, HTTP_OK
+
+    except Exception as e:
+        logger.error(f"Data export error [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("ExportFailed", "Failed to export user data", HTTP_INTERNAL_ERROR, request_id)

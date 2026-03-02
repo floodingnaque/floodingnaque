@@ -13,15 +13,22 @@ Features:
 
 import logging
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.meteostat_types import WeatherObservation
 from app.utils.circuit_breaker import CircuitOpenError, meteostat_breaker
 from meteostat import Daily, Hourly, Point, Stations
 
 logger = logging.getLogger(__name__)
+
+# Default timeout (seconds) for Meteostat upstream requests.
+# Prevents a hung upstream from blocking a Gunicorn worker indefinitely.
+METEOSTAT_REQUEST_TIMEOUT = int(os.getenv("METEOSTAT_REQUEST_TIMEOUT", "30"))
 
 
 class MeteostatService:
@@ -36,6 +43,7 @@ class MeteostatService:
     """
 
     _instance: Optional["MeteostatService"] = None
+    _lock: threading.Lock = threading.Lock()
 
     def __init__(self):
         """Initialize the Meteostat service."""
@@ -43,10 +51,11 @@ class MeteostatService:
         self.cache_max_age_days = int(os.getenv("METEOSTAT_CACHE_MAX_AGE_DAYS", "7"))
         self.default_station_id = os.getenv("METEOSTAT_STATION_ID", "")
         self.as_fallback = os.getenv("METEOSTAT_AS_FALLBACK", "True").lower() == "true"
+        self.request_timeout = METEOSTAT_REQUEST_TIMEOUT
 
         # Default location (Parañaque City, Philippines)
-        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", "14.4793"))
-        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", "121.0198"))
+        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
+        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(DEFAULT_LONGITUDE)))
 
         # Configure Meteostat cache directory
         cache_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data", "meteostat_cache")
@@ -56,15 +65,37 @@ class MeteostatService:
 
     @classmethod
     def get_instance(cls) -> "MeteostatService":
-        """Get the singleton instance of MeteostatService."""
+        """Get the singleton instance of MeteostatService (thread-safe)."""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset_instance(cls) -> None:
         """Reset the singleton instance (for testing)."""
-        cls._instance = None
+        with cls._lock:
+            cls._instance = None
+
+    def _call_with_timeout(self, func, *args, **kwargs):
+        """
+        Execute *func* in a thread-pool and enforce ``self.request_timeout``.
+
+        Prevents an upstream Meteostat hang from blocking the calling
+        Gunicorn worker indefinitely.
+        """
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(func, *args, **kwargs)
+            try:
+                return future.result(timeout=self.request_timeout)
+            except FuturesTimeoutError:
+                logger.error(
+                    f"Meteostat request timed out after {self.request_timeout}s"
+                )
+                raise TimeoutError(
+                    f"Meteostat upstream did not respond within {self.request_timeout}s"
+                )
 
     def find_nearby_stations(
         self,
@@ -115,12 +146,12 @@ class MeteostatService:
                     )
                 return results
 
-            return meteostat_breaker.call(_fetch_stations)
+            return self._call_with_timeout(meteostat_breaker.call, _fetch_stations)
 
         except CircuitOpenError as e:
             logger.warning(f"Meteostat circuit breaker open: {e}")
             return []
-        except Exception as e:
+        except (TimeoutError, Exception) as e:
             logger.error(f"Error finding nearby stations: {e}")
             return []
 
@@ -184,12 +215,12 @@ class MeteostatService:
 
                 return observations
 
-            return meteostat_breaker.call(_fetch_hourly)
+            return self._call_with_timeout(meteostat_breaker.call, _fetch_hourly)
 
         except CircuitOpenError as e:
             logger.warning(f"Meteostat circuit breaker open: {e}")
             return []
-        except Exception as e:
+        except (TimeoutError, Exception) as e:
             logger.error(f"Error fetching hourly data: {e}")
             return []
 
@@ -255,12 +286,12 @@ class MeteostatService:
 
                 return results
 
-            return meteostat_breaker.call(_fetch_daily)
+            return self._call_with_timeout(meteostat_breaker.call, _fetch_daily)
 
         except CircuitOpenError as e:
             logger.warning(f"Meteostat circuit breaker open: {e}")
             return []
-        except Exception as e:
+        except (TimeoutError, Exception) as e:
             logger.error(f"Error fetching daily data: {e}")
             return []
 

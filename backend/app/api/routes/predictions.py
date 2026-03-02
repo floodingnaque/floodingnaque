@@ -18,7 +18,7 @@ from app.utils.api_constants import (
 )
 from app.utils.api_responses import api_error
 from flask import Blueprint, g, jsonify, request
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, func
 
 logger = logging.getLogger(__name__)
 
@@ -172,9 +172,6 @@ def get_predictions():
             if model_name_filter:
                 query = query.filter(Prediction.model_name == model_name_filter)
 
-            # Get total count
-            total = query.count()
-
             # Apply sorting
             sort_column = getattr(Prediction, sort_by)
             if order == "desc":
@@ -182,9 +179,14 @@ def get_predictions():
             else:
                 query = query.order_by(asc(sort_column))
 
-            # Apply pagination
+            # Single-pass: window function for total count + pagination
+            total_col = func.count().over().label("_total")
+            query = query.add_columns(total_col)
             query = query.offset(offset).limit(limit)
-            predictions = query.all()
+            rows = query.all()
+
+            total = rows[0]._total if rows else 0
+            predictions = [row[0] for row in rows]
 
             # Format response
             predictions_data = []

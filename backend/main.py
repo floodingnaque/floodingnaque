@@ -9,6 +9,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 
 from app.api.app import create_app
 from app.core.config import is_debug_mode
@@ -16,7 +17,8 @@ from app.core.config import is_debug_mode
 # Module logger
 logger = logging.getLogger(__name__)
 
-# Global flag for shutdown
+# Thread-safe flag for shutdown (prevents double cleanup race condition)
+_shutdown_lock = threading.Lock()
 _shutdown_in_progress = False
 
 
@@ -25,13 +27,16 @@ def cleanup_connections():
     Clean up all connections and resources during shutdown.
     This ensures graceful termination of database connections,
     scheduler jobs, and other resources.
+
+    Thread-safe: uses a lock to prevent double-cleanup when a signal
+    handler and atexit (or finally block) race each other.
     """
     global _shutdown_in_progress
 
-    if _shutdown_in_progress:
-        return
-
-    _shutdown_in_progress = True
+    with _shutdown_lock:
+        if _shutdown_in_progress:
+            return
+        _shutdown_in_progress = True
     logger.info("Starting graceful shutdown...")
 
     try:
@@ -83,9 +88,11 @@ def signal_handler(signum, frame):
     sys.exit(0)
 
 
-# Register signal handlers
+# Register signal handlers (guard SIGHUP for Windows compatibility)
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
+if hasattr(signal, "SIGHUP"):
+    signal.signal(signal.SIGHUP, signal_handler)
 
 # Register cleanup on normal exit
 atexit.register(cleanup_connections)

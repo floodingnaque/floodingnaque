@@ -81,7 +81,7 @@ export default function AdminPage() {
   // Redirect non-admin users to dashboard
   useEffect(() => {
     if (user && user.role !== 'admin') {
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
 

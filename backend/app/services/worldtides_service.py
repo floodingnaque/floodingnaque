@@ -19,7 +19,9 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import requests
+from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.worldtides_types import TideData, TideExtreme
+from app.utils.secrets import get_secret
 
 logger = logging.getLogger(__name__)
 
@@ -43,17 +45,17 @@ class WorldTidesService:
     API_BASE_URL = "https://www.worldtides.info/api/v3"
 
     # Default location (Parañaque City, Philippines - Manila Bay)
-    DEFAULT_LAT = 14.4793
+    DEFAULT_LAT = DEFAULT_LATITUDE
     DEFAULT_LON = 120.9822  # Slightly adjusted for Manila Bay coastline
 
     def __init__(self):
         """Initialize the WorldTides service."""
-        self.api_key = os.getenv("WORLDTIDES_API_KEY", "")
+        self.api_key = get_secret("WORLDTIDES_API_KEY", default="")
         self.enabled = bool(self.api_key) and os.getenv("WORLDTIDES_ENABLED", "True").lower() == "true"
         self.default_datum = os.getenv("WORLDTIDES_DATUM", "MSL")  # Mean Sea Level
 
-        # Default location
-        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(self.DEFAULT_LAT)))
+        # Default location (from environment or central config)
+        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
         self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(self.DEFAULT_LON)))
 
         # Cache settings

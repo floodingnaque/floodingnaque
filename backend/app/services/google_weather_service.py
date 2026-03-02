@@ -19,10 +19,17 @@ Prerequisites:
 
 import logging
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Timeout (seconds) for blocking Earth Engine .getInfo() calls
+_EE_TIMEOUT = int(os.getenv("EE_GETINFO_TIMEOUT", "30"))
+_ee_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ee-getinfo")
+
+from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.google_weather_types import SatellitePrecipitation, WeatherReanalysis
 
 # Lazy imports to avoid startup errors if packages not installed
@@ -79,10 +86,11 @@ class GoogleWeatherService:
 
     _instance: Optional["GoogleWeatherService"] = None
     _initialized: bool = False
+    _lock: threading.Lock = threading.Lock()
 
     # Parañaque City, Philippines default coordinates
-    DEFAULT_LAT = 14.4793
-    DEFAULT_LON = 121.0198
+    DEFAULT_LAT = DEFAULT_LATITUDE
+    DEFAULT_LON = DEFAULT_LONGITUDE
 
     # Dataset configurations
     DATASETS = {
@@ -126,9 +134,9 @@ class GoogleWeatherService:
         self.cache_dir = Path(os.getenv("EARTHENGINE_CACHE_DIR", "data/earthengine_cache"))
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Default location (Parañaque City)
-        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(self.DEFAULT_LAT)))
-        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(self.DEFAULT_LON)))
+        # Default location (Parañaque City — from central config)
+        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
+        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(DEFAULT_LONGITUDE)))
 
         logger.info(f"GoogleWeatherService initialized (enabled={self.enabled}, project={self.project_id})")
 
@@ -194,16 +202,19 @@ class GoogleWeatherService:
 
     @classmethod
     def get_instance(cls) -> "GoogleWeatherService":
-        """Get the singleton instance of GoogleWeatherService."""
+        """Get the singleton instance of GoogleWeatherService (thread-safe)."""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset_instance(cls) -> None:
         """Reset the singleton instance (for testing)."""
-        cls._instance = None
-        cls._initialized = False
+        with cls._lock:
+            cls._instance = None
+            cls._initialized = False
 
     def _initialize_ee(self) -> bool:
         """
@@ -236,7 +247,19 @@ class GoogleWeatherService:
                     ee_module.Initialize(project=self.project_id)
                     logger.info("Earth Engine initialized with default credentials")
                 except Exception:
-                    # Fallback to browser-based authentication
+                    # NEVER fall back to browser-based authentication in production —
+                    # ee.Authenticate() opens a browser and blocks the process indefinitely
+                    # on a headless server.
+                    app_env = os.getenv("APP_ENV", "development").lower()
+                    if app_env in ("production", "staging"):
+                        logger.error(
+                            "Earth Engine default credentials failed and browser auth "
+                            "is disabled in production/staging. Set "
+                            "GOOGLE_APPLICATION_CREDENTIALS to a service-account key file."
+                        )
+                        return False
+
+                    # Only allow interactive auth in local development
                     ee_module.Authenticate()
                     ee_module.Initialize(project=self.project_id)
                     logger.info("Earth Engine initialized with browser authentication")
@@ -316,10 +339,15 @@ class GoogleWeatherService:
                 )
                 return None
 
-            # Sample at point
-            result = latest.reduceRegion(
+            # Sample at point (with timeout to avoid blocking indefinitely)
+            _reduce = latest.reduceRegion(
                 reducer=ee.Reducer.mean(), geometry=point, scale=self.DATASETS["GPM"]["scale"]
-            ).getInfo()
+            )
+            try:
+                result = _ee_executor.submit(_reduce.getInfo).result(timeout=_EE_TIMEOUT)
+            except FuturesTimeoutError:
+                logger.error(f"EE getInfo timed out after {_EE_TIMEOUT}s for GPM at {lat},{lon}")
+                return None
 
             precip_rate = result.get(self.DATASETS["GPM"]["band"], 0) or 0
 
@@ -395,9 +423,14 @@ class GoogleWeatherService:
             # Sum all precipitation values
             total = collection.sum()
 
-            result = total.reduceRegion(
+            _reduce_accum = total.reduceRegion(
                 reducer=ee.Reducer.mean(), geometry=point, scale=self.DATASETS["GPM"]["scale"]
-            ).getInfo()
+            )
+            try:
+                result = _ee_executor.submit(_reduce_accum.getInfo).result(timeout=_EE_TIMEOUT)
+            except FuturesTimeoutError:
+                logger.error(f"EE getInfo timed out after {_EE_TIMEOUT}s for {hours}h accumulation")
+                return None
 
             return float(result.get(self.DATASETS["GPM"]["band"], 0) or 0)
 
@@ -451,7 +484,11 @@ class GoogleWeatherService:
                 return image.set("precipitation", value)
 
             values = collection.map(extract_value)
-            info = values.getInfo()
+            try:
+                info = _ee_executor.submit(values.getInfo).result(timeout=_EE_TIMEOUT)
+            except FuturesTimeoutError:
+                logger.error(f"EE getInfo timed out after {_EE_TIMEOUT}s for CHIRPS at {lat},{lon}")
+                return []
 
             results = []
             for feature in info.get("features", []):
@@ -526,7 +563,11 @@ class GoogleWeatherService:
                 )
 
             values = collection.map(extract_values)
-            info = values.getInfo()
+            try:
+                info = _ee_executor.submit(values.getInfo).result(timeout=_EE_TIMEOUT)
+            except FuturesTimeoutError:
+                logger.error(f"EE getInfo timed out after {_EE_TIMEOUT}s for ERA5 at {lat},{lon}")
+                return []
 
             results = []
             for feature in info.get("features", []):
@@ -620,7 +661,8 @@ class GoogleWeatherService:
         """
         Get historical weather data formatted for ML training.
 
-        Combines CHIRPS daily precipitation with ERA5 temperature/humidity.
+        Combines CHIRPS daily precipitation with ERA5 temperature/humidity
+        by date-matching the two datasets.
 
         Args:
             lat: Latitude
@@ -633,23 +675,58 @@ class GoogleWeatherService:
         lat = lat or self.default_lat
         lon = lon or self.default_lon
 
-        # Get CHIRPS precipitation (daily)
+        # Get CHIRPS daily precipitation
         chirps_data = self.get_chirps_precipitation(lat, lon, days=days)
 
-        # For simplicity, return CHIRPS data with estimated temp/humidity
-        # In production, you'd join with ERA5 daily aggregates
+        # Get ERA5 hourly reanalysis for the same period and aggregate to daily
+        era5_data = self.get_era5_weather(lat, lon, hours=days * 24)
+
+        # Build a date -> (temp, humidity) lookup from ERA5 daily aggregates
+        era5_daily: Dict[str, Dict[str, float]] = {}
+        for record in era5_data:
+            date_key = record.timestamp.strftime("%Y-%m-%d")
+            if date_key not in era5_daily:
+                era5_daily[date_key] = {"temps": [], "humidities": []}
+            era5_daily[date_key]["temps"].append(record.temperature)
+            era5_daily[date_key]["humidities"].append(record.humidity)
+
+        era5_averages: Dict[str, Dict[str, float]] = {}
+        for date_key, values in era5_daily.items():
+            era5_averages[date_key] = {
+                "temperature": sum(values["temps"]) / len(values["temps"]),
+                "humidity": sum(values["humidities"]) / len(values["humidities"]),
+            }
+
+        # Join CHIRPS precipitation with ERA5 temperature/humidity by date
         results = []
+        skipped = 0
         for record in chirps_data:
+            date_str = record["date"]
+            # CHIRPS dates are ISO format; extract the date portion
+            date_key = date_str[:10] if len(date_str) >= 10 else date_str
+            era5_match = era5_averages.get(date_key)
+
+            if era5_match is None:
+                # Skip days without matching ERA5 data so we don't
+                # introduce fabricated features into training data
+                skipped += 1
+                continue
+
             results.append(
                 {
-                    "date": record["date"],
-                    "temperature": 27.5,  # Average for Parañaque (Celsius)
-                    "humidity": 75.0,  # Average humidity
+                    "date": date_str,
+                    "temperature": round(era5_match["temperature"], 2),
+                    "humidity": round(era5_match["humidity"], 2),
                     "precipitation": record["precipitation"],
-                    "source": "chirps+estimated",
+                    "source": "chirps+era5",
                 }
             )
 
+        if skipped:
+            logger.warning(
+                f"Skipped {skipped}/{len(chirps_data)} CHIRPS days with no ERA5 match"
+            )
+        logger.info(f"Prepared {len(results)} training records with real ERA5 features")
         return results
 
     def check_health(self) -> Dict[str, Any]:

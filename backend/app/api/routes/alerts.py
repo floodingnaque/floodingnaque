@@ -4,6 +4,7 @@ Alert Routes.
 Provides API endpoints for retrieving alerts and alert history.
 """
 
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -18,7 +19,7 @@ from app.utils.api_constants import (
 )
 from app.utils.api_responses import api_error
 from flask import Blueprint, g, jsonify, request
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 
 logger = logging.getLogger(__name__)
 
@@ -110,31 +111,41 @@ def get_alerts():
                 except ValueError:
                     return api_error("ValidationError", "Invalid end_date format", HTTP_BAD_REQUEST, request_id)
 
-            # Get total count
-            total = query.count()
-
-            # Order by created_at descending and apply pagination
+            # Single-pass: window function for total count + pagination
+            total_col = func.count().over().label("_total")
             query = query.order_by(desc(AlertHistory.created_at))
+            query = query.add_columns(total_col)
             query = query.offset(offset).limit(limit)
 
-            alerts = query.all()
+            rows = query.all()
+
+            total = rows[0]._total if rows else 0
+            alerts = [row[0] for row in rows]
 
             # Format response
             alerts_data = []
             for alert in alerts:
-                alerts_data.append(
-                    {
-                        "id": alert.id,
-                        "risk_level": alert.risk_level,
-                        "risk_label": alert.risk_label,
-                        "location": alert.location,
-                        "message": alert.message,
-                        "delivery_status": alert.delivery_status,
-                        "delivery_channel": alert.delivery_channel,
-                        "delivered_at": alert.delivered_at.isoformat() if alert.delivered_at else None,
-                        "created_at": alert.created_at.isoformat() if alert.created_at else None,
-                    }
-                )
+                alert_entry = {
+                    "id": alert.id,
+                    "risk_level": alert.risk_level,
+                    "risk_label": alert.risk_label,
+                    "location": alert.location,
+                    "message": alert.message,
+                    "delivery_status": alert.delivery_status,
+                    "delivery_channel": alert.delivery_channel,
+                    "delivered_at": alert.delivered_at.isoformat() if alert.delivered_at else None,
+                    "created_at": alert.created_at.isoformat() if alert.created_at else None,
+                    # Smart alert fields
+                    "confidence_score": alert.confidence_score,
+                    "rainfall_3h": alert.rainfall_3h,
+                    "escalation_state": alert.escalation_state,
+                    "contributing_factors": (
+                        json.loads(alert.contributing_factors)
+                        if alert.contributing_factors
+                        else []
+                    ),
+                }
+                alerts_data.append(alert_entry)
 
         return (
             jsonify(
@@ -205,6 +216,17 @@ def get_alert_by_id(alert_id):
                 "error_message": alert.error_message,
                 "delivered_at": alert.delivered_at.isoformat() if alert.delivered_at else None,
                 "created_at": alert.created_at.isoformat() if alert.created_at else None,
+                # Smart alert fields
+                "confidence_score": alert.confidence_score,
+                "rainfall_3h": alert.rainfall_3h,
+                "escalation_state": alert.escalation_state,
+                "escalation_reason": alert.escalation_reason,
+                "suppressed": alert.suppressed,
+                "contributing_factors": (
+                    json.loads(alert.contributing_factors)
+                    if alert.contributing_factors
+                    else []
+                ),
             }
 
         return jsonify({"success": True, "data": alert_data, "request_id": request_id}), HTTP_OK
@@ -282,6 +304,10 @@ def get_alert_history():
                         "location": alert.location,
                         "delivery_status": alert.delivery_status,
                         "created_at": alert.created_at.isoformat() if alert.created_at else None,
+                        # Smart alert fields
+                        "confidence_score": alert.confidence_score,
+                        "rainfall_3h": alert.rainfall_3h,
+                        "escalation_state": alert.escalation_state,
                     }
                 )
 
@@ -348,6 +374,94 @@ def get_recent_alerts():
     except Exception as e:
         logger.error(f"Error fetching recent alerts [{request_id}]: {str(e)}", exc_info=True)
         return api_error("FetchFailed", "Failed to fetch recent alerts", HTTP_INTERNAL_ERROR, request_id)
+
+
+@alerts_bp.route("/simulate-sms", methods=["POST"])
+@limiter.limit("10 per minute")
+def simulate_sms():
+    """
+    Simulate an SMS alert (always runs in sandbox mode).
+
+    Request Body (JSON):
+        phone (str): Philippine mobile number (required)
+        message (str): Custom message (optional)
+        risk_level (int): Risk level 0-2 (optional, default: 1)
+
+    Returns:
+        200: Simulation result
+        400: Invalid input
+    ---
+    tags:
+      - Alerts
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        body = request.get_json(silent=True) or {}
+        phone = body.get("phone", "").strip()
+        risk_level = body.get("risk_level", 1)
+        custom_message = body.get("message", "").strip()
+
+        if not phone:
+            return api_error(
+                "ValidationError",
+                "Phone number is required",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        if risk_level not in (0, 1, 2):
+            return api_error(
+                "ValidationError",
+                "risk_level must be 0, 1, or 2",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        risk_labels = {0: "Safe", 1: "Alert", 2: "Critical"}
+        message = custom_message or (
+            f"[SIMULATION] Floodingnaque Flood {risk_labels[risk_level]} – "
+            f"Risk level {risk_level} detected in Parañaque City. "
+            "This is a simulated alert for demo purposes only."
+        )
+
+        # Normalize PH number via alert system helper
+        alert_system = get_alert_system()
+        normalized = alert_system._normalize_ph_number(phone)
+
+        logger.info(
+            f"SMS simulation requested [{request_id}]: "
+            f"phone={normalized}, risk_level={risk_level}"
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": {
+                        "status": "sandbox",
+                        "phone": normalized,
+                        "message": message,
+                        "risk_level": risk_level,
+                        "risk_label": risk_labels[risk_level],
+                        "simulated_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Error simulating SMS [{request_id}]: {str(e)}", exc_info=True
+        )
+        return api_error(
+            "SimulationFailed",
+            "Failed to simulate SMS alert",
+            HTTP_INTERNAL_ERROR,
+            request_id,
+        )
 
 
 @alerts_bp.route("/stats", methods=["GET"])

@@ -106,6 +106,11 @@ class TrainingMode(Enum):
     ENHANCED = "enhanced"
     ENTERPRISE = "enterprise"
     ULTIMATE = "ultimate"
+    DEEP_LEARNING = "deep_learning"
+    XGBOOST = "xgboost"
+    LIGHTGBM = "lightgbm"
+    ENSEMBLE = "ensemble"
+    COMPARISON = "comparison"
 
 
 @dataclass
@@ -145,6 +150,17 @@ class TrainingConfig:
     mlflow: bool = False
     promote: Optional[str] = None
     multi_level: bool = False
+
+    # Feature enrichment
+    include_enso: bool = False
+    include_spatial: bool = False
+    default_barangay: Optional[str] = None
+
+    # Deep learning
+    dl_model_type: str = "lstm"  # "lstm" or "transformer"
+    dl_sequence_length: int = 14
+    dl_epochs: int = 100
+    dl_hidden_dim: int = 128
 
 
 # =============================================================================
@@ -316,6 +332,33 @@ class TrainingStrategy(ABC):
     def prepare_features(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
         """Prepare feature matrix and target vector."""
         features = self.get_features()
+
+        # ── Optional ENSO feature enrichment ────────────────────────────────
+        if self.config.include_enso:
+            try:
+                from app.services.enso_service import add_enso_features, get_enso_feature_names
+
+                df = add_enso_features(df, include_lags=True)
+                enso_feats = get_enso_feature_names(include_lags=True)
+                features = features + [f for f in enso_feats if f not in features]
+                logger.info(f"ENSO features added: {enso_feats}")
+            except Exception as e:
+                logger.warning(f"ENSO enrichment skipped: {e}")
+
+        # ── Optional spatial feature enrichment ─────────────────────────────
+        if self.config.include_spatial:
+            try:
+                from app.services.spatial_features import add_spatial_features, get_spatial_feature_names
+
+                df = add_spatial_features(
+                    df, default_barangay=self.config.default_barangay
+                )
+                spatial_feats = get_spatial_feature_names()
+                features = features + [f for f in spatial_feats if f not in features]
+                logger.info(f"Spatial features added: {spatial_feats}")
+            except Exception as e:
+                logger.warning(f"Spatial enrichment skipped: {e}")
+
         available = [f for f in features if f in df.columns]
         missing = [f for f in features if f not in df.columns]
 
@@ -803,6 +846,308 @@ class EnhancedTrainingStrategy(TrainingStrategy):
         }
 
 
+class XGBoostTrainingStrategy(TrainingStrategy):
+    """XGBoost training strategy."""
+
+    def get_features(self) -> List[str]:
+        return FEATURE_CONFIGS["production"]
+
+    def get_default_data_path(self) -> Path:
+        path = PROCESSED_DIR / "cumulative_up_to_2025.csv"
+        if not path.exists():
+            path = PROCESSED_DIR / "pagasa_training_dataset.csv"
+        return path
+
+    def train(self, **kwargs) -> Dict[str, Any]:
+        """Train XGBoost model."""
+        logger.info("=" * 60)
+        logger.info("XGBOOST TRAINING")
+        logger.info("=" * 60)
+
+        from app.services.advanced_models import (
+            XGBOOST_PARAM_GRID,
+            XGBOOST_PARAM_GRID_FAST,
+            XGBoostConfig,
+            create_xgboost_model,
+        )
+
+        df = self.load_data(self.config.data_path)
+        X, y = self.prepare_features(df)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=self.config.test_size, random_state=self.config.random_state, stratify=y
+        )
+        logger.info(f"Train: {len(X_train)}, Test: {len(X_test)}")
+
+        if self.config.grid_search:
+            from app.services.advanced_models import XGBClassifier as _XGB
+
+            base = _XGB(
+                objective="binary:logistic", eval_metric="logloss",
+                random_state=self.config.random_state, n_jobs=-1,
+            )
+            grid = XGBOOST_PARAM_GRID_FAST if self.config.quick else XGBOOST_PARAM_GRID
+            search = GridSearchCV(
+                base, grid,
+                cv=StratifiedKFold(self.config.cv_folds, shuffle=True, random_state=self.config.random_state),
+                scoring="f1_weighted", n_jobs=-1, verbose=1,
+            )
+            search.fit(X_train, y_train)
+            model = search.best_estimator_
+            self.training_info["best_params"] = search.best_params_
+            self.training_info["best_cv_score"] = float(search.best_score_)
+            logger.info(f"Best params: {search.best_params_}")
+        else:
+            model = create_xgboost_model(y_train=y_train)
+            model.fit(X_train, y_train)
+
+        metrics = self.evaluate_model(model, X_test, y_test, X_full=X, y_full=y)
+        self.metrics = metrics
+        self.model = model
+        model_path = self.save_model(model, "flood_xgb_model", metrics)
+
+        return {
+            "model_path": str(model_path),
+            "metrics": metrics,
+            "features": self.feature_names,
+            "algorithm": "XGBClassifier",
+        }
+
+
+class LightGBMTrainingStrategy(TrainingStrategy):
+    """LightGBM training strategy."""
+
+    def get_features(self) -> List[str]:
+        return FEATURE_CONFIGS["production"]
+
+    def get_default_data_path(self) -> Path:
+        path = PROCESSED_DIR / "cumulative_up_to_2025.csv"
+        if not path.exists():
+            path = PROCESSED_DIR / "pagasa_training_dataset.csv"
+        return path
+
+    def train(self, **kwargs) -> Dict[str, Any]:
+        """Train LightGBM model."""
+        logger.info("=" * 60)
+        logger.info("LIGHTGBM TRAINING")
+        logger.info("=" * 60)
+
+        from app.services.advanced_models import (
+            LIGHTGBM_PARAM_GRID,
+            LIGHTGBM_PARAM_GRID_FAST,
+            LightGBMConfig,
+            create_lightgbm_model,
+        )
+
+        df = self.load_data(self.config.data_path)
+        X, y = self.prepare_features(df)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=self.config.test_size, random_state=self.config.random_state, stratify=y
+        )
+        logger.info(f"Train: {len(X_train)}, Test: {len(X_test)}")
+
+        if self.config.grid_search:
+            from lightgbm import LGBMClassifier as _LGBM
+
+            base = _LGBM(
+                verbose=-1, random_state=self.config.random_state, n_jobs=-1,
+            )
+            grid = LIGHTGBM_PARAM_GRID_FAST if self.config.quick else LIGHTGBM_PARAM_GRID
+            search = GridSearchCV(
+                base, grid,
+                cv=StratifiedKFold(self.config.cv_folds, shuffle=True, random_state=self.config.random_state),
+                scoring="f1_weighted", n_jobs=-1, verbose=1,
+            )
+            search.fit(X_train, y_train)
+            model = search.best_estimator_
+            self.training_info["best_params"] = search.best_params_
+            self.training_info["best_cv_score"] = float(search.best_score_)
+            logger.info(f"Best params: {search.best_params_}")
+        else:
+            model = create_lightgbm_model()
+            model.fit(X_train, y_train)
+
+        metrics = self.evaluate_model(model, X_test, y_test, X_full=X, y_full=y)
+        self.metrics = metrics
+        self.model = model
+        model_path = self.save_model(model, "flood_lgbm_model", metrics)
+
+        return {
+            "model_path": str(model_path),
+            "metrics": metrics,
+            "features": self.feature_names,
+            "algorithm": "LGBMClassifier",
+        }
+
+
+class EnsembleTrainingStrategy(TrainingStrategy):
+    """Ensemble Voting Classifier combining RF + XGBoost + LightGBM."""
+
+    def get_features(self) -> List[str]:
+        return FEATURE_CONFIGS["production"]
+
+    def get_default_data_path(self) -> Path:
+        path = PROCESSED_DIR / "cumulative_up_to_2025.csv"
+        if not path.exists():
+            path = PROCESSED_DIR / "pagasa_training_dataset.csv"
+        return path
+
+    def train(self, **kwargs) -> Dict[str, Any]:
+        """Train ensemble voting classifier."""
+        logger.info("=" * 60)
+        logger.info("ENSEMBLE VOTING CLASSIFIER TRAINING")
+        logger.info("=" * 60)
+
+        from app.services.advanced_models import create_ensemble_model
+
+        df = self.load_data(self.config.data_path)
+        X, y = self.prepare_features(df)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=self.config.test_size, random_state=self.config.random_state, stratify=y
+        )
+        logger.info(f"Train: {len(X_train)}, Test: {len(X_test)}")
+
+        model = create_ensemble_model(y_train=y_train)
+        model.fit(X_train, y_train)
+
+        metrics = self.evaluate_model(model, X_test, y_test, X_full=X, y_full=y)
+        self.metrics = metrics
+        self.model = model
+        model_path = self.save_model(model, "flood_ensemble_model", metrics)
+
+        return {
+            "model_path": str(model_path),
+            "metrics": metrics,
+            "features": self.feature_names,
+            "algorithm": "VotingClassifier(RF+XGB+LGBM)",
+        }
+
+
+class ComparisonTrainingStrategy(TrainingStrategy):
+    """Head-to-head comparison of all models."""
+
+    def get_features(self) -> List[str]:
+        return FEATURE_CONFIGS["production"]
+
+    def get_default_data_path(self) -> Path:
+        path = PROCESSED_DIR / "cumulative_up_to_2025.csv"
+        if not path.exists():
+            path = PROCESSED_DIR / "pagasa_training_dataset.csv"
+        return path
+
+    def train(self, **kwargs) -> Dict[str, Any]:
+        """Run model comparison and save the best one."""
+        logger.info("=" * 60)
+        logger.info("MODEL COMPARISON (RF vs XGBoost vs LightGBM vs Ensemble)")
+        logger.info("=" * 60)
+
+        from app.services.advanced_models import compare_models
+
+        df = self.load_data(self.config.data_path)
+        X, y = self.prepare_features(df)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=self.config.test_size, random_state=self.config.random_state, stratify=y
+        )
+        logger.info(f"Train: {len(X_train)}, Test: {len(X_test)}")
+
+        result = compare_models(
+            X_train=X_train, y_train=y_train,
+            X_test=X_test, y_test=y_test,
+            feature_names=self.feature_names,
+            cv_folds=self.config.cv_folds,
+            random_state=self.config.random_state,
+            output_dir=str(self.models_dir.parent / "reports"),
+        )
+
+        # Save the best model as the default
+        best_name = result.get("best_model", "")
+        trained = result.get("trained_models", {})
+        if best_name in trained:
+            best = trained[best_name]
+            best_metrics = {}
+            for r in result.get("results", []):
+                if r["name"] == best_name:
+                    best_metrics = r["metrics"]
+            model_path = self.save_model(best, f"flood_best_{best_name.lower()}", best_metrics)
+            # Also copy to default path
+            default_path = self.models_dir / "flood_rf_model.joblib"
+            joblib.dump(best, default_path)
+            result["model_path"] = str(model_path)
+            result["metrics"] = best_metrics
+
+        result["features"] = self.feature_names
+        # Remove non-serialisable trained_models from return
+        result.pop("trained_models", None)
+        return result
+
+
+class DeepLearningTrainingStrategy(TrainingStrategy):
+    """Deep learning (LSTM / Transformer) training strategy."""
+
+    def get_features(self) -> List[str]:
+        return FEATURE_CONFIGS["production"]
+
+    def get_default_data_path(self) -> Path:
+        path = PROCESSED_DIR / "cumulative_up_to_2025.csv"
+        if not path.exists():
+            path = PROCESSED_DIR / "pagasa_training_dataset.csv"
+        return path
+
+    def train(self, **kwargs) -> Dict[str, Any]:
+        """Train a deep learning model (LSTM or Transformer)."""
+        logger.info("=" * 60)
+        logger.info(f"DEEP LEARNING TRAINING ({self.config.dl_model_type.upper()})")
+        logger.info("=" * 60)
+
+        try:
+            from app.services.deep_learning_models import train_deep_learning_model
+        except ImportError as e:
+            logger.error(f"Deep learning dependencies not available: {e}")
+            raise ImportError(
+                "PyTorch is required for deep learning training. "
+                "Install with: pip install torch"
+            ) from e
+
+        # Load data
+        df = self.load_data(self.config.data_path)
+
+        # Get features (enrichment handled by prepare_features)
+        features = self.get_features()
+
+        # Apply ENSO/spatial enrichment to the raw DataFrame
+        if self.config.include_enso:
+            try:
+                from app.services.enso_service import add_enso_features, get_enso_feature_names
+                df = add_enso_features(df, include_lags=True)
+                features = features + [f for f in get_enso_feature_names() if f not in features]
+            except Exception as e:
+                logger.warning(f"ENSO enrichment skipped: {e}")
+
+        if self.config.include_spatial:
+            try:
+                from app.services.spatial_features import add_spatial_features, get_spatial_feature_names
+                df = add_spatial_features(df, default_barangay=self.config.default_barangay)
+                features = features + [f for f in get_spatial_feature_names() if f not in features]
+            except Exception as e:
+                logger.warning(f"Spatial enrichment skipped: {e}")
+
+        available = [f for f in features if f in df.columns]
+        self.feature_names = available
+
+        # Train
+        result = train_deep_learning_model(
+            df,
+            feature_cols=available,
+            model_type=self.config.dl_model_type,
+            sequence_length=self.config.dl_sequence_length,
+            epochs=self.config.dl_epochs,
+            output_dir=str(self.models_dir),
+            hidden_dim=self.config.dl_hidden_dim,
+        )
+
+        self.metrics = result.get("metrics", {})
+        return result
+
+
 # =============================================================================
 # Unified Trainer
 # =============================================================================
@@ -823,6 +1168,11 @@ class UnifiedTrainer:
         TrainingMode.PRODUCTION: ProductionTrainingStrategy,
         TrainingMode.PROGRESSIVE: ProgressiveTrainingStrategy,
         TrainingMode.ENHANCED: EnhancedTrainingStrategy,
+        TrainingMode.DEEP_LEARNING: DeepLearningTrainingStrategy,
+        TrainingMode.XGBOOST: XGBoostTrainingStrategy,
+        TrainingMode.LIGHTGBM: LightGBMTrainingStrategy,
+        TrainingMode.ENSEMBLE: EnsembleTrainingStrategy,
+        TrainingMode.COMPARISON: ComparisonTrainingStrategy,
         # ENTERPRISE and ULTIMATE use specialized external modules
     }
 
@@ -882,6 +1232,14 @@ def main():
     parser.add_argument("--cv-folds", type=int, default=5, help="CV folds")
     parser.add_argument("--phase", type=int, help="Phase for progressive training")
     parser.add_argument("--output-dir", type=str, help="Output directory")
+    parser.add_argument("--include-enso", action="store_true", help="Include ENSO climate indices")
+    parser.add_argument("--include-spatial", action="store_true", help="Include barangay spatial features")
+    parser.add_argument("--barangay", type=str, help="Default barangay for spatial features")
+    parser.add_argument("--dl-model-type", choices=["lstm", "transformer"], default="lstm",
+                        help="Deep learning model type (for --mode deep_learning)")
+    parser.add_argument("--dl-epochs", type=int, default=100, help="Deep learning training epochs")
+    parser.add_argument("--dl-sequence-length", type=int, default=14,
+                        help="Look-back window in days for DL models")
 
     args = parser.parse_args()
 
@@ -892,6 +1250,12 @@ def main():
         cv_folds=args.cv_folds,
         phase=args.phase,
         output_dir=args.output_dir,
+        include_enso=args.include_enso,
+        include_spatial=args.include_spatial,
+        default_barangay=args.barangay,
+        dl_model_type=args.dl_model_type,
+        dl_epochs=args.dl_epochs,
+        dl_sequence_length=args.dl_sequence_length,
     )
 
     mode = TrainingMode(args.mode)

@@ -10,7 +10,7 @@
 # ===================
 # Build Arguments
 # ===================
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.13
 
 # =====================================================
 # Stage 1: Builder - Install dependencies
@@ -37,13 +37,13 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libffi-dev \
         libpq-dev
 
-# Copy and install Python dependencies
+# Copy and install Python dependencies (production-only — lean image)
 WORKDIR /build
-COPY requirements.txt .
+COPY requirements-prod.txt .
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt
+    pip install -r requirements-prod.txt
 
 # =====================================================
 # Stage 2: Production - Minimal runtime image
@@ -79,7 +79,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libpq5 \
-        tini
+        tini && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and directories
 RUN groupadd --gid 1000 appgroup && \
@@ -96,12 +97,17 @@ COPY --from=builder /opt/venv /opt/venv
 COPY --chown=appuser:appgroup alembic/ ./alembic/
 COPY --chown=appuser:appgroup app/ ./app/
 COPY --chown=appuser:appgroup config/ ./config/
-COPY --chown=appuser:appgroup models/ ./models/
-# NOTE: Dataset CSV is mounted as a volume at runtime, not baked into the image.
-# Mount: -v /path/to/data:/app/data
-# In compose.yaml, declare under volumes:
-#   - ./backend/data/synthetic_dataset.csv:/app/data/synthetic_dataset.csv:ro
+# NOTE: models/ and data/ are volume-mounted at runtime, not baked into the image.
+# Mount in compose: ./backend/models:/app/models, ./backend/data:/app/data
 COPY --chown=appuser:appgroup alembic.ini main.py ./
+
+# Copy entrypoint script
+COPY --chown=appuser:appgroup entrypoint.sh ./
+RUN chmod +x /app/entrypoint.sh
+
+# Copy only the backup script needed for scheduled tasks
+# (full scripts/ is excluded via .dockerignore — training/eval scripts not needed in prod)
+COPY --chown=appuser:appgroup scripts/backup_database.sh scripts/backup_database.py scripts/purge_expired_ips.py ./scripts/
 
 # Switch to non-root user
 USER appuser
@@ -114,38 +120,28 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Use tini as init system for proper signal handling
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]
 
-# Default command: Run with Gunicorn (Datadog APM tracing if available)
+# Default command: Run with Gunicorn
+# Uses ddtrace-run wrapper automatically if ddtrace is installed (Linux only)
 CMD ["sh", "-c", "\
+GUNICORN_ARGS=\"main:application \
+  --bind ${HOST}:${PORT} \
+  --workers ${GUNICORN_WORKERS} \
+  --threads ${GUNICORN_THREADS} \
+  --timeout ${GUNICORN_TIMEOUT} \
+  --worker-class ${GUNICORN_WORKER_CLASS} \
+  --max-requests ${GUNICORN_MAX_REQUESTS} \
+  --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER} \
+  --access-logfile - \
+  --error-logfile - \
+  --capture-output \
+  --enable-stdio-inheritance \
+  --preload\"; \
 if command -v ddtrace-run >/dev/null 2>&1; then \
-  exec ddtrace-run gunicorn main:application \
-    --bind ${HOST}:${PORT} \
-    --workers ${GUNICORN_WORKERS} \
-    --threads ${GUNICORN_THREADS} \
-    --timeout ${GUNICORN_TIMEOUT} \
-    --worker-class ${GUNICORN_WORKER_CLASS} \
-    --max-requests ${GUNICORN_MAX_REQUESTS} \
-    --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER} \
-    --access-logfile - \
-    --error-logfile - \
-    --capture-output \
-    --enable-stdio-inheritance \
-    --preload; \
+  exec ddtrace-run gunicorn $GUNICORN_ARGS; \
 else \
-  exec gunicorn main:application \
-    --bind ${HOST}:${PORT} \
-    --workers ${GUNICORN_WORKERS} \
-    --threads ${GUNICORN_THREADS} \
-    --timeout ${GUNICORN_TIMEOUT} \
-    --worker-class ${GUNICORN_WORKER_CLASS} \
-    --max-requests ${GUNICORN_MAX_REQUESTS} \
-    --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER} \
-    --access-logfile - \
-    --error-logfile - \
-    --capture-output \
-    --enable-stdio-inheritance \
-    --preload; \
+  exec gunicorn $GUNICORN_ARGS; \
 fi"]
 
 # =====================================================
@@ -162,11 +158,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         git \
         htop \
-        vim
+        vim && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install development dependencies
-COPY requirements-dev.txt ./
+# Install full requirements (includes training packages: shap, matplotlib, etc.)
+# plus dev-only tools (pytest, mypy, etc.)
+COPY requirements.txt requirements-dev.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt && \
     pip install -r requirements-dev.txt
 
 # Set development environment

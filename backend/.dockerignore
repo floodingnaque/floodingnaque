@@ -116,8 +116,12 @@ temp/
 .DS_Store
 Thumbs.db
 
-# Scripts not needed in production
+# Scripts not needed in production (training, evaluation, etc.)
 scripts/
+# Allow specific scripts needed in production image
+!scripts/backup_database.sh
+!scripts/backup_database.py
+!scripts/purge_expired_ips.py
 
 # Tests not needed in production image
 tests/
@@ -132,6 +136,11 @@ backups/
 # Database files
 *.db
 data/*.db
+
+# Data subdirectories (raw/cleaned data not needed in image — mounted at runtime)
+data/raw/
+data/cleaned/
+data/processed/
 
 # Reports
 reports/

@@ -15,7 +15,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatRelativeTime, truncate, cn } from '@/lib/utils';
 
 /**
- * Alert data structure (placeholder until WS7 provides the actual type)
+ * Alert data structure for flood risk notifications.
+ *
+ * Matches the backend AlertHistory schema (see backend/app/models/).
+ * Fields: id, message, risk_level (0=safe, 1=alert, 2=critical),
+ * created_at (ISO 8601), and optional location string.
  */
 export interface AlertData {
   id: string | number;
@@ -84,7 +88,7 @@ function AlertRow({ alert }: { alert: AlertData }) {
       <div className="flex items-start gap-3 py-3 px-2 -mx-2 rounded-md border-b last:border-b-0 hover:bg-muted/50 transition-colors">
         <div
           className={cn(
-            'p-1.5 rounded-full flex-shrink-0 mt-0.5',
+            'p-1.5 rounded-full shrink-0 mt-0.5',
             riskInfo.className.replace('text-', 'bg-').split(' ')[0] + '/20'
           )}
         >
@@ -119,7 +123,7 @@ function AlertRow({ alert }: { alert: AlertData }) {
             {formatRelativeTime(alert.created_at)}
           </p>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
+        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
       </div>
     </Link>
   );
@@ -213,7 +217,7 @@ export function RecentAlertsSkeleton() {
         <div className="space-y-0">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex items-start gap-3 py-3 border-b last:border-b-0">
-              <Skeleton className="h-6 w-6 rounded-full flex-shrink-0" />
+              <Skeleton className="h-6 w-6 rounded-full shrink-0" />
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-5 w-16" />

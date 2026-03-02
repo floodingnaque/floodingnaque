@@ -1,6 +1,8 @@
 """User ORM model."""
 
-from datetime import datetime, timezone
+import hashlib
+import os
+from datetime import datetime, timedelta, timezone
 
 from app.models.db import Base
 from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Index, Integer, String
@@ -100,3 +102,43 @@ class User(Base):
         if locked_until.tzinfo is None:
             locked_until = locked_until.replace(tzinfo=timezone.utc)
         return datetime.now(timezone.utc) < locked_until
+
+    # ------------------------------------------------------------------
+    # IP retention helpers (GDPR / Data Privacy Act)
+    # ------------------------------------------------------------------
+    IP_RETENTION_DAYS = int(os.getenv("IP_RETENTION_DAYS", "90"))
+
+    def purge_stale_ip(self) -> bool:
+        """Clear ``last_login_ip`` if it is older than the retention window.
+
+        Returns ``True`` if the IP was purged.
+        """
+        if not self.last_login_ip or not self.last_login_at:
+            return False
+
+        last_login = self.last_login_at
+        if last_login.tzinfo is None:
+            last_login = last_login.replace(tzinfo=timezone.utc)
+
+        if datetime.now(timezone.utc) - last_login > timedelta(days=self.IP_RETENTION_DAYS):
+            self.last_login_ip = None
+            return True
+        return False
+
+    @classmethod
+    def purge_expired_ips(cls, session) -> int:
+        """Bulk-purge all login IPs that exceed the retention window.
+
+        Suitable for being called from a scheduled task / management command.
+        Returns the number of rows updated.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(days=cls.IP_RETENTION_DAYS)
+        result = (
+            session.query(cls)
+            .filter(
+                cls.last_login_ip.isnot(None),
+                cls.last_login_at < cutoff,
+            )
+            .update({cls.last_login_ip: None}, synchronize_session="fetch")
+        )
+        return result

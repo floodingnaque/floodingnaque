@@ -21,7 +21,7 @@ This guide covers the full Docker ecosystem for Floodingnaque, including local d
 
 1. [Architecture Overview](#architecture-overview)
 2. [Quick Start](#quick-start)
-3. [Docker Compose Files](#docker compose-files)
+3. [Docker Compose Files](#docker-compose-files)
 4. [Build System](#build-system)
 5. [Environment Configuration](#environment-configuration)
 6. [Service Reference](#service-reference)
@@ -97,8 +97,8 @@ This guide covers the full Docker ecosystem for Floodingnaque, including local d
 
 ### Prerequisites
 
-- Docker Engine 24.0+
-- Docker Compose v2.20+
+- Docker Engine 29.1.5+
+- Docker Compose v5.0.1+
 - 4GB RAM minimum (8GB for production)
 - Ports: 5000 (API), 5432 (PostgreSQL), 6379 (Redis), 6432 (PgBouncer)
 

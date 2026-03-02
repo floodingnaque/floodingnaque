@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -58,17 +58,19 @@ interface LoginFormProps {
 export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const { login, isLoggingIn, loginError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
-  // Navigate after login based on role. This runs inside the component tree
-  // where useNavigate is always connected to the router — unlike calling
-  // navigate() inside a mutation onSuccess which can be stale/disconnected.
+  // Navigate after login based on role or saved redirect destination.
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(user.role === 'admin' ? '/admin' : '/', { replace: true });
+      // Honour the saved redirect from ProtectedRoute, fall back to role default
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+      const defaultPath = user.role === 'admin' ? '/admin' : '/dashboard';
+      navigate(from ?? defaultPath, { replace: true });
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, location.state]);
 
   // Auto-focus first field on mount
   const emailRef = useRef<HTMLInputElement | null>(null);

@@ -11,6 +11,34 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _mock_data_db(request):
+    """Mock the database session and query cache for all data route tests.
+
+    The test-suite SQLite has no ``weather_data`` table, so we provide a mock
+    session that returns an empty result set.  The query cache is also patched
+    to avoid stale/real data interfering with assertions.
+    """
+    mock_session = MagicMock()
+    mock_query = MagicMock()
+    # Chain all query-builder methods back to the same mock
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.offset.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.count.return_value = 0
+    mock_query.all.return_value = []
+    mock_session.query.return_value = mock_query
+
+    with (
+        patch("app.api.routes.data.get_db_session") as mock_db,
+        patch("app.api.routes.data.query_cache_get", return_value=None),
+    ):
+        mock_db.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_db.return_value.__exit__ = MagicMock(return_value=False)
+        yield mock_db
+
+
 class TestGetWeatherData:
     """Tests for GET /api/v1/data/data endpoint."""
 

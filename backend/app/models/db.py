@@ -57,13 +57,8 @@ Base = declarative_base()
 _engine: Engine | None = None
 _engine_lock = threading.Lock()
 
-# Pool configuration read from environment (evaluated once)
-DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "20"))
-DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
-DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
-DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
-DB_POOL_PRE_PING = os.getenv("DB_POOL_PRE_PING", "True").lower() == "true"
-DB_ECHO_POOL = os.getenv("DB_ECHO_POOL", "False").lower() == "true"
+# Pool configuration — read lazily at engine-creation time so that
+# environment variables set by load_env() are visible.
 
 
 def _resolve_db_url() -> str:
@@ -144,6 +139,14 @@ def get_engine() -> Engine:
         pg_driver = get_pg_driver()
         logger.info("Using PostgreSQL driver: %s", pg_driver)
 
+        # Read pool config at engine-creation time (after load_env)
+        db_pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
+        db_max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+        db_pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+        db_pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+        db_pool_pre_ping = os.getenv("DB_POOL_PRE_PING", "True").lower() == "true"
+        db_echo_pool = os.getenv("DB_ECHO_POOL", "False").lower() == "true"
+
         if db_url.startswith("sqlite"):
             eng = create_engine(
                 db_url,
@@ -154,20 +157,20 @@ def get_engine() -> Engine:
             )
         else:
             is_supabase = "supabase" in db_url.lower()
-            if is_supabase and DB_POOL_SIZE == 20:
+            if is_supabase and db_pool_size == 20:
                 pool_size, max_overflow, pool_recycle = 3, 5, 600
                 logger.info("Using optimized pool settings for Supabase (override with DB_POOL_SIZE)")
             else:
-                pool_size, max_overflow, pool_recycle = DB_POOL_SIZE, DB_MAX_OVERFLOW, DB_POOL_RECYCLE
+                pool_size, max_overflow, pool_recycle = db_pool_size, db_max_overflow, db_pool_recycle
 
             eng = create_engine(
                 db_url,
-                echo=DB_ECHO_POOL,
+                echo=db_echo_pool,
                 pool_size=pool_size,
                 max_overflow=max_overflow,
                 pool_recycle=pool_recycle,
-                pool_timeout=DB_POOL_TIMEOUT,
-                pool_pre_ping=DB_POOL_PRE_PING,
+                pool_timeout=db_pool_timeout,
+                pool_pre_ping=db_pool_pre_ping,
                 poolclass=QueuePool,
                 pool_use_lifo=True,
                 pool_reset_on_return="rollback",
@@ -178,8 +181,8 @@ def get_engine() -> Engine:
                 pool_size,
                 max_overflow,
                 pool_recycle,
-                DB_POOL_TIMEOUT,
-                DB_POOL_PRE_PING,
+                db_pool_timeout,
+                db_pool_pre_ping,
             )
             _attach_pool_events(eng)
 
@@ -203,8 +206,10 @@ class _EngineProxy:
 
     # Allow ``engine.dispose()`` etc. to work transparently
     def dispose(self, **kw: Any) -> None:
+        global _engine
         if _engine is not None:
             _engine.dispose(**kw)
+            _engine = None
 
 
 engine = _EngineProxy()  # type: ignore[assignment]
@@ -246,11 +251,11 @@ def get_pool_status() -> Dict[str, Any]:
             "avg_checkout_time_ms": round(snapshot.get("avg_checkout_time_ms", 0), 2),
         },
         "config": {
-            "pool_size": DB_POOL_SIZE,
-            "max_overflow": DB_MAX_OVERFLOW,
-            "pool_recycle_seconds": DB_POOL_RECYCLE,
-            "pool_timeout": DB_POOL_TIMEOUT,
-            "pre_ping_enabled": DB_POOL_PRE_PING,
+            "pool_size": int(os.getenv("DB_POOL_SIZE", "20")),
+            "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
+            "pool_recycle_seconds": int(os.getenv("DB_POOL_RECYCLE", "1800")),
+            "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
+            "pre_ping_enabled": os.getenv("DB_POOL_PRE_PING", "True").lower() == "true",
         },
     }
 
@@ -292,6 +297,7 @@ Session = _SessionProxy()  # type: ignore[assignment]
 db_session = _SessionProxy()  # type: ignore[assignment]
 
 
+from app.models.ab_test import ABTestRecord  # noqa: E402, F401
 from app.models.alert import AlertHistory  # noqa: E402, F401
 from app.models.api_request import APIRequest, EarthEngineRequest  # noqa: E402, F401
 from app.models.cache import SatelliteWeatherCache, TideDataCache  # noqa: E402, F401

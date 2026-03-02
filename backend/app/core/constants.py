@@ -8,10 +8,93 @@ Centralized constants for the Floodingnaque API.
 API_VERSION = "2.0.0"
 API_NAME = "Floodingnaque API"
 
-# Default Location (Parañaque City)
-DEFAULT_LATITUDE = 14.4793
-DEFAULT_LONGITUDE = 121.0198
-DEFAULT_LOCATION_NAME = "Parañaque City, Philippines"
+# =====================================================
+# Study Area Configuration — Parañaque City, Philippines
+# =====================================================
+# Reference stations across Parañaque's flood-prone barangays.
+# The ingest service fetches weather for the primary station by default.
+# Services that support multi-point queries can iterate STUDY_AREA_STATIONS.
+#
+# To deploy for a different city, update this section and the bounding box.
+# =====================================================
+
+# Bounding box for coordinate validation (rejects points outside Parañaque)
+STUDY_AREA_BOUNDS = {
+    "lat_min": 14.4280,
+    "lat_max": 14.5120,
+    "lon_min": 120.9750,
+    "lon_max": 121.0550,
+    "name": "Parañaque City, Philippines",
+}
+
+# Named weather reference stations
+STUDY_AREA_STATIONS = {
+    "city_center": {
+        "lat": 14.4793,
+        "lon": 121.0198,
+        "name": "Parañaque City Hall",
+        "description": "Central reference point — administrative center",
+        "primary": True,
+    },
+    "bf_homes": {
+        "lat": 14.4545,
+        "lon": 121.0234,
+        "name": "BF Homes",
+        "description": "Residential flood-prone zone — low-lying subdivision",
+    },
+    "la_huerta": {
+        "lat": 14.4891,
+        "lon": 120.9876,
+        "name": "La Huerta",
+        "description": "Coastal barangay near Manila Bay — storm surge risk",
+    },
+    "sucat": {
+        "lat": 14.4625,
+        "lon": 121.0456,
+        "name": "Sucat",
+        "description": "Eastern Parañaque — near Parañaque River flood plain",
+    },
+}
+
+# Primary station (backward-compatible defaults used by env var fallbacks)
+_primary = next(s for s in STUDY_AREA_STATIONS.values() if s.get("primary"))
+DEFAULT_LATITUDE = _primary["lat"]
+DEFAULT_LONGITUDE = _primary["lon"]
+DEFAULT_LOCATION_NAME = _primary["name"]
+
+
+def get_primary_station() -> dict:
+    """Return the primary study area station."""
+    return _primary
+
+
+def get_all_stations() -> list:
+    """Return all study area stations as a list of dicts with their keys."""
+    return [{"key": k, **v} for k, v in STUDY_AREA_STATIONS.items()]
+
+
+def get_nearest_station(lat: float, lon: float) -> dict:
+    """Return the station nearest to the given coordinates (Euclidean approximation).
+
+    For distances within a single city (~10km), Euclidean distance on lat/lon
+    is accurate enough. No need for haversine at this scale.
+    """
+    best = None
+    best_dist = float("inf")
+    for key, station in STUDY_AREA_STATIONS.items():
+        dist = (station["lat"] - lat) ** 2 + (station["lon"] - lon) ** 2
+        if dist < best_dist:
+            best_dist = dist
+            best = {"key": key, **station}
+    return best
+
+
+def is_within_study_area(lat: float, lon: float) -> bool:
+    """Check if coordinates fall within the Parañaque bounding box."""
+    return (
+        STUDY_AREA_BOUNDS["lat_min"] <= lat <= STUDY_AREA_BOUNDS["lat_max"]
+        and STUDY_AREA_BOUNDS["lon_min"] <= lon <= STUDY_AREA_BOUNDS["lon_max"]
+    )
 
 # Weather Data Limits
 MIN_TEMPERATURE_KELVIN = 200.0  # -73°C

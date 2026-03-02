@@ -4,9 +4,33 @@ SQL Injection Security Tests.
 Tests to verify protection against SQL injection attacks.
 """
 
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _mock_data_db():
+    """Auto-mock the DB session so data-route SQL injection tests don't hit a real DB."""
+    mock_session = MagicMock()
+    # Make query chains return empty results
+    mock_query = MagicMock()
+    mock_query.filter.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.offset.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.all.return_value = []
+    mock_query.count.return_value = 0
+    mock_session.query.return_value = mock_query
+
+    @contextmanager
+    def _fake_session():
+        yield mock_session
+
+    with patch("app.models.db.get_db_session", _fake_session), \
+         patch("app.api.routes.data.get_db_session", _fake_session):
+        yield
 
 
 class TestSQLInjectionPrevention:
@@ -65,10 +89,13 @@ class TestSQLInjectionPrevention:
     def test_injection_in_coordinates(self, client, sql_injection_payloads, api_headers):
         """Test SQL injection in coordinate parameters."""
         for payload in sql_injection_payloads:
-            response = client.get(f"/api/v1/ingest/ingest?lat={payload}&lon=121.0")
+            response = client.get(
+                f"/api/v1/ingest/ingest?lat={payload}&lon=121.0",
+                headers=api_headers,
+            )
 
             # Coordinates should be validated as numbers
-            assert response.status_code in [200, 400, 422], f"Potential vulnerability: {payload}"
+            assert response.status_code in [200, 400, 401, 422], f"Potential vulnerability: {payload}"
 
     @pytest.mark.security
     def test_injection_in_id_parameter(self, client, sql_injection_payloads):

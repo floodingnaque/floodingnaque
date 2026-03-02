@@ -130,7 +130,7 @@ services:
       dockerfile: Dockerfile
       target: production
       args:
-        PYTHON_VERSION: "3.12"
+        PYTHON_VERSION: "3.13"
     image: floodingnaque-api:production-v2.0.0
     container_name: floodingnaque-api-prod
     restart: always
@@ -258,6 +258,11 @@ services:
     logging:
       <<: *logging-production
     <<: *security-opts
+    # Filesystem hardening \u2014 container runs read-only except:
+    #   Writable volumes: /app/models, /app/logs, /app/data, /app/uploads, /app/backups
+    #   Writable tmpfs:   /tmp (200M), /app/.cache (100M)
+    # NOTE: Dev/staging do NOT enforce read-only. Any code writing outside
+    # these paths will silently work in dev but fail in production.
     read_only: true
     tmpfs:
       - /tmp:size=200M,mode=1777
@@ -267,12 +272,6 @@ services:
   # Celery Worker
   # ===================
   celery-worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: production
-      args:
-        PYTHON_VERSION: "3.12"
     image: floodingnaque-api:production-v2.0.0
     container_name: floodingnaque-celery-prod
     restart: always
@@ -356,12 +355,6 @@ services:
   # Celery Beat
   # ===================
   celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      target: production
-      args:
-        PYTHON_VERSION: "3.12"
     image: floodingnaque-api:production-v2.0.0
     container_name: floodingnaque-celery-beat-prod
     restart: always
@@ -382,6 +375,7 @@ services:
       - PYTHONPATH=/app
       # Celery config loaded from .env.production (Redis Cloud)
       - CELERY_TIMEZONE=Asia/Manila
+      - CELERY_BEAT_RUNNING=true
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       # Datadog APM
       - DD_ENV=production
@@ -426,6 +420,63 @@ services:
     <<: *security-opts
     tmpfs:
       - /tmp:size=50M,mode=1777
+
+  # ===================
+  # Offsite Backup Sync (W6)
+  # ===================
+  # Syncs local backups to S3-compatible storage for disaster recovery.
+  # Use with: --profile backup-offsite
+  #
+  # Required environment variables (in .env.production):
+  #   BACKUP_S3_BUCKET        - S3 bucket name
+  #   BACKUP_S3_PREFIX        - Key prefix (default: floodingnaque/db/)
+  #   AWS_ACCESS_KEY_ID       - AWS/S3-compatible credentials
+  #   AWS_SECRET_ACCESS_KEY   - AWS/S3-compatible credentials
+  #   AWS_DEFAULT_REGION      - AWS region (default: ap-southeast-1)
+  #   S3_ENDPOINT_URL         - Custom S3 endpoint (for MinIO, Backblaze B2, etc.)
+  backup-offsite:
+    image: amazon/aws-cli:2.15.17
+    container_name: floodingnaque-backup-offsite
+    restart: "no"
+    labels:
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.service: "backup-offsite"
+      com.floodingnaque.description: "Offsite Backup Sync to S3"
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "=== Syncing backups to S3 ==="
+        ENDPOINT_FLAG=""
+        if [ -n "$${S3_ENDPOINT_URL}" ]; then
+          ENDPOINT_FLAG="--endpoint-url $${S3_ENDPOINT_URL}"
+        fi
+        aws s3 sync /backups/ \
+          s3://$${BACKUP_S3_BUCKET}/$${BACKUP_S3_PREFIX:-floodingnaque/db/} \
+          $$ENDPOINT_FLAG \
+          --storage-class STANDARD_IA \
+          --only-show-errors
+        echo "=== Offsite sync complete ==="
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-ap-southeast-1}
+      - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET:-}
+      - BACKUP_S3_PREFIX=${BACKUP_S3_PREFIX:-floodingnaque/db/}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-}
+    volumes:
+      - floodingnaque_backups_prod:/backups:ro
+    networks:
+      - floodingnaque-backend
+    profiles:
+      - backup-offsite
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      <<: *logging-default
 
   # ===================
   # PgBouncer Connection Pooler
@@ -573,12 +624,19 @@ services:
     environment:
       - DATA_SOURCE_URI=${PGBOUNCER_DB_HOST:-db}:${PGBOUNCER_DB_PORT:-5432}/${PGBOUNCER_DB_NAME:-postgres}?sslmode=${DB_SSL_MODE:-require}
       - DATA_SOURCE_USER=${PGBOUNCER_DB_USER:-postgres}
-      - DATA_SOURCE_PASS=${PGBOUNCER_DB_PASSWORD}
+      - DATA_SOURCE_PASS_FILE=/run/secrets/pgbouncer_db_password
+    secrets:
+      - pgbouncer_db_password
     networks:
       - floodingnaque-backend
       - floodingnaque-monitoring
     profiles:
       - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -607,6 +665,11 @@ services:
       - pgbouncer
     profiles:
       - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9127/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -631,6 +694,46 @@ services:
       - floodingnaque-monitoring
     profiles:
       - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      <<: *logging-default
+    <<: *security-opts
+
+  # Celery Prometheus Exporter
+  # Provides metrics at :9808/metrics for Prometheus scraping
+  celery-exporter:
+    image: danihodovic/celery-exporter:0.10.8
+    container_name: floodingnaque-celery-exporter
+    restart: unless-stopped
+    labels:
+      com.floodingnaque.service: "celery-exporter"
+    command:
+      - '--broker-url=${CELERY_BROKER_URL:-redis://redis:6379/1}'
+    ports:
+      - "127.0.0.1:9808:9808"
+    networks:
+      - floodingnaque-backend
+      - floodingnaque-monitoring
+    depends_on:
+      celery-worker:
+        condition: service_healthy
+        required: false
+    profiles:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9808/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -657,6 +760,11 @@ services:
     profiles:
       - monitoring
       - nginx
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9113/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:

@@ -7,6 +7,7 @@ Includes input validation, security measures, and response caching.
 
 import logging
 import os
+import time as _time
 
 from app.api.middleware.auth import require_auth_or_api_key
 from app.api.middleware.rate_limit import rate_limit_with_burst
@@ -194,6 +195,10 @@ def predict():
                 logger.debug(f"Prediction cache HIT [{request_id}]: {weather_hash}")
                 cached_result["request_id"] = request_id
                 cached_result["cache_hit"] = True
+                # Staleness metadata so the frontend knows how old the data is
+                cached_at = cached_result.get("cached_at")
+                if cached_at:
+                    cached_result["data_age_seconds"] = round(_time.time() - cached_at, 1)
                 return jsonify(cached_result), HTTP_OK
 
         # Extract model version (validated separately)
@@ -236,12 +241,14 @@ def predict():
                 "request_id": request_id,
             }
 
-        # Cache the prediction result
+        # Cache the prediction result (stamp with timestamp for staleness tracking)
         if PREDICTION_CACHE_ENABLED and weather_hash and is_cache_enabled():
+            response["cached_at"] = _time.time()
             cache_prediction_result(weather_hash, response, PREDICTION_CACHE_TTL)
             logger.debug(f"Prediction cached [{request_id}]: {weather_hash}")
 
         response["cache_hit"] = False
+        response.pop("cached_at", None)  # Don't expose raw timestamp on fresh responses
         return jsonify(response), HTTP_OK
 
     except ValidationError as e:

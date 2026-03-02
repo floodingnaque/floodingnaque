@@ -26,6 +26,8 @@ def classify_risk_level(
     probability: Optional[Dict[str, float]] = None,
     precipitation: Optional[float] = None,
     humidity: Optional[float] = None,
+    precipitation_3h: Optional[float] = None,
+    tide_risk_factor: Optional[float] = None,
 ) -> Dict[str, any]:
     """
     Classify flood risk into 3 levels: Safe, Alert, Critical
@@ -35,11 +37,15 @@ def classify_risk_level(
     - Alert (1): Binary prediction = 0 BUT moderate probability OR moderate precipitation
     - Critical (2): Binary prediction = 1 OR high probability of flood
 
+    Enhanced with 3-hour rainfall accumulation and tide risk factor.
+
     Args:
         prediction: Binary prediction (0 = no flood, 1 = flood)
         probability: Dict with 'no_flood' and 'flood' probabilities
         precipitation: Current precipitation value (mm)
         humidity: Current humidity value (%)
+        precipitation_3h: 3-hour rolling rainfall accumulation (mm)
+        tide_risk_factor: Tide risk factor 0-1
 
     Returns:
         dict: Risk classification with level, label, color, description, and confidence
@@ -76,6 +82,26 @@ def classify_risk_level(
             risk_level = 1  # Alert
         else:
             risk_level = 0  # Safe
+
+    # 3-hour rainfall accumulation override
+    if precipitation_3h is not None:
+        if precipitation_3h >= 80.0 and risk_level < 2:
+            risk_level = 2  # Critical — heavy sustained rainfall
+        elif precipitation_3h >= 50.0 and risk_level < 1:
+            risk_level = 1  # Alert — significant accumulation
+
+    # Tide risk factor override
+    if tide_risk_factor is not None:
+        if tide_risk_factor >= 0.8 and risk_level < 1:
+            risk_level = 1  # Alert — high tide risk
+        # Combined high tide + moderate flood probability → escalate
+        if (
+            tide_risk_factor >= 0.7
+            and probability
+            and probability.get("flood", 0) >= 0.40
+            and risk_level < 2
+        ):
+            risk_level = 2  # Critical — compounding risk
 
     # Get risk label and metadata
     risk_label = RISK_LEVELS[risk_level]

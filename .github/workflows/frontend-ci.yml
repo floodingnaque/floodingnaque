@@ -11,6 +11,8 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
+  # Allow ci.yml to call this workflow
+  workflow_call:
 
 permissions:
   contents: read

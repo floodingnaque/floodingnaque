@@ -1,9 +1,11 @@
 import logging
 import os
 import re
+import threading
 from datetime import datetime
 
 import requests
+from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.models.db import WeatherData, get_db_session
 from app.utils.circuit_breaker import CircuitOpenError, openweathermap_breaker, retry_with_backoff, weatherstack_breaker
 from app.utils.correlation import inject_correlation_headers
@@ -14,33 +16,40 @@ logger = logging.getLogger(__name__)
 # Lazy import for meteostat to avoid import errors if not installed
 _meteostat_service = None
 _worldtides_service = None
+_service_init_lock = threading.Lock()
 
 
 def _get_meteostat_service():
-    """Lazy load meteostat service."""
+    """Lazy load meteostat service (thread-safe)."""
     global _meteostat_service
     if _meteostat_service is None:
-        try:
-            from app.services.meteostat_service import get_meteostat_service
+        with _service_init_lock:
+            # Double-checked locking
+            if _meteostat_service is None:
+                try:
+                    from app.services.meteostat_service import get_meteostat_service
 
-            _meteostat_service = get_meteostat_service()
-        except ImportError:
-            logger.warning("Meteostat is not installed. Install with: pip install meteostat")
-            _meteostat_service = False  # Mark as unavailable
+                    _meteostat_service = get_meteostat_service()
+                except ImportError:
+                    logger.warning("Meteostat is not installed. Install with: pip install meteostat")
+                    _meteostat_service = False  # Mark as unavailable
     return _meteostat_service if _meteostat_service else None
 
 
 def _get_worldtides_service():
-    """Lazy load WorldTides service."""
+    """Lazy load WorldTides service (thread-safe)."""
     global _worldtides_service
     if _worldtides_service is None:
-        try:
-            from app.services.worldtides_service import get_worldtides_service
+        with _service_init_lock:
+            # Double-checked locking
+            if _worldtides_service is None:
+                try:
+                    from app.services.worldtides_service import get_worldtides_service
 
-            _worldtides_service = get_worldtides_service()
-        except ImportError:
-            logger.warning("WorldTides service not available")
-            _worldtides_service = False  # Mark as unavailable
+                    _worldtides_service = get_worldtides_service()
+                except ImportError:
+                    logger.warning("WorldTides service not available")
+                    _worldtides_service = False  # Mark as unavailable
     return _worldtides_service if _worldtides_service else None
 
 
@@ -82,11 +91,11 @@ def ingest_data(lat=None, lon=None):
     # Note: METEOSTAT_API_KEY can also be used for Weatherstack API
     weatherstack_api_key = get_secret("METEOSTAT_API_KEY") or get_secret("WEATHERSTACK_API_KEY")
 
-    # Default location: Parañaque City, Philippines (from environment or hardcoded default)
+    # Default location: Parañaque City, Philippines (from environment or central config)
     if lat is None:
-        lat = float(os.getenv("DEFAULT_LATITUDE", "14.4793"))
+        lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
     if lon is None:
-        lon = float(os.getenv("DEFAULT_LONGITUDE", "121.0198"))
+        lon = float(os.getenv("DEFAULT_LONGITUDE", str(DEFAULT_LONGITUDE)))
 
     # Validate API keys
     if not owm_api_key:
@@ -201,6 +210,58 @@ def ingest_data(lat=None, lon=None):
                     logger.info(f"Got precipitation from Meteostat fallback: {precipitation} mm")
             except Exception as e:
                 logger.debug(f"Meteostat fallback failed: {e}")
+
+    # ---------------------------------------------------------------------------
+    # PAGASA Radar-based precipitation — barangay-level estimates
+    # ---------------------------------------------------------------------------
+    # If PAGASA radar integration is enabled, fetch per-barangay precipitation
+    # from Doppler radar QPE and use the nearest-barangay estimate to supplement
+    # or replace the station-level precipitation value.
+    if os.getenv("PAGASA_RADAR_ENABLED", "True").lower() == "true":
+        try:
+            from app.services.pagasa_radar_service import get_pagasa_radar_service
+            from app.core.constants import get_nearest_station
+
+            pagasa = get_pagasa_radar_service()
+            if pagasa.is_enabled():
+                city_precip = pagasa.get_city_precipitation()
+                if city_precip.get("status") == "ok":
+                    # Find nearest barangay to requested coordinates
+                    best_key = None
+                    best_dist = float("inf")
+                    for brgy_key, brgy in city_precip.get("barangays", {}).items():
+                        d = (brgy.get("lat", 0) - lat) ** 2 + (brgy.get("lon", 0) - lon) ** 2
+                        if d < best_dist:
+                            best_dist = d
+                            best_key = brgy_key
+
+                    if best_key:
+                        radar_rain = city_precip["barangays"][best_key].get("rainfall_mm", 0)
+                        if radar_rain > 0:
+                            # Use the higher of radar vs station estimate (conservative)
+                            if radar_rain > precipitation:
+                                data["precipitation"] = radar_rain
+                                data["precipitation_source"] = "pagasa_radar"
+                                precipitation = radar_rain
+                                logger.info(
+                                    f"PAGASA radar estimate ({radar_rain:.1f} mm) > station "
+                                    f"({data.get('precipitation', 0):.1f} mm) — using radar"
+                                )
+                            else:
+                                data["precipitation_radar_mm"] = radar_rain
+                                data["precipitation_source"] = "station"
+
+                    # Attach full barangay-level data for downstream consumers
+                    data["pagasa_radar"] = {
+                        "summary": city_precip.get("summary"),
+                        "barangay_count": len(city_precip.get("barangays", {})),
+                        "source": city_precip.get("summary", {}).get("source", "pagasa_radar"),
+                    }
+                    logger.info("PAGASA radar precipitation integrated into ingest data")
+        except ImportError:
+            logger.debug("PAGASA radar service not available")
+        except Exception as e:
+            logger.warning(f"PAGASA radar integration failed (non-critical): {e}")
 
     # Fetch tide data from WorldTides API (for coastal flood prediction)
     if os.getenv("WORLDTIDES_ENABLED", "True").lower() == "true":

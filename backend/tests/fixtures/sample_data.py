@@ -81,7 +81,7 @@ def sample_coordinates():
 @pytest.fixture
 def valid_api_key():
     """Generate a valid API key for testing."""
-    return "test-api-key-12345-valid"
+    return "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 
 
 @pytest.fixture

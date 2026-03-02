@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from app.models.db import Base
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 
@@ -23,9 +23,21 @@ class AlertHistory(Base):
     message = Column(Text, info={"description": "Alert message content"})
 
     # Delivery tracking
-    delivery_status = Column(String(50), info={"description": "delivered/failed/pending"})
-    delivery_channel = Column(String(50), info={"description": "web/sms/email"})
+    delivery_status = Column(String(50), info={"description": "delivered/failed/pending/partial/sandbox"})
+    delivery_channel = Column(String(255), info={"description": "web/sms/email/slack/firebase_push/messenger/telegram/siren (comma-separated)"})
     error_message = Column(Text, info={"description": "Error details if delivery failed"})
+
+    # Smart Alert fields
+    confidence_score = Column(Float, info={"description": "Composite confidence score 0-1 (model + data quality)"})
+    rainfall_3h = Column(Float, info={"description": "Rolling 3-hour rainfall accumulation in mm"})
+    escalation_state = Column(
+        String(50),
+        default="initial",
+        info={"description": "Alert lifecycle: initial / escalated / auto_escalated / suppressed"},
+    )
+    escalation_reason = Column(String(255), nullable=True, info={"description": "Reason for escalation (e.g. persisted_30min)"})
+    suppressed = Column(Boolean, default=False, nullable=False, info={"description": "True if alert was suppressed by false-alarm reduction"})
+    contributing_factors = Column(Text, nullable=True, info={"description": "JSON array of contributing factor strings"})
 
     # Metadata
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)

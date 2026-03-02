@@ -9,6 +9,7 @@ import html
 import logging
 import uuid
 
+from app.api.middleware.rate_limit import limiter
 from app.utils.api_constants import HTTP_BAD_REQUEST, HTTP_OK, HTTP_SERVICE_UNAVAILABLE
 from app.utils.api_responses import api_error, api_success
 from flask import Blueprint, g, request
@@ -48,6 +49,7 @@ def _get_worldtides_service():
 
 
 @tides_bp.route("/current", methods=["GET"])
+@limiter.limit("30 per minute")
 def get_current_tide():
     """
     Get current tide height for a location.
@@ -102,6 +104,7 @@ def get_current_tide():
 
 
 @tides_bp.route("/extremes", methods=["GET"])
+@limiter.limit("30 per minute")
 def get_tide_extremes():
     """
     Get upcoming high and low tides.
@@ -153,6 +156,7 @@ def get_tide_extremes():
 
 
 @tides_bp.route("/prediction", methods=["GET"])
+@limiter.limit("30 per minute")
 def get_tide_prediction():
     """
     Get tide data formatted for flood prediction.
@@ -220,6 +224,7 @@ def get_tide_prediction():
 
 
 @tides_bp.route("/status", methods=["GET"])
+@limiter.limit("60 per minute")
 def get_tide_service_status():
     """
     Get WorldTides service status.

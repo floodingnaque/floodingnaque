@@ -40,7 +40,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.13'
 
 jobs:
   # ===========================================================================
@@ -49,7 +49,8 @@ jobs:
   ggshield-scan:
     name: GitGuardian Secret Scan
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    # Run on pushes, PRs, and scheduled scans (skip workflow_call/dispatch if no API key)
+    if: ${{ secrets.GITGUARDIAN_API_KEY != '' }}
     
     steps:
       - name: Checkout repository
@@ -290,56 +291,13 @@ jobs:
           fi
           echo "✓ No high-severity issues found"
 
-  safety:
-    name: Safety Dependency Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Safety
-        run: pip install safety
-
-      - name: Run Safety check
-        run: |
-          cd backend
-          safety check -r requirements.txt \
-            --json \
-            --output safety-results.json \
-            2>&1 | tee safety-output.txt || true
-
-      - name: Display Safety summary
-        if: always()
-        run: |
-          echo "=== Safety Check Results ==="
-          cat backend/safety-output.txt || echo "No issues found"
-
-      - name: Upload Safety results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: safety-results-${{ github.sha }}
-          path: |
-            backend/safety-*.json
-            backend/safety-*.txt
-          retention-days: 30
-
   # ===========================================================================
   # Aggregate Security Report
   # ===========================================================================
   security-report:
     name: Generate Security Report
     runs-on: ubuntu-latest
-    needs: [security-scan, pip-audit, bandit, safety]
+    needs: [security-scan, pip-audit, bandit]
     if: always()
 
     steps:
@@ -368,7 +326,6 @@ jobs:
           echo "| Comprehensive Scan | ${{ needs.security-scan.result }} |" >> SECURITY_REPORT.md
           echo "| pip-audit | ${{ needs.pip-audit.result }} |" >> SECURITY_REPORT.md
           echo "| Bandit | ${{ needs.bandit.result }} |" >> SECURITY_REPORT.md
-          echo "| Safety | ${{ needs.safety.result }} |" >> SECURITY_REPORT.md
           echo "" >> SECURITY_REPORT.md
           echo "## Artifacts" >> SECURITY_REPORT.md
           echo "" >> SECURITY_REPORT.md

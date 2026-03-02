@@ -92,7 +92,14 @@ export function RiskDisplay({
         <p className="text-sm font-medium text-muted-foreground">
           {confidenceLevel}
         </p>
-        <div className="mt-2 h-2 bg-white/50 rounded-full overflow-hidden relative">
+        <div
+          className="mt-2 h-5 bg-white/50 rounded-full overflow-hidden relative"
+          role="progressbar"
+          aria-valuenow={percentProbability}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Confidence: ${percentProbability}%`}
+        >
           <div
             className={cn(
               'h-full rounded-full transition-all duration-500 absolute inset-y-0 left-0',
@@ -108,6 +115,9 @@ export function RiskDisplay({
               }
             )}
           />
+          <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-foreground">
+            {percentProbability}%
+          </span>
         </div>
       </div>
     </div>

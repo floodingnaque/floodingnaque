@@ -40,8 +40,21 @@ export function initSentry(): void {
     ignoreErrors: [
       'ResizeObserver loop',
       'Non-Error promise rejection',
-      'Network Error',
     ],
+
+    // Filter noisy network errors while still capturing actionable ones
+    beforeSend(event, hint) {
+      const error = hint?.originalException;
+      if (
+        error instanceof Error &&
+        /Network Error|Failed to fetch|Load failed|ERR_NETWORK/i.test(error.message)
+      ) {
+        // Drop transient connectivity errors — they overwhelm Sentry and
+        // are not actionable.
+        return null;
+      }
+      return event;
+    },
 
     // Attach release tag so errors can be matched to deploys
     release: import.meta.env.VITE_APP_VERSION as string | undefined,

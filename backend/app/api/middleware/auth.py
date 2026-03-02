@@ -571,12 +571,29 @@ def require_auth_or_api_key(f):
 
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Check IP lockout before attempting auth
+        ip_address = request.remote_addr
+        is_locked, remaining_seconds = _check_ip_lockout(ip_address)
+        if is_locked:
+            logger.warning(f"Locked out IP attempted access (remaining lockout: {remaining_seconds}s)")
+            return (
+                jsonify(
+                    {
+                        "error": "Too many failed attempts",
+                        "message": f"Account temporarily locked. Try again in {remaining_seconds} seconds",
+                        "retry_after": remaining_seconds,
+                    }
+                ),
+                429,
+            )
+
         # Try JWT Bearer token first
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header.split(" ", 1)[1]
             payload, error = decode_token(token)
             if not error:
+                _clear_failed_attempts(ip_address)
                 g.authenticated = True
                 g.current_user_id = int(payload.get("sub"))
                 g.current_user_email = payload.get("email")
@@ -588,9 +605,12 @@ def require_auth_or_api_key(f):
         if api_key:
             is_valid, _ = validate_api_key(api_key)
             if is_valid:
+                _clear_failed_attempts(ip_address)
                 g.authenticated = True
                 g.api_key_hash = _hash_api_key_pbkdf2(api_key)[:8]
                 return f(*args, **kwargs)
+            else:
+                _record_failed_attempt(ip_address)
 
         # Neither auth method succeeded
         logger.warning(f"Missing authentication for {request.method} {request.path} from {request.remote_addr}")

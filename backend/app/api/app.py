@@ -11,8 +11,11 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from app.api.middleware import get_cors_origins, init_rate_limiter, setup_request_logging, setup_security_headers
+from app.api.middleware import get_cors_origins, init_rate_limiter, setup_cors, setup_request_logging, setup_security_headers
 from app.api.middleware.request_logger import setup_request_logging_middleware
+from app.api.routes.admin_logs import admin_logs_bp
+from app.api.routes.admin_models import admin_models_bp
+from app.api.routes.admin_users import admin_users_bp
 from app.api.routes.alerts import alerts_bp
 from app.api.routes.batch import batch_bp
 from app.api.routes.celery import celery_bp
@@ -21,11 +24,14 @@ from app.api.routes.dashboard import dashboard_bp
 from app.api.routes.data import data_bp
 from app.api.routes.export import export_bp
 from app.api.routes.feature_flags import feature_flags_bp
+from app.api.routes.gis import gis_bp
 from app.api.routes.graphql import graphql_bp, init_graphql_route
 from app.api.routes.health import health_bp
 from app.api.routes.health_k8s import health_k8s_bp
 from app.api.routes.ingest import ingest_bp
 from app.api.routes.models import models_bp
+from app.api.routes.aggregation import aggregation_bp
+from app.api.routes.pagasa import pagasa_bp
 from app.api.routes.performance import performance_bp, setup_response_time_tracking
 from app.api.routes.predict import predict_bp
 from app.api.routes.predictions import predictions_bp
@@ -208,36 +214,9 @@ def create_app(config_override: dict = None) -> Flask:
     logger.info("Response compression enabled")
 
     # CORS (Cross-Origin Resource Sharing)
-    cors_origins = get_cors_origins()
-    if cors_origins:
-        cors.init_app(
-            app,
-            origins=cors_origins,
-            methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-            allow_headers=[
-                "Content-Type",
-                "Authorization",
-                "X-API-Key",
-                "X-Request-ID",
-                "X-CSRF-Token",
-                "Accept",
-                "Origin",
-            ],
-            expose_headers=[
-                "X-Request-ID",
-                "X-RateLimit-Limit",
-                "X-RateLimit-Remaining",
-                "X-RateLimit-Reset",
-                "X-Trace-ID",
-            ],
-            supports_credentials=True,
-            max_age=600,
-        )
-        logger.info(f"CORS configured for: {cors_origins}")
-    else:
-        cors.init_app(app)
-        if not config.DEBUG:
-            logger.warning("No CORS origins configured - restricting cross-origin requests")
+    # Delegated to setup_cors() for single source of truth across environments
+    setup_cors(app, cors)
+    logger.info(f"CORS configured for: {get_cors_origins()}")
 
     # Rate limiting
     init_rate_limiter(app)
@@ -315,6 +294,12 @@ def create_app(config_override: dict = None) -> Flask:
     app.register_blueprint(upload_bp, url_prefix=f"{API_V1_PREFIX}/upload")
     app.register_blueprint(versioning_bp)  # No prefix - routes contain full paths like /api/models/versions
     app.register_blueprint(feature_flags_bp, url_prefix=f"{API_V1_PREFIX}/feature-flags")
+    app.register_blueprint(admin_users_bp, url_prefix=f"{API_V1_PREFIX}/admin/users")
+    app.register_blueprint(admin_logs_bp, url_prefix=f"{API_V1_PREFIX}/admin/logs")
+    app.register_blueprint(admin_models_bp, url_prefix=f"{API_V1_PREFIX}/admin/models")
+    app.register_blueprint(pagasa_bp, url_prefix=f"{API_V1_PREFIX}/pagasa")
+    app.register_blueprint(aggregation_bp, url_prefix=f"{API_V1_PREFIX}/aggregation")
+    app.register_blueprint(gis_bp, url_prefix=f"{API_V1_PREFIX}/gis")
 
     # Backward-compatible routes (shorter URL prefixes for legacy/test compatibility)
     # These register the same blueprints with different names and prefixes
@@ -574,7 +559,7 @@ def create_app(config_override: dict = None) -> Flask:
                     check_model=True,
                     check_database_conn=True,
                     check_redis_conn=True,
-                    raise_on_failure=is_production,  # Fail fast in production
+                    raise_on_failure=is_production or env == "staging",  # Fail fast in production & staging
                     log_results=True,
                 )
 

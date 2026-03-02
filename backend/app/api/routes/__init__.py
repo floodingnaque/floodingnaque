@@ -26,6 +26,7 @@ Contains modular route definitions:
 - config: /api/v1/config/* (Configuration management and hot-reload)
 """
 
+from app.api.routes.aggregation import aggregation_bp
 from app.api.routes.alerts import alerts_bp
 from app.api.routes.batch import batch_bp
 from app.api.routes.celery import celery_bp
@@ -52,6 +53,7 @@ from app.api.routes.webhooks import webhooks_bp
 
 __all__ = [
     # Core routes
+    "aggregation_bp",
     "health_bp",
     "health_k8s_bp",
     "ingest_bp",

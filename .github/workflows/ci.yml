@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.13'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -153,7 +153,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.11', '3.12']
+        python-version: ['3.13']
 
     steps:
     - uses: actions/checkout@v4
@@ -179,8 +179,9 @@ jobs:
         cd backend
         # Stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+        # Enforce style — max-complexity and line-length violations block CI
+        flake8 . --count --max-complexity=10 --max-line-length=120 --statistics
+      continue-on-error: false
 
     - name: Type check with mypy
       run: |
@@ -189,21 +190,39 @@ jobs:
         mypy --config-file mypy.ini
       continue-on-error: false  # Type errors block CI
 
+    - name: Validate Alembic migrations
+      run: |
+        cd backend
+        python -m alembic upgrade head
+        python -m alembic downgrade base
+        python -m alembic upgrade head
+      env:
+        DATABASE_URL: sqlite:///test_migrations.db
+        SECRET_KEY: ci-migration-test-key
+
     - name: Test with pytest
       run: |
         cd backend
-        python -m pytest tests/unit tests/integration -v -m "not model" --cov=app --cov-branch --cov-report=xml --cov-report=html
+        python -m pytest tests/ -v -m "not model and not slow" --cov=app --cov-branch --cov-report=xml --cov-report=html -o "addopts="
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
       if: always()
-      continue-on-error: true
       with:
         files: ./backend/coverage.xml
         flags: unittests
         name: codecov-umbrella
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
+
+  # ==========================================================================
+  # Frontend — Reuse dedicated workflow
+  # ==========================================================================
+  frontend:
+    name: Frontend CI
+    uses: ./.github/workflows/frontend-ci.yml
+    permissions:
+      contents: read
 
   # ==========================================================================
   # Load Testing (Smoke Test for PRs)
@@ -224,7 +243,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.13'
         cache: 'pip'
         cache-dependency-path: backend/requirements*.txt
 
@@ -236,6 +255,12 @@ jobs:
         pip install locust pytest
 
     - name: Start API server
+      env:
+        SECRET_KEY: ci-load-test-key
+        APP_ENV: development
+        STARTUP_HEALTH_CHECK: 'false'
+        SCHEDULER_ENABLED: 'false'
+        ENV_VALIDATION_ENABLED: 'false'
       run: |
         cd backend
         python -m gunicorn main:app --bind 0.0.0.0:5000 --workers 2 --timeout 60 &
@@ -284,7 +309,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.13'
         cache: 'pip'
         cache-dependency-path: backend/requirements*.txt
 
@@ -296,6 +321,12 @@ jobs:
         pip install locust pytest
 
     - name: Start API server
+      env:
+        SECRET_KEY: ci-load-test-key
+        APP_ENV: development
+        STARTUP_HEALTH_CHECK: 'false'
+        SCHEDULER_ENABLED: 'false'
+        ENV_VALIDATION_ENABLED: 'false'
       run: |
         cd backend
         python -m gunicorn main:app --bind 0.0.0.0:5000 --workers 4 --timeout 120 &
@@ -324,3 +355,50 @@ jobs:
         name: full-load-test-report
         path: backend/reports/load_tests/
         retention-days: 30
+
+  # ==========================================================================
+  # Build & Push Docker Image to GHCR
+  # ==========================================================================
+  push-image:
+    name: Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, container-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata (tags, labels)
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=sha,prefix=
+          type=raw,value=latest
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        target: production
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max

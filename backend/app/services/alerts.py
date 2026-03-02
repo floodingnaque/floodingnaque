@@ -1,8 +1,17 @@
 """
-Alert System Module for Flood Detection and Early Warning
-Supports SMS, email, and web dashboard notifications
-Aligned with research objectives for Parañaque City.
+Alert System Module for Flood Detection and Early Warning.
 
+Multi-channel notification support:
+    - Web Dashboard (SSE real-time)
+    - SMS (Semaphore / Twilio)
+    - Email (SMTP)
+    - Slack (Incoming Webhook)
+    - Firebase Push Notifications (FCM)
+    - Facebook Messenger Chatbot
+    - Telegram Bot
+    - LGU Siren Trigger (future hardware)
+
+Aligned with research objectives for Parañaque City.
 Alerts are persisted to database to prevent data loss on restart.
 """
 
@@ -13,19 +22,28 @@ import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import requests
+from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LOCATION_NAME, DEFAULT_LONGITUDE
 from app.models.db import AlertHistory, get_db_session
+from app.services.channels.email_alerts import EmailAlertChannel
+from app.services.channels.firebase_push import FirebasePushChannel
+from app.services.channels.messenger_bot import MessengerBotChannel
+from app.services.channels.siren_trigger import SirenTriggerChannel
+from app.services.channels.telegram_bot import TelegramBotChannel
 from app.services.risk_classifier import format_alert_message
+
+if TYPE_CHECKING:
+    from app.services.smart_alert_evaluator import SmartAlertDecision
 
 logger = logging.getLogger(__name__)
 
-# Parañaque City coordinates (default location)
+# Parañaque City coordinates — sourced from central constants
 PARANAQUE_COORDS: Dict[str, Any] = {
-    "lat": 14.4793,
-    "lon": 121.0198,
-    "name": "Parañaque City",
+    "lat": DEFAULT_LATITUDE,
+    "lon": DEFAULT_LONGITUDE,
+    "name": DEFAULT_LOCATION_NAME,
     "region": "Metro Manila",
     "country": "Philippines",
 }
@@ -36,26 +54,68 @@ class AlertSystem:
     Alert system for flood warnings.
 
     This class manages flood alert notifications through various channels
-    (web, SMS, email) and maintains alert history.
+    (web, SMS, email, Slack) and maintains alert history.
     """
 
     _instance: Optional["AlertSystem"] = None
 
-    def __init__(self, sms_enabled: bool = False, email_enabled: bool = False):
+    # All supported channel identifiers
+    SUPPORTED_CHANNELS = (
+        "web", "sms", "email", "slack",
+        "firebase_push", "messenger", "telegram", "siren",
+    )
+
+    def __init__(
+        self,
+        sms_enabled: bool = False,
+        email_enabled: bool = False,
+        slack_enabled: bool = False,
+        firebase_push_enabled: bool = False,
+        messenger_enabled: bool = False,
+        telegram_enabled: bool = False,
+        siren_enabled: bool = False,
+    ):
         """
         Initialize alert system.
 
         Args:
             sms_enabled: Enable SMS notifications (requires SMS gateway API)
             email_enabled: Enable email notifications (requires SMTP config)
+            slack_enabled: Enable Slack notifications (requires SLACK_WEBHOOK_URL)
+            firebase_push_enabled: Enable Firebase push notifications (requires FCM config)
+            messenger_enabled: Enable Facebook Messenger bot (requires Page token)
+            telegram_enabled: Enable Telegram bot (requires bot token)
+            siren_enabled: Enable LGU siren trigger (requires siren API)
         """
         self.sms_enabled = sms_enabled
         self.email_enabled = email_enabled
+        self.slack_enabled = slack_enabled
+        self.firebase_push_enabled = firebase_push_enabled
+        self.messenger_enabled = messenger_enabled
+        self.telegram_enabled = telegram_enabled
+        self.siren_enabled = siren_enabled
+
+        # Instantiate pluggable channel objects
+        self._firebase_channel = FirebasePushChannel()
+        self._messenger_channel = MessengerBotChannel()
+        self._telegram_channel = TelegramBotChannel()
+        self._siren_channel = SirenTriggerChannel()
+        self._email_channel = EmailAlertChannel()
+
         # In-memory cache for recent alerts (performance optimization)
         self._alert_cache: List[Dict[str, Any]] = []
 
     @classmethod
-    def get_instance(cls, sms_enabled: bool = False, email_enabled: bool = False) -> "AlertSystem":
+    def get_instance(
+        cls,
+        sms_enabled: bool = False,
+        email_enabled: bool = False,
+        slack_enabled: bool = False,
+        firebase_push_enabled: bool = False,
+        messenger_enabled: bool = False,
+        telegram_enabled: bool = False,
+        siren_enabled: bool = False,
+    ) -> "AlertSystem":
         """
         Get or create the singleton AlertSystem instance.
 
@@ -65,12 +125,25 @@ class AlertSystem:
         Args:
             sms_enabled: Enable SMS notifications
             email_enabled: Enable email notifications
+            slack_enabled: Enable Slack notifications
+            firebase_push_enabled: Enable Firebase push notifications
+            messenger_enabled: Enable Messenger chatbot
+            telegram_enabled: Enable Telegram bot
+            siren_enabled: Enable LGU siren trigger
 
         Returns:
             AlertSystem: The singleton instance
         """
         if cls._instance is None:
-            cls._instance = cls(sms_enabled=sms_enabled, email_enabled=email_enabled)
+            cls._instance = cls(
+                sms_enabled=sms_enabled,
+                email_enabled=email_enabled,
+                slack_enabled=slack_enabled,
+                firebase_push_enabled=firebase_push_enabled,
+                messenger_enabled=messenger_enabled,
+                telegram_enabled=telegram_enabled,
+                siren_enabled=siren_enabled,
+            )
         return cls._instance
 
     @classmethod
@@ -86,6 +159,7 @@ class AlertSystem:
         location: Optional[str] = None,
         recipients: Optional[List[str]] = None,
         alert_type: str = "web",
+        smart_decision: Optional["SmartAlertDecision"] = None,
     ) -> Dict[str, Any]:
         """
         Send flood alert notification.
@@ -95,6 +169,7 @@ class AlertSystem:
             location: Location name (default: Parañaque City)
             recipients: List of phone numbers or email addresses
             alert_type: 'web', 'sms', 'email', or 'all'
+            smart_decision: Optional SmartAlertDecision from smart evaluator
 
         Returns:
             dict: Alert delivery status
@@ -117,20 +192,127 @@ class AlertSystem:
             "delivery_status": {},
         }
 
+        # Attach smart alert metadata
+        if smart_decision:
+            alert_record["confidence_score"] = smart_decision.confidence
+            alert_record["rainfall_3h"] = smart_decision.rainfall_3h
+            alert_record["escalation_state"] = smart_decision.escalation_state
+            alert_record["escalation_reason"] = smart_decision.escalation_reason
+            alert_record["suppressed"] = smart_decision.was_suppressed
+            alert_record["contributing_factors"] = smart_decision.contributing_factors
+
+        # If suppressed by smart alert logic, persist but skip dispatch
+        if smart_decision and smart_decision.was_suppressed:
+            alert_record["delivery_status"]["suppressed"] = "suppressed"
+            self._persist_alert(alert_record)
+            logger.info(
+                "Alert suppressed by smart logic for %s: %s",
+                location, smart_decision.contributing_factors,
+            )
+            return alert_record
+
         # Send based on alert type
         if alert_type in ["web", "all"]:
             alert_record["delivery_status"]["web"] = "delivered"
             logger.info(f"Web alert sent: {risk_label} for {location}")
+
+        # Broadcast to all connected SSE clients (primary real-time channel)
+        if alert_type in ["web", "all"]:
+            try:
+                from app.api.routes.sse import broadcast_alert
+
+                client_count = broadcast_alert(alert_record)
+                alert_record["delivery_status"]["sse"] = "delivered"
+                logger.info(
+                    f"SSE broadcast: {risk_label} for {location} → {client_count} clients"
+                )
+            except Exception as sse_exc:
+                logger.error(f"SSE broadcast failed: {sse_exc}")
+                alert_record["delivery_status"]["sse"] = "failed"
 
         if alert_type in ["sms", "all"] and self.sms_enabled and recipients:
             sms_status = self._send_sms(recipients, message)
             alert_record["delivery_status"]["sms"] = sms_status
             logger.info(f"SMS alert sent: {risk_label} for {location}")
 
+        # Auto-trigger SMS for Critical risk conditions regardless of alert_type
+        # This ensures community alerts reach residents even if only 'web' was requested.
+        if (
+            risk_data.get("risk_level") == 2
+            and self.sms_enabled
+            and alert_type not in ["sms", "all"]
+            and recipients
+        ):
+            sms_status = self._send_sms(recipients, message)
+            alert_record["delivery_status"]["sms_critical_auto"] = sms_status
+            logger.info(
+                f"Auto SMS (Critical) sent: {risk_label} for {location} → {sms_status}"
+            )
+
         if alert_type in ["email", "all"] and self.email_enabled and recipients:
             email_status = self._send_email(recipients, risk_label, message)
             alert_record["delivery_status"]["email"] = email_status
             logger.info(f"Email alert sent: {risk_label} for {location}")
+
+        if alert_type in ["slack", "all"] and self.slack_enabled:
+            slack_status = self._send_slack(risk_label, message, location)
+            alert_record["delivery_status"]["slack"] = slack_status
+            logger.info(f"Slack alert sent: {risk_label} for {location}")
+
+        # --- New multi-channel dispatch ---
+
+        if alert_type in ["firebase_push", "all"] and self.firebase_push_enabled:
+            fcm_status = self._firebase_channel.dispatch(
+                message=message, risk_label=risk_label, location=location,
+                recipients=recipients,
+            )
+            alert_record["delivery_status"]["firebase_push"] = fcm_status
+            logger.info(f"Firebase push sent: {risk_label} for {location} → {fcm_status}")
+
+        if alert_type in ["messenger", "all"] and self.messenger_enabled:
+            messenger_status = self._messenger_channel.dispatch(
+                message=message, risk_label=risk_label, location=location,
+                recipients=recipients,
+            )
+            alert_record["delivery_status"]["messenger"] = messenger_status
+            logger.info(f"Messenger alert sent: {risk_label} for {location} → {messenger_status}")
+
+        if alert_type in ["telegram", "all"] and self.telegram_enabled:
+            telegram_status = self._telegram_channel.dispatch(
+                message=message, risk_label=risk_label, location=location,
+                recipients=recipients,
+            )
+            alert_record["delivery_status"]["telegram"] = telegram_status
+            logger.info(f"Telegram alert sent: {risk_label} for {location} → {telegram_status}")
+
+        if alert_type in ["siren", "all"] and self.siren_enabled:
+            siren_status = self._siren_channel.dispatch(
+                message=message, risk_label=risk_label, location=location,
+                recipients=recipients,
+            )
+            alert_record["delivery_status"]["siren"] = siren_status
+            logger.info(f"Siren trigger: {risk_label} for {location} → {siren_status}")
+
+        # Auto-trigger multi-channel for Critical risk
+        if risk_data.get("risk_level") == 2 and alert_type not in ["all"]:
+            if self.firebase_push_enabled and "firebase_push" not in alert_record["delivery_status"]:
+                auto_fcm = self._firebase_channel.dispatch(
+                    message=message, risk_label=risk_label, location=location,
+                    recipients=recipients,
+                )
+                alert_record["delivery_status"]["firebase_push_critical_auto"] = auto_fcm
+            if self.telegram_enabled and "telegram" not in alert_record["delivery_status"]:
+                auto_tg = self._telegram_channel.dispatch(
+                    message=message, risk_label=risk_label, location=location,
+                    recipients=recipients,
+                )
+                alert_record["delivery_status"]["telegram_critical_auto"] = auto_tg
+            if self.siren_enabled and "siren" not in alert_record["delivery_status"]:
+                auto_siren = self._siren_channel.dispatch(
+                    message=message, risk_label=risk_label, location=location,
+                    recipients=recipients,
+                )
+                alert_record["delivery_status"]["siren_critical_auto"] = auto_siren
 
         # Store in history (persist to database)
         self._persist_alert(alert_record)
@@ -146,6 +328,17 @@ class AlertSystem:
             prediction_id: Optional ID of related prediction
         """
         try:
+            # Determine escalation_state for DB
+            escalation_state = alert_record.get("escalation_state", "initial")
+            if escalation_state in ("critical",) and alert_record.get("escalation_reason") == "persisted_30min":
+                escalation_state = "auto_escalated"
+            elif escalation_state in ("critical", "alert"):
+                escalation_state = "escalated" if alert_record.get("escalation_reason") else "initial"
+
+            # Serialise contributing factors
+            factors = alert_record.get("contributing_factors")
+            factors_json = json.dumps(factors) if factors else None
+
             with get_db_session() as session:
                 db_alert = AlertHistory(
                     prediction_id=prediction_id,
@@ -157,6 +350,13 @@ class AlertSystem:
                     delivery_status=self._get_primary_status(alert_record.get("delivery_status", {})),
                     delivery_channel=self._get_delivery_channels(alert_record.get("delivery_status", {})),
                     delivered_at=datetime.now() if alert_record.get("delivery_status") else None,
+                    # Smart alert fields
+                    confidence_score=alert_record.get("confidence_score"),
+                    rainfall_3h=alert_record.get("rainfall_3h"),
+                    escalation_state=escalation_state,
+                    escalation_reason=alert_record.get("escalation_reason"),
+                    suppressed=alert_record.get("suppressed", False),
+                    contributing_factors=factors_json,
                 )
                 session.add(db_alert)
 
@@ -202,7 +402,7 @@ class AlertSystem:
             str: Delivery status ('delivered', 'failed', 'sandbox', 'not_configured')
         """
         provider = os.getenv("SMS_PROVIDER", "semaphore").lower()
-        sandbox_mode = os.getenv("SMS_SANDBOX_MODE", "True").lower() == "true"
+        sandbox_mode = os.getenv("SMS_SANDBOX_MODE", "False").lower() == "true"
 
         if sandbox_mode:
             logger.info(f"[SANDBOX] SMS would be sent to {recipients}: {message[:50]}...")
@@ -354,7 +554,7 @@ class AlertSystem:
         Returns:
             str: Delivery status ('delivered', 'failed', 'sandbox', 'not_configured')
         """
-        sandbox_mode = os.getenv("EMAIL_SANDBOX_MODE", "True").lower() == "true"
+        sandbox_mode = os.getenv("EMAIL_SANDBOX_MODE", "False").lower() == "true"
 
         if sandbox_mode:
             logger.info(f"[SANDBOX] Email would be sent to {recipients}: {subject}")
@@ -459,6 +659,53 @@ class AlertSystem:
         """
         return html
 
+    def _send_slack(self, risk_label: str, message: str, location: str) -> str:
+        """
+        Send a Slack notification via an Incoming Webhook.
+
+        Requires the ``SLACK_WEBHOOK_URL`` environment variable to be set
+        to a valid Slack Incoming Webhook URL.
+
+        Args:
+            risk_label: Risk level label (Safe, Alert, Critical)
+            message: Plain text alert message
+            location: Location string for the alert
+
+        Returns:
+            str: Delivery status ('delivered', 'failed', 'not_configured')
+        """
+        webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+        if not webhook_url:
+            logger.error("SLACK_WEBHOOK_URL not configured — cannot send Slack alert")
+            return "not_configured"
+
+        color_map = {"Safe": "#28a745", "Alert": "#ffc107", "Critical": "#dc3545"}
+        color = color_map.get(risk_label, "#6c757d")
+
+        payload = {
+            "attachments": [
+                {
+                    "color": color,
+                    "title": f":warning: Flood Risk Alert — {risk_label}",
+                    "text": message,
+                    "fields": [
+                        {"title": "Location", "value": location, "short": True},
+                        {"title": "Risk Level", "value": risk_label, "short": True},
+                    ],
+                    "footer": "Floodingnaque Early Warning System",
+                }
+            ]
+        }
+
+        try:
+            resp = requests.post(webhook_url, json=payload, timeout=10)
+            resp.raise_for_status()
+            logger.info(f"Slack alert delivered: {risk_label} for {location}")
+            return "delivered"
+        except requests.RequestException as exc:
+            logger.error(f"Slack webhook failed: {exc}")
+            return "failed"
+
     def get_alert_history(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Get recent alert history from database."""
         try:
@@ -513,7 +760,15 @@ class AlertSystem:
             return [alert for alert in self._alert_cache if alert.get("risk_level") == risk_level]
 
 
-def get_alert_system(sms_enabled: bool = False, email_enabled: bool = False) -> AlertSystem:
+def get_alert_system(
+    sms_enabled: bool = False,
+    email_enabled: bool = False,
+    slack_enabled: bool = False,
+    firebase_push_enabled: bool = False,
+    messenger_enabled: bool = False,
+    telegram_enabled: bool = False,
+    siren_enabled: bool = False,
+) -> AlertSystem:
     """
     Get the alert system instance using dependency injection pattern.
 
@@ -523,11 +778,24 @@ def get_alert_system(sms_enabled: bool = False, email_enabled: bool = False) -> 
     Args:
         sms_enabled: Enable SMS notifications
         email_enabled: Enable email notifications
+        slack_enabled: Enable Slack notifications
+        firebase_push_enabled: Enable Firebase push notifications
+        messenger_enabled: Enable Messenger chatbot
+        telegram_enabled: Enable Telegram bot
+        siren_enabled: Enable LGU siren trigger
 
     Returns:
         AlertSystem: The alert system instance
     """
-    return AlertSystem.get_instance(sms_enabled=sms_enabled, email_enabled=email_enabled)
+    return AlertSystem.get_instance(
+        sms_enabled=sms_enabled,
+        email_enabled=email_enabled,
+        slack_enabled=slack_enabled,
+        firebase_push_enabled=firebase_push_enabled,
+        messenger_enabled=messenger_enabled,
+        telegram_enabled=telegram_enabled,
+        siren_enabled=siren_enabled,
+    )
 
 
 def send_flood_alert(
@@ -535,6 +803,7 @@ def send_flood_alert(
     location: Optional[str] = None,
     recipients: Optional[List[str]] = None,
     alert_type: str = "web",
+    smart_decision: Optional["SmartAlertDecision"] = None,
 ) -> Dict[str, Any]:
     """
     Convenience function to send flood alert.
@@ -544,9 +813,10 @@ def send_flood_alert(
         location: Location name
         recipients: List of recipients
         alert_type: 'web', 'sms', 'email', or 'all'
+        smart_decision: Optional SmartAlertDecision from smart evaluator
 
     Returns:
         dict: Alert delivery status
     """
     alert_system = get_alert_system()
-    return alert_system.send_alert(risk_data, location, recipients, alert_type)
+    return alert_system.send_alert(risk_data, location, recipients, alert_type, smart_decision)

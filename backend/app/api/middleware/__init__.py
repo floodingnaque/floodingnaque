@@ -26,6 +26,7 @@ from app.api.middleware.rate_limit import (
 from app.api.middleware.security import (
     add_security_headers,
     get_cors_origins,
+    setup_cors,
     setup_security_headers,
     validate_cors_origin,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "rate_limit_tiered",
     "setup_security_headers",
     "add_security_headers",
+    "setup_cors",
     "get_cors_origins",
     "validate_cors_origin",
     "setup_request_logging",

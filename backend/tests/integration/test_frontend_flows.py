@@ -229,9 +229,14 @@ class TestPredictionWorkflow:
 
         with patch("app.api.routes.predict.rate_limit_with_burst", lambda x: lambda f: f):
             with patch("app.api.routes.predict.predict_flood", return_value=mock_result):
-                response = client.post(
-                    "/api/v1/predict/predict", data=json.dumps(prediction_input), content_type="application/json"
-                )
+                with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):
+                    with patch("app.api.middleware.auth._hash_api_key_pbkdf2", return_value="testhash"):
+                        response = client.post(
+                            "/api/v1/predict/",
+                            data=json.dumps(prediction_input),
+                            content_type="application/json",
+                            headers={"X-API-Key": "test-key"},
+                        )
 
         # Verify prediction was processed
         if response.status_code == 200:
@@ -294,7 +299,18 @@ class TestPredictionWorkflow:
                 mock_query.order_by.return_value = mock_query
                 mock_query.offset.return_value = mock_query
                 mock_query.limit.return_value = mock_query
-                mock_query.all.return_value = mock_predictions
+                mock_query.add_columns.return_value = mock_query
+
+                # Wrap each prediction as a row-like object with [0] indexing and _total attr
+                class _Row:
+                    def __init__(self, pred, total):
+                        self._pred = pred
+                        self._total = total
+                    def __getitem__(self, idx):
+                        return self._pred
+
+                wrapped = [_Row(p, len(mock_predictions)) for p in mock_predictions]
+                mock_query.all.return_value = wrapped
                 session.query.return_value = mock_query
 
                 response = client.get("/api/v1/predictions?limit=10")

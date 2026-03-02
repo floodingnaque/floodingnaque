@@ -29,7 +29,7 @@ This project implements a **Random Forest machine learning model** to predict fl
 
 ## Official Flood Records Training (2022-2025)
 
-Train models with **3,700+ real flood events** from the Parañaque City Disaster Risk Reduction and Management Office (DRRMO).
+Train models with **1,182 official flood events** from the Parañaque City Disaster Risk Reduction and Management Office (DRRMO), expanded to **13,698 balanced training samples**.
 
 | Feature | Description |
 |---------|-------------|
@@ -56,7 +56,7 @@ This enhancement provides significantly stronger thesis support compared to proj
 
 | Feature | Description |
 |---------|-------------|
-| Official Flood Records Training | 3,700+ real flood events from Parañaque City (2022-2025) with progressive training |
+| Official Flood Records Training | 1,182 official flood events from Parañaque City (2022-2025) with progressive training |
 | Enhanced Training Script | Hyperparameter tuning with GridSearchCV |
 | Thesis Report Generator | Publication-ready visualizations (300 DPI) |
 | Dataset Merger Tool | Combine multiple CSV files easily |
@@ -101,7 +101,7 @@ python scripts/train.py --data data/merged_dataset.csv
 | Model v1 | 2022 data only | ~100 records |
 | Model v2 | 2022 + 2023 data | ~270 records |
 | Model v3 | 2022 + 2023 + 2024 | ~1,100 records |
-| Model v4 | All data (2022-2025) | ~3,700 records (Best) |
+| Model v4 | All data (2022-2025) | 1,182 events → 13,698 samples (Best) |
 
 **With Custom Data:**
 
@@ -133,7 +133,8 @@ python scripts/validate_model.py
 
 **Output:**
 - 4 models trained on real data (v1, v2, v3, v4)
-- 3,700+ real flood events from official records
+- 1,182 official flood events from DRRMO records (2022-2025)
+- 13,698 balanced training samples (flood + non-flood)
 - Model evolution showing improvement over time
 - Publication-ready charts and reports
 
@@ -196,6 +197,10 @@ Custom CSV Files ---> Data Merger ---> Training Script
                                               v
                                        Alert Delivery
                                        (SMS / Email)
+                                              |
+                                              v
+                                   React Frontend (Vite)
+                              Landing Page (/) | Dashboard (/dashboard)
 ```
 
 ## Random Forest Model Features
@@ -313,7 +318,7 @@ curl http://localhost:5000/api/models
 - Hyperparameter optimization
 - 3-level risk classification (Safe/Alert/Critical)
 - Real-time predictions via API
-- Progressive training with 3,700+ real flood events
+- Progressive training with 1,182 official flood events
 - Model evolution demonstrating improvement over time
 
 ### Generated Presentation Materials
@@ -365,10 +370,12 @@ python main.py
 | F1 Score | 95%+ | Weighted average across classes |
 | ROC-AUC | 0.98+ | Area under ROC curve |
 
-> **Note:** The thesis reports 100% on the official DRRMO records dataset.
-> Perfect scores on small, well-separated datasets are expected for Random
-> Forest but do not guarantee the same on unseen real-world data.  The
-> cross-validation scores in the training output provide a more robust
+> **Important — Accuracy Disclaimer:** The thesis reports 100% accuracy on
+> the official DRRMO historical records dataset (N ≈ 200). This result is
+> expected when a Random Forest classifier operates on a small, clean,
+> well-separated dataset and does **not** imply equivalent performance on
+> unseen or noisy real-world data. Always refer to the stratified
+> cross-validation scores in the training output for a more robust
 > generalisation estimate.
 
 ### Feature Importance (Example)
@@ -418,6 +425,8 @@ python main.py
 | Feature | Description |
 |---------|-------------|
 | Flask REST API | RESTful web service |
+| React Frontend | Vite + TypeScript + Tailwind CSS + shadcn/ui |
+| Public Landing Page | 9-section pitch page with live status for all 16 barangays |
 | 3-level Risk Classification | Safe/Alert/Critical levels |
 | Real-time Predictions | Low-latency inference |
 | Alert Delivery System | SMS and email notifications |

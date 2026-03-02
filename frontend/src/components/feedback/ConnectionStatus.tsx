@@ -67,7 +67,7 @@ export function ConnectionStatus({
         >
           <AlertTriangle className={cn(config.icon, 'mr-1')} aria-hidden="true" />
           {showLabel && (
-            <span className="truncate max-w-[150px]">{connectionError}</span>
+            <span className="truncate max-w-37.5">{connectionError}</span>
           )}
         </Badge>
       </div>

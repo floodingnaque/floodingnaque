@@ -449,6 +449,9 @@ class ModelVersionManager:
         # Load version registry
         self._load_version_registry()
 
+        # Restore any persisted A/B tests from the database
+        self._restore_tests_from_db()
+
     @classmethod
     def get_instance(cls) -> "ModelVersionManager":
         """Get or create the singleton instance (thread-safe)."""
@@ -463,6 +466,128 @@ class ModelVersionManager:
         """Reset the singleton instance (for testing)."""
         with cls._lock:
             cls._instance = None
+
+    # =========================================================================
+    # A/B Test Persistence
+    # =========================================================================
+
+    def _persist_test(self, test: ABTest) -> None:
+        """Save or update an A/B test record in the database."""
+        try:
+            from app.models.ab_test import ABTestRecord
+            from app.models.db import get_db_session
+
+            with get_db_session() as session:
+                record = session.query(ABTestRecord).filter_by(test_id=test.test_id).first()
+
+                data = {
+                    "name": test.name,
+                    "description": test.description,
+                    "variants_json": [v.to_dict() for v in test.variants],
+                    "strategy": test.strategy.value,
+                    "target_sample_size": test.target_sample_size,
+                    "status": test.status.value,
+                    "start_time": test.start_time,
+                    "end_time": test.end_time,
+                    "metrics_json": {k: v.to_dict() for k, v in test.metrics.items()},
+                    "user_assignments_json": test.user_assignments,
+                    "round_robin_index": test.round_robin_index,
+                    "canary_percentage": test.canary_percentage,
+                    "canary_increment": test.canary_increment,
+                    "winner": test.winner,
+                    "statistical_significance": test.statistical_significance,
+                }
+
+                if record is None:
+                    record = ABTestRecord(test_id=test.test_id, **data)
+                    session.add(record)
+                else:
+                    for key, value in data.items():
+                        setattr(record, key, value)
+
+            logger.debug(f"Persisted A/B test {test.test_id} to database")
+        except Exception as e:
+            logger.warning(f"Failed to persist A/B test {test.test_id}: {e}")
+
+    def _restore_tests_from_db(self) -> None:
+        """Restore non-terminal A/B tests from the database on startup."""
+        try:
+            from app.models.ab_test import ABTestRecord
+            from app.models.db import get_db_session
+
+            with get_db_session() as session:
+                records = (
+                    session.query(ABTestRecord)
+                    .filter(ABTestRecord.status.in_(["created", "running", "paused"]))
+                    .all()
+                )
+
+                for rec in records:
+                    try:
+                        test = self._record_to_ab_test(rec)
+                        self._active_tests[test.test_id] = test
+                        logger.info(
+                            f"Restored A/B test {test.test_id} "
+                            f"({test.status.value}, {test.total_predictions} predictions)"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Could not restore A/B test {rec.test_id}: {e}")
+
+            if self._active_tests:
+                logger.info(f"Restored {len(self._active_tests)} A/B test(s) from database")
+        except Exception as e:
+            logger.warning(f"Could not restore A/B tests from database: {e}")
+
+    @staticmethod
+    def _record_to_ab_test(rec) -> ABTest:
+        """Deserialise an ABTestRecord row into an in-memory ABTest."""
+        from collections import defaultdict
+
+        variants = []
+        for vd in (rec.variants_json or []):
+            variants.append(
+                ModelVariant(
+                    name=vd["name"],
+                    version=SemanticVersion.parse(vd["version"]),
+                    model_path=vd["model_path"],
+                    weight=vd["weight"],
+                    is_control=vd.get("is_control", False),
+                    metadata=vd.get("metadata", {}),
+                )
+            )
+
+        metrics: Dict[str, ABTestMetrics] = {}
+        for name, md in (rec.metrics_json or {}).items():
+            m = ABTestMetrics(variant_name=name)
+            m.predictions_count = md.get("predictions_count", 0)
+            m.correct_predictions = md.get("correct_predictions", 0)
+            m.total_latency_ms = md.get("average_latency_ms", 0) * md.get("predictions_count", 0)
+            m.errors_count = md.get("errors_count", 0)
+            m.risk_level_distribution = defaultdict(int, md.get("risk_level_distribution", {}))
+            # confidence_scores list is not persisted (too large); only the
+            # average survives a restart.
+            m.confidence_scores = []
+            metrics[name] = m
+
+        test = ABTest(
+            test_id=rec.test_id,
+            name=rec.name,
+            description=rec.description or "",
+            variants=variants,
+            strategy=TrafficSplitStrategy(rec.strategy),
+            status=ABTestStatus(rec.status),
+            start_time=rec.start_time,
+            end_time=rec.end_time,
+            target_sample_size=rec.target_sample_size,
+            metrics=metrics,
+            user_assignments=rec.user_assignments_json or {},
+            round_robin_index=rec.round_robin_index or 0,
+            canary_percentage=rec.canary_percentage or 0.0,
+            canary_increment=rec.canary_increment or 10.0,
+            winner=rec.winner,
+            statistical_significance=rec.statistical_significance,
+        )
+        return test
 
     # =========================================================================
     # Version Management
@@ -675,6 +800,7 @@ class ModelVersionManager:
         )
 
         self._active_tests[test_id] = test
+        self._persist_test(test)
         logger.info(f"Created A/B test '{name}' ({test_id})")
         return test
 
@@ -702,6 +828,7 @@ class ModelVersionManager:
         if test.strategy == TrafficSplitStrategy.CANARY:
             test.canary_percentage = test.canary_increment  # Start at first increment
 
+        self._persist_test(test)
         logger.info(f"Started A/B test {test_id}")
         return True
 
@@ -760,6 +887,10 @@ class ModelVersionManager:
 
             if risk_level is not None:
                 metrics.risk_level_distribution[risk_level] += 1
+
+        # Periodically persist metrics (every 50 predictions)
+        if test.total_predictions % 50 == 0:
+            self._persist_test(test)
 
         # Check if test is complete
         if test.is_complete and test.status == ABTestStatus.RUNNING:
@@ -863,6 +994,7 @@ class ModelVersionManager:
             if variant.name in self._test_models:
                 del self._test_models[variant.name]
 
+        self._persist_test(test)
         return results
 
     def get_ab_test(self, test_id: str) -> Optional[Dict[str, Any]]:

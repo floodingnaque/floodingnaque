@@ -9,6 +9,31 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+# Row-like object returned by SQLAlchemy when add_columns() is used.
+# row[0] = the Prediction model instance, row._total = windowed count.
+
+
+class _Row:
+    """Mimics SQLAlchemy's Row object from add_columns() queries."""
+
+    __slots__ = ("_data", "_total")
+
+    def __init__(self, pred, total):
+        self._data = (pred, total)
+        self._total = total
+
+    def __getitem__(self, idx):
+        return self._data[idx]
+
+    def __len__(self):
+        return len(self._data)
+
+
+def _wrap_as_rows(predictions, total=None):
+    """Wrap prediction mocks into (pred, _total) rows that mimic add_columns output."""
+    count = total if total is not None else len(predictions)
+    return [_Row(p, count) for p in predictions]
+
 # API version prefix constant
 API_V1_PREFIX = "/api/v1"
 
@@ -49,9 +74,10 @@ class TestGetPredictions:
         mock_query.filter.return_value = mock_query
         mock_query.count.return_value = len(mock_predictions)
         mock_query.order_by.return_value = mock_query
+        mock_query.add_columns.return_value = mock_query
         mock_query.offset.return_value = mock_query
         mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = mock_predictions
+        mock_query.all.return_value = _wrap_as_rows(mock_predictions)
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
@@ -71,9 +97,10 @@ class TestGetPredictions:
         mock_query.filter.return_value = mock_query
         mock_query.count.return_value = len(mock_predictions)
         mock_query.order_by.return_value = mock_query
+        mock_query.add_columns.return_value = mock_query
         mock_query.offset.return_value = mock_query
         mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = mock_predictions[:2]
+        mock_query.all.return_value = _wrap_as_rows(mock_predictions[:2], total=len(mock_predictions))
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
@@ -96,9 +123,10 @@ class TestGetPredictions:
         mock_query.filter.return_value = mock_query
         mock_query.count.return_value = len(mock_predictions)
         mock_query.order_by.return_value = mock_query
+        mock_query.add_columns.return_value = mock_query
         mock_query.offset.return_value = mock_query
         mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = mock_predictions[2:]
+        mock_query.all.return_value = _wrap_as_rows(mock_predictions[2:], total=len(mock_predictions))
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
@@ -116,9 +144,10 @@ class TestGetPredictions:
         mock_query.filter.return_value = mock_query
         mock_query.count.return_value = len(filtered)
         mock_query.order_by.return_value = mock_query
+        mock_query.add_columns.return_value = mock_query
         mock_query.offset.return_value = mock_query
         mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = filtered
+        mock_query.all.return_value = _wrap_as_rows(filtered)
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
@@ -139,13 +168,15 @@ class TestGetPredictions:
 
     def test_get_predictions_filter_prediction(self, client, mock_db_session, mock_predictions):
         """Test get predictions filtered by prediction result."""
+        filtered = [p for p in mock_predictions if p.prediction == 1]
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.count.return_value = 2
         mock_query.order_by.return_value = mock_query
+        mock_query.add_columns.return_value = mock_query
         mock_query.offset.return_value = mock_query
         mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = [p for p in mock_predictions if p.prediction == 1]
+        mock_query.all.return_value = _wrap_as_rows(filtered, total=2)
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
@@ -170,9 +201,10 @@ class TestGetPredictions:
         mock_query.filter.return_value = mock_query
         mock_query.count.return_value = len(mock_predictions)
         mock_query.order_by.return_value = mock_query
+        mock_query.add_columns.return_value = mock_query
         mock_query.offset.return_value = mock_query
         mock_query.limit.return_value = mock_query
-        mock_query.all.return_value = mock_predictions
+        mock_query.all.return_value = _wrap_as_rows(mock_predictions)
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
@@ -511,9 +543,10 @@ class TestPredictionsDateFilter:
                 mock_query.filter.return_value = mock_query
                 mock_query.count.return_value = 10
                 mock_query.order_by.return_value = mock_query
+                mock_query.add_columns.return_value = mock_query
                 mock_query.offset.return_value = mock_query
                 mock_query.limit.return_value = mock_query
-                mock_query.all.return_value = []
+                mock_query.all.return_value = []  # empty is fine for 0 results
                 session.query.return_value = mock_query
 
                 response = client.get(f"{API_V1_PREFIX}/predictions?start_date=2025-01-01T00:00:00Z")
@@ -532,9 +565,10 @@ class TestPredictionsDateFilter:
                 mock_query.filter.return_value = mock_query
                 mock_query.count.return_value = 10
                 mock_query.order_by.return_value = mock_query
+                mock_query.add_columns.return_value = mock_query
                 mock_query.offset.return_value = mock_query
                 mock_query.limit.return_value = mock_query
-                mock_query.all.return_value = []
+                mock_query.all.return_value = []  # empty is fine for 0 results
                 session.query.return_value = mock_query
 
                 response = client.get(f"{API_V1_PREFIX}/predictions?end_date=2025-12-31T23:59:59Z")

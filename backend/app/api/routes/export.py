@@ -13,7 +13,7 @@ from typing import Any
 
 from app.api.middleware.auth import require_api_key
 from app.api.middleware.rate_limit import limiter
-from app.models.db import Prediction, WeatherData, get_db_session
+from app.models.db import AlertHistory, Prediction, WeatherData, get_db_session
 from flask import Blueprint, Response, jsonify, request
 
 logger = logging.getLogger(__name__)
@@ -495,4 +495,188 @@ def export_predictions():
 
     except Exception as e:
         logger.error(f"Error exporting predictions: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@export_bp.route("/alerts", methods=["GET"])
+@require_api_key
+@limiter.limit("5 per minute")
+def export_alerts():
+    """
+    Export alert / incident history (DRRMO report).
+
+    Query Parameters:
+        format: csv, json, or pdf (default: json)
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        risk_level: Filter by risk level (0, 1, 2)
+        limit: Maximum records (default: 1000, max: 10000)
+
+    Returns:
+        200: Exported data
+        400: Invalid parameters
+    """
+    try:
+        export_format = request.args.get("format", "json").lower()
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        risk_level = request.args.get("risk_level", type=int)
+        limit = int(request.args.get("limit", 1000))
+
+        if export_format not in ["csv", "json", "pdf"]:
+            return jsonify({"error": "Invalid format. Must be csv, json, or pdf"}), 400
+
+        max_limit = 10000
+        if limit > max_limit:
+            return jsonify({"error": f"Limit exceeds maximum of {max_limit}"}), 400
+
+        with get_db_session() as session:
+            query = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False))
+
+            if start_date:
+                try:
+                    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                    query = query.filter(AlertHistory.created_at >= start_dt)
+                except ValueError:
+                    return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+
+            if end_date:
+                try:
+                    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+                    query = query.filter(AlertHistory.created_at <= end_dt)
+                except ValueError:
+                    return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+            if risk_level is not None:
+                query = query.filter(AlertHistory.risk_level == risk_level)
+
+            query = query.order_by(AlertHistory.created_at.desc()).limit(limit)
+            alerts = query.all()
+
+        if not alerts:
+            return jsonify({"message": "No data found", "count": 0}), 200
+
+        # CSV
+        if export_format == "csv":
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(
+                [
+                    "id",
+                    "created_at",
+                    "risk_level",
+                    "risk_label",
+                    "location",
+                    "message",
+                    "delivery_status",
+                    "delivery_channel",
+                    "delivered_at",
+                ]
+            )
+            for rec in alerts:
+                writer.writerow(
+                    [
+                        rec.id,
+                        rec.created_at.isoformat() if rec.created_at else "",
+                        rec.risk_level,
+                        rec.risk_label,
+                        rec.location,
+                        rec.message,
+                        rec.delivery_status,
+                        rec.delivery_channel,
+                        rec.delivered_at.isoformat() if rec.delivered_at else "",
+                    ]
+                )
+            csv_data = output.getvalue()
+            output.close()
+
+            return Response(
+                csv_data,
+                mimetype="text/csv",
+                headers={
+                    "Content-Disposition": (
+                        f'attachment; filename=drrmo_incident_report_'
+                        f'{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
+                    )
+                },
+            )
+
+        # PDF
+        if export_format == "pdf":
+            try:
+                headers_row = [
+                    "ID",
+                    "Timestamp",
+                    "Risk Level",
+                    "Risk Label",
+                    "Location",
+                    "Message",
+                    "Status",
+                    "Channel",
+                    "Delivered At",
+                ]
+                rows = [
+                    [
+                        rec.id,
+                        rec.created_at.strftime("%Y-%m-%d %H:%M") if rec.created_at else "",
+                        rec.risk_level,
+                        rec.risk_label,
+                        rec.location or "",
+                        (rec.message or "")[:80],
+                        rec.delivery_status,
+                        rec.delivery_channel,
+                        rec.delivered_at.strftime("%Y-%m-%d %H:%M") if rec.delivered_at else "",
+                    ]
+                    for rec in alerts
+                ]
+                date_range = ""
+                if start_date and end_date:
+                    date_range = f" ({start_date} to {end_date})"
+                elif start_date:
+                    date_range = f" (from {start_date})"
+                elif end_date:
+                    date_range = f" (to {end_date})"
+
+                pdf_bytes = _build_pdf(
+                    title="DRRMO Incident Report",
+                    subtitle=f"Floodingnaque – Alert History & Incident Log{date_range}",
+                    headers=headers_row,
+                    rows=rows,
+                )
+                return Response(
+                    pdf_bytes,
+                    mimetype="application/pdf",
+                    headers={
+                        "Content-Disposition": (
+                            f'attachment; filename=drrmo_incident_report_'
+                            f'{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.pdf'
+                        ),
+                        "Content-Length": str(len(pdf_bytes)),
+                    },
+                )
+            except ImportError:
+                logger.error("reportlab is not installed; cannot generate PDF")
+                return jsonify({"error": "PDF generation not available on this server"}), 503
+
+        # JSON
+        data_list = []
+        for rec in alerts:
+            data_list.append(
+                {
+                    "id": rec.id,
+                    "created_at": rec.created_at.isoformat() if rec.created_at else None,
+                    "risk_level": rec.risk_level,
+                    "risk_label": rec.risk_label,
+                    "location": rec.location,
+                    "message": rec.message,
+                    "delivery_status": rec.delivery_status,
+                    "delivery_channel": rec.delivery_channel,
+                    "delivered_at": rec.delivered_at.isoformat() if rec.delivered_at else None,
+                }
+            )
+
+        return jsonify({"data": data_list, "count": len(data_list), "format": "json"}), 200
+
+    except Exception as e:
+        logger.error(f"Error exporting alerts: {e}")
         return jsonify({"error": "Internal server error"}), 500

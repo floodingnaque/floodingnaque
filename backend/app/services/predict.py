@@ -3,12 +3,16 @@ import hmac
 import json
 import logging
 import os
+import pickle
+import tempfile
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import joblib
 import pandas as pd
 from app.services.risk_classifier import classify_risk_level
+from app.services.smart_alert_evaluator import evaluate_smart_alert
 from app.utils.secrets import get_secret
 
 logger = logging.getLogger(__name__)
@@ -16,8 +20,17 @@ logger = logging.getLogger(__name__)
 # Default model path constant
 DEFAULT_MODEL_PATH = os.path.join("models", "flood_rf_model.joblib")
 
-# HMAC key for model signing (should be set in environment)
-_MODEL_SIGNING_KEY = get_secret("MODEL_SIGNING_KEY", default="")
+# HMAC key for model signing — resolved lazily so that secrets
+# loaded at startup time (after import) are picked up correctly.
+_MODEL_SIGNING_KEY: str | None = None
+
+
+def _get_model_signing_key() -> str:
+    """Return the MODEL_SIGNING_KEY, reading from secrets on first call."""
+    global _MODEL_SIGNING_KEY
+    if _MODEL_SIGNING_KEY is None:
+        _MODEL_SIGNING_KEY = get_secret("MODEL_SIGNING_KEY", default="")
+    return _MODEL_SIGNING_KEY
 
 
 class ModelLoader:
@@ -26,9 +39,13 @@ class ModelLoader:
 
     This replaces global mutable state with a controlled singleton pattern
     that supports dependency injection for testing.
+
+    Thread-safety: Uses a lock to prevent duplicate instantiation under
+    concurrent Gunicorn workers / threads.
     """
 
     _instance: Optional["ModelLoader"] = None
+    _lock: threading.Lock = threading.Lock()
 
     def __init__(self):
         """Initialize the model loader."""
@@ -39,15 +56,19 @@ class ModelLoader:
 
     @classmethod
     def get_instance(cls) -> "ModelLoader":
-        """Get or create the singleton ModelLoader instance."""
+        """Get or create the singleton ModelLoader instance (thread-safe)."""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                # Double-checked locking
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset_instance(cls) -> None:
         """Reset the singleton instance (useful for testing)."""
-        cls._instance = None
+        with cls._lock:
+            cls._instance = None
 
     @property
     def model(self) -> Optional[Any]:
@@ -184,10 +205,11 @@ def verify_model_integrity(model_path: str, expected_checksum: Optional[str] = N
     metadata = get_model_metadata(model_path)
 
     # First verify HMAC signature if available (strongest protection)
-    if _MODEL_SIGNING_KEY and metadata:
+    signing_key = _get_model_signing_key()
+    if signing_key and metadata:
         expected_hmac = metadata.get("hmac_signature")
         if expected_hmac:
-            if not verify_model_hmac_signature(model_path, expected_hmac, _MODEL_SIGNING_KEY):
+            if not verify_model_hmac_signature(model_path, expected_hmac, signing_key):
                 logger.error("SECURITY: HMAC signature verification FAILED! " "Model may have been tampered with.")
                 return False
             logger.info("Model HMAC signature verified successfully")
@@ -233,20 +255,35 @@ def save_model_with_checksum(model, model_path: str, metadata: Dict[str, Any]) -
     Returns:
         str: The computed checksum
     """
-    # Save model first
-    joblib.dump(model, model_path)
+    # Write to a temp file in the same directory, then atomically rename
+    # to prevent readers from seeing a partially-written model file.
+    model_dir = os.path.dirname(os.path.abspath(model_path))
+    fd, tmp_path = tempfile.mkstemp(suffix=".joblib.tmp", dir=model_dir)
+    try:
+        os.close(fd)
+        joblib.dump(model, tmp_path)
 
-    # Compute checksum
-    checksum = compute_model_checksum(model_path)
+        # Compute checksum on the completed temp file
+        checksum = compute_model_checksum(tmp_path)
+
+        # Atomic rename (same filesystem, so this is atomic on POSIX;
+        # on Windows os.replace is the closest equivalent).
+        os.replace(tmp_path, model_path)
+    except BaseException:
+        # Clean up the temp file on any error
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
 
     # Update metadata with checksum
     metadata["checksum"] = checksum
     metadata["checksum_algorithm"] = "SHA-256"
 
     # Compute and store HMAC signature if signing key is available
-    if _MODEL_SIGNING_KEY:
+    signing_key = _get_model_signing_key()
+    if signing_key:
         try:
-            hmac_sig = compute_model_hmac_signature(model_path, _MODEL_SIGNING_KEY)
+            hmac_sig = compute_model_hmac_signature(model_path, signing_key)
             metadata["hmac_signature"] = hmac_sig
             metadata["hmac_algorithm"] = "HMAC-SHA256"
             logger.info(f"Model signed with HMAC: {hmac_sig[:16]}...")
@@ -258,10 +295,17 @@ def save_model_with_checksum(model, model_path: str, metadata: Dict[str, Any]) -
             "Consider setting this for production security."
         )
 
-    # Save metadata
+    # Save metadata atomically (temp file + rename)
     metadata_path = Path(model_path).with_suffix(".json")
-    with open(metadata_path, "w") as f:
-        json.dump(metadata, f, indent=2)
+    fd_meta, tmp_meta_path = tempfile.mkstemp(suffix=".json.tmp", dir=model_dir)
+    try:
+        with os.fdopen(fd_meta, "w") as f:
+            json.dump(metadata, f, indent=2)
+        os.replace(tmp_meta_path, str(metadata_path))
+    except BaseException:
+        if os.path.exists(tmp_meta_path):
+            os.unlink(tmp_meta_path)
+        raise
 
     logger.info(f"Model saved with checksum: {checksum[:16]}...")
     return checksum
@@ -359,6 +403,12 @@ def _load_model(model_path: Optional[str] = None, force_reload: bool = False, ve
                 logger.info(f"Model version: {metadata.get('version', 'unknown')}")
             logger.debug("Model checksum verified")
 
+        except (pickle.UnpicklingError, EOFError, ModuleNotFoundError) as e:
+            logger.error(
+                f"Model file is corrupt or incompatible: {str(e)}. "
+                "Re-train the model or obtain a compatible .joblib file."
+            )
+            raise ValueError(f"Corrupt or incompatible model file '{model_path}': {e}") from e
         except (IOError, OSError) as e:
             logger.error(f"Error loading model: {str(e)}")
             raise
@@ -412,6 +462,9 @@ def predict_flood(
         # Convert input_data to DataFrame
         df = pd.DataFrame([input_data])
 
+        # Track any features filled with defaults
+        fill_values = {}
+
         # Get model feature names if available
         if hasattr(model, "feature_names_in_"):
             # Ensure columns match model expectations
@@ -438,6 +491,14 @@ def predict_flood(
             for feature, value in fill_values.items():
                 df[feature] = df[feature].fillna(value)
 
+            # Warn caller about imputed features
+            if fill_values:
+                logger.warning(
+                    "predict_flood: %d feature(s) missing from input, filled with defaults: %s",
+                    len(fill_values),
+                    ", ".join(f"{k}={v}" for k, v in fill_values.items()),
+                )
+
         # Make prediction
         prediction = model.predict(df)
         result = int(prediction[0])
@@ -456,7 +517,26 @@ def predict_flood(
                 probability=probability_dict,
                 precipitation=input_data.get("precipitation"),
                 humidity=input_data.get("humidity"),
+                precipitation_3h=input_data.get("precipitation_3h"),
+                tide_risk_factor=input_data.get("tide_risk_factor"),
             )
+
+        # Run smart alert evaluation pipeline
+        smart_decision = None
+        if risk_classification:
+            try:
+                smart_decision = evaluate_smart_alert(
+                    risk_classification=risk_classification,
+                    weather_data=input_data,
+                    data_quality=input_data.get("data_quality"),
+                    location=input_data.get("location", "Parañaque City"),
+                )
+                # Override risk classification with smart decision
+                risk_classification["risk_level"] = smart_decision.risk_level
+                risk_classification["risk_label"] = smart_decision.risk_label
+                risk_classification["confidence"] = smart_decision.confidence
+            except Exception as smart_exc:
+                logger.warning("Smart alert evaluation failed, using base classification: %s", smart_exc)
 
         # Build response
         if return_proba or return_risk_level:
@@ -467,12 +547,26 @@ def predict_flood(
             }
             if probability_dict:
                 response["probability"] = probability_dict
+            if fill_values:
+                response["imputed_defaults"] = fill_values
             if risk_classification:
                 response["risk_level"] = risk_classification["risk_level"]
                 response["risk_label"] = risk_classification["risk_label"]
                 response["risk_color"] = risk_classification["risk_color"]
                 response["risk_description"] = risk_classification["description"]
                 response["confidence"] = risk_classification["confidence"]
+
+            # Attach smart alert metadata
+            if smart_decision:
+                response["smart_alert"] = {
+                    "rainfall_3h": smart_decision.rainfall_3h,
+                    "confidence_score": smart_decision.confidence,
+                    "was_suppressed": smart_decision.was_suppressed,
+                    "escalation_state": smart_decision.escalation_state,
+                    "escalation_reason": smart_decision.escalation_reason,
+                    "contributing_factors": smart_decision.contributing_factors,
+                    "original_risk_level": smart_decision.original_risk_level,
+                }
 
             logger.info(
                 f"Prediction: {result}, Risk Level: {risk_classification['risk_label'] if risk_classification else 'N/A'}"

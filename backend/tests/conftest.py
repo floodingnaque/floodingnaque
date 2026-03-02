@@ -48,13 +48,20 @@ os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("FLASK_DEBUG", "true")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-not-for-production")
 os.environ.setdefault("TESTING", "true")
-os.environ.setdefault("AUTH_BYPASS_ENABLED", "true")
+os.environ.setdefault("AUTH_BYPASS_ENABLED", "false")
 os.environ.setdefault("STARTUP_HEALTH_CHECK", "false")
 os.environ.setdefault("SCHEDULER_ENABLED", "false")
 os.environ.setdefault("ENV_VALIDATION_ENABLED", "false")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")  # Disable rate limiting in tests
-# Clear VALID_API_KEYS to enable auth bypass in tests (AUTH_BYPASS_ENABLED=true)
-os.environ["VALID_API_KEYS"] = ""
+# PBKDF2 fallback salt – required by _hash_api_key_pbkdf2() in auth middleware.
+# Without this, any call to validate_api_key / revoke / expire raises ValueError.
+os.environ.setdefault(
+    "API_KEY_HASH_SALT",
+    "test-salt-value-for-unit-tests-at-least-32-chars!!",
+)
+# Set a deterministic test API key so auth middleware does not reject requests.
+# Individual tests can clear this or set AUTH_BYPASS_ENABLED=true as needed.
+os.environ.setdefault("VALID_API_KEYS", "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE")
 
 
 # ============================================================================
@@ -96,13 +103,16 @@ def app():
     application = create_app()
 
     # Configure for testing
+    # WARNING: Tests default to in-memory SQLite, which does not support all
+    # PostgreSQL features (e.g. JSON operators, array types, ON CONFLICT).
+    # Set TEST_DATABASE_URL in the environment to run against a real PG instance.
+    test_db_url = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
     application.config.update(
         {
             "TESTING": True,
             "WTF_CSRF_ENABLED": False,
             "PRESERVE_CONTEXT_ON_EXCEPTION": False,
-            # Use in-memory SQLite for tests
-            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SQLALCHEMY_DATABASE_URI": test_db_url,
         }
     )
 
@@ -305,10 +315,10 @@ def _reset_all_singletons():
 # ============================================================================
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="function")
 def auto_mock_health_dependencies(request):
     """
-    Auto-mock health check dependencies for all tests unless marked otherwise.
+    Mock health check dependencies for tests that need them.
 
     This prevents tests from failing due to:
     - Database not being available
@@ -316,19 +326,15 @@ def auto_mock_health_dependencies(request):
     - Redis not being connected
     - External APIs being unavailable
 
-    To skip this mocking (e.g., for integration tests that need real health checks),
-    mark your test with: @pytest.mark.no_health_mock
+    Usage – apply explicitly to tests that need mocked infrastructure:
+        @pytest.mark.mock_health
+        def test_something(self, client):
+            ...
 
-    Example:
-        @pytest.mark.no_health_mock
-        def test_real_health_check(self, client):
-            # This test will use real health check implementations
+    Or request the fixture directly:
+        def test_something(self, auto_mock_health_dependencies, client):
             ...
     """
-    # Skip mocking if test is marked with 'no_health_mock'
-    if "no_health_mock" in request.keywords:
-        yield
-        return
 
     # Mock all health check helper functions used by /health and /status endpoints
     with (

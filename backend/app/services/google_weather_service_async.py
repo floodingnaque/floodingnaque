@@ -25,11 +25,13 @@ Prerequisites:
 import asyncio
 import logging
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.google_weather_types import SatellitePrecipitation, WeatherReanalysis
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -95,12 +97,13 @@ class AsyncGoogleWeatherService:
     """
 
     _instance: Optional["AsyncGoogleWeatherService"] = None
+    _instance_lock: threading.Lock = threading.Lock()
     _initialized: bool = False
     _executor: Optional[ThreadPoolExecutor] = None
 
     # Parañaque City, Philippines default coordinates
-    DEFAULT_LAT = 14.4793
-    DEFAULT_LON = 121.0198
+    DEFAULT_LAT = DEFAULT_LATITUDE
+    DEFAULT_LON = DEFAULT_LONGITUDE
 
     # Dataset configurations
     DATASETS = {
@@ -149,9 +152,9 @@ class AsyncGoogleWeatherService:
         self.cache_dir = Path(os.getenv("EARTHENGINE_CACHE_DIR", "data/earthengine_cache"))
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Default location (Parañaque City)
-        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(self.DEFAULT_LAT)))
-        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(self.DEFAULT_LON)))
+        # Default location (Parañaque City — from central config)
+        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
+        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(DEFAULT_LONGITUDE)))
 
         # Thread pool for blocking operations
         max_workers = int(os.getenv("EARTHENGINE_EXECUTOR_WORKERS", "4"))
@@ -224,18 +227,22 @@ class AsyncGoogleWeatherService:
 
     @classmethod
     def get_instance(cls) -> "AsyncGoogleWeatherService":
-        """Get the singleton instance of AsyncGoogleWeatherService."""
+        """Get the singleton instance of AsyncGoogleWeatherService (thread-safe)."""
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._instance_lock:
+                # Double-checked locking
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset_instance(cls) -> None:
         """Reset the singleton instance (for testing)."""
-        if cls._instance and cls._instance._executor:
-            cls._instance._executor.shutdown(wait=False)
-        cls._instance = None
-        cls._initialized = False
+        with cls._instance_lock:
+            if cls._instance and cls._instance._executor:
+                cls._instance._executor.shutdown(wait=False)
+            cls._instance = None
+            cls._initialized = False
 
     async def close(self):
         """Shutdown the executor and cleanup resources."""
@@ -667,7 +674,9 @@ class AsyncGoogleWeatherService:
         """
         Get historical weather data formatted for ML training asynchronously.
 
-        Combines CHIRPS daily precipitation with ERA5 temperature/humidity.
+        Fetches CHIRPS daily precipitation and ERA5 hourly reanalysis in
+        parallel, then joins them by date so every training record has
+        real temperature, humidity, and precipitation values.
 
         Args:
             lat: Latitude
@@ -677,26 +686,60 @@ class AsyncGoogleWeatherService:
         Returns:
             List of daily weather records suitable for training
         """
+        import asyncio
+
         lat = lat or self.default_lat
         lon = lon or self.default_lon
 
-        # Get CHIRPS precipitation (daily)
-        chirps_data = await self.get_chirps_precipitation(lat, lon, days=days)
+        # Fetch CHIRPS and ERA5 concurrently
+        chirps_data, era5_data = await asyncio.gather(
+            self.get_chirps_precipitation(lat, lon, days=days),
+            self.get_era5_weather(lat, lon, hours=days * 24),
+        )
 
-        # For simplicity, return CHIRPS data with estimated temp/humidity
-        # In production, you'd join with ERA5 daily aggregates
+        # Build a date -> (temp, humidity) lookup from ERA5 daily aggregates
+        era5_daily: Dict[str, Dict[str, list]] = {}
+        for record in era5_data:
+            date_key = record.timestamp.strftime("%Y-%m-%d")
+            if date_key not in era5_daily:
+                era5_daily[date_key] = {"temps": [], "humidities": []}
+            era5_daily[date_key]["temps"].append(record.temperature)
+            era5_daily[date_key]["humidities"].append(record.humidity)
+
+        era5_averages: Dict[str, Dict[str, float]] = {}
+        for date_key, values in era5_daily.items():
+            era5_averages[date_key] = {
+                "temperature": sum(values["temps"]) / len(values["temps"]),
+                "humidity": sum(values["humidities"]) / len(values["humidities"]),
+            }
+
+        # Join CHIRPS precipitation with ERA5 temperature/humidity by date
         results = []
+        skipped = 0
         for record in chirps_data:
+            date_str = record["date"]
+            date_key = date_str[:10] if len(date_str) >= 10 else date_str
+            era5_match = era5_averages.get(date_key)
+
+            if era5_match is None:
+                skipped += 1
+                continue
+
             results.append(
                 {
-                    "date": record["date"],
-                    "temperature": 27.5,  # Average for Parañaque (Celsius)
-                    "humidity": 75.0,  # Average humidity
+                    "date": date_str,
+                    "temperature": round(era5_match["temperature"], 2),
+                    "humidity": round(era5_match["humidity"], 2),
                     "precipitation": record["precipitation"],
-                    "source": "chirps+estimated",
+                    "source": "chirps+era5",
                 }
             )
 
+        if skipped:
+            logger.warning(
+                f"Skipped {skipped}/{len(chirps_data)} CHIRPS days with no ERA5 match"
+            )
+        logger.info(f"Prepared {len(results)} training records with real ERA5 features")
         return results
 
     def check_health(self) -> Dict[str, Any]:

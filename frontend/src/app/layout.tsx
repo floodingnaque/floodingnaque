@@ -23,6 +23,15 @@ import {
   Sun,
   Droplets,
   User,
+  BarChart3,
+  Users,
+  Cog,
+  ScrollText,
+  Map,
+  MapPin,
+  Database,
+  Brain,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -52,6 +61,9 @@ import { ConnectionStatus } from '@/features/alerts/components/ConnectionStatus'
 import { LiveAlertsBanner } from '@/features/alerts/components/LiveAlertsBanner';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
 import { useUnreadCount } from '@/state/stores/alertStore';
+import { authApi } from '@/features/auth/services/authApi';
+
+import type { UserRole } from '@/types';
 
 /**
  * Navigation item interface
@@ -61,20 +73,39 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   badge?: number;
-  adminOnly?: boolean;
+  /** Roles that can see this item. If omitted, visible to all roles. */
+  roles?: UserRole[];
 }
 
 /**
  * Navigation items configuration
+ *
+ * Role visibility follows the 3-tier architecture:
+ *   user     → Resident  (Dashboard, Map, Prediction, Alerts)
+ *   operator → LGU/MDRRMO (+ Analytics, Reports, Alert Management)
+ *   admin    → Admin     (+ Model Mgmt, User Mgmt, System Settings, Logs)
  */
 const navItems: NavItem[] = [
-  { to: '/', icon: Home, label: 'Dashboard' },
+  // ── Resident tier (all roles) ──
+  { to: '/dashboard', icon: Home, label: 'Dashboard' },
+  { to: '/map', icon: Map, label: 'Flood Map' },
   { to: '/predict', icon: Activity, label: 'Prediction' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/history', icon: Cloud, label: 'Weather History' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-  { to: '/admin', icon: Shield, label: 'Admin', adminOnly: true },
+
+  // ── LGU / Operator tier ──
+  { to: '/history', icon: Cloud, label: 'Weather History', roles: ['operator', 'admin'] },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics', roles: ['operator', 'admin'] },
+  { to: '/reports', icon: FileText, label: 'Reports', roles: ['operator', 'admin'] },
+
+  // ── Admin tier ──
+  { to: '/admin', icon: Shield, label: 'Admin', roles: ['admin'] },
+  { to: '/admin/users', icon: Users, label: 'User Management', roles: ['admin'] },
+  { to: '/admin/barangays', icon: MapPin, label: 'Barangays', roles: ['admin'] },
+  { to: '/admin/data', icon: Database, label: 'Datasets', roles: ['admin'] },
+  { to: '/admin/models', icon: Brain, label: 'AI Models', roles: ['admin'] },
+  { to: '/admin/config', icon: SlidersHorizontal, label: 'Configuration', roles: ['admin'] },
+  { to: '/settings', icon: Cog, label: 'System Settings', roles: ['admin'] },
+  { to: '/admin/logs', icon: ScrollText, label: 'System Logs', roles: ['admin'] },
 ];
 
 /**
@@ -106,13 +137,21 @@ function getInitials(name?: string | null): string {
  * Page title mapping based on route
  */
 const pageTitles: Record<string, string> = {
-  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
+  '/map': 'Flood Map',
   '/predict': 'Flood Risk Prediction',
   '/alerts': 'Alerts',
   '/history': 'Weather History',
+  '/analytics': 'Analytics & Charts',
   '/reports': 'Reports & Export',
-  '/settings': 'Settings',
+  '/settings': 'System Settings',
   '/admin': 'Admin Panel',
+  '/admin/users': 'User Management',
+  '/admin/logs': 'System Logs',
+  '/admin/barangays': 'Barangay Management',
+  '/admin/data': 'Dataset Management',
+  '/admin/models': 'AI Model Control',
+  '/admin/config': 'System Configuration',
 };
 
 /**
@@ -136,6 +175,7 @@ function SidebarNav({
   }, []);
 
   const confirmLogout = useCallback(() => {
+    authApi.logout().catch(() => { /* server-side invalidation is best-effort */ });
     clearAuth();
     setShowLogout(false);
     navigate('/login');
@@ -146,8 +186,8 @@ function SidebarNav({
       {/* Navigation Links */}
       <div className="flex-1 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          // Skip admin-only items if user is not admin
-          if (item.adminOnly && user?.role !== 'admin') {
+          // Role-based visibility: hide items the user's role can't access
+          if (item.roles && (!user?.role || !item.roles.includes(user.role))) {
             return null;
           }
 
@@ -170,7 +210,7 @@ function SidebarNav({
                 )
               }
             >
-              <Icon className={cn('h-5 w-5 flex-shrink-0', collapsed && 'h-5 w-5')} />
+              <Icon className={cn('h-5 w-5 shrink-0', collapsed && 'h-5 w-5')} />
               {!collapsed && (
                 <>
                   <span className="flex-1">{item.label}</span>
@@ -201,7 +241,9 @@ function SidebarNav({
             {!collapsed ? (
               <div className="flex items-center gap-3 mb-3">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src="" alt={user.name} />
+                  {user.avatarUrl ? (
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                  ) : null}
                   <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -214,7 +256,9 @@ function SidebarNav({
             ) : (
               <div className="flex justify-center mb-3">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src="" alt={user.name} />
+                  {user.avatarUrl ? (
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                  ) : null}
                   <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                 </Avatar>
               </div>
@@ -272,6 +316,7 @@ export function Layout() {
   }, []);
 
   const confirmLogout = useCallback(() => {
+    authApi.logout().catch(() => { /* server-side invalidation is best-effort */ });
     clearAuth();
     setShowLogoutDialog(false);
     navigate('/login');
@@ -290,12 +335,17 @@ export function Layout() {
   // Get page title from current route
   const pageTitle = pageTitles[location.pathname] || 'Floodingnaque';
 
+  // Keep document.title in sync with the current route
+  useEffect(() => {
+    document.title = pageTitle === 'Floodingnaque' ? 'Floodingnaque' : `${pageTitle} | Floodingnaque`;
+  }, [pageTitle]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Skip Navigation Link */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-100 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-lg"
       >
         Skip to main content
       </a>
@@ -422,7 +472,9 @@ export function Layout() {
                       aria-label="User menu"
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="" alt={user.name} />
+                        {user.avatarUrl && (
+                          <AvatarImage src={user.avatarUrl} alt={user.name} />
+                        )}
                         <AvatarFallback className="text-xs">
                           {getInitials(user.name)}
                         </AvatarFallback>

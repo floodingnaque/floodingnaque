@@ -21,7 +21,7 @@ class TestResponseTimeBenchmarks:
 
     @pytest.mark.performance
     @pytest.mark.benchmark
-    def test_health_endpoint_response_time(self, client):
+    def test_health_endpoint_response_time(self, client, auto_mock_health_dependencies):
         """Health endpoint should respond within 100ms."""
         start = time.perf_counter()
         response = client.get("/health")
@@ -90,7 +90,7 @@ class TestResponseTimeBenchmarks:
 
     @pytest.mark.performance
     @pytest.mark.benchmark
-    def test_average_response_time(self, client):
+    def test_average_response_time(self, client, auto_mock_health_dependencies):
         """Calculate average response time over multiple requests."""
         num_requests = 20
         times = []
@@ -124,7 +124,7 @@ class TestMemoryBenchmarks:
 
     @pytest.mark.performance
     @pytest.mark.benchmark
-    def test_request_memory_footprint(self, client):
+    def test_request_memory_footprint(self, client, auto_mock_health_dependencies):
         """Single request should not cause memory leak."""
         gc.collect()
         initial_memory = self._get_memory_usage()
@@ -253,7 +253,7 @@ class TestConcurrentLoadBenchmarks:
     @pytest.mark.performance
     @pytest.mark.benchmark
     @pytest.mark.slow
-    def test_sustained_load(self, client):
+    def test_sustained_load(self, client, auto_mock_health_dependencies):
         """Test sustained load over time."""
         duration_seconds = 2
         request_count = 0

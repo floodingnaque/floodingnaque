@@ -14,9 +14,13 @@ export {
   useAlertHistory,
   useAcknowledgeAlert,
   useAcknowledgeAll,
+  useSimulateSms,
   alertKeys,
 } from './hooks/useAlerts';
 export { useAlertStream } from './hooks/useAlertStream';
+
+// Types
+export type { SmsSimulationResponse } from './services/alertsApi';
 
 // Components
 export { AlertBadge } from './components/AlertBadge';
@@ -24,3 +28,4 @@ export { AlertCard } from './components/AlertCard';
 export { AlertList } from './components/AlertList';
 export { LiveAlertsBanner } from './components/LiveAlertsBanner';
 export { ConnectionStatus } from './components/ConnectionStatus';
+export { SmsSimulationPanel } from './components/SmsSimulationPanel';

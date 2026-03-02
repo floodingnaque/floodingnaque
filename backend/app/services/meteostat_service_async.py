@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.meteostat_types import WeatherObservation
 from app.utils.circuit_breaker import CircuitOpenError
 from meteostat import Daily, Hourly, Point, Stations
@@ -94,8 +95,8 @@ class AsyncMeteostatService:
         self.as_fallback = os.getenv("METEOSTAT_AS_FALLBACK", "True").lower() == "true"
 
         # Default location (Parañaque City, Philippines)
-        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", "14.4793"))
-        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", "121.0198"))
+        self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
+        self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(DEFAULT_LONGITUDE)))
 
         # Configure Meteostat cache directory
         cache_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data", "meteostat_cache")

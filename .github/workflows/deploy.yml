@@ -162,7 +162,7 @@ jobs:
     runs-on: ubuntu-latest
     # Skip staging if manual dispatch with skip_staging=true or direct production deploy
     if: |
-      github.event_name == 'push' ||
+      github.event_name == 'workflow_run' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_staging != 'true')
     permissions:
@@ -197,11 +197,38 @@ jobs:
         chmod 600 ~/.ssh/deploy_key
         ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-        # Deploy via SSH
+        # Deploy via SSH with pre-deploy checks
         ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << 'DEPLOY_SCRIPT'
+          set -e
           cd /opt/floodingnaque
+
+          echo "=== Pre-deploy checks ==="
+
+          # W2: Verify .env file exists
+          if [ ! -f ./backend/.env.staging ]; then
+            echo "::error::backend/.env.staging not found on target server!"
+            echo "Create it from backend/.env.example with staging values."
+            exit 1
+          fi
+
+          # W3: Verify secrets directory (if using Docker Secrets)
+          REQUIRED_SECRETS="secret_key.txt jwt_secret_key.txt database_url.txt redis_url.txt"
+          if [ -d ./secrets ]; then
+            for secret_file in $REQUIRED_SECRETS; do
+              if [ ! -f ./secrets/$secret_file ]; then
+                echo "WARNING: Missing secret file: secrets/$secret_file"
+              fi
+            done
+          fi
+
+          echo "=== Pulling and deploying ==="
           docker compose -f compose.staging.yaml pull
           docker compose -f compose.staging.yaml up -d --remove-orphans
+
+          # Run database migrations after containers are up
+          echo "=== Running database migrations ==="
+          docker compose -f compose.staging.yaml exec -T backend alembic upgrade head
+
           docker image prune -f
         DEPLOY_SCRIPT
 
@@ -252,6 +279,27 @@ jobs:
         fi
         echo "✅ API smoke test passed (status: $response)"
 
+    - name: Rollback staging on smoke failure
+      if: failure()
+      env:
+        DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
+        DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
+        DEPLOY_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      run: |
+        echo "⚠️ Smoke test failed — rolling back staging to previous image..."
+        mkdir -p ~/.ssh
+        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+        ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << 'ROLLBACK'
+          set -e
+          cd /opt/floodingnaque
+          # Docker keeps the previous image; rollback by reverting to it
+          docker compose -f compose.staging.yaml up -d --force-recreate --remove-orphans
+        ROLLBACK
+        rm -f ~/.ssh/deploy_key
+        echo "::warning::🔄 Staging auto-rolled back after smoke test failure"
+
   # ==========================================================================
   # Deploy to Production (Requires Manual Approval)
   # ==========================================================================
@@ -261,7 +309,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only run on push to main (after staging succeeds) or manual dispatch to production
     if: |
-      github.event_name == 'push' ||
+      github.event_name == 'workflow_run' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     permissions:
       contents: read
@@ -293,11 +341,58 @@ jobs:
         chmod 600 ~/.ssh/deploy_key
         ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-        # Deploy via SSH
+        # Deploy via SSH with pre-deploy checks and backup
         ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << 'DEPLOY_SCRIPT'
+          set -e
           cd /opt/floodingnaque
-          docker compose -f compose.production.yaml pull
-          docker compose -f compose.production.yaml up -d --remove-orphans
+
+          echo "=== Pre-deploy checks ==="
+
+          # W2: Verify .env.production exists
+          if [ ! -f ./backend/.env.production ]; then
+            echo "::error::backend/.env.production not found on target server!"
+            echo "Create it from backend/.env.example with production values."
+            echo "See docs/DOCKER_SECRETS_SETUP.md for required variables."
+            exit 1
+          fi
+
+          # W3: Verify secrets directory and required secret files
+          REQUIRED_SECRETS="secret_key.txt jwt_secret_key.txt database_url.txt redis_url.txt dd_api_key.txt owm_api_key.txt model_signing_key.txt"
+          MISSING=0
+          for secret_file in $REQUIRED_SECRETS; do
+            if [ ! -f ./secrets/$secret_file ]; then
+              echo "ERROR: Missing required secret: secrets/$secret_file"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ $MISSING -gt 0 ]; then
+            echo "::error::$MISSING required secret files are missing!"
+            echo "See docs/DOCKER_SECRETS_SETUP.md for setup instructions."
+            exit 1
+          fi
+
+          # B2: Verify SSL CA certificate
+          if [ ! -f ./backend/certs/prod-ca-2021.crt ]; then
+            echo "::error::SSL CA certificate not found at backend/certs/prod-ca-2021.crt"
+            echo "See backend/certs/README.md for setup instructions."
+            exit 1
+          fi
+
+          # W4: Pre-deploy database backup
+          echo "=== Creating pre-deploy database backup ==="
+          docker compose -f compose.production.yaml exec -T backend \
+            python -m scripts.backup_database --postgres --output /app/backups 2>&1 || \
+            echo "WARNING: Pre-deploy backup failed — proceeding with caution"
+
+          echo "=== Pulling and deploying ==="
+          # W9: Always include --profile nginx for TLS termination in production
+          docker compose -f compose.production.yaml --profile nginx pull
+          docker compose -f compose.production.yaml --profile nginx up -d --remove-orphans
+
+          # Run database migrations after containers are up
+          echo "=== Running database migrations ==="
+          docker compose -f compose.production.yaml exec -T backend alembic upgrade head
+
           docker image prune -f
         DEPLOY_SCRIPT
 

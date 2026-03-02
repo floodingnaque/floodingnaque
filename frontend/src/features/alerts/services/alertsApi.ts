@@ -16,6 +16,18 @@ import type {
 } from '@/types';
 
 /**
+ * Response from the SMS simulation endpoint
+ */
+export interface SmsSimulationResponse {
+  status: 'sandbox';
+  phone: string;
+  message: string;
+  risk_level: number;
+  risk_label: string;
+  simulated_at: string;
+}
+
+/**
  * Alerts API methods
  */
 export const alertsApi = {
@@ -99,6 +111,33 @@ export const alertsApi = {
    */
   acknowledgeAll: async (): Promise<void> => {
     await api.post<ApiResponse<void>>(`${API_ENDPOINTS.alerts.list}/acknowledge-all`);
+  },
+
+  /**
+   * Simulate an SMS alert (always sandbox mode)
+   *
+   * @param phone - Philippine mobile number
+   * @param message - Optional custom message
+   * @param riskLevel - Optional risk level (0-2)
+   * @returns Simulation result with status, phone, message, timestamp
+   *
+   * @example
+   * const result = await alertsApi.simulateSms('09171234567', undefined, 2);
+   */
+  simulateSms: async (
+    phone: string,
+    message?: string,
+    riskLevel?: number,
+  ): Promise<SmsSimulationResponse> => {
+    const body: Record<string, unknown> = { phone };
+    if (message) body.message = message;
+    if (riskLevel !== undefined) body.risk_level = riskLevel;
+
+    const response = await api.post<ApiResponse<SmsSimulationResponse>>(
+      API_ENDPOINTS.alerts.simulateSms,
+      body,
+    );
+    return response.data;
   },
 };
 

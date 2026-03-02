@@ -37,6 +37,8 @@ function getExportPath(params: ReportParams, format: 'csv' | 'json' | 'pdf'): st
   const endpoint =
     params.report_type === 'predictions'
       ? API_ENDPOINTS.export.predictions
+      : params.report_type === 'alerts'
+      ? API_ENDPOINTS.export.alerts
       : API_ENDPOINTS.export.weather;
 
   const searchParams = new URLSearchParams({ format });

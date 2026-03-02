@@ -133,7 +133,7 @@ export function LocationPicker({
         </div>
 
         {/* Select Mode Indicator */}
-        <div className="absolute bottom-2 left-2 z-[1000] rounded bg-white/90 px-2 py-1 text-xs shadow">
+        <div className="absolute bottom-2 left-2 z-1000 rounded bg-white/90 px-2 py-1 text-xs shadow">
           <span className="font-medium text-primary">Select Mode</span>
         </div>
       </div>

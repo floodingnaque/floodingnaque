@@ -278,13 +278,16 @@ export function useAlertStream(
     };
   }, [enabled, createConnection, cleanup]);
 
-  // Handle reconnection with delay
+  // Handle reconnection with exponential backoff
   useEffect(() => {
     if (shouldReconnect && reconnectAttempts > 0 && enabled) {
+      // Exponential backoff with jitter to avoid thundering-herd reconnects
+      const baseDelay = Math.min(reconnectDelay * Math.pow(2, reconnectAttempts - 1), 60000);
+      const backoffDelay = baseDelay * (0.5 + Math.random() * 0.5); // ±50% jitter
       reconnectTimeoutRef.current = setTimeout(() => {
         setShouldReconnect(false);
         createConnection();
-      }, reconnectDelay);
+      }, backoffDelay);
 
       return () => {
         if (reconnectTimeoutRef.current) {

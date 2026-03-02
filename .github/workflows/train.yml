@@ -41,7 +41,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.13'
   MLFLOW_TRACKING_URI: 'mlruns'
 
 jobs:
@@ -210,12 +210,11 @@ jobs:
         id: validate
         run: |
           cd backend
-          python scripts/validate_model.py
-
-          if [ $? -eq 0 ]; then
+          if python scripts/validate_model.py; then
             echo "passed=true" >> $GITHUB_OUTPUT
           else
             echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
           fi
 
   promote-staging:

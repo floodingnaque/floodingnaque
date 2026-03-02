@@ -58,6 +58,33 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+# Magic bytes for MIME-type validation (prevents extension spoofing)
+_MAGIC_SIGNATURES: Dict[str, List[bytes]] = {
+    "csv": [],  # CSV has no fixed magic bytes; validated via content parsing
+    "xlsx": [b"PK\x03\x04"],  # ZIP-based Office Open XML
+    "xls": [b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"],  # OLE2 Compound Document
+}
+
+
+def validate_file_content_type(file_storage, extension: str) -> bool:
+    """
+    Validate that the first bytes of the uploaded file match the
+    expected file type, preventing extension-spoofing attacks.
+
+    For CSV files the magic-byte check is skipped because plain text
+    has no fixed signature; instead CSV validity is verified later
+    during content parsing.
+    """
+    if extension == "csv":
+        return True  # validated later during parsing
+    expected = _MAGIC_SIGNATURES.get(extension, [])
+    if not expected:
+        return True
+    header = file_storage.read(8)
+    file_storage.seek(0)  # rewind for downstream consumers
+    return any(header.startswith(sig) for sig in expected)
+
+
 def _sanitize_error_messages(errors: List[str], max_errors: int = 50) -> List[str]:
     """
     Sanitize error messages to prevent information exposure.
@@ -410,6 +437,10 @@ def upload_csv():
         if not file.filename.lower().endswith(".csv"):
             return api_error("ValidationError", "File must be a CSV file", HTTP_BAD_REQUEST, request_id)
 
+        # Validate content type via magic bytes (prevents extension spoofing)
+        if not validate_file_content_type(file, "csv"):
+            return api_error("ValidationError", "File content does not match CSV format", HTTP_BAD_REQUEST, request_id)
+
         # Check file size
         file.seek(0, 2)  # Seek to end
         file_size = file.tell()
@@ -549,6 +580,16 @@ def upload_excel():
         if not (file.filename.lower().endswith(".xlsx") or file.filename.lower().endswith(".xls")):
             return api_error(
                 "ValidationError", "File must be an Excel file (.xlsx or .xls)", HTTP_BAD_REQUEST, request_id
+            )
+
+        # Validate content type via magic bytes (prevents extension spoofing)
+        ext = "xlsx" if file.filename.lower().endswith(".xlsx") else "xls"
+        if not validate_file_content_type(file, ext):
+            return api_error(
+                "ValidationError",
+                "File content does not match the expected Excel format",
+                HTTP_BAD_REQUEST,
+                request_id,
             )
 
         # Check file size

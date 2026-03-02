@@ -3,14 +3,14 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
+# Add parent directory to path BEFORE importing app modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from alembic import context
 from app.core.config import load_env
 from app.models.db import Base
 from app.utils.db_connection import prepare_db_url
 from sqlalchemy import create_engine, pool
-
-# Add parent directory to path to import app modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Load environment variables
 load_env()

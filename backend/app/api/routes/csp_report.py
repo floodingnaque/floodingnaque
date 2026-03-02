@@ -264,8 +264,8 @@ def _store_csp_report(log_entry: dict):
                 level="warning",
                 extras=log_entry,
             )
-        except Exception:  # nosec B110
-            pass
+        except Exception as sentry_err:  # nosec B110
+            logger.debug("Failed to forward CSP violation to Sentry: %s", sentry_err)
 
     # Option 3: Check for critical violations and alert
     critical_directives = ["script-src", "object-src", "base-uri"]

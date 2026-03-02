@@ -1,0 +1,427 @@
+# =====================================================
+# Floodingnaque — Microservices Docker Compose
+# =====================================================
+# Orchestrates the 5-service decomposition:
+#   1. weather-collector  (port 5001)
+#   2. ml-prediction      (port 5002)
+#   3. alert-notification (port 5003)
+#   4. user-management    (port 5004)
+#   5. dashboard-api      (port 5005)
+#
+# Plus shared infrastructure:
+#   - PostgreSQL, PgBouncer, Redis, API Gateway (nginx)
+#
+# Usage:
+#   docker compose -f compose.microservices.yaml up -d --build
+#   docker compose -f compose.microservices.yaml logs -f
+#   docker compose -f compose.microservices.yaml down -v
+#
+# With profiles:
+#   docker compose -f compose.microservices.yaml --profile monitoring up -d
+#
+# =====================================================
+
+name: floodingnaque-microservices
+
+# ===================
+# Shared YAML Anchors
+# ===================
+
+x-service-base: &service-base
+  restart: unless-stopped
+  environment: &env-base
+    PYTHONPATH: /app
+    PYTHONUNBUFFERED: "1"
+    DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:-floodingnaque}
+    REDIS_URL: redis://redis:6379/0
+    JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    # Inter-service URLs
+    WEATHER_SERVICE_URL: http://weather-collector:5001
+    PREDICTION_SERVICE_URL: http://ml-prediction:5002
+    ALERT_SERVICE_URL: http://alert-notification:5003
+    USER_SERVICE_URL: http://user-management:5004
+    DASHBOARD_SERVICE_URL: http://dashboard-api:5005
+  networks:
+    - microservices
+
+x-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-security: &security
+  security_opt:
+    - no-new-privileges:true
+
+x-resources-small: &resources-small
+  limits:
+    cpus: '0.5'
+    memory: 512M
+  reservations:
+    cpus: '0.1'
+    memory: 128M
+
+x-resources-medium: &resources-medium
+  limits:
+    cpus: '1'
+    memory: 1G
+  reservations:
+    cpus: '0.25'
+    memory: 256M
+
+x-resources-large: &resources-large
+  limits:
+    cpus: '2'
+    memory: 2G
+  reservations:
+    cpus: '0.5'
+    memory: 512M
+
+x-healthcheck: &healthcheck-template
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 15s
+
+# ===================
+# Services
+# ===================
+
+services:
+
+  # ─── 1. Weather Data Collector ─────────────────
+  weather-collector:
+    <<: *security
+    build:
+      context: ./services/weather-collector
+      dockerfile: Dockerfile
+      target: development
+    container_name: fn-weather-collector
+    ports:
+      - "5001:5001"
+    environment:
+      <<: *env-base
+      PORT: "5001"
+      SERVICE_NAME: weather-collector
+      APP_ENV: development
+      SCHEDULER_ENABLED: "true"
+      METEOSTAT_API_KEY: ${METEOSTAT_API_KEY:-}
+      GOOGLE_WEATHER_API_KEY: ${GOOGLE_WEATHER_API_KEY:-}
+      WORLDTIDES_API_KEY: ${WORLDTIDES_API_KEY:-}
+    volumes:
+      - ./services/weather-collector/app:/app/app:ro
+      - ./services/shared:/app/shared:ro
+      - weather-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices
+    healthcheck:
+      <<: *healthcheck-template
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging
+
+  # ─── 2. ML Prediction ─────────────────────────
+  ml-prediction:
+    <<: *security
+    build:
+      context: ./services/ml-prediction
+      dockerfile: Dockerfile
+      target: development
+    container_name: fn-ml-prediction
+    ports:
+      - "5002:5002"
+    environment:
+      <<: *env-base
+      PORT: "5002"
+      SERVICE_NAME: ml-prediction
+      APP_ENV: development
+      MODEL_PATH: /app/models
+    volumes:
+      - ./services/ml-prediction/app:/app/app:ro
+      - ./services/shared:/app/shared:ro
+      - ml-models:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices
+    healthcheck:
+      <<: *healthcheck-template
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
+    deploy:
+      resources:
+        <<: *resources-large
+    logging:
+      <<: *logging
+
+  # ─── 3. Alert Notification ────────────────────
+  alert-notification:
+    <<: *security
+    build:
+      context: ./services/alert-notification
+      dockerfile: Dockerfile
+      target: development
+    container_name: fn-alert-notification
+    ports:
+      - "5003:5003"
+    environment:
+      <<: *env-base
+      PORT: "5003"
+      SERVICE_NAME: alert-notification
+      APP_ENV: development
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      TWILIO_SID: ${TWILIO_SID:-}
+      TWILIO_TOKEN: ${TWILIO_TOKEN:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    volumes:
+      - ./services/alert-notification/app:/app/app:ro
+      - ./services/shared:/app/shared:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices
+    healthcheck:
+      <<: *healthcheck-template
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5003/health')"]
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging
+
+  # ─── 4. User Management ──────────────────────
+  user-management:
+    <<: *security
+    build:
+      context: ./services/user-management
+      dockerfile: Dockerfile
+      target: development
+    container_name: fn-user-management
+    ports:
+      - "5004:5004"
+    environment:
+      <<: *env-base
+      PORT: "5004"
+      SERVICE_NAME: user-management
+      APP_ENV: development
+    volumes:
+      - ./services/user-management/app:/app/app:ro
+      - ./services/shared:/app/shared:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices
+    healthcheck:
+      <<: *healthcheck-template
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5004/health')"]
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging
+
+  # ─── 5. Dashboard API ────────────────────────
+  dashboard-api:
+    <<: *security
+    build:
+      context: ./services/dashboard-api
+      dockerfile: Dockerfile
+      target: development
+    container_name: fn-dashboard-api
+    ports:
+      - "5005:5005"
+    environment:
+      <<: *env-base
+      PORT: "5005"
+      SERVICE_NAME: dashboard-api
+      APP_ENV: development
+      CACHE_TTL: "60"
+    volumes:
+      - ./services/dashboard-api/app:/app/app:ro
+      - ./services/shared:/app/shared:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      weather-collector:
+        condition: service_healthy
+      ml-prediction:
+        condition: service_healthy
+      alert-notification:
+        condition: service_healthy
+      user-management:
+        condition: service_healthy
+    networks:
+      - microservices
+    healthcheck:
+      <<: *healthcheck-template
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5005/health')"]
+    deploy:
+      resources:
+        <<: *resources-medium
+    logging:
+      <<: *logging
+
+  # ─── API Gateway (nginx) ─────────────────────
+  api-gateway:
+    image: nginx:1.25-alpine
+    container_name: fn-api-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/microservices.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./backend/certs:/etc/nginx/certs:ro
+    depends_on:
+      - weather-collector
+      - ml-prediction
+      - alert-notification
+      - user-management
+      - dashboard-api
+    networks:
+      - microservices
+    healthcheck:
+      <<: *healthcheck-template
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging
+
+  # ─── Infrastructure: PostgreSQL ──────────────
+  db:
+    image: postgres:15.5-alpine
+    <<: *security
+    container_name: fn-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-floodingnaque}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-floodingnaque}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        <<: *resources-medium
+    logging:
+      <<: *logging
+
+  # ─── Infrastructure: Redis ──────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: fn-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging
+
+  # ─── Infrastructure: PgBouncer ──────────────
+  pgbouncer:
+    build:
+      context: ./pgbouncer
+      dockerfile: Dockerfile
+    container_name: fn-pgbouncer
+    restart: unless-stopped
+    ports:
+      - "6432:6432"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB:-floodingnaque}
+      - DB_USER=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      - PGBOUNCER_POOL_MODE=transaction
+      - PGBOUNCER_MAX_CLIENT_CONN=200
+      - PGBOUNCER_DEFAULT_POOL_SIZE=20
+      - PGBOUNCER_MIN_POOL_SIZE=5
+      - PGBOUNCER_RESERVE_POOL_SIZE=10
+      - PGBOUNCER_MAX_DB_CONNECTIONS=50
+      - PGBOUNCER_ADMIN_USER=${PGBOUNCER_ADMIN_USER:-pgbouncer_admin}
+      - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD:-pgbouncer_admin_pass}
+      - PGBOUNCER_STATS_USER=${PGBOUNCER_STATS_USER:-pgbouncer_stats}
+      - PGBOUNCER_STATS_PASSWORD=${PGBOUNCER_STATS_PASSWORD:-pgbouncer_stats_pass}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - microservices
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging
+    profiles:
+      - pgbouncer
+
+# ===================
+# Networks
+# ===================
+networks:
+  microservices:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ===================
+# Volumes
+# ===================
+volumes:
+  postgres-data:
+  redis-data:
+  weather-data:
+  ml-models:

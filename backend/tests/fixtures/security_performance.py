@@ -103,7 +103,7 @@ def csrf_test_data():
         "invalid_token": "invalid-csrf-token",
         "expired_token": "expired-csrf-token",
         "missing_token": None,
-        "protected_endpoints": ["/api/v1/predict", "/ingest", "/api/v1/upload", "/api/v1/export"],
+        "protected_endpoints": ["/api/v1/predict", "/api/v1/ingest/ingest", "/api/v1/upload", "/api/v1/export"],
     }
 
 

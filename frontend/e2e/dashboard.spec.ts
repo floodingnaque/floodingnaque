@@ -66,7 +66,7 @@ test.describe('Dashboard', () => {
 
   test.describe('Stats Cards', () => {
     test('should display all stats cards', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       await expect(page.getByText('Total Predictions')).toBeVisible();
       await expect(page.getByText("Today's Predictions")).toBeVisible();
@@ -75,7 +75,7 @@ test.describe('Dashboard', () => {
     });
 
     test('should display correct stat values', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       await expect(page.getByText('1,234')).toBeVisible();
       await expect(page.getByText('42')).toBeVisible();
@@ -84,7 +84,7 @@ test.describe('Dashboard', () => {
     });
 
     test('should display risk level indicator', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       // 35% is moderate risk
       await expect(page.getByText('Moderate')).toBeVisible();
@@ -93,13 +93,13 @@ test.describe('Dashboard', () => {
 
   test.describe('Recent Activity', () => {
     test('should display recent activity list', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       await expect(page.getByText(/recent activity/i)).toBeVisible();
     });
 
     test('should show activity timestamps', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       // Should show relative timestamps like "X hours ago"
       await expect(page.getByText(/ago/i).first()).toBeVisible();
@@ -108,13 +108,13 @@ test.describe('Dashboard', () => {
 
   test.describe('Recent Alerts', () => {
     test('should display recent alerts section', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       await expect(page.getByText(/alert|warning/i).first()).toBeVisible();
     });
 
     test('should display alert details', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       await expect(page.getByText('Manila')).toBeVisible();
     });
@@ -131,7 +131,7 @@ test.describe('Dashboard', () => {
         });
       });
 
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       // Should show loading skeleton initially
       await expect(page.locator('[class*="skeleton"]').first()).toBeVisible();
@@ -150,7 +150,7 @@ test.describe('Dashboard', () => {
         });
       });
 
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       // Should show error state or retry option
       await expect(page.getByText(/error|try again|failed/i)).toBeVisible({ timeout: 5000 });
@@ -159,7 +159,7 @@ test.describe('Dashboard', () => {
 
   test.describe('Navigation', () => {
     test('should navigate to predictions page', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       // Find and click predictions link/button
       const predictLink = page.locator('a[href*="predict"], button:has-text("predict")').first();
@@ -170,7 +170,7 @@ test.describe('Dashboard', () => {
     });
 
     test('should navigate to alerts page', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       const alertsLink = page.locator('a[href*="alerts"], button:has-text("alerts")').first();
       if (await alertsLink.isVisible()) {
@@ -182,7 +182,7 @@ test.describe('Dashboard', () => {
 
   test.describe('Quick Actions', () => {
     test('should display quick action buttons', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/dashboard');
 
       // Look for common quick actions
       const newPrediction = page.getByRole('button', { name: /new prediction|make prediction/i });
@@ -221,7 +221,7 @@ test.describe('Dashboard - Refresh', () => {
       });
     });
 
-    await page.goto('/');
+    await page.goto('/dashboard');
     await expect(page.getByText('42')).toBeVisible();
 
     // Initial request should be made
@@ -255,14 +255,14 @@ test.describe('Dashboard - Mobile', () => {
   });
 
   test('should display stats cards in grid on mobile', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/dashboard');
 
     await expect(page.getByText('Total Predictions')).toBeVisible();
     await expect(page.getByText('1,234')).toBeVisible();
   });
 
   test('should be scrollable on mobile', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/dashboard');
 
     // Should be able to scroll
     await page.evaluate(() => window.scrollTo(0, 500));

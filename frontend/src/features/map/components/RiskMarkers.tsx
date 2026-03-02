@@ -39,9 +39,11 @@ const RISK_LABELS: Record<RiskLevel, string> = {
  */
 function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
   const color = RISK_COLORS[riskLevel];
+  const label = RISK_LABELS[riskLevel];
 
   const svgIcon = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" role="img" aria-label="${label} risk marker">
+      <title>${label} risk marker</title>
       <path 
         fill="${color}" 
         stroke="#ffffff" 
@@ -114,7 +116,7 @@ export function RiskMarkers({ alerts }: RiskMarkersProps) {
           icon={markerIcons[alert.risk_level]}
         >
           <Popup className="risk-marker-popup">
-            <div className="min-w-[200px] p-1">
+            <div className="min-w-50 p-1">
               {/* Risk Level Badge */}
               <div className="mb-2 flex items-center gap-2">
                 <span

@@ -34,6 +34,16 @@ export interface PredictionResponse {
     pressure?: number;
     source: string;
   };
+  /** Smart alert evaluation metadata */
+  smart_alert?: {
+    rainfall_3h: number;
+    confidence_score: number;
+    was_suppressed: boolean;
+    escalation_state: string;
+    escalation_reason: string | null;
+    contributing_factors: string[];
+    original_risk_level: RiskLevel;
+  };
 }
 
 export type RiskLevel = 0 | 1 | 2;

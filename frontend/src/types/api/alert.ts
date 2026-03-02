@@ -13,6 +13,12 @@ export interface Alert {
   acknowledged: boolean;
   created_at: string;
   updated_at?: string;
+  // Smart alert fields
+  confidence_score?: number;
+  rainfall_3h?: number;
+  escalation_state?: 'initial' | 'escalated' | 'auto_escalated' | 'suppressed';
+  escalation_reason?: string;
+  contributing_factors?: string[];
 }
 
 export type AlertDeliveryStatus = 'pending' | 'delivered' | 'failed';

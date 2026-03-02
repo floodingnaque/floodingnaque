@@ -129,8 +129,7 @@ services:
   # Backend API Service
   # ===================
   backend:
-    <<: *backend-base
-    <<: *security-opts
+    <<: [*backend-base, *security-opts]
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -185,13 +184,14 @@ services:
           target: /app/main.py
         - path: ./backend/requirements.txt
           action: rebuild
+        - path: ./backend/requirements-prod.txt
+          action: rebuild
 
   # ===================
   # PostgreSQL Database
   # ===================
   db:
-    <<: *postgres-base
-    <<: *security-opts
+    <<: [*postgres-base, *security-opts]
     container_name: floodingnaque-db-dev
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-floodingnaque}
@@ -235,11 +235,11 @@ services:
       - PGBOUNCER_MIN_POOL_SIZE=2
       - PGBOUNCER_RESERVE_POOL_SIZE=5
       - PGBOUNCER_MAX_DB_CONNECTIONS=20
-      # Admin credentials (MUST be set via environment or .env.development file)
-      - PGBOUNCER_ADMIN_USER=${PGBOUNCER_ADMIN_USER:-pgbouncer_admin}
-      - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD:-admin}
-      - PGBOUNCER_STATS_USER=${PGBOUNCER_STATS_USER:-pgbouncer_stats}
-      - PGBOUNCER_STATS_PASSWORD=${PGBOUNCER_STATS_PASSWORD:-stats}
+      # Admin credentials (MUST be set via environment or .env file — no defaults)
+      - PGBOUNCER_ADMIN_USER=${PGBOUNCER_ADMIN_USER:?PGBOUNCER_ADMIN_USER must be set}
+      - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD:?PGBOUNCER_ADMIN_PASSWORD must be set}
+      - PGBOUNCER_STATS_USER=${PGBOUNCER_STATS_USER:?PGBOUNCER_STATS_USER must be set}
+      - PGBOUNCER_STATS_PASSWORD=${PGBOUNCER_STATS_PASSWORD:?PGBOUNCER_STATS_PASSWORD must be set}
     depends_on:
       db:
         condition: service_healthy

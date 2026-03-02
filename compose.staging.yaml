@@ -5,6 +5,9 @@
 #   docker compose -f compose.staging.yaml up -d --build
 #   docker compose -f compose.staging.yaml logs -f backend
 #   docker compose -f compose.staging.yaml down
+#
+# With observability (Grafana, Alertmanager, Jaeger):
+#   docker compose -f compose.staging.yaml -f compose.observability.yaml up -d
 # =====================================================
 # NOTE: This configuration uses Supabase as the database.
 #       Ensure DATABASE_URL is set in ./backend/.env.staging pointing to Supabase.
@@ -45,6 +48,9 @@ services:
       - RATE_LIMIT_ENABLED=True
       # Security
       - AUTH_BYPASS_ENABLED=False
+      # Database SSL — explicit verification matching production behavior
+      - DB_SSL_MODE=verify-full
+      - DB_SSL_CA_CERT=/etc/ssl/certs/ca-certificates.crt
       # CORS - Set your staging frontend domain
       - CORS_ORIGINS=${CORS_ORIGINS:-https://staging.floodingnaque.vercel.app}
       # Logging
@@ -56,6 +62,9 @@ services:
       # Scheduler
       - SCHEDULER_ENABLED=True
       - SCHEDULER_TIMEZONE=Asia/Manila
+      # Model integrity — checksum verification without requiring HMAC signature
+      - VERIFY_MODEL_INTEGRITY=True
+      - REQUIRE_MODEL_SIGNATURE=False
     env_file:
       - ./backend/.env.staging
     volumes:
@@ -68,9 +77,9 @@ services:
         condition: service_healthy
     networks:
       - floodingnaque-staging
-    # Override healthcheck (uses Python instead of curl - production image may not have curl)
+    # Healthcheck — uses curl (installed in production image via Dockerfile)
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=5)"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -86,7 +95,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     volumes:
@@ -98,6 +107,110 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===================
+  # Celery Worker (Background Tasks)
+  # ===================
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: floodingnaque-celery-staging
+    restart: unless-stopped
+    command: >
+      celery -A app.services.celery_app worker
+      --loglevel=info
+      --concurrency=${CELERY_WORKERS:-2}
+      --max-tasks-per-child=100
+      --time-limit=300
+      --soft-time-limit=240
+    environment:
+      - APP_ENV=staging
+      - FLASK_DEBUG=False
+      - PYTHONPATH=/app
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/2
+      - CELERY_TIMEZONE=Asia/Manila
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=json
+    env_file:
+      - ./backend/.env.staging
+    volumes:
+      - floodingnaque_models_staging:/app/models:ro
+      - floodingnaque_data_staging:/app/data
+      - floodingnaque_logs_staging:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - floodingnaque-staging
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.services.celery_app", "inspect", "ping"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ===================
+  # Celery Beat (Task Scheduler)
+  # ===================
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: floodingnaque-celery-beat-staging
+    restart: unless-stopped
+    command: >
+      celery -A app.services.celery_app beat
+      --loglevel=info
+      --schedule=/tmp/celerybeat-schedule
+      --pidfile=/tmp/celerybeat.pid
+    environment:
+      - APP_ENV=staging
+      - FLASK_DEBUG=False
+      - PYTHONPATH=/app
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/2
+      - CELERY_TIMEZONE=Asia/Manila
+      - CELERY_BEAT_RUNNING=true
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=json
+    env_file:
+      - ./backend/.env.staging
+    volumes:
+      - floodingnaque_logs_staging:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - floodingnaque-staging
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/celerybeat.pid && ps -p $(cat /tmp/celerybeat.pid) > /dev/null"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    tmpfs:
+      - /tmp:size=50M,mode=1777
     deploy:
       resources:
         limits:

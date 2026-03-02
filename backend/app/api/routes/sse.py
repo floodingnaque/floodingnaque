@@ -27,6 +27,31 @@ sse_bp = Blueprint("sse", __name__)
 _sse_clients: Dict[str, queue.Queue] = {}
 _sse_lock = threading.Lock()
 
+# Per-IP SSE connection cap to prevent resource exhaustion
+MAX_SSE_CONNECTIONS_PER_IP = 5
+_sse_ip_connections: Dict[str, int] = {}
+_sse_ip_lock = threading.Lock()
+
+
+def _track_ip_connect(ip: str) -> bool:
+    """Track an SSE connection for an IP.  Returns False if the cap is exceeded."""
+    with _sse_ip_lock:
+        current = _sse_ip_connections.get(ip, 0)
+        if current >= MAX_SSE_CONNECTIONS_PER_IP:
+            return False
+        _sse_ip_connections[ip] = current + 1
+        return True
+
+
+def _track_ip_disconnect(ip: str) -> None:
+    """Decrement the connection counter when an SSE client disconnects."""
+    with _sse_ip_lock:
+        current = _sse_ip_connections.get(ip, 0)
+        if current <= 1:
+            _sse_ip_connections.pop(ip, None)
+        else:
+            _sse_ip_connections[ip] = current - 1
+
 
 class SSEManager:
     """
@@ -126,6 +151,8 @@ def broadcast_alert(alert_data: Dict[str, Any]) -> int:
     Broadcast a new alert to all connected SSE clients.
 
     This function can be called from the alert service when a new alert is created.
+    Also invalidates the weather/prediction cache so subsequent requests use
+    fresh data instead of waiting for TTL expiry.
 
     Args:
         alert_data: Alert information to broadcast
@@ -133,10 +160,20 @@ def broadcast_alert(alert_data: Dict[str, Any]) -> int:
     Returns:
         Number of clients that received the alert
     """
+    # Invalidate stale weather cache on alert broadcast (e.g. typhoon warning)
+    try:
+        from app.utils.resilience.cache import invalidate_weather_cache
+
+        invalidate_weather_cache()
+    except Exception:
+        logger.warning("Failed to invalidate weather cache on alert broadcast", exc_info=True)
+
     return sse_manager.broadcast("alert", {"timestamp": datetime.now(timezone.utc).isoformat(), "alert": alert_data})
 
 
-def _generate_sse_stream(client_id: str, client_queue: queue.Queue) -> Generator[str, None, None]:
+def _generate_sse_stream(
+    client_id: str, client_queue: queue.Queue, client_ip: str = "unknown"
+) -> Generator[str, None, None]:
     """
     Generator function for SSE stream.
 
@@ -166,15 +203,19 @@ def _generate_sse_stream(client_id: str, client_queue: queue.Queue) -> Generator
         pass
     finally:
         sse_manager.remove_client(client_id)
+        _track_ip_disconnect(client_ip)
 
 
 @sse_bp.route("/alerts", methods=["GET"])
+@limiter.limit("10 per minute")
 def stream_alerts():
     """
     Stream real-time flood alerts via Server-Sent Events.
 
     Clients connect to this endpoint to receive live alert updates.
     The connection stays open and sends events as alerts occur.
+    Rate-limited to 10 connect attempts per minute per IP, with a
+    maximum of 5 concurrent connections per IP.
 
     Events:
         - alert: New flood alert notification
@@ -207,9 +248,29 @@ def stream_alerts():
             schema:
               type: string
     """
-    # Generate unique client ID
-    client_id = f"{request.remote_addr}_{time.time_ns()}"
+    client_ip = request.remote_addr or "unknown"
     request_id = getattr(g, "request_id", "unknown")
+
+    # Enforce per-IP concurrent connection cap
+    if not _track_ip_connect(client_ip):
+        logger.warning(
+            f"SSE connection rejected — per-IP cap ({MAX_SSE_CONNECTIONS_PER_IP}) "
+            f"exceeded for {client_ip} [{request_id}]"
+        )
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "TooManyConnections",
+                    "message": f"Maximum {MAX_SSE_CONNECTIONS_PER_IP} concurrent SSE connections per IP",
+                    "request_id": request_id,
+                }
+            ),
+            429,
+        )
+
+    # Generate unique client ID
+    client_id = f"{client_ip}_{time.time_ns()}"
 
     logger.info(f"SSE connection request from {client_id} [{request_id}]")
 
@@ -227,7 +288,7 @@ def stream_alerts():
 
     # Create the SSE response
     response = Response(
-        stream_with_context(_generate_sse_stream(client_id, client_queue)),
+        stream_with_context(_generate_sse_stream(client_id, client_queue, client_ip)),
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

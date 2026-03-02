@@ -6,6 +6,7 @@ and IP reputation-based adaptive limiting.
 """
 
 import os
+import threading
 import time
 from functools import wraps
 from typing import Callable, Optional
@@ -47,6 +48,7 @@ INTERNAL_BYPASS_IPS = set(filter(None, os.getenv("RATE_LIMIT_INTERNAL_BYPASS_IPS
 
 # Burst tracking (in-memory, for more sophisticated use Redis)
 _burst_tracker: dict = {}
+_burst_tracker_lock = threading.Lock()
 
 
 def get_rate_limit_key():
@@ -345,23 +347,7 @@ def check_burst_allowance(key: str) -> bool:
 
     now = time.time()
 
-    # Clean up old entries
-    _cleanup_burst_tracker()
-
-    # Get or create burst tracker for this key
-    if key not in _burst_tracker:
-        _burst_tracker[key] = {
-            "requests": [],
-            "burst_used": 0,
-        }
-
-    tracker = _burst_tracker[key]
-
-    # Count requests in burst window
-    window_start = now - BURST_WINDOW_SECONDS
-    tracker["requests"] = [t for t in tracker["requests"] if t > window_start]
-
-    # Get burst capacity based on tier
+    # Get burst capacity based on tier (read-only, outside lock)
     api_key_hash = getattr(g, "api_key_hash", None) if has_request_context() else None
     if api_key_hash:
         tier_name = get_api_key_tier(api_key_hash)
@@ -370,17 +356,36 @@ def check_burst_allowance(key: str) -> bool:
     else:
         burst_capacity = 5  # Anonymous burst capacity
 
-    # Check if within burst capacity
-    if len(tracker["requests"]) < burst_capacity:
-        tracker["requests"].append(now)
-        return True
+    with _burst_tracker_lock:
+        # Clean up old entries
+        _cleanup_burst_tracker()
+
+        # Get or create burst tracker for this key
+        if key not in _burst_tracker:
+            _burst_tracker[key] = {
+                "requests": [],
+                "burst_used": 0,
+            }
+
+        tracker = _burst_tracker[key]
+
+        # Count requests in burst window
+        window_start = now - BURST_WINDOW_SECONDS
+        tracker["requests"] = [t for t in tracker["requests"] if t > window_start]
+
+        # Check if within burst capacity
+        if len(tracker["requests"]) < burst_capacity:
+            tracker["requests"].append(now)
+            return True
 
     return False
 
 
 def _cleanup_burst_tracker():
-    """Remove old entries from burst tracker."""
-    global _burst_tracker
+    """Remove old entries from burst tracker.
+
+    Must be called while holding ``_burst_tracker_lock``.
+    """
     now = time.time()
     cutoff = now - BURST_WINDOW_SECONDS * 2
 
@@ -395,11 +400,13 @@ def _cleanup_burst_tracker():
 
 def get_burst_stats() -> dict:
     """Get burst allowance statistics."""
+    with _burst_tracker_lock:
+        active = len(_burst_tracker)
     return {
         "enabled": BURST_ENABLED,
         "multiplier": BURST_MULTIPLIER,
         "window_seconds": BURST_WINDOW_SECONDS,
-        "active_trackers": len(_burst_tracker),
+        "active_trackers": active,
     }
 
 

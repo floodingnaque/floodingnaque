@@ -36,22 +36,23 @@ describe('RiskDisplay', () => {
   describe('Probability Display', () => {
     it('should display probability as a percentage', () => {
       render(<RiskDisplay riskLevel={1} probability={0.75} />);
-      expect(screen.getByText('75%')).toBeInTheDocument();
+      // Percentage appears in both the main display and the progress bar label
+      expect(screen.getAllByText('75%').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display 0% for probability 0', () => {
       render(<RiskDisplay riskLevel={0} probability={0} />);
-      expect(screen.getByText('0%')).toBeInTheDocument();
+      expect(screen.getAllByText('0%').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display 100% for probability 1', () => {
       render(<RiskDisplay riskLevel={2} probability={1} />);
-      expect(screen.getByText('100%')).toBeInTheDocument();
+      expect(screen.getAllByText('100%').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should round probability to nearest integer', () => {
       render(<RiskDisplay riskLevel={1} probability={0.667} />);
-      expect(screen.getByText('67%')).toBeInTheDocument();
+      expect(screen.getAllByText('67%').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display "Flood Probability" label', () => {
@@ -129,7 +130,8 @@ describe('RiskDisplay', () => {
       it(`should render correctly for risk level ${level} (${label})`, () => {
         render(<RiskDisplay riskLevel={level} probability={prob} />);
         expect(screen.getByText(label)).toBeInTheDocument();
-        expect(screen.getByText(`${Math.round(prob * 100)}%`)).toBeInTheDocument();
+        // Percentage appears in both the main display and the progress bar label
+        expect(screen.getAllByText(`${Math.round(prob * 100)}%`).length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText(`Risk Level ${level}`)).toBeInTheDocument();
       });
     });

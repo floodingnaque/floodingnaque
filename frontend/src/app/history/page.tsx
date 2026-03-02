@@ -40,7 +40,8 @@ import {
 import { useWeatherData, useWeatherStats } from '@/features/weather/hooks/useWeather';
 import { WeatherStatsCards } from '@/features/weather/components/WeatherStatsCards';
 import { DateRangeFilter, type DateRange } from '@/features/weather/components/DateRangeFilter';
-import { usePredictionHistory } from '@/features/predictions/hooks/usePredictionHistory';
+import { usePredictionHistory, useOfflinePredictions } from '@/features/predictions/hooks/usePredictionHistory';
+import { StaleDataBanner } from '@/components/feedback/StaleDataBanner';
 import type { WeatherDataParams, WeatherSource } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -57,7 +58,7 @@ function DataViewSkeleton() {
   return (
     <Card>
       <CardContent className="pt-6">
-        <Skeleton className="h-[400px] w-full rounded-md" />
+        <Skeleton className="h-100 w-full rounded-md" />
       </CardContent>
     </Card>
   );
@@ -162,6 +163,16 @@ export default function HistoryPage() {
     order: 'desc',
   });
 
+  // Offline fallback for predictions
+  const {
+    data: offlinePredData,
+    cachedAt,
+    isOffline,
+  } = useOfflinePredictions(50);
+
+  // Use offline data when online data is unavailable and user is offline
+  const effectivePredData = predData ?? (isOffline ? offlinePredData : null);
+
   // Handlers
   const handleSourceChange = useCallback((value: string) => {
     setSource(value as WeatherSource | 'all');
@@ -238,7 +249,7 @@ export default function HistoryPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">Source:</span>
                   <Select value={source} onValueChange={handleSourceChange}>
-                    <SelectTrigger className="w-[150px]">
+                    <SelectTrigger className="w-37.5">
                       <SelectValue placeholder="All Sources" />
                     </SelectTrigger>
                     <SelectContent>
@@ -345,6 +356,11 @@ export default function HistoryPage() {
 
         {/* ======== Predictions Tab ======== */}
         <TabsContent value="predictions" className="space-y-6 mt-6">
+          {/* Offline banner */}
+          {isOffline && effectivePredData && (
+            <StaleDataBanner cachedAt={cachedAt ?? undefined} />
+          )}
+
           {/* Predictions Table */}
           <Card>
             <CardHeader>
@@ -354,13 +370,13 @@ export default function HistoryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {predLoading ? (
+              {predLoading && !isOffline ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-12 w-full" />
                   ))}
                 </div>
-              ) : !predData?.data?.length ? (
+              ) : !effectivePredData?.data?.length ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p>No predictions found</p>
@@ -376,7 +392,7 @@ export default function HistoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {predData.data.map((pred) => {
+                    {effectivePredData.data.map((pred) => {
                       const risk = getRiskLabel(pred.risk_level);
                       return (
                         <TableRow key={pred.id}>

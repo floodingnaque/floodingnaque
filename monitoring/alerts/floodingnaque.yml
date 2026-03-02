@@ -223,6 +223,76 @@ groups:
           description: "Redis cache hit rate is below 50% ({{ $value }}%). Cache may be ineffective or improperly configured."
 
   # ==========================================================================
+  # Celery / Background Task Alerts
+  # ==========================================================================
+  - name: floodingnaque-celery
+    rules:
+      # Celery worker down — no heartbeat for 5 minutes
+      - alert: CeleryWorkerDown
+        expr: up{job="celery-worker"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: celery
+        annotations:
+          summary: "Celery worker is down"
+          description: "No heartbeat from Celery worker for 5 minutes. Background tasks will not be processed."
+
+      # High task failure rate (>10% of tasks failing over 15 min)
+      - alert: CeleryHighTaskFailureRate
+        expr: |
+          (
+            sum(rate(celery_task_failed_total[15m]))
+            /
+            clamp_min(sum(rate(celery_task_received_total[15m])), 1)
+          ) > 0.10
+        for: 10m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "High Celery task failure rate"
+          description: "More than 10% of Celery tasks are failing over the last 15 minutes. Current failure rate: {{ $value | humanizePercentage }}."
+
+      # Queue backlog — tasks waiting longer than 5 minutes
+      - alert: CeleryQueueBacklog
+        expr: |
+          celery_task_received_total - celery_task_started_total
+          - celery_task_succeeded_total - celery_task_failed_total > 50
+        for: 10m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "Celery queue backlog growing"
+          description: "More than 50 tasks are waiting in the queue for over 10 minutes. Workers may be overloaded."
+
+      # Model retraining task failed
+      - alert: CeleryModelRetrainingFailed
+        expr: increase(celery_task_failed_total{name="app.services.tasks.model_retraining"}[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: celery
+        annotations:
+          summary: "Model retraining task failed"
+          description: "The model_retraining Celery task has failed in the last hour. Check logs for details."
+
+      # No tasks processed in 1 hour (while API is receiving traffic)
+      - alert: CeleryNoTasksProcessed
+        expr: |
+          sum(rate(celery_task_succeeded_total[1h])) == 0
+          and
+          sum(rate(floodingnaque_http_request_total[1h])) > 0
+        for: 1h
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "No Celery tasks processed"
+          description: "No background tasks have completed in the last hour while the API is receiving traffic. Workers may be stuck."
+
+  # ==========================================================================
   # Infrastructure Alerts
   # ==========================================================================
   - name: infrastructure
@@ -259,6 +329,18 @@ groups:
           summary: "Nginx is down"
           description: "Nginx exporter is unreachable. The reverse proxy may be down."
 
+      # TLS certificate expiring soon (< 14 days)
+      - alert: TLSCertExpiringSoon
+        expr: |
+          (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+          service: nginx
+        annotations:
+          summary: "TLS certificate expiring soon"
+          description: "TLS certificate for {{ $labels.instance }} expires in {{ $value | humanize }} days."
+
       # High CPU usage (container CPU > 80% of limit)
       - alert: HighCPUUsage
         expr: |
@@ -270,6 +352,41 @@ groups:
         annotations:
           summary: "High CPU usage on API"
           description: "Backend CPU usage is consistently high. Current rate: {{ $value }}."
+
+      # Disk space — host filesystem > 85%
+      - alert: HostDiskSpaceCritical
+        expr: |
+          (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) > 0.85
+        for: 10m
+        labels:
+          severity: critical
+          service: infrastructure
+        annotations:
+          summary: "Host disk space critical"
+          description: "Root filesystem usage exceeds 85% on {{ $labels.instance }}. Current: {{ $value | humanizePercentage }}."
+
+      # Database backup staleness — no successful backup in 25 hours
+      - alert: DatabaseBackupStale
+        expr: |
+          (time() - floodingnaque_backup_last_success_timestamp_seconds) > 90000
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database backup is stale"
+          description: "No successful database backup has completed in over 25 hours. Last success: {{ $value | humanizeDuration }} ago."
+
+      # Database backup failure
+      - alert: DatabaseBackupFailed
+        expr: increase(floodingnaque_backup_failure_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database backup failed"
+          description: "A database backup job has failed in the last hour. Check backup logs immediately."
 
       # Disk space — Prometheus storage
       - alert: PrometheusStorageHigh

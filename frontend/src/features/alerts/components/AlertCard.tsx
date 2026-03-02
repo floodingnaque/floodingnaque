@@ -2,11 +2,21 @@
  * AlertCard Component
  *
  * Card component for displaying a single alert with its details
- * and acknowledge action.
+ * and acknowledge action. Includes smart alert metadata:
+ * confidence score, 3h rainfall accumulation, escalation state,
+ * and contributing factors.
  */
 
 import { formatDistanceToNow } from 'date-fns';
-import { MapPin, Clock, Check, CheckCircle2 } from 'lucide-react';
+import {
+  MapPin,
+  Clock,
+  Check,
+  CheckCircle2,
+  CloudRain,
+  ShieldAlert,
+  TrendingUp,
+} from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,6 +136,78 @@ export function AlertCard({
                 </span>
               )}
             </div>
+
+            {/* Smart Alert Metadata */}
+            {!compact && (
+              <div className="mt-2 flex flex-col gap-1.5">
+                {/* Confidence + Rainfall row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Confidence score */}
+                  {alert.confidence_score != null && (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                        alert.confidence_score >= 0.7
+                          ? 'bg-green-50 text-green-700'
+                          : alert.confidence_score >= 0.45
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-red-50 text-red-700'
+                      )}
+                    >
+                      <ShieldAlert className="h-3 w-3" />
+                      {(alert.confidence_score * 100).toFixed(0)}% confidence
+                    </span>
+                  )}
+
+                  {/* 3h rainfall accumulation */}
+                  {alert.rainfall_3h != null && alert.rainfall_3h > 0 && (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                        alert.rainfall_3h >= 80
+                          ? 'bg-red-50 text-red-700'
+                          : alert.rainfall_3h >= 50
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-blue-50 text-blue-700'
+                      )}
+                    >
+                      <CloudRain className="h-3 w-3" />
+                      {alert.rainfall_3h.toFixed(1)} mm / 3h
+                    </span>
+                  )}
+
+                  {/* Escalation state */}
+                  {alert.escalation_state === 'auto_escalated' && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
+                      title={
+                        alert.escalation_reason
+                          ? `Reason: ${alert.escalation_reason}`
+                          : 'Auto-escalated due to sustained risk'
+                      }
+                    >
+                      <TrendingUp className="h-3 w-3" />
+                      Escalated
+                    </span>
+                  )}
+                </div>
+
+                {/* Contributing factors */}
+                {alert.contributing_factors &&
+                  alert.contributing_factors.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {alert.contributing_factors.map((factor, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600"
+                        >
+                          {factor}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+              </div>
+            )}
           </div>
 
           {/* Action */}

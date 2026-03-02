@@ -13,6 +13,7 @@ import {
   type UseQueryOptions,
 } from '@tanstack/react-query';
 import { alertsApi } from '../services/alertsApi';
+import type { SmsSimulationResponse } from '../services/alertsApi';
 import type {
   Alert,
   AlertParams,
@@ -155,10 +156,40 @@ export function useAcknowledgeAll(options?: AcknowledgeMutationOptions) {
   });
 }
 
+/**
+ * useSimulateSms hook for sending an SMS simulation
+ *
+ * @param options - Optional callbacks for success and error handling
+ * @returns Mutation object with simulateSms function
+ *
+ * @example
+ * const { mutate: simulate, isPending } = useSimulateSms();
+ * simulate({ phone: '09171234567', riskLevel: 2 });
+ */
+export function useSimulateSms(options?: {
+  onSuccess?: (data: SmsSimulationResponse) => void;
+  onError?: (error: ApiError) => void;
+}) {
+  return useMutation({
+    mutationFn: ({
+      phone,
+      message,
+      riskLevel,
+    }: {
+      phone: string;
+      message?: string;
+      riskLevel?: number;
+    }) => alertsApi.simulateSms(phone, message, riskLevel),
+    onSuccess: options?.onSuccess,
+    onError: options?.onError,
+  });
+}
+
 export default {
   useAlerts,
   useRecentAlerts,
   useAlertHistory,
   useAcknowledgeAlert,
   useAcknowledgeAll,
+  useSimulateSms,
 };

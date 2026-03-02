@@ -13,6 +13,8 @@ import 'leaflet/dist/leaflet.css';
 import { cn } from '@/lib/utils';
 import type { Alert } from '@/types';
 import { RiskMarkers } from './RiskMarkers';
+import { HazardOverlay } from './HazardOverlay';
+import type { HazardFeature, HazardFeatureProperties } from '../hooks/useHazardMap';
 
 /**
  * Default map configuration from environment variables
@@ -30,8 +32,16 @@ export interface FloodMapProps {
   zoom?: number;
   /** Alerts to display as markers */
   alerts?: Alert[];
+  /** GeoJSON hazard features for barangay overlay */
+  hazardFeatures?: HazardFeature[];
+  /** Hazard overlay mode */
+  hazardMode?: 'hazard' | 'elevation' | 'drainage';
+  /** Hazard overlay fill opacity (0-1) */
+  hazardOpacity?: number;
   /** Callback when user clicks on map */
   onLocationSelect?: (lat: number, lng: number) => void;
+  /** Callback when a barangay polygon is clicked */
+  onBarangayClick?: (barangayKey: string, properties: HazardFeatureProperties) => void;
   /** Additional CSS classes for the container */
   className?: string;
   /** Map height (default: 400px) */
@@ -86,7 +96,11 @@ export const FloodMap = forwardRef<FloodMapRef, FloodMapProps>(
       center = DEFAULT_CENTER,
       zoom = DEFAULT_ZOOM,
       alerts = [],
+      hazardFeatures = [],
+      hazardMode = 'hazard',
+      hazardOpacity = 0.35,
       onLocationSelect,
+      onBarangayClick,
       className,
       height = 400,
       showAttribution = true,
@@ -164,6 +178,16 @@ export const FloodMap = forwardRef<FloodMapRef, FloodMapProps>(
           {/* Map click handler */}
           {onLocationSelect && (
             <MapEventsHandler onLocationSelect={onLocationSelect} />
+          )}
+
+          {/* Barangay hazard overlay polygons */}
+          {hazardFeatures.length > 0 && (
+            <HazardOverlay
+              features={hazardFeatures}
+              mode={hazardMode}
+              fillOpacity={hazardOpacity}
+              onBarangayClick={onBarangayClick}
+            />
           )}
 
           {/* Alert markers */}

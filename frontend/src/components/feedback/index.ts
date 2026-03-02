@@ -12,3 +12,4 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { RouteErrorBoundary, NotFoundFallback } from './RouteErrorBoundary';
 export { EmptyState } from './EmptyState';
 export { ConfirmDialog } from './ConfirmDialog';
+export { CookieConsent } from './CookieConsent';

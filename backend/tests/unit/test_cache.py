@@ -91,14 +91,14 @@ class TestCacheKeyGeneration:
 class TestCacheGetSet:
     """Tests for cache get and set operations."""
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_get_no_client(self, mock_get_client):
         """Test cache get returns None when no client."""
         mock_get_client.return_value = None
         result = cache_get("test_key")
         assert result is None
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_get_miss(self, mock_get_client):
         """Test cache get returns None on cache miss."""
         mock_client = MagicMock()
@@ -107,7 +107,7 @@ class TestCacheGetSet:
         result = cache_get("test_key")
         assert result is None
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_get_hit(self, mock_get_client):
         """Test cache get returns value on cache hit."""
         mock_client = MagicMock()
@@ -116,14 +116,14 @@ class TestCacheGetSet:
         result = cache_get("test_key")
         assert result == {"data": "test"}
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_set_no_client(self, mock_get_client):
         """Test cache set returns False when no client."""
         mock_get_client.return_value = None
         result = cache_set("test_key", {"data": "test"})
         assert result is False
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_set_success(self, mock_get_client):
         """Test cache set returns True on success."""
         mock_client = MagicMock()
@@ -132,7 +132,7 @@ class TestCacheGetSet:
         result = cache_set("test_key", {"data": "test"}, ttl=300)
         assert result is True
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_set_with_timedelta(self, mock_get_client):
         """Test cache set with timedelta TTL."""
         mock_client = MagicMock()
@@ -156,7 +156,7 @@ class TestCacheDecorator:
         # Note: actual caching behavior depends on Redis availability
         assert callable(my_function)
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cached_decorator_no_cache(self, mock_get_client):
         """Test cached decorator works without cache."""
         mock_get_client.return_value = None
@@ -172,14 +172,14 @@ class TestCacheDecorator:
 class TestCacheStats:
     """Tests for cache statistics."""
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_get_cache_stats_no_client(self, mock_get_client):
         """Test cache stats when no client."""
         mock_get_client.return_value = None
         result = get_cache_stats()
         assert result == {} or "enabled" in result or result.get("enabled") is False
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_get_cache_stats_with_client(self, mock_get_client):
         """Test cache stats with client."""
         mock_client = MagicMock()
@@ -193,7 +193,7 @@ class TestCacheStats:
 class TestCacheWarm:
     """Tests for cache warming functionality."""
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_warm_cache_no_client(self, mock_get_client):
         """Test cache warming without client."""
         mock_get_client.return_value = None
@@ -209,14 +209,14 @@ class TestCacheWarm:
 class TestCacheDelete:
     """Tests for cache deletion."""
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_delete_no_client(self, mock_get_client):
         """Test cache delete without client."""
         mock_get_client.return_value = None
         result = cache_delete("test_key")
         assert result is False
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_delete_success(self, mock_get_client):
         """Test cache delete success."""
         mock_client = MagicMock()
@@ -229,7 +229,7 @@ class TestCacheDelete:
 class TestCacheInvalidation:
     """Tests for cache invalidation patterns."""
 
-    @patch("app.utils.cache.get_redis_client")
+    @patch("app.utils.resilience.cache.get_redis_client")
     def test_cache_clear_pattern(self, mock_get_client):
         """Test cache invalidation by pattern."""
         mock_client = MagicMock()

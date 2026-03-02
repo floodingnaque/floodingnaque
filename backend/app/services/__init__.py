@@ -7,6 +7,11 @@ This module provides comprehensive service layer functionality:
 - Background task scheduling
 - External API integrations (Meteostat, WorldTides, Google Earth Engine)
 - Async versions of external API services with connection pooling and retry logic
+- Multi-source data aggregation with fallback logic and reliability scoring
+- PAGASA rainfall bulletins and severe weather advisories
+- MMDA flood advisory and station monitoring
+- Manila Bay tide level analysis with harmonic prediction
+- River water-level monitoring (Parañaque River system)
 """
 
 # Scheduler for periodic tasks
@@ -17,6 +22,12 @@ from app.services.alerts import AlertSystem, get_alert_system, send_flood_alert
 
 # Celery background tasks
 from app.services.celery_app import celery_app
+
+# Data Aggregation Service (multi-source orchestrator)
+from app.services.data_aggregation_service import (
+    DataAggregationService,
+    get_aggregation_service,
+)
 
 # System evaluation for thesis validation
 from app.services.evaluation import SystemEvaluator
@@ -38,6 +49,12 @@ from app.services.google_weather_types import SatellitePrecipitation, WeatherRea
 # Core prediction and ingestion services
 from app.services.ingest import ingest_data
 
+# Manila Bay Tide Service (harmonic prediction + multi-source)
+from app.services.manila_bay_tide_service import (
+    ManilaBayTideService,
+    get_manila_bay_tide_service,
+)
+
 # Meteostat weather service (synchronous)
 from app.services.meteostat_service import (
     MeteostatService,
@@ -58,6 +75,19 @@ from app.services.meteostat_service_async import (
 
 # Meteostat data types (shared)
 from app.services.meteostat_types import WeatherObservation
+
+# MMDA Flood Advisory Service
+from app.services.mmda_flood_service import (
+    MMDAFloodService,
+    get_mmda_flood_service,
+)
+
+# PAGASA Rainfall Bulletin Service
+from app.services.pagasa_bulletin_service import (
+    PAGASARainfallBulletinService,
+    get_pagasa_bulletin_service,
+)
+
 from app.services.predict import ModelLoader, get_current_model_info, predict_flood
 
 # Risk classification
@@ -68,6 +98,20 @@ from app.services.risk_classifier import (
     classify_risk_level,
     format_alert_message,
     get_risk_thresholds,
+)
+
+# River Water-Level Monitoring Service
+from app.services.river_water_level_service import (
+    RiverWaterLevelService,
+    get_river_water_level_service,
+)
+
+# Smart Alert Evaluator
+from app.services.smart_alert_evaluator import (
+    SmartAlertDecision,
+    SmartAlertEvaluator,
+    evaluate_smart_alert,
+    get_smart_evaluator,
 )
 
 # WorldTides service for coastal flood prediction (synchronous)
@@ -95,6 +139,21 @@ __all__ = [
     "AlertSystem",
     "get_alert_system",
     "send_flood_alert",
+    # Data Aggregation Service
+    "DataAggregationService",
+    "get_aggregation_service",
+    # PAGASA Rainfall Bulletin Service
+    "PAGASARainfallBulletinService",
+    "get_pagasa_bulletin_service",
+    # MMDA Flood Advisory Service
+    "MMDAFloodService",
+    "get_mmda_flood_service",
+    # Manila Bay Tide Service
+    "ManilaBayTideService",
+    "get_manila_bay_tide_service",
+    # River Water-Level Service
+    "RiverWaterLevelService",
+    "get_river_water_level_service",
     # Meteostat service
     "MeteostatService",
     "WeatherObservation",
@@ -140,4 +199,9 @@ __all__ = [
     "RISK_LEVELS",
     "RISK_LEVEL_COLORS",
     "RISK_LEVEL_DESCRIPTIONS",
+    # Smart Alert Evaluator
+    "SmartAlertEvaluator",
+    "SmartAlertDecision",
+    "evaluate_smart_alert",
+    "get_smart_evaluator",
 ]

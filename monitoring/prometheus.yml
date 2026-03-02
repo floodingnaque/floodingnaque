@@ -55,3 +55,9 @@ scrape_configs:
   - job_name: 'nginx'
     static_configs:
       - targets: ['nginx-exporter:9113']
+
+  # Celery workers (via celery-exporter sidecar)
+  - job_name: 'celery-worker'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['celery-exporter:9808']

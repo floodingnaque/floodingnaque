@@ -394,6 +394,42 @@ export const exportHandlers = [
     });
   }),
 
+  // Export alerts (PDF, CSV, or JSON) – matches GET /api/v1/export/alerts?format=...
+  http.get(`${baseUrl}/api/v1/export/alerts`, async ({ request }) => {
+    await delay(200);
+    const url = new URL(request.url);
+    const format = url.searchParams.get('format') ?? 'json';
+
+    if (format === 'pdf') {
+      const pdfContent = '%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n';
+      const blob = new Blob([pdfContent], { type: 'application/pdf' });
+      return new HttpResponse(blob, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="alerts_report.pdf"',
+        },
+      });
+    }
+
+    if (format === 'csv') {
+      const csvContent = 'id,timestamp,risk_level,message,location\n1,2026-01-01T00:00:00,1,Test alert,Manila\n';
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      return new HttpResponse(blob, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': 'attachment; filename="alerts_report.csv"',
+        },
+      });
+    }
+
+    // JSON (default)
+    return HttpResponse.json({
+      data: [{ id: 1, timestamp: '2026-01-01T00:00:00', risk_level: 1, message: 'Test alert', location: 'Manila' }],
+      count: 1,
+      format: 'json',
+    });
+  }),
+
   // Export weather (PDF, CSV, or JSON) – matches GET /api/v1/export/weather?format=...
   http.get(`${baseUrl}/api/v1/export/weather`, async ({ request }) => {
     await delay(200);

@@ -1,0 +1,67 @@
+# =============================================================================
+# Floodingnaque Feature Flags — PRODUCTION Overrides
+# =============================================================================
+# These values override the base feature_flags.yaml when APP_ENV=production.
+# Applies production_hardening: disable debug features, stable algorithms only.
+# =============================================================================
+
+flags:
+  # ---------------------------------------------------------------------------
+  # Data Pipeline — all integrations enabled
+  # ---------------------------------------------------------------------------
+  earth_engine_integration:
+    enabled: true
+
+  worldtides_integration:
+    enabled: true
+
+  meteostat_integration:
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Monitoring — production hardening (disable debug overhead)
+  # ---------------------------------------------------------------------------
+  detailed_logging:
+    enabled: false  # Use structured JSON logging at INFO level instead
+
+  performance_profiling:
+    enabled: false  # Removes Server-Timing header overhead
+
+  prometheus_metrics:
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Alerting — all channels enabled with real credentials
+  # ---------------------------------------------------------------------------
+  email_alerts:
+    enabled: true
+
+  sms_alerts:
+    enabled: true
+
+  slack_notifications:
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Security — hardened
+  # ---------------------------------------------------------------------------
+  api_auth_bypass:
+    enabled: false  # MUST be false in production
+
+  api_rate_limiting:
+    enabled: true
+
+  data_validation:
+    enabled: true
+
+  drift_detection:
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Experimental — disabled for stability
+  # ---------------------------------------------------------------------------
+  new_prediction_algorithm:
+    percentage: 0  # Stable algorithm only in production
+
+  v2_api:
+    percentage: 0  # V1 API only in production until fully validated

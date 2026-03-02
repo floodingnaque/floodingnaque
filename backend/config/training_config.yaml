@@ -67,6 +67,37 @@ _anchors:
   external_features: &external_features
     - tide_height
 
+  # ENSO climate indices
+  enso_features: &enso_features
+    - oni
+    - enso_phase_encoded
+    - enso_rainfall_modifier
+    - soi
+    - oni_lag1
+    - oni_lag2
+    - oni_lag3
+    - oni_lag6
+    - oni_delta
+    - oni_3m_avg
+
+  # Spatial / barangay-level features
+  spatial_features: &spatial_features
+    - mean_elevation_m
+    - min_elevation_m
+    - slope_pct
+    - elev_vulnerability
+    - drainage_score
+    - waterway_distance_m
+    - waterway_proximity
+    - impervious_surface_pct
+    - flood_history_events
+    - runoff_coefficient
+    - green_cover_pct
+    - land_use_encoded
+    - building_density_encoded
+    - flood_susceptibility_index
+    - absorption_capacity
+
   # Base phase features (phases 1-3)
   base_phase_features: &base_phase_features
     - temperature
@@ -480,3 +511,115 @@ resources:
   # Performance alerts
   alert_on_degradation: true
   degradation_threshold: 0.05  # 5% drop in F1
+
+# =============================================================================
+# AUTOMATED RETRAINING PIPELINE
+# =============================================================================
+auto_retrain:
+  enabled: true
+
+  # Trigger conditions (any one fires → retraining)
+  triggers:
+    schedule_days: 30          # Maximum days between runs
+    min_new_records: 50        # Minimum new DRRMO records
+    psi_warning: 0.10          # PSI drift warning threshold
+    psi_alert: 0.20            # PSI drift → retrain threshold
+
+  # Performance gates (model must pass ALL to be promoted)
+  promotion_criteria:
+    min_f2_score: 0.85
+    min_recall: 0.85
+    min_f1_score: 0.80
+    max_metric_degradation: 0.03  # vs. current production model
+
+  # Shadow deployment before promotion
+  shadow:
+    enabled: true
+    period_hours: 24
+    min_predictions: 100
+
+  # Feature enrichment during retraining
+  enrichment:
+    include_enso: true         # Merge ENSO indices (ONI, SOI)
+    include_spatial: true      # Merge barangay spatial features
+    include_deep_learning: false  # Also train LSTM/Transformer
+
+  # Monitored features for drift detection
+  drift_features:
+    - temperature
+    - humidity
+    - precipitation
+    - precip_3day_sum
+
+# =============================================================================
+# DEEP LEARNING MODELS
+# =============================================================================
+deep_learning:
+  # LSTM configuration
+  lstm:
+    enabled: true
+    hidden_dim: 128
+    num_layers: 2
+    dropout: 0.3
+    bidirectional: true
+    sequence_length: 14        # 14-day look-back window
+    prediction_horizon: 1
+    batch_size: 64
+    learning_rate: 0.001
+    epochs: 100
+    patience: 15               # Early stopping
+
+  # Transformer configuration
+  transformer:
+    enabled: true
+    hidden_dim: 128
+    num_layers: 2
+    num_heads: 4
+    dropout: 0.3
+    sequence_length: 14
+    batch_size: 64
+    learning_rate: 0.001
+    epochs: 100
+    patience: 15
+
+# =============================================================================
+# ENSO (El Niño / La Niña) INDICES
+# =============================================================================
+enso:
+  enabled: true
+  include_lags: true           # Add lagged ONI features (1,2,3,6 months)
+  indices:
+    - oni                      # Oceanic Niño Index (NOAA CPC)
+    - soi                      # Southern Oscillation Index (BoM)
+  classification_thresholds:
+    strong_el_nino: 1.5
+    moderate_el_nino: 1.0
+    weak_el_nino: 0.5
+    neutral_lower: -0.5
+    weak_la_nina: -1.0
+    moderate_la_nina: -1.5
+  # Empirical rainfall modifiers for Metro Manila
+  rainfall_modifiers:
+    strong_la_nina: 1.30       # +30% rainfall
+    moderate_la_nina: 1.20
+    weak_la_nina: 1.10
+    neutral: 1.00
+    weak_el_nino: 0.90
+    moderate_el_nino: 0.85
+    strong_el_nino: 0.75       # -25% rainfall
+
+# =============================================================================
+# SPATIAL FEATURES (Barangay-Level)
+# =============================================================================
+spatial:
+  enabled: true
+  # Feature groups to include
+  include_elevation: true      # Mean/min elevation, slope, vulnerability
+  include_drainage: true       # Drainage capacity, waterway proximity
+  include_land_use: true       # Runoff coefficient, green cover, density
+  include_composites: true     # Flood susceptibility index, absorption
+  # Flood depth estimation
+  depth_estimation:
+    enabled: true
+    method: "rational"         # Simplified Rational Method
+    uncertainty_pct: 30        # ±30% uncertainty bounds

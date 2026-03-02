@@ -121,7 +121,8 @@ class TestDeprecatedEndpoints:
         # Non-versioned endpoint might be deprecated but functional
         response = client.get("/health")
 
-        assert response.status_code == 200, "Deprecated endpoints should still work"
+        # 200 = healthy, 503 = unhealthy deps but endpoint still works
+        assert response.status_code in (200, 503), "Deprecated endpoints should still work"
 
     @pytest.mark.api_versioning
     def test_deprecated_parameter_handling(self, client, api_headers):

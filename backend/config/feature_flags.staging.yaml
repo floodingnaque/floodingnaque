@@ -1,0 +1,52 @@
+# =============================================================================
+# Floodingnaque Feature Flags — STAGING Overrides
+# =============================================================================
+# These values override the base feature_flags.yaml when APP_ENV=staging.
+# Mirrors production behavior but allows experimental feature testing.
+# =============================================================================
+
+flags:
+  # ---------------------------------------------------------------------------
+  # Data Pipeline — enable if credentials are configured
+  # ---------------------------------------------------------------------------
+  earth_engine_integration:
+    enabled: true  # Requires GCP credentials in .env.staging
+
+  worldtides_integration:
+    enabled: true  # Requires WORLDTIDES_API_KEY in .env.staging
+
+  # ---------------------------------------------------------------------------
+  # Monitoring — reduce verbosity to match production
+  # ---------------------------------------------------------------------------
+  detailed_logging:
+    enabled: false  # Too verbose for staging
+
+  performance_profiling:
+    enabled: false  # Adds overhead via Server-Timing header
+
+  # ---------------------------------------------------------------------------
+  # Alerting — sandbox mode (real integrations but sandboxed recipients)
+  # ---------------------------------------------------------------------------
+  email_alerts:
+    enabled: true
+
+  sms_alerts:
+    enabled: true
+
+  slack_notifications:
+    enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Experimental — same rollout % as base for canary testing
+  # ---------------------------------------------------------------------------
+  new_prediction_algorithm:
+    percentage: 10
+
+  v2_api:
+    percentage: 25
+
+  # ---------------------------------------------------------------------------
+  # Security
+  # ---------------------------------------------------------------------------
+  api_auth_bypass:
+    enabled: false  # Must NEVER be true outside development

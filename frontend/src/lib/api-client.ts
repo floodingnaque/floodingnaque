@@ -62,6 +62,11 @@ const CSRF_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Attach a unique correlation ID for end-to-end request tracing
+    if (config.headers) {
+      config.headers['X-Correlation-ID'] = crypto.randomUUID();
+    }
+
     // Attach JWT access token as Authorization header
     const accessToken = authStore?.getState().accessToken;
     if (accessToken && config.headers) {

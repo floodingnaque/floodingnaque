@@ -74,13 +74,13 @@ You should see a JSON response indicating the server is healthy.
 
 Open your browser and go to: `http://localhost:3000`
 
-You should see the Floodingnaque login/register page.
+You should see the Floodingnaque **landing page** with live flood status for all 16 barangays. Click **Sign In** or navigate to `http://localhost:3000/login` to access the login/register page.
 
 ## Step 3: Create an Admin Account
 
 ### Method 1: Using the Registration Form (Easiest)
 
-1. Go to `http://localhost:3000`
+1. Go to `http://localhost:3000/login`
 2. Click on the **Register** tab
 3. Fill in the registration form:
    - **Full Name**: Your name
@@ -113,8 +113,11 @@ If you need to create an admin user directly:
 
    from app.models.db import get_db_session, User
    from app.core.security import hash_password
+   import secrets
 
    def create_admin():
+       # Generate a random 16-character password
+       generated_password = secrets.token_urlsafe(16)
        print('Connecting to database...')
        try:
            with get_db_session() as db:
@@ -129,7 +132,7 @@ If you need to create an admin user directly:
                admin = User(
                    email='admin@floodingnaque.com',
                    full_name='Admin User',
-                   password_hash=hash_password('CHANGE_ME_BEFORE_USE'),
+                   password_hash=hash_password(generated_password),
                    role='admin',
                    is_active=True,
                    is_verified=True
@@ -138,7 +141,8 @@ If you need to create an admin user directly:
                db.add(admin)
                print('Admin user created successfully!')
                print('Email: admin@floodingnaque.com')
-               print('Password: <the password you set above>')
+               print(f'Password: {generated_password}')
+               print('⚠️  Save this password now — it will not be shown again!')
                print('Please change this password after first login!')
        except Exception as e:
            print(f'Error: {e}')
@@ -152,14 +156,13 @@ If you need to create an admin user directly:
 
 ## Step 4: Login and Test
 
-1. Go to `http://localhost:3000`
-2. Click on the **Login** tab
-3. Enter your credentials:
+1. Go to `http://localhost:3000/login`
+2. Enter your credentials:
    - **Email**: admin@floodingnaque.com
-   - **Password**: *(the password you set in the admin creation script)*
+   - **Password**: *(the generated password printed by the admin creation script)*
 4. Click **Login**
 
-You should be redirected to the dashboard!
+You should be redirected to the dashboard at `/dashboard`!
 
 ## Troubleshooting
 

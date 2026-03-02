@@ -9,6 +9,7 @@ import os
 from app.utils.logging import get_logger
 from app.utils.secrets import get_secret
 from celery import Celery
+from celery.schedules import crontab
 
 logger = get_logger(__name__)
 
@@ -24,7 +25,7 @@ celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
-    timezone="UTC",
+    timezone=os.getenv("CELERY_TIMEZONE", "Asia/Manila"),
     enable_utc=True,
     # Task routing
     task_routes={
@@ -51,6 +52,11 @@ celery_app.conf.update(
         "health-check": {
             "task": "app.services.tasks.health_check",
             "schedule": 300.0,  # Every 5 minutes
+        },
+        "database-backup": {
+            "task": "app.services.tasks.database_backup",
+            "schedule": crontab(hour=2, minute=0),  # Daily at 2:00 AM UTC
+            "options": {"queue": "data_tasks"},
         },
     },
 )

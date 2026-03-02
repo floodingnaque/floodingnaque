@@ -379,8 +379,27 @@ class FeatureFlagsManager:
         logger.info(f"Loaded {len(self._flags)} feature flags")
 
     def _load_yaml_flags(self) -> None:
-        """Load flags from YAML configuration file."""
+        """Load flags from YAML configuration file.
+
+        Loads the base feature_flags.yaml first, then deep-merges
+        environment-specific overrides from feature_flags.{APP_ENV}.yaml
+        (e.g. feature_flags.production.yaml).
+        """
+        # 1. Load base feature_flags.yaml
         flags_file = self.config_dir / "feature_flags.yaml"
+        self._apply_yaml_file(flags_file)
+
+        # 2. Load environment-specific overrides
+        app_env = os.getenv("APP_ENV", "development")
+        env_flags_file = self.config_dir / f"feature_flags.{app_env}.yaml"
+        if env_flags_file.exists():
+            self._apply_yaml_file(env_flags_file)
+            logger.info(f"Applied environment feature flags from {env_flags_file.name}")
+        else:
+            logger.debug(f"No environment-specific flags file: {env_flags_file.name}")
+
+    def _apply_yaml_file(self, flags_file: Path) -> None:
+        """Apply flags from a single YAML file."""
 
         if not flags_file.exists():
             logger.debug(f"Feature flags file not found: {flags_file}")

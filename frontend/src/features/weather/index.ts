@@ -15,9 +15,17 @@ export {
   useWeatherStats,
   weatherKeys,
 } from './hooks/useWeather';
+export {
+  usePagasaRadar,
+  type PagasaPrecipitationData,
+  type BarangayPrecipitation,
+  type PrecipitationSummary,
+  type RainfallAdvisory,
+} from './hooks/usePagasaRadar';
 
 // Components
 export { WeatherStatsCards } from './components/WeatherStatsCards';
 export { WeatherChart } from './components/WeatherChart';
 export { WeatherTable } from './components/WeatherTable';
 export { DateRangeFilter, type DateRange } from './components/DateRangeFilter';
+export { TidalRiskIndicator } from './components/TidalRiskIndicator';

@@ -65,7 +65,7 @@ For complete architectural details, refer to [BACKEND_ARCHITECTURE.md](docs/BACK
 
 ## Prerequisites
 
-- Python 3.8 or higher
+- Python 3.13 or higher
 - pip package manager
 - OpenWeatherMap API key
 - Weatherstack API key (optional)
@@ -210,12 +210,12 @@ http://localhost:5000
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Returns API information |
-| GET | `/status` | Returns basic health status |
-| GET | `/health` | Returns detailed health metrics |
-| GET | `/ingest` | Returns ingestion endpoint usage information |
-| POST | `/ingest` | Ingests weather data for specified coordinates |
-| GET | `/data` | Retrieves historical weather data |
-| POST | `/predict` | Returns flood risk prediction with 3-level classification |
+| GET | `/api/v1/status` | Returns basic health status |
+| GET | `/api/v1/health` | Returns detailed health metrics |
+| GET | `/api/v1/ingest` | Returns ingestion endpoint usage information |
+| POST | `/api/v1/ingest` | Ingests weather data for specified coordinates |
+| GET | `/api/v1/data` | Retrieves historical weather data |
+| POST | `/api/v1/predict` | Returns flood risk prediction with 3-level classification |
 | GET | `/api/docs` | Returns API documentation |
 | GET | `/api/version` | Returns API version information |
 | GET | `/api/models` | Returns list of available model versions |
@@ -225,7 +225,7 @@ http://localhost:5000
 **Ingest Weather Data:**
 
 ```bash
-curl -X POST http://localhost:5000/ingest \
+curl -X POST http://localhost:5000/api/v1/ingest \
   -H "Content-Type: application/json" \
   -d '{"lat": 14.6, "lon": 120.98}'
 ```
@@ -233,13 +233,13 @@ curl -X POST http://localhost:5000/ingest \
 **Retrieve Historical Data:**
 
 ```bash
-curl http://localhost:5000/data?limit=10
+curl http://localhost:5000/api/v1/data?limit=10
 ```
 
 **Predict Flood Risk:**
 
 ```bash
-curl -X POST http://localhost:5000/predict \
+curl -X POST http://localhost:5000/api/v1/predict \
   -H "Content-Type: application/json" \
   -d '{"temperature": 298.15, "humidity": 65.0, "precipitation": 5.0}'
 ```

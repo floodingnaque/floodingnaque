@@ -22,6 +22,10 @@ environment: development
 # =============================================================================
 # Feature Flags
 # =============================================================================
+# IMPORTANT: These defaults are for DEVELOPMENT. In production, the
+# environment is overridden by APP_ENV. Security-critical flags like
+# api_auth_bypass default to DISABLED and must be explicitly enabled
+# per-environment.
 flags:
 
   # ---------------------------------------------------------------------------
@@ -65,12 +69,12 @@ flags:
     description: "Enable Meteostat historical weather data"
 
   earth_engine_integration:
-    enabled: false
-    description: "Enable Google Earth Engine (requires credentials)"
+    enabled: true
+    description: "Enable Google Earth Engine satellite weather data (requires GCP service-account credentials in GOOGLE_APPLICATION_CREDENTIALS)"
 
   worldtides_integration:
-    enabled: false
-    description: "Enable WorldTides API"
+    enabled: true
+    description: "Enable WorldTides tidal data API (requires WORLDTIDES_API_KEY)"
 
   # ---------------------------------------------------------------------------
   # API Features
@@ -85,9 +89,11 @@ flags:
     description: "Enable response caching"
 
   api_auth_bypass:
-    # WARNING: Only enable in development!
-    enabled: true
-    description: "Allow auth bypass in development"
+    # SECURITY: Defaults to DISABLED even in development.
+    # Must be explicitly enabled via environment variable:
+    #   FLOODINGNAQUE_FLAG_API_AUTH_BYPASS=true
+    enabled: false
+    description: "Allow auth bypass (MUST be false in production)"
     metadata:
       security_critical: true
       allowed_environments: ["development"]
@@ -97,15 +103,15 @@ flags:
   # ---------------------------------------------------------------------------
 
   email_alerts:
-    enabled: false
+    enabled: true
     description: "Enable email notifications"
 
   sms_alerts:
-    enabled: false
+    enabled: true
     description: "Enable SMS notifications"
 
   slack_notifications:
-    enabled: false
+    enabled: true
     description: "Enable Slack notifications"
 
   # ---------------------------------------------------------------------------
@@ -121,8 +127,8 @@ flags:
     description: "Enable verbose debug logging"
 
   performance_profiling:
-    enabled: false
-    description: "Enable request profiling"
+    enabled: true
+    description: "Enable request profiling (adds Server-Timing header)"
 
   # ---------------------------------------------------------------------------
   # Experimental Features (Gradual Rollout)
@@ -130,16 +136,16 @@ flags:
 
   new_prediction_algorithm:
     type: percentage
-    percentage: 0
-    description: "Use new experimental prediction algorithm"
+    percentage: 10
+    description: "Use new experimental prediction algorithm (canary rollout)"
     metadata:
       experimental: true
       jira: "FLOOD-123"
 
   v2_api:
     type: percentage
-    percentage: 0
-    description: "Enable V2 API endpoints"
+    percentage: 25
+    description: "Enable V2 API endpoints (gradual rollout)"
     metadata:
       experimental: true
 

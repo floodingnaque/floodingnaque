@@ -9,3 +9,12 @@
 export { FloodMap, type FloodMapProps, type FloodMapRef } from './components/FloodMap';
 export { RiskMarkers, type RiskMarkersProps } from './components/RiskMarkers';
 export { LocationPicker, type LocationPickerProps, type SelectedLocation } from './components/LocationPicker';
+export { HazardOverlay, type HazardOverlayProps } from './components/HazardOverlay';
+
+// Hooks
+export {
+  useHazardMap,
+  type HazardMapData,
+  type HazardFeature,
+  type HazardFeatureProperties,
+} from './hooks/useHazardMap';

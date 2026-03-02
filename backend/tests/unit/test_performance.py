@@ -128,7 +128,8 @@ class TestDatabaseMetrics:
         """Test slow queries endpoint."""
         response = client.get("/api/v1/performance/slow-queries")
 
-        assert response.status_code in [200, 404]
+        # Endpoint requires API key auth, so 401 is expected without key
+        assert response.status_code in [200, 401, 404]
 
     @patch("app.api.routes.performance.get_database_health")
     def test_database_health_endpoint(self, mock_health, client):

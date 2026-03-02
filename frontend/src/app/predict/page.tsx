@@ -3,13 +3,17 @@
  *
  * Main page for flood risk prediction functionality.
  * Shows either the prediction form or the result based on state.
+ * Falls back to the most recent cached prediction when offline.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CloudRain, ShieldAlert } from 'lucide-react';
 
 import { PredictionForm } from '@/features/flooding/components/PredictionForm';
 import { PredictionResult } from '@/features/flooding/components/PredictionResult';
+import { StaleDataBanner } from '@/components/feedback/StaleDataBanner';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { getCachedPredictions } from '@/lib/offlineCache';
 import type { PredictionResponse } from '@/types';
 
 /**
@@ -17,6 +21,23 @@ import type { PredictionResponse } from '@/types';
  */
 export default function PredictPage() {
   const [predictionResult, setPredictionResult] = useState<PredictionResponse | null>(null);
+  const [offlineCachedAt, setOfflineCachedAt] = useState<string | null>(null);
+  const { isOnline } = useNetworkStatus();
+
+  // When offline and no result is showing, load the most recent cached prediction
+  useEffect(() => {
+    if (!isOnline && !predictionResult) {
+      getCachedPredictions(1).then((cached) => {
+        if (cached.length > 0) {
+          setPredictionResult(cached[0].data);
+          setOfflineCachedAt(cached[0].cachedAt);
+        }
+      });
+    }
+    if (isOnline) {
+      setOfflineCachedAt(null);
+    }
+  }, [isOnline, predictionResult]);
 
   /**
    * Handle successful prediction
@@ -54,6 +75,10 @@ export default function PredictPage() {
       </div>
 
       {/* Conditional Content */}
+      {offlineCachedAt && predictionResult && (
+        <StaleDataBanner cachedAt={offlineCachedAt} />
+      )}
+
       {predictionResult ? (
         <PredictionResult
           result={predictionResult}

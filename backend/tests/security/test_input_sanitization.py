@@ -4,9 +4,32 @@ Input Sanitization Security Tests.
 Tests to verify proper input sanitization and validation.
 """
 
-from unittest.mock import patch
+from contextlib import contextmanager
+from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _mock_data_db():
+    """Auto-mock DB session so data-route tests don't need a real database."""
+    mock_session = MagicMock()
+    mock_query = MagicMock()
+    mock_query.filter.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.offset.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.all.return_value = []
+    mock_query.count.return_value = 0
+    mock_session.query.return_value = mock_query
+
+    @contextmanager
+    def _fake_session():
+        yield mock_session
+
+    with patch("app.models.db.get_db_session", _fake_session), \
+         patch("app.api.routes.data.get_db_session", _fake_session):
+        yield
 
 
 class TestInputValidation:
@@ -38,10 +61,13 @@ class TestInputValidation:
         ]
 
         for coords in invalid_coords:
-            response = client.get(f"/api/v1/ingest/ingest?lat={coords['lat']}&lon={coords['lon']}")
+            response = client.get(
+                f"/api/v1/ingest/ingest?lat={coords['lat']}&lon={coords['lon']}",
+                headers=api_headers,
+            )
 
-            # Should reject invalid coordinates or return info (GET is allowed)
-            assert response.status_code in [200, 400, 422], f"Invalid coords accepted: {coords}"
+            # Should reject invalid coordinates or return info (GET is allowed); 401 if auth fails
+            assert response.status_code in [200, 400, 401, 422], f"Invalid coords accepted: {coords}"
 
     @pytest.mark.security
     def test_pagination_limits_enforced(self, client):

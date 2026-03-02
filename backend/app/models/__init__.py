@@ -1,6 +1,7 @@
 """Data models and database schemas."""
 
 from app.models.db import (
+    ABTestRecord,
     AlertHistory,
     APIRequest,
     Base,
@@ -21,6 +22,7 @@ from app.models.db import (
 )
 
 __all__ = [
+    "ABTestRecord",
     "Base",
     "engine",
     "Session",

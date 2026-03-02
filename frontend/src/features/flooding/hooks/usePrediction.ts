@@ -3,10 +3,12 @@
  *
  * React Query mutation hook for flood risk prediction.
  * Provides loading, error, and success states for prediction requests.
+ * Caches successful predictions to IndexedDB for offline access.
  */
 
 import { useMutation, type UseMutationOptions } from '@tanstack/react-query';
 import { predictionApi } from '../services/predictionApi';
+import { cachePrediction } from '@/lib/offlineCache';
 import type { PredictionRequest, PredictionResponse, ApiError } from '@/types';
 
 /**
@@ -39,7 +41,11 @@ export function usePrediction(options?: UsePredictionOptions) {
     PredictionRequest
   > = {
     mutationFn: (data: PredictionRequest) => predictionApi.predict(data),
-    onSuccess: options?.onSuccess,
+    onSuccess: (data) => {
+      // Persist to IndexedDB for offline access
+      cachePrediction(data).catch(() => {});
+      options?.onSuccess?.(data);
+    },
     onError: options?.onError,
   };
 

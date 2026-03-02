@@ -16,6 +16,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont',
+               'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -57,6 +61,12 @@ export default {
           high: "#f97316",
           severe: "#ef4444",
           extreme: "#7c3aed",
+        },
+        // Design system risk colors (aligned with thesis spec)
+        risk: {
+          safe: "#28A745",
+          alert: "#FFC107",
+          critical: "#DC3545",
         },
       },
       borderRadius: {

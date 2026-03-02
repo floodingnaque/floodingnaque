@@ -10,6 +10,7 @@ when they discover vulnerabilities in the application.
 
 import os
 
+from app.api.middleware.rate_limit import limiter
 from flask import Blueprint, Response
 
 security_txt_bp = Blueprint("security_txt", __name__)
@@ -81,6 +82,7 @@ def get_security_txt_content() -> str:
 
 
 @security_txt_bp.route("/.well-known/security.txt", methods=["GET"])
+@limiter.limit("60/minute")
 def security_txt():
     """
     Serve security.txt file per RFC 9116.
@@ -97,6 +99,7 @@ def security_txt():
 
 
 @security_txt_bp.route("/security.txt", methods=["GET"])
+@limiter.limit("60/minute")
 def security_txt_root():
     """
     Also serve security.txt at root for compatibility.

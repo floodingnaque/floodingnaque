@@ -429,6 +429,29 @@ def schedule_cache_warming(interval_seconds: int = 300):
 
 
 # ============================================================================
+# Event-driven Cache Invalidation
+# ============================================================================
+
+
+def invalidate_weather_cache() -> int:
+    """
+    Invalidate all cached weather data.
+
+    Call this when an alert is broadcast (e.g. typhoon warning) so that
+    subsequent predictions use fresh data instead of waiting for TTL expiry.
+
+    Returns:
+        int: Number of cache keys deleted
+    """
+    deleted = 0
+    for pattern in ("weather:*", "prediction:*"):
+        deleted += cache_clear_pattern(pattern)
+    if deleted:
+        logger.info(f"Event-driven cache invalidation: cleared {deleted} weather/prediction key(s)")
+    return deleted
+
+
+# ============================================================================
 # Prediction Cache Helpers
 # ============================================================================
 

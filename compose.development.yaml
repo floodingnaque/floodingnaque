@@ -34,11 +34,11 @@ services:
       dockerfile: Dockerfile
       target: development
       args:
-        PYTHON_VERSION: "3.12"
+        PYTHON_VERSION: "3.13"
     image: floodingnaque-api:development
     container_name: floodingnaque-api-dev
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     environment:
       - APP_ENV=development
       - FLASK_DEBUG=True
@@ -46,9 +46,17 @@ services:
       - HOST=0.0.0.0
       - PYTHONPATH=/app
       # DATABASE_URL is loaded from .env.development file (points to Supabase)
-      - RATE_LIMIT_ENABLED=False
+      # Rate limiting — enabled to approximate Nginx layer behavior in staging/production.
+      # Disable temporarily with RATE_LIMIT_ENABLED=False if it interferes with rapid testing.
+      - RATE_LIMIT_ENABLED=True
       - SCHEDULER_ENABLED=True
       - LOG_LEVEL=DEBUG
+      # CORS — explicit dev origins (avoids reliance on debug-mode fallback)
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000
+      # Security — stable dev keys so sessions survive restarts
+      # WARNING: These values are for development ONLY. Never use in staging/production.
+      - SECRET_KEY=dev-secret-key-not-for-production-do-not-reuse
+      - JWT_SECRET_KEY=dev-jwt-secret-not-for-production-do-not-reuse
       # Feature flags
       - FEATURE_API_DOCS_ENABLED=True
       - GRAPHQL_PLAYGROUND_ENABLED=True
@@ -95,6 +103,98 @@ services:
         limits:
           cpus: '0.25'
           memory: 128M
+
+  # ===================
+  # Celery Worker (Background Tasks)
+  # ===================
+  # Started with Redis: docker compose -f compose.development.yaml --profile with-redis up
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    image: floodingnaque-api:development
+    container_name: floodingnaque-celery-dev
+    restart: unless-stopped
+    command: >
+      celery -A app.services.celery_app worker
+      --loglevel=debug
+      --concurrency=1
+      --max-tasks-per-child=50
+      --time-limit=300
+      --soft-time-limit=240
+    environment:
+      - APP_ENV=development
+      - FLASK_DEBUG=False
+      - PYTHONPATH=/app
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - CELERY_TIMEZONE=Asia/Manila
+      - LOG_LEVEL=DEBUG
+    env_file:
+      - ./backend/.env.development
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/config:/app/config:ro
+      - ./backend/models:/app/models
+      - ./backend/data:/app/data
+      - floodingnaque_logs_dev:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - floodingnaque-dev
+    profiles:
+      - with-redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # ===================
+  # Celery Beat (Task Scheduler)
+  # ===================
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    image: floodingnaque-api:development
+    container_name: floodingnaque-celery-beat-dev
+    restart: unless-stopped
+    command: >
+      celery -A app.services.celery_app beat
+      --loglevel=debug
+      --schedule=/tmp/celerybeat-schedule
+      --pidfile=/tmp/celerybeat.pid
+    environment:
+      - APP_ENV=development
+      - FLASK_DEBUG=False
+      - PYTHONPATH=/app
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - CELERY_TIMEZONE=Asia/Manila
+      - CELERY_BEAT_RUNNING=true
+      - LOG_LEVEL=DEBUG
+    env_file:
+      - ./backend/.env.development
+    volumes:
+      - floodingnaque_logs_dev:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - floodingnaque-dev
+    profiles:
+      - with-redis
+    tmpfs:
+      - /tmp:size=50M,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
 # ===================
 # Networks
