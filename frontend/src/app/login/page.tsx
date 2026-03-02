@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Droplets, ArrowLeft } from 'lucide-react';
+import { RainEffect } from '@/components/effects/RainEffect';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/state/stores/authStore';
@@ -40,7 +41,8 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-primary overflow-hidden p-4">
-      {/* Gradient overlay — matches HeroSection */}
+      {/* Rain + gradient — matches HeroSection */}
+      <RainEffect />
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
 
       {/* Back to landing */}

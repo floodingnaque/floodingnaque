@@ -115,6 +115,20 @@
   height: 100%;
 }
 
+/* Rain effect animation (global so every RainEffect instance uses it) */
+@keyframes rain-fall {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(calc(100vh + 100%)); opacity: 0; }
+}
+
+.rain-drop {
+  animation-name: rain-fall;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

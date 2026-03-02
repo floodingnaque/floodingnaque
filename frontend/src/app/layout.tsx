@@ -57,6 +57,7 @@ import { cn } from '@/lib/utils';
 import { useSidebarCollapsed, useSidebarOpen, useTheme, useUIActions } from '@/state';
 import { useAuthStore, useUser } from '@/state';
 import { useAlertStream } from '@/features/alerts/hooks/useAlertStream';
+import { RainEffect } from '@/components/effects/RainEffect';
 import { ConnectionStatus } from '@/features/alerts/components/ConnectionStatus';
 import { LiveAlertsBanner } from '@/features/alerts/components/LiveAlertsBanner';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
@@ -361,6 +362,9 @@ export function Layout() {
             sidebarCollapsed ? 'w-16' : 'w-64'
           )}
         >
+          {/* Subtle rain accent on sidebar */}
+          <RainEffect density={12} opacity={0.04} />
+
           {/* Logo/Brand */}
           <div
             className={cn(
@@ -405,7 +409,9 @@ export function Layout() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="relative flex-1 flex flex-col overflow-hidden">
+          {/* Subtle rain accent across all authenticated pages */}
+          <RainEffect density={15} opacity={0.03} />
           {/* Top Header Bar */}
           <header className="h-16 border-b bg-card/50 flex items-center justify-between px-4">
             {/* Left: Mobile Menu + Page Title */}

@@ -6,12 +6,14 @@
 
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Droplets } from 'lucide-react';
+import { RainEffect } from '@/components/effects/RainEffect';
 
 export function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero header bar */}
       <div className="relative bg-primary overflow-hidden">
+        <RainEffect density={20} opacity={0.08} />
         <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
         <div className="relative z-10 container mx-auto px-6 py-12 md:py-16">
           <Link

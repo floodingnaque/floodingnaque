@@ -26,39 +26,10 @@ const RISK_CFG: Record<RiskLevel, { label: string; bg: string; icon: typeof Shie
 };
 
 // ---------------------------------------------------------------------------
-// Animated rain drops (decorative)
+// Rain effect (shared component)
 // ---------------------------------------------------------------------------
 
-function RainEffect() {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-      {Array.from({ length: 30 }).map((_, i) => (
-        <div
-          key={i}
-          className="absolute w-px bg-white/10 rounded-full"
-          style={{
-            left: `${Math.random() * 100}%`,
-            top: `-${Math.random() * 20}%`,
-            height: `${12 + Math.random() * 24}px`,
-            animationName: 'rain-fall',
-            animationDuration: `${0.8 + Math.random() * 1.2}s`,
-            animationDelay: `${Math.random() * 2}s`,
-            animationIterationCount: 'infinite',
-            animationTimingFunction: 'linear',
-          }}
-        />
-      ))}
-      <style>{`
-        @keyframes rain-fall {
-          0%   { transform: translateY(-100%); opacity: 0; }
-          10%  { opacity: 1; }
-          90%  { opacity: 1; }
-          100% { transform: translateY(calc(100vh + 100%)); opacity: 0; }
-        }
-      `}</style>
-    </div>
-  );
-}
+import { RainEffect } from '@/components/effects/RainEffect';
 
 // ---------------------------------------------------------------------------
 // Component

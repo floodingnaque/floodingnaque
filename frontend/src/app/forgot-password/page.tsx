@@ -11,6 +11,7 @@ import { Droplets, ArrowLeft } from 'lucide-react';
 
 import { useAuthStore } from '@/state/stores/authStore';
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm';
+import { RainEffect } from '@/components/effects/RainEffect';
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -29,6 +30,9 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-primary overflow-hidden p-4">
+      {/* Rain effect — matches LoginPage */}
+      <RainEffect />
+
       {/* Gradient overlay — matches HeroSection / LoginPage */}
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
 
