@@ -3,17 +3,17 @@ Automated Model Retraining Pipeline.
 
 Orchestrates the end-to-end retraining workflow:
 
-1. **Data freshness check** — Detect newly ingested DRRMO flood events and
+1. **Data freshness check** - Detect newly ingested DRRMO flood events and
    weather data since the last training run.
-2. **Drift detection** — Compute PSI (Population Stability Index) on
+2. **Drift detection** - Compute PSI (Population Stability Index) on
    monitored features to detect distributional drift.
-3. **Conditional retraining** — Trigger retraining when drift exceeds
+3. **Conditional retraining** - Trigger retraining when drift exceeds
    thresholds, new data volume is significant, or on a schedule.
-4. **Performance gating** — Only promote the new model if it meets minimum
+4. **Performance gating** - Only promote the new model if it meets minimum
    metric thresholds (F2 ≥ 0.85, recall ≥ 0.85).
-5. **Shadow deployment** — New models run in shadow mode before promotion,
+5. **Shadow deployment** - New models run in shadow mode before promotion,
    logging predictions alongside the production model.
-6. **Rollback** — Automatic rollback if the new model degrades in production.
+6. **Rollback** - Automatic rollback if the new model degrades in production.
 
 Integration
 -----------
@@ -321,7 +321,7 @@ class AutoRetrainingPipeline:
         }
         self.pipeline_log.append(entry)
         log_fn = logger.info if status == "success" else logger.warning
-        log_fn(f"Pipeline [{step}]: {status}" + (f" — {details}" if details else ""))
+        log_fn(f"Pipeline [{step}]: {status}" + (f" - {details}" if details else ""))
 
     def check_triggers(
         self,
@@ -631,7 +631,7 @@ def run_auto_retrain(
     if not force:
         trigger_result = pipeline.check_triggers()
         if not trigger_result["should_retrain"]:
-            logger.info("No retraining triggers fired — skipping")
+            logger.info("No retraining triggers fired - skipping")
             return {
                 "status": "skipped",
                 "reason": "No triggers fired",

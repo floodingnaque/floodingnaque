@@ -1,5 +1,5 @@
 """
-Weather Data Collector — Core Collection Service.
+Weather Data Collector - Core Collection Service.
 
 Aggregates weather data from multiple external APIs:
 - Meteostat (historical + current stations)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-User Management Service — Main Entry Point
+User Management Service - Main Entry Point
 
 Responsible for:
 - User registration, login, logout

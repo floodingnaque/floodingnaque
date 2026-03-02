@@ -2,7 +2,7 @@
  * Security Utilities
  *
  * Client-side input sanitisation and URL validation helpers.
- * These are a defence-in-depth layer — the backend MUST also
+ * These are a defence-in-depth layer - the backend MUST also
  * validate and sanitise all inputs independently.
  */
 
@@ -73,7 +73,7 @@ export function validateUrl(url: string): boolean {
 
 /**
  * Generate a cryptographically random nonce for inline scripts/styles.
- * Useful when building CSP headers dynamically on a SSR server —
+ * Useful when building CSP headers dynamically on a SSR server -
  * on the client, this is mainly here for completeness.
  */
 export function generateNonce(length = 16): string {

@@ -1,5 +1,5 @@
 /**
- * Vercel Edge Middleware — CSP Nonce Injection
+ * Vercel Edge Middleware - CSP Nonce Injection
  *
  * Generates a cryptographically random nonce per request and injects it into
  * the Content-Security-Policy header, replacing blanket 'unsafe-inline' with
@@ -16,7 +16,7 @@
  *    inject inline `style` attributes at runtime (e.g., popovers,
  *    dialogs, tooltips) and Tailwind CSS uses runtime class injection.
  *    Nonces cannot be applied to element-level `style` attributes
- *    per the CSP specification — only to `<style>` / `<link>` elements.
+ *    per the CSP specification - only to `<style>` / `<link>` elements.
  * 4. The nonce is passed to the application via the `X-Nonce` response
  *    header so that SSR templates or client hydration can read it.
  *
@@ -45,7 +45,7 @@ export default function middleware(_request: Request): Response {
 
   const csp = [
     "default-src 'self'",
-    // Nonce for scripts — 'unsafe-inline' is ignored by CSP 2+ when nonce is present
+    // Nonce for scripts - 'unsafe-inline' is ignored by CSP 2+ when nonce is present
     `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
     // 'unsafe-inline' required for Radix UI style attributes & Tailwind runtime
     "style-src 'self' 'unsafe-inline'",

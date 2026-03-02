@@ -1,5 +1,5 @@
 /**
- * AnalyticsCharts Component (P2 — HIGH VALUE)
+ * AnalyticsCharts Component (P2 - HIGH VALUE)
  *
  * Collection of Recharts visualizations for the Analytics page:
  * - 7-day rainfall trend (area chart)
@@ -225,7 +225,7 @@ export const RiskDistribution = memo(function RiskDistribution({
 });
 
 // ---------------------------------------------------------------------------
-// Alert Frequency Bar Chart (placeholder — uses dashboard stats)
+// Alert Frequency Bar Chart (placeholder - uses dashboard stats)
 // ---------------------------------------------------------------------------
 
 export const AlertFrequency = memo(function AlertFrequency({

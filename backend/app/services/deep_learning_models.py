@@ -8,9 +8,9 @@ to predict flood probability for the next time step.
 
 Architectures
 -------------
-1. **FloodLSTM**: Bidirectional LSTM with attention — captures long-range
+1. **FloodLSTM**: Bidirectional LSTM with attention - captures long-range
    temporal dependencies in precipitation and humidity sequences.
-2. **FloodTransformer**: Lightweight Transformer encoder — uses multi-head
+2. **FloodTransformer**: Lightweight Transformer encoder - uses multi-head
    self-attention to weigh the importance of each day in the look-back
    window for the flood prediction task.
 
@@ -21,7 +21,7 @@ Both models produce:
 Dependencies
 ------------
 - PyTorch ≥ 2.0 (``pip install torch``)
-- scikit-learn (for evaluation metrics — already in requirements)
+- scikit-learn (for evaluation metrics - already in requirements)
 
 Usage
 -----
@@ -141,7 +141,7 @@ class FloodSequenceDataset:
     Time-series dataset that creates sliding-window sequences for flood prediction.
 
     Each sample is (X_seq, y) where:
-    - X_seq has shape (sequence_length, n_features) — the look-back window
+    - X_seq has shape (sequence_length, n_features) - the look-back window
     - y is the binary flood label for the day *after* the window
     """
 
@@ -342,7 +342,7 @@ if _torch_available:
             Returns
             -------
             logits : (batch, 1)
-            attn_weights : (batch, seq_len) — only if return_attention=True
+            attn_weights : (batch, seq_len) - only if return_attention=True
             """
             # Project input features
             x = self.input_proj(x)
@@ -634,7 +634,7 @@ class DeepLearningTrainer:
             # Log every 10 epochs
             if epoch % 10 == 0 or epoch == 1:
                 logger.info(
-                    f"Epoch {epoch}/{self.config.epochs} — "
+                    f"Epoch {epoch}/{self.config.epochs} - "
                     f"train_loss={avg_train_loss:.4f}, "
                     f"val_loss={val_loss:.4f}, "
                     f"val_f1={val_metrics.get('f1_score', 0):.4f}"

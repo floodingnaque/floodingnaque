@@ -1,5 +1,5 @@
 """
-Tests for ENSO Service — climate index fetching and feature engineering.
+Tests for ENSO Service - climate index fetching and feature engineering.
 """
 
 import numpy as np

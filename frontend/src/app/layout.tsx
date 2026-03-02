@@ -21,7 +21,6 @@ import {
   Menu,
   Moon,
   Sun,
-  Droplets,
   User,
   BarChart3,
   Users,
@@ -58,6 +57,7 @@ import { useSidebarCollapsed, useSidebarOpen, useTheme, useUIActions } from '@/s
 import { useAuthStore, useUser } from '@/state';
 import { useAlertStream } from '@/features/alerts/hooks/useAlertStream';
 import { RainEffect } from '@/components/effects/RainEffect';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import { ConnectionStatus } from '@/features/alerts/components/ConnectionStatus';
 import { LiveAlertsBanner } from '@/features/alerts/components/LiveAlertsBanner';
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog';
@@ -374,7 +374,7 @@ export function Layout() {
           >
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-primary/10">
-                <Droplets className="h-6 w-6 text-primary" />
+                <FloodIcon className="h-6 w-6 text-primary" />
               </div>
               {!sidebarCollapsed && (
                 <span className="font-bold text-lg tracking-tight">
@@ -428,7 +428,7 @@ export function Layout() {
                   <SheetHeader className="h-16 px-4 border-b flex flex-row items-center">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-primary/10">
-                        <Droplets className="h-6 w-6 text-primary" />
+                        <FloodIcon className="h-6 w-6 text-primary" />
                       </div>
                       <SheetTitle className="font-bold text-lg">
                         Floodingnaque

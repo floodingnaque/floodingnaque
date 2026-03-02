@@ -27,7 +27,7 @@ export function DualCTA() {
             Choose Your Dashboard
           </h2>
           <p className="mt-3 text-muted-foreground max-w-lg mx-auto leading-relaxed">
-            Whether you're a resident checking your barangay or an LGU officer managing alerts —
+            Whether you're a resident checking your barangay or an LGU officer managing alerts -
             we've got you covered.
           </p>
         </div>
@@ -46,8 +46,8 @@ export function DualCTA() {
             </div>
             <h3 className="text-xl font-bold text-foreground">For Residents</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Check real-time flood risk for your barangay, view the interactive map, and receive
-              alerts — no account required during the thesis demo.
+              Monitor real-time flood risk levels across Paranaque City barangays, explore an
+              interactive risk map, and receive timely early-warning notifications.
             </p>
             <Button asChild size="lg" className="bg-risk-safe hover:bg-risk-safe/90 text-white w-full mt-auto">
               <Link to="/login">Check My Barangay &rarr;</Link>
@@ -66,8 +66,8 @@ export function DualCTA() {
             </div>
             <h3 className="text-xl font-bold text-foreground">For LGU / DRRMO</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Access the full command dashboard — broadcast SMS alerts, export DRRMO compliance
-              reports, and manage model versions.
+              Oversee flood operations from a centralized command dashboard, dispatch
+              multi-channel alerts, generate compliance reports, and evaluate predictive models.
             </p>
             <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-white w-full mt-auto">
               <Link to="/login?role=lgu">LGU Dashboard &rarr;</Link>
@@ -86,8 +86,8 @@ export function DualCTA() {
             </div>
             <h3 className="text-xl font-bold text-foreground">System Admin</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Manage user accounts, view system logs, configure feature flags, and monitor
-              overall platform health.
+              Administer user roles and permissions, audit system activity logs, configure
+              platform feature flags, and monitor infrastructure health in real time.
             </p>
             <Button asChild size="lg" className="bg-amber-600 hover:bg-amber-600/90 text-white w-full mt-auto">
               <Link to="/login?role=admin">Admin Portal &rarr;</Link>

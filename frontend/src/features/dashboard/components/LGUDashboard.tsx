@@ -1,5 +1,5 @@
 /**
- * LGUDashboard Component (P1 — MUST HAVE)
+ * LGUDashboard Component (P1 - MUST HAVE)
  *
  * Operational dashboard for LGU / MDRRMO operators.
  *
@@ -23,8 +23,8 @@ import {
   Cpu,
   BarChart3,
   TrendingUp,
-  Droplets,
 } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import {
   BarChart,
   Bar,
@@ -218,7 +218,7 @@ export function LGUDashboard() {
                 LGU Operations Center
               </h1>
               <p className="text-sm text-muted-foreground">
-                Parañaque MDRRMO — Flood Monitoring & Prediction
+                Parañaque MDRRMO - Flood Monitoring & Prediction
               </p>
             </div>
           </div>
@@ -253,7 +253,7 @@ export function LGUDashboard() {
             value={
               prediction?.weather_data
                 ? `${prediction.weather_data.precipitation.toFixed(1)} mm`
-                : '—'
+                : '-'
             }
             subtitle="Current reading"
             isLoading={predLoading}
@@ -272,12 +272,12 @@ export function LGUDashboard() {
             isLoading={statsLoading}
           />
           <KPICard
-            icon={Droplets}
+            icon={FloodIcon}
             label="Avg Risk Level"
             value={
               stats?.avg_risk_level != null
                 ? stats.avg_risk_level.toFixed(2)
-                : '—'
+                : '-'
             }
             subtitle="0 = Safe, 2 = Critical"
             isLoading={statsLoading}

@@ -265,7 +265,7 @@ def init_scheduler():
     # Skip APScheduler when Celery Beat handles scheduling (production)
     celery_beat_running = os.getenv("CELERY_BEAT_RUNNING", "false").lower() == "true"
     if celery_beat_running:
-        logger.info("APScheduler disabled — Celery Beat handles periodic task scheduling")
+        logger.info("APScheduler disabled - Celery Beat handles periodic task scheduling")
         _scheduler_initialized = True
         return
 

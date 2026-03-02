@@ -269,7 +269,7 @@ def evaluate_system_for_thesis() -> Dict:
 
     Loads the real test dataset, runs predictions through the trained model,
     executes a live load-test for scalability, and queries actual uptime
-    metrics — producing a report with no fabricated numbers.
+    metrics - producing a report with no fabricated numbers.
 
     Returns:
         dict: Complete evaluation report
@@ -282,7 +282,7 @@ def evaluate_system_for_thesis() -> Dict:
     evaluator = SystemEvaluator()
 
     # -----------------------------------------------------------------
-    # 1. ACCURACY — use real training dataset with an 80/20 holdout split
+    # 1. ACCURACY - use real training dataset with an 80/20 holdout split
     # -----------------------------------------------------------------
     dataset_path = _Path(__file__).resolve().parent.parent.parent / "data" / "processed" / "training_dataset_v2.csv"
     if not dataset_path.exists():
@@ -322,7 +322,7 @@ def evaluate_system_for_thesis() -> Dict:
     accuracy_metrics = evaluator.evaluate_accuracy(y_test.tolist(), y_pred)
 
     # -----------------------------------------------------------------
-    # 2. SCALABILITY — live load test with real predict_flood calls
+    # 2. SCALABILITY - live load test with real predict_flood calls
     # -----------------------------------------------------------------
     # Build a representative sample of inputs from the test set
     sample_inputs = X_test.head(min(20, len(X_test))).to_dict(orient="records")
@@ -346,7 +346,7 @@ def evaluate_system_for_thesis() -> Dict:
     )
 
     # -----------------------------------------------------------------
-    # 3. RELIABILITY — derive from the scalability run (real numbers)
+    # 3. RELIABILITY - derive from the scalability run (real numbers)
     # -----------------------------------------------------------------
     total_reqs = scalability_metrics["total_requests"]
     failed_reqs = scalability_metrics["failed_requests"]
@@ -359,7 +359,7 @@ def evaluate_system_for_thesis() -> Dict:
     )
 
     # -----------------------------------------------------------------
-    # 4. USABILITY — measure real single-request response times per endpoint
+    # 4. USABILITY - measure real single-request response times per endpoint
     # -----------------------------------------------------------------
     api_endpoints = ["/predict", "/ingest", "/data", "/health", "/api/models"]
     measured_times: Dict[str, float] = {}

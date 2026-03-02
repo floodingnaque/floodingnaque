@@ -1,5 +1,5 @@
 /**
- * ResidentDashboard Component (P1 — MUST HAVE)
+ * ResidentDashboard Component (P1 - MUST HAVE)
  *
  * The primary view for `user` role.
  * Layout:
@@ -12,7 +12,8 @@
  *   └───────────────────────┴────────────────────┘
  */
 
-import { Droplets, Bell, Download, FileText } from 'lucide-react';
+import { Bell, Download, FileText } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import { ConnectionStatus, ErrorDisplay } from '@/components/feedback';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -210,14 +211,14 @@ export function ResidentDashboard() {
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Droplets className="h-6 w-6 text-primary" />
+              <FloodIcon className="h-6 w-6 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
                 Flood Monitor
               </h1>
               <p className="text-sm text-muted-foreground">
-                Parañaque City — Real-time flood risk assessment
+                Parañaque City - Real-time flood risk assessment
               </p>
             </div>
           </div>

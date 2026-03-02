@@ -16,7 +16,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            // API calls — network-first so we get fresh data when online,
+            // API calls - network-first so we get fresh data when online,
             // but fall back to cache when offline
             urlPattern: /\/api\/v1\/.*/i,
             handler: 'NetworkFirst',
@@ -33,7 +33,7 @@ export default defineConfig({
             },
           },
           {
-            // Static assets from CDN or same-origin — cache-first
+            // Static assets from CDN or same-origin - cache-first
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff2?)$/i,
             handler: 'CacheFirst',
             options: {

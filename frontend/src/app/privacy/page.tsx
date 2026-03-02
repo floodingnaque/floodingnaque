@@ -6,7 +6,8 @@
  */
 
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Droplets } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import { RainEffect } from '@/components/effects/RainEffect';
 
 export function PrivacyPage() {
@@ -26,7 +27,7 @@ export function PrivacyPage() {
           </Link>
           <div className="flex items-center gap-3 mb-3">
             <div className="h-10 w-10 rounded-lg bg-white/15 flex items-center justify-center">
-              <Droplets className="h-5 w-5 text-white" />
+              <FloodIcon className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-bold text-white tracking-tight">Floodingnaque</span>
           </div>

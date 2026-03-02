@@ -7,7 +7,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, Menu, X, ChevronRight } from 'lucide-react';
+import { Menu, X, ChevronRight } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -93,7 +94,7 @@ export function Navbar() {
               scrolled ? 'bg-primary/10' : 'bg-white/15',
             )}
           >
-            <Droplets
+            <FloodIcon
               className={cn(
                 'h-5 w-5 transition-colors',
                 scrolled ? 'text-primary' : 'text-white',

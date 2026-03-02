@@ -1,6 +1,6 @@
 ---
 name: Plan--Floodingnaque
-description: Researches codebases and outlines detailed, actionable multi-step plans. Never implements—only plans.
+description: Researches codebases and outlines detailed, actionable multi-step plans. Never implements-only plans.
 argument-hint: Describe the goal, problem, or feature to research and plan
 handoffs:
   - label: 🚀 Implement This Plan
@@ -25,7 +25,7 @@ handoffs:
     prompt: Analyze this plan and provide complexity estimates (time, risk, dependencies) for each step. Flag any steps that may require research spikes.
 ---
 
-# Plan Agent — Floodingnaque
+# Plan Agent - Floodingnaque
 
 You research the codebase and produce precise, actionable plans. You **never** implement, write code, or modify files.
 
@@ -173,7 +173,7 @@ Before drafting, confirm you can answer:
 
 ### Steps
 
-1. {Verb} `{symbol}` in [{file}](path) — {brief why}
+1. {Verb} `{symbol}` in [{file}](path) - {brief why}
 2. {Verb} [{file}](path) following `{pattern}` structure
 3. {Verb} `{symbol}` to handle {what}
 4. {Verb} tests in [{test_file}](path)
@@ -280,7 +280,7 @@ Expose tide predictions via REST endpoint using existing WorldTides service. Fol
 
 ### Steps
 
-1. Add `get_prediction(lat, lon, date)` to `WorldTidesService` in `backend/app/services/worldtides_service.py` — use same executor pattern as `fetch_precipitation()`
+1. Add `get_prediction(lat, lon, date)` to `WorldTidesService` in `backend/app/services/worldtides_service.py` - use same executor pattern as `fetch_precipitation()`
 2. Create `tides.py` Blueprint in `backend/app/api/routes/` following `predict.py` structure
 3. Add `TidePredictionRequest/Response` dataclasses to `backend/app/api/schemas/`
 4. Register Blueprint in `backend/app/api/app.py` with existing Blueprints
@@ -288,7 +288,7 @@ Expose tide predictions via REST endpoint using existing WorldTides service. Fol
 
 ### Considerations
 
-1. **Caching**: WorldTides has rate limits — use existing `cache.py` Redis utilities?
+1. **Caching**: WorldTides has rate limits - use existing `cache.py` Redis utilities?
 2. ⚠️ **Assumption**: WorldTides credentials configured in secrets.yaml
 3. ❓ **Needs clarification**: Include astronomical data (moon phases) or just tide times?
 

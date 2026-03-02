@@ -2,7 +2,7 @@
  * ConnectionStatus Component Tests
  *
  * Tests the SSE connection status indicator across all states:
- * connected, disconnected, error — plus size variants and showLabel prop.
+ * connected, disconnected, error - plus size variants and showLabel prop.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

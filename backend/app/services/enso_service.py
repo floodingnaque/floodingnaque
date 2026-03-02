@@ -320,7 +320,7 @@ def add_enso_features(
             return df
 
     if oni_data.empty:
-        logger.warning("ONI data is empty — skipping ENSO feature engineering")
+        logger.warning("ONI data is empty - skipping ENSO feature engineering")
         return df
 
     # ── Merge ONI ───────────────────────────────────────────────────────────

@@ -10,14 +10,14 @@ Current implementation:
     - Fallback logging for testing / pre-deployment phase
 
 Required environment variables:
-    SIREN_API_URL   — LGU siren control API endpoint
-    SIREN_API_KEY   — Authentication key for siren API
+    SIREN_API_URL   - LGU siren control API endpoint
+    SIREN_API_KEY   - Authentication key for siren API
 
 Optional:
-    SIREN_SANDBOX_MODE        — "True" to skip real triggers
-    SIREN_CRITICAL_ONLY       — "True" to only trigger for Critical risk
-    SIREN_ACTIVATION_DURATION — Duration in seconds (default: 60)
-    SIREN_ZONES               — Comma-separated default zone IDs
+    SIREN_SANDBOX_MODE        - "True" to skip real triggers
+    SIREN_CRITICAL_ONLY       - "True" to only trigger for Critical risk
+    SIREN_ACTIVATION_DURATION - Duration in seconds (default: 60)
+    SIREN_ZONES               - Comma-separated default zone IDs
 """
 
 import logging
@@ -72,13 +72,13 @@ class SirenTriggerChannel(NotificationChannel):
             "pattern": "wail",
             "duration_sec": 30,
             "repeat": 3,
-            "description": "Rising-and-falling wail — evacuation advisory",
+            "description": "Rising-and-falling wail - evacuation advisory",
         },
         "Critical": {
             "pattern": "fast_pulse",
             "duration_sec": 60,
             "repeat": 5,
-            "description": "Rapid pulsing — immediate evacuation required",
+            "description": "Rapid pulsing - immediate evacuation required",
         },
     }
 
@@ -106,14 +106,14 @@ class SirenTriggerChannel(NotificationChannel):
         # Guard: skip non-critical if configured
         if self._critical_only and risk_label != "Critical":
             logger.info(
-                "Siren trigger skipped — risk_label=%s (critical only mode)",
+                "Siren trigger skipped - risk_label=%s (critical only mode)",
                 risk_label,
             )
             return "skipped"
 
         zones = list(recipients) if recipients else self._default_zones
         if not zones:
-            logger.warning("SirenTriggerChannel — no zones configured")
+            logger.warning("SirenTriggerChannel - no zones configured")
             return "not_configured"
 
         pattern = self._SIREN_PATTERNS.get(
@@ -152,7 +152,7 @@ class SirenTriggerChannel(NotificationChannel):
                 result = resp.json()
                 activated = result.get("zones_activated", zones)
                 logger.info(
-                    "Siren activated — zones=%s, pattern=%s, duration=%ds",
+                    "Siren activated - zones=%s, pattern=%s, duration=%ds",
                     activated,
                     pattern["pattern"],
                     pattern["duration_sec"],
@@ -160,7 +160,7 @@ class SirenTriggerChannel(NotificationChannel):
                 return "delivered"
             else:
                 logger.error(
-                    "Siren API error: %s — %s",
+                    "Siren API error: %s - %s",
                     resp.status_code,
                     resp.text[:200],
                 )
@@ -168,7 +168,7 @@ class SirenTriggerChannel(NotificationChannel):
 
         except requests.ConnectionError:
             logger.error(
-                "Siren API unreachable at %s — "
+                "Siren API unreachable at %s - "
                 "logging trigger for manual follow-up",
                 self._api_url,
             )
@@ -193,7 +193,7 @@ class SirenTriggerChannel(NotificationChannel):
         and manually trigger sirens if needed.
         """
         logger.critical(
-            "OFFLINE SIREN TRIGGER — Risk: %s | Zones: %s | "
+            "OFFLINE SIREN TRIGGER - Risk: %s | Zones: %s | "
             "Pattern: %s | Duration: %ds | "
             "MANUAL ACTIVATION REQUIRED",
             payload.get("risk_label"),

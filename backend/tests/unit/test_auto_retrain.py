@@ -1,5 +1,5 @@
 """
-Tests for Automated Retraining Pipeline — drift detection, triggers, pipeline.
+Tests for Automated Retraining Pipeline - drift detection, triggers, pipeline.
 """
 
 import numpy as np

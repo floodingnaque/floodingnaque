@@ -1,9 +1,9 @@
 /**
- * FloodStatusHero Component (P1 — MUST HAVE)
+ * FloodStatusHero Component (P1 - MUST HAVE)
  *
  * The single most prominent element on the Resident dashboard.
  * Shows current flood risk badge, confidence gauge, rainfall,
- * tide status, and last-updated timestamp — all driven by /predict.
+ * tide status, and last-updated timestamp - all driven by /predict.
  */
 
 import { memo } from 'react';
@@ -72,12 +72,12 @@ const RISK_THEME: Record<
 function ConfidenceGauge({ value }: { value: number }) {
   const percent = Math.round(value * 100);
 
-  // SVG speedometer — 270° arc, radius 54, centre (60,60)
+  // SVG speedometer - 270° arc, radius 54, centre (60,60)
   const cx = 60;
   const cy = 60;
   const radius = 54;
-  const startAngle = 135; // deg — gauge starts bottom-left
-  const sweep = 270;      // deg — total arc
+  const startAngle = 135; // deg - gauge starts bottom-left
+  const sweep = 270;      // deg - total arc
   const circumference = 2 * Math.PI * radius;
   const arcLength = circumference * (sweep / 360);
   const dashOffset = arcLength - (arcLength * percent) / 100;
@@ -272,10 +272,10 @@ export const FloodStatusHero = memo(function FloodStatusHero({
   const rainfall = prediction.weather_data?.precipitation ?? 0;
   const temp = prediction.weather_data?.temperature
     ? `${Math.round(prediction.weather_data.temperature - 273.15)}°C`
-    : '—';
+    : '-';
   const humidity = prediction.weather_data?.humidity
     ? `${Math.round(prediction.weather_data.humidity)}%`
-    : '—';
+    : '-';
   const lastUpdated = new Date(prediction.timestamp).toLocaleTimeString('en-PH', {
     hour: '2-digit',
     minute: '2-digit',

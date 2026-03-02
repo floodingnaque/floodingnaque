@@ -151,14 +151,14 @@ export default function AdminPage() {
           <StatCard
             icon={Activity}
             label="Total Predictions"
-            value={dashStats?.total_predictions?.toLocaleString() ?? '—'}
+            value={dashStats?.total_predictions?.toLocaleString() ?? '-'}
             description={`${dashStats?.predictions_today ?? 0} today`}
             isLoading={statsLoading}
           />
           <StatCard
             icon={AlertTriangle}
             label="Active Alerts"
-            value={dashStats?.active_alerts ?? '—'}
+            value={dashStats?.active_alerts ?? '-'}
             description={
               dashStats?.active_alerts === 0
                 ? 'All clear'
@@ -169,7 +169,7 @@ export default function AdminPage() {
           <StatCard
             icon={Server}
             label="API Response"
-            value={slaResponseMs != null ? `${Math.round(slaResponseMs)}ms` : '—'}
+            value={slaResponseMs != null ? `${Math.round(slaResponseMs)}ms` : '-'}
             description={
               health?.sla?.within_sla ? 'Within SLA' : 'SLA exceeded'
             }
@@ -181,7 +181,7 @@ export default function AdminPage() {
             value={
               dashStats?.avg_risk_level != null
                 ? `${Math.round(dashStats.avg_risk_level)}%`
-                : '—'
+                : '-'
             }
             isLoading={statsLoading}
           />
@@ -233,7 +233,7 @@ export default function AdminPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Pool Size</span>
                     <span className="font-medium">
-                      {health.checks.database_pool.size ?? '—'}
+                      {health.checks.database_pool.size ?? '-'}
                     </span>
                   </div>
                 )}
@@ -389,19 +389,19 @@ export default function AdminPage() {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Python Version</p>
               <p className="font-medium">
-                {health?.system?.python_version ?? '—'}
+                {health?.system?.python_version ?? '-'}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Model Type</p>
               <p className="font-medium">
-                {health?.model?.type ?? '—'}
+                {health?.model?.type ?? '-'}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Feature Count</p>
               <p className="font-medium">
-                {health?.model?.features_count ?? '—'}
+                {health?.model?.features_count ?? '-'}
               </p>
             </div>
             <div className="space-y-1">
@@ -409,7 +409,7 @@ export default function AdminPage() {
               <p className="font-medium">
                 {health?.timestamp
                   ? new Date(health.timestamp).toLocaleString()
-                  : '—'}
+                  : '-'}
               </p>
             </div>
             <div className="space-y-1">
@@ -417,7 +417,7 @@ export default function AdminPage() {
               <p className="font-medium">
                 {health?.sla?.threshold_ms
                   ? `${health.sla.threshold_ms}ms`
-                  : '—'}
+                  : '-'}
               </p>
             </div>
             <div className="space-y-1">

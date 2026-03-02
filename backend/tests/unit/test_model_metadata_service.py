@@ -1,5 +1,5 @@
 """
-Tests for Model Metadata Service — DB persistence of model training metadata.
+Tests for Model Metadata Service - DB persistence of model training metadata.
 
 Uses an in-memory SQLite database to avoid requiring a running PostgreSQL server.
 """
@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session, sessionmaker
 def db_session():
     """Create an in-memory SQLite test database with model_registry table."""
     from app.models.db import Base
-    from app.models.model_registry import ModelRegistry  # noqa: F401 — ensures table registered
+    from app.models.model_registry import ModelRegistry  # noqa: F401 - ensures table registered
 
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)

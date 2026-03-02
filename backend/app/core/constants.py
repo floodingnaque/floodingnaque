@@ -9,7 +9,7 @@ API_VERSION = "2.0.0"
 API_NAME = "Floodingnaque API"
 
 # =====================================================
-# Study Area Configuration — Parañaque City, Philippines
+# Study Area Configuration - Parañaque City, Philippines
 # =====================================================
 # Reference stations across Parañaque's flood-prone barangays.
 # The ingest service fetches weather for the primary station by default.
@@ -33,26 +33,26 @@ STUDY_AREA_STATIONS = {
         "lat": 14.4793,
         "lon": 121.0198,
         "name": "Parañaque City Hall",
-        "description": "Central reference point — administrative center",
+        "description": "Central reference point - administrative center",
         "primary": True,
     },
     "bf_homes": {
         "lat": 14.4545,
         "lon": 121.0234,
         "name": "BF Homes",
-        "description": "Residential flood-prone zone — low-lying subdivision",
+        "description": "Residential flood-prone zone - low-lying subdivision",
     },
     "la_huerta": {
         "lat": 14.4891,
         "lon": 120.9876,
         "name": "La Huerta",
-        "description": "Coastal barangay near Manila Bay — storm surge risk",
+        "description": "Coastal barangay near Manila Bay - storm surge risk",
     },
     "sucat": {
         "lat": 14.4625,
         "lon": 121.0456,
         "name": "Sucat",
-        "description": "Eastern Parañaque — near Parañaque River flood plain",
+        "description": "Eastern Parañaque - near Parañaque River flood plain",
     },
 }
 

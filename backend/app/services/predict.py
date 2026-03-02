@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Default model path constant
 DEFAULT_MODEL_PATH = os.path.join("models", "flood_rf_model.joblib")
 
-# HMAC key for model signing — resolved lazily so that secrets
+# HMAC key for model signing - resolved lazily so that secrets
 # loaded at startup time (after import) are picked up correctly.
 _MODEL_SIGNING_KEY: str | None = None
 

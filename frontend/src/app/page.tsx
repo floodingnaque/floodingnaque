@@ -14,7 +14,7 @@ import { ResidentDashboard } from '@/features/dashboard/components/ResidentDashb
 import { LGUDashboard } from '@/features/dashboard/components/LGUDashboard';
 
 /**
- * Dashboard page component — renders based on user role
+ * Dashboard page component - renders based on user role
  */
 export function DashboardPage() {
   const user = useUser();

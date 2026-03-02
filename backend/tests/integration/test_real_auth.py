@@ -192,7 +192,7 @@ class TestRealUserAuthFlow:
         data = login_resp.get_json()
         token = data.get("access_token") or data.get("token")
         if not token:
-            pytest.skip("Login did not return a token field — endpoint shape may differ")
+            pytest.skip("Login did not return a token field - endpoint shape may differ")
 
         # Hit a protected endpoint with the token
         me_resp = user_client.get(

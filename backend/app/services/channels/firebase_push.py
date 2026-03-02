@@ -5,13 +5,13 @@ Sends mobile push notifications to registered devices via the
 Firebase Cloud Messaging HTTP v1 API.
 
 Required environment variables:
-    FIREBASE_PROJECT_ID          — GCP / Firebase project ID
-    FIREBASE_SERVICE_ACCOUNT_KEY — Path to service account JSON key file
+    FIREBASE_PROJECT_ID          - GCP / Firebase project ID
+    FIREBASE_SERVICE_ACCOUNT_KEY - Path to service account JSON key file
                                    OR the JSON content itself
 
 Optional:
-    FIREBASE_SANDBOX_MODE  — Set to "True" to skip real delivery
-    FIREBASE_DEFAULT_TOPIC — Default FCM topic (default: "flood_alerts")
+    FIREBASE_SANDBOX_MODE  - Set to "True" to skip real delivery
+    FIREBASE_DEFAULT_TOPIC - Default FCM topic (default: "flood_alerts")
 """
 
 import json
@@ -100,7 +100,7 @@ class FirebasePushChannel(NotificationChannel):
 
         except ImportError:
             logger.warning(
-                "google-auth package not installed — "
+                "google-auth package not installed - "
                 "falling back to FIREBASE_ACCESS_TOKEN env var"
             )
             token = os.getenv("FIREBASE_ACCESS_TOKEN", "")
@@ -169,7 +169,7 @@ class FirebasePushChannel(NotificationChannel):
         sev = self._SEVERITY_CONFIG.get(risk_label, self._SEVERITY_CONFIG["Alert"])
 
         notification_body = {
-            "title": f"Flood {risk_label} — {location}",
+            "title": f"Flood {risk_label} - {location}",
             "body": message[:4096],
         }
 
@@ -240,7 +240,7 @@ class FirebasePushChannel(NotificationChannel):
                 else:
                     fail += 1
                     logger.error(
-                        "FCM push failed for %s: %s — %s",
+                        "FCM push failed for %s: %s - %s",
                         target,
                         resp.status_code,
                         resp.text[:200],

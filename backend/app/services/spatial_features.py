@@ -1,15 +1,15 @@
 """
 Spatial Feature Engineering for Barangay-Level Flood Depth Prediction.
 
-Integrates geospatial attributes — drainage capacity, elevation profiles,
-land-use classification, and impervious surface estimates — into ML feature
+Integrates geospatial attributes - drainage capacity, elevation profiles,
+land-use classification, and impervious surface estimates - into ML feature
 vectors, enabling the model to produce barangay-specific flood depth
 predictions rather than city-wide binary flood/no-flood classifications.
 
 Data Sources
 ------------
-- SRTM 30 m DEM (elevation, slope) — via ``gis_service.py`` lookup tables
-- Parañaque CLUP (Comprehensive Land-Use Plan) — simplified classification
+- SRTM 30 m DEM (elevation, slope) - via ``gis_service.py`` lookup tables
+- Parañaque CLUP (Comprehensive Land-Use Plan) - simplified classification
 - DRRMO flood-history events per barangay
 - Drainage capacity assessments (Parañaque Engineering Office)
 

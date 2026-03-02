@@ -1,5 +1,5 @@
 """
-Dashboard API — Prediction History Routes
+Dashboard API - Prediction History Routes
 
 Endpoints to browse, filter, and analyse prediction results
 fetched from the ML Prediction Service.

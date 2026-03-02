@@ -104,7 +104,7 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Persist only non-sensitive metadata — never tokens
+      // Persist only non-sensitive metadata - never tokens
       partialize: (state) => ({
         user: state.user,
       }),
@@ -135,7 +135,7 @@ export const useHasHydrated = () => useAuthStore((state) => state.hasHydrated);
 export const useCsrfToken = () => useAuthStore((state) => state.csrfToken);
 
 /**
- * Action hooks — each selector returns a stable reference to avoid
+ * Action hooks - each selector returns a stable reference to avoid
  * defeating React.memo / shallow-equality checks.
  */
 export const useSetAuth = () => useAuthStore((state) => state.setAuth);
@@ -143,7 +143,7 @@ export const useSetCsrfToken = () => useAuthStore((state) => state.setCsrfToken)
 export const useClearAuth = () => useAuthStore((state) => state.clearAuth);
 
 /**
- * Combined actions object — kept for backward compatibility but
+ * Combined actions object - kept for backward compatibility but
  * consumers that only need one action should prefer the individual hooks
  * above to avoid creating a new object on every render.
  */

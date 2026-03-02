@@ -78,7 +78,7 @@ export function FeatureCards() {
             Everything You Need for Flood Preparedness
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Purpose-built for Parañaque City — from real-time maps to DRRMO compliance reports.
+            Purpose-built for Parañaque City - from real-time maps to DRRMO compliance reports.
           </p>
         </div>
 

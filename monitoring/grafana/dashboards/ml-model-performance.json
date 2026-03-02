@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "ML Model Performance — accuracy trends, prediction distributions, and model version comparison for Floodingnaque flood prediction",
+  "description": "ML Model Performance - accuracy trends, prediction distributions, and model version comparison for Floodingnaque flood prediction",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -334,7 +334,7 @@
     ]
   },
   "time": { "from": "now-24h", "to": "now" },
-  "title": "Floodingnaque — ML Model Performance",
+  "title": "Floodingnaque - ML Model Performance",
   "uid": "floodingnaque-ml-model-perf",
   "version": 1
 }

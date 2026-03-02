@@ -2,13 +2,13 @@
 Model management routes.
 
 Endpoints:
-  GET  /api/v1/models/               — List available models
-  GET  /api/v1/models/<id>            — Get model details
-  POST /api/v1/models/reload          — Hot-reload the active model
-  GET  /api/v1/models/versions        — List model versions
-  POST /api/v1/models/retrain         — Trigger model retraining
-  GET  /api/v1/models/metrics         — Get model performance metrics
-  POST /api/v1/models/ab-test         — Configure A/B test between models
+  GET  /api/v1/models/               - List available models
+  GET  /api/v1/models/<id>            - Get model details
+  POST /api/v1/models/reload          - Hot-reload the active model
+  GET  /api/v1/models/versions        - List model versions
+  POST /api/v1/models/retrain         - Trigger model retraining
+  GET  /api/v1/models/metrics         - Get model performance metrics
+  POST /api/v1/models/ab-test         - Configure A/B test between models
 """
 
 import logging
@@ -47,7 +47,7 @@ def list_models():
             "version": "1.1.0",
             "status": "available",
             "accuracy": 0.95,
-            "description": "Microsoft LightGBM — fast histogram-based gradient boosting",
+            "description": "Microsoft LightGBM - fast histogram-based gradient boosting",
         },
         {
             "id": "ensemble",

@@ -1,4 +1,4 @@
-"""Backward-compatible shim — canonical location is app.utils.observability.tracing."""
+"""Backward-compatible shim - canonical location is app.utils.observability.tracing."""
 
 import warnings as _warnings
 

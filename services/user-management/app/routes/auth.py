@@ -2,13 +2,13 @@
 Authentication routes.
 
 Endpoints:
-  POST /api/v1/auth/register   — Register a new user
-  POST /api/v1/auth/login      — Login and receive JWT tokens
-  POST /api/v1/auth/logout     — Logout (invalidate refresh token)
-  POST /api/v1/auth/refresh    — Refresh access token
-  GET  /api/v1/auth/me         — Get current user info
-  POST /api/v1/auth/password/reset    — Request password reset
-  POST /api/v1/auth/password/change   — Change password
+  POST /api/v1/auth/register   - Register a new user
+  POST /api/v1/auth/login      - Login and receive JWT tokens
+  POST /api/v1/auth/logout     - Logout (invalidate refresh token)
+  POST /api/v1/auth/refresh    - Refresh access token
+  GET  /api/v1/auth/me         - Get current user info
+  POST /api/v1/auth/password/reset    - Request password reset
+  POST /api/v1/auth/password/change   - Change password
 """
 
 import logging

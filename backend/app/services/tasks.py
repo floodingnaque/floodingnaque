@@ -50,22 +50,22 @@ def model_retraining(self, model_id=None):
 
         from scripts.train_unified import TrainingMode, UnifiedTrainer
 
-        # Step 1 — Initialise trainer
+        # Step 1 - Initialise trainer
         self.update_state(state="PROGRESS", meta={"status": "Initialising trainer...", "progress": 10})
         mode = TrainingMode.PRODUCTION
         trainer = UnifiedTrainer(mode=mode)
         logger.info(f"Trainer initialised in {mode.value} mode")
 
-        # Step 2 — Run training pipeline
+        # Step 2 - Run training pipeline
         self.update_state(state="PROGRESS", meta={"status": "Training model...", "progress": 30})
         train_results = trainer.train()
 
-        # Step 3 — Extract real metrics from training output
+        # Step 3 - Extract real metrics from training output
         self.update_state(state="PROGRESS", meta={"status": "Collecting metrics...", "progress": 80})
         metrics = train_results.get("metrics", {})
         model_path = train_results.get("model_path", "")
 
-        # Step 4 — Reload the newly trained model into the inference cache
+        # Step 4 - Reload the newly trained model into the inference cache
         self.update_state(state="PROGRESS", meta={"status": "Reloading model...", "progress": 90})
         try:
             from app.services.predict import _load_model

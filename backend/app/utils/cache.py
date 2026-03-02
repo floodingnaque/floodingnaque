@@ -1,4 +1,4 @@
-"""Backward-compatible shim — canonical location is app.utils.resilience.cache."""
+"""Backward-compatible shim - canonical location is app.utils.resilience.cache."""
 
 import warnings as _warnings
 
@@ -10,7 +10,7 @@ _warnings.warn(
 
 from app.utils.resilience.cache import *  # noqa: F401, F403, E402
 
-# Private names are skipped by `import *` — re-export them explicitly so
+# Private names are skipped by `import *` - re-export them explicitly so
 # existing tests / call-sites that reference them keep working.
 from app.utils.resilience.cache import (  # noqa: F401, E402
     _cache_enabled,

@@ -86,14 +86,14 @@ def classify_risk_level(
     # 3-hour rainfall accumulation override
     if precipitation_3h is not None:
         if precipitation_3h >= 80.0 and risk_level < 2:
-            risk_level = 2  # Critical — heavy sustained rainfall
+            risk_level = 2  # Critical - heavy sustained rainfall
         elif precipitation_3h >= 50.0 and risk_level < 1:
-            risk_level = 1  # Alert — significant accumulation
+            risk_level = 1  # Alert - significant accumulation
 
     # Tide risk factor override
     if tide_risk_factor is not None:
         if tide_risk_factor >= 0.8 and risk_level < 1:
-            risk_level = 1  # Alert — high tide risk
+            risk_level = 1  # Alert - high tide risk
         # Combined high tide + moderate flood probability → escalate
         if (
             tide_risk_factor >= 0.7
@@ -101,7 +101,7 @@ def classify_risk_level(
             and probability.get("flood", 0) >= 0.40
             and risk_level < 2
         ):
-            risk_level = 2  # Critical — compounding risk
+            risk_level = 2  # Critical - compounding risk
 
     # Get risk label and metadata
     risk_label = RISK_LEVELS[risk_level]

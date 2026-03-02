@@ -43,26 +43,26 @@ route:
 
   # Child routes for severity-based routing
   routes:
-    # Watchdog (deadman switch) — routed to null receiver to suppress noise
+    # Watchdog (deadman switch) - routed to null receiver to suppress noise
     - match:
         alertname: Watchdog
       receiver: 'watchdog-receiver'
       repeat_interval: 1m
 
-    # Critical alerts — immediate notification
+    # Critical alerts - immediate notification
     - match:
         severity: critical
       receiver: 'critical-receiver'
       group_wait: 10s
       repeat_interval: 1h
 
-    # Warning alerts — normal cadence
+    # Warning alerts - normal cadence
     - match:
         severity: warning
       receiver: 'default-receiver'
       repeat_interval: 4h
 
-# Inhibition rules — suppress lower-severity alerts when critical fires
+# Inhibition rules - suppress lower-severity alerts when critical fires
 inhibit_rules:
   - source_match:
       severity: 'critical'
@@ -72,7 +72,7 @@ inhibit_rules:
 
 # Notification receivers
 receivers:
-  # Default — email notifications for warnings
+  # Default - email notifications for warnings
   - name: 'default-receiver'
     email_configs:
       - to: '{{ .Env.ALERTMANAGER_NOTIFY_EMAIL | default "team@floodingnaque.com" }}'
@@ -91,7 +91,7 @@ receivers:
     #       *Description:* {{ .Annotations.description }}
     #       {{ end }}
 
-  # Critical — immediate email notification
+  # Critical - immediate email notification
   - name: 'critical-receiver'
     email_configs:
       - to: '{{ .Env.ALERTMANAGER_NOTIFY_EMAIL | default "team@floodingnaque.com" }}'
@@ -110,5 +110,5 @@ receivers:
     #       *Description:* {{ .Annotations.description }}
     #       {{ end }}
 
-  # Watchdog — null receiver (deadman switch only needs to exist in external system)
+  # Watchdog - null receiver (deadman switch only needs to exist in external system)
   - name: 'watchdog-receiver'

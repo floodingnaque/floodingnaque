@@ -152,7 +152,7 @@ class AsyncGoogleWeatherService:
         self.cache_dir = Path(os.getenv("EARTHENGINE_CACHE_DIR", "data/earthengine_cache"))
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Default location (Parañaque City — from central config)
+        # Default location (Parañaque City - from central config)
         self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
         self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(DEFAULT_LONGITUDE)))
 

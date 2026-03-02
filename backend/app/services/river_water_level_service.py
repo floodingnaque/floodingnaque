@@ -7,7 +7,7 @@ tributaries/channels.
 
 Data Sources:
 - DPWH (Department of Public Works and Highways) river monitoring
-- EFCOS (Effective Flood Control and Operation System) — managed by DPWH
+- EFCOS (Effective Flood Control and Operation System) - managed by DPWH
 - MMDA flood monitoring stations (complementary)
 - PAGASA hydrometric stations
 

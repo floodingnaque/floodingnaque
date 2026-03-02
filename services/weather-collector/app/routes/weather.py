@@ -2,12 +2,12 @@
 Weather data collection routes.
 
 Endpoints:
-  GET  /api/v1/weather/current      — Get current weather for Parañaque
-  GET  /api/v1/weather/forecast      — Get weather forecast
-  GET  /api/v1/weather/historical    — Get historical weather data
-  POST /api/v1/weather/collect       — Trigger manual data collection
-  GET  /api/v1/weather/sources       — List available data sources
-  GET  /api/v1/weather/status        — Collection job status
+  GET  /api/v1/weather/current      - Get current weather for Parañaque
+  GET  /api/v1/weather/forecast      - Get weather forecast
+  GET  /api/v1/weather/historical    - Get historical weather data
+  POST /api/v1/weather/collect       - Trigger manual data collection
+  GET  /api/v1/weather/sources       - List available data sources
+  GET  /api/v1/weather/status        - Collection job status
 """
 
 import logging
@@ -146,31 +146,31 @@ def list_sources():
     sources = [
         {
             "name": "meteostat",
-            "description": "Meteostat weather stations — historical and current observations",
+            "description": "Meteostat weather stations - historical and current observations",
             "type": "historical+current",
             "region": "Global",
         },
         {
             "name": "google_weather",
-            "description": "Google Weather API — forecasts and current conditions",
+            "description": "Google Weather API - forecasts and current conditions",
             "type": "forecast+current",
             "region": "Global",
         },
         {
             "name": "pagasa",
-            "description": "PAGASA — Philippine weather bulletins and radar data",
+            "description": "PAGASA - Philippine weather bulletins and radar data",
             "type": "bulletin+radar",
             "region": "Philippines",
         },
         {
             "name": "worldtides",
-            "description": "WorldTides API — tidal predictions and extremes",
+            "description": "WorldTides API - tidal predictions and extremes",
             "type": "tides",
             "region": "Manila Bay",
         },
         {
             "name": "mmda_flood",
-            "description": "MMDA Flood Monitoring — real-time flood sensor data",
+            "description": "MMDA Flood Monitoring - real-time flood sensor data",
             "type": "flood_sensors",
             "region": "Metro Manila",
         },

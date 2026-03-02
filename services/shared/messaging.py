@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 class CircuitState(Enum):
     CLOSED = "closed"       # Normal operation
-    OPEN = "open"           # Failing — reject requests
-    HALF_OPEN = "half_open" # Testing — allow one request
+    OPEN = "open"           # Failing - reject requests
+    HALF_OPEN = "half_open" # Testing - allow one request
 
 
 class CircuitBreaker:
@@ -58,7 +58,7 @@ class CircuitBreaker:
                     self.state = CircuitState.HALF_OPEN
                     return True
                 return False
-            # HALF_OPEN — allow one request
+            # HALF_OPEN - allow one request
             return True
 
     def record_success(self):
@@ -132,7 +132,7 @@ class ServiceClient:
             Response JSON or None on failure
         """
         if not self.circuit_breaker.can_execute():
-            logger.warning("Circuit breaker OPEN for %s — skipping request", self.base_url)
+            logger.warning("Circuit breaker OPEN for %s - skipping request", self.base_url)
             return None
 
         url = f"{self.base_url}{path}"
@@ -146,7 +146,7 @@ class ServiceClient:
             return response.json()
         except requests.exceptions.RequestException as e:
             self.circuit_breaker.record_failure()
-            logger.error("Service call failed: %s %s — %s", method, url, e)
+            logger.error("Service call failed: %s %s - %s", method, url, e)
             return None
 
     def get(self, path: str, **kwargs):
@@ -216,7 +216,7 @@ class EventBus:
             client.publish(event_type, message)
             logger.debug("Event published: %s", event_type)
         except Exception as e:
-            logger.error("Event publish failed: %s — %s", event_type, e)
+            logger.error("Event publish failed: %s - %s", event_type, e)
 
     def subscribe(self, event_type: str, handler: callable):
         """

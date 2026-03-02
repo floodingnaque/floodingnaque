@@ -1,5 +1,5 @@
 # =====================================================
-# Floodingnaque — Microservices Docker Compose
+# Floodingnaque - Microservices Docker Compose
 # =====================================================
 # Orchestrates the 5-service decomposition:
 #   1. weather-collector  (port 5001)

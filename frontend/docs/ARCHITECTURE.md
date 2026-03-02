@@ -2,7 +2,7 @@
 
 ## Overview
 
-Floodingnaque's frontend is a single-page React application that follows a **feature-based architecture**. Each feature (auth, flooding, alerts, etc.) is self-contained with its own components, hooks, and API services. Shared concerns — UI primitives, state stores, utilities — live in dedicated top-level directories.
+Floodingnaque's frontend is a single-page React application that follows a **feature-based architecture**. Each feature (auth, flooding, alerts, etc.) is self-contained with its own components, hooks, and API services. Shared concerns - UI primitives, state stores, utilities - live in dedicated top-level directories.
 
 ## High-Level Diagram
 
@@ -54,17 +54,17 @@ Component ──▶ Hook (useQuery / useMutation)
                     Re-render via selector hooks
 ```
 
-### Server State — TanStack Query
+### Server State - TanStack Query
 
 All data fetched from the backend flows through React Query:
 
-- **Queries** (`useQuery`) — read operations with automatic caching, stale-while-revalidate, and background refetch.
-- **Mutations** (`useMutation`) — write operations that invalidate related queries on success.
-- **Configuration** — `staleTime: 5 min`, `gcTime: 10 min`, `retry: 1` (set in `QueryProvider`).
+- **Queries** (`useQuery`) - read operations with automatic caching, stale-while-revalidate, and background refetch.
+- **Mutations** (`useMutation`) - write operations that invalidate related queries on success.
+- **Configuration** - `staleTime: 5 min`, `gcTime: 10 min`, `retry: 1` (set in `QueryProvider`).
 
 Each feature defines its own hooks that wrap React Query. For example, `usePrediction()` in `features/flooding/hooks/` calls `predictionApi.predict()` and manages cache keys internally.
 
-### Client State — Zustand
+### Client State - Zustand
 
 Three stores handle state that does **not** come from the API:
 
@@ -131,7 +131,7 @@ EventSource connects to VITE_SSE_URL/alerts
 | `/reports` | Report Generation | Protected |
 | `/settings` | User Settings | Protected |
 | `/admin` | Admin Panel | Protected |
-| `*` | 404 Not Found | — |
+| `*` | 404 Not Found | - |
 
 All protected routes are wrapped in `<ProtectedRoute> → <Layout>`. Pages are **lazy-loaded** via `React.lazy()` for code-splitting.
 
@@ -173,10 +173,10 @@ Feature-level services (e.g., `alertsApi.ts`, `predictionApi.ts`) use these help
          (per-page)     (via hooks)    (Sentry)
 ```
 
-- **`ErrorBoundary`** — wraps the entire app; reports to Sentry in production.
-- **`RouteErrorBoundary`** — per-route boundary for graceful page-level recovery.
-- **API errors** — caught in React Query hooks, shown via Sonner toasts.
-- **Sentry** — `initSentry()` in `main.tsx`; `captureException()` in boundaries. No-op when `VITE_SENTRY_DSN` is empty.
+- **`ErrorBoundary`** - wraps the entire app; reports to Sentry in production.
+- **`RouteErrorBoundary`** - per-route boundary for graceful page-level recovery.
+- **API errors** - caught in React Query hooks, shown via Sonner toasts.
+- **Sentry** - `initSentry()` in `main.tsx`; `captureException()` in boundaries. No-op when `VITE_SENTRY_DSN` is empty.
 
 ## Theming
 
@@ -202,4 +202,4 @@ npm run build
           Vercel CDN      (auto-deploy on push to main)
 ```
 
-Vercel configuration lives in `vercel.json` — SPA rewrites, security headers, immutable asset caching. See [DEPLOYMENT.md](../DEPLOYMENT.md) for full details.
+Vercel configuration lives in `vercel.json` - SPA rewrites, security headers, immutable asset caching. See [DEPLOYMENT.md](../DEPLOYMENT.md) for full details.

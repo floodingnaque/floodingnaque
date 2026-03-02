@@ -1,5 +1,5 @@
 """
-Model Metadata Service — DB persistence for model training metadata.
+Model Metadata Service - DB persistence for model training metadata.
 
 Provides a service layer between training pipelines and the ``model_registry``
 database table, supporting:

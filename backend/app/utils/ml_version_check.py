@@ -1,4 +1,4 @@
-"""Backward-compatible shim — canonical location is app.utils.ml.ml_version_check."""
+"""Backward-compatible shim - canonical location is app.utils.ml.ml_version_check."""
 
 import warnings as _warnings
 

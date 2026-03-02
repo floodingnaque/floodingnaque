@@ -2,8 +2,8 @@
  * ForgotPasswordForm Component
  *
  * Two-step password reset form:
- * 1. Request reset — user enters email to receive a reset token
- * 2. Confirm reset — user enters email, token, and new password
+ * 1. Request reset - user enters email to receive a reset token
+ * 2. Confirm reset - user enters email, token, and new password
  */
 
 import { useState, useCallback } from 'react';
@@ -30,7 +30,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '../hooks/useAuth';
 
 /* ------------------------------------------------------------------ */
-/*  Step 1 — Request Reset                                             */
+/*  Step 1 - Request Reset                                             */
 /* ------------------------------------------------------------------ */
 
 const requestSchema = z.object({
@@ -39,7 +39,7 @@ const requestSchema = z.object({
 type RequestFormData = z.infer<typeof requestSchema>;
 
 /* ------------------------------------------------------------------ */
-/*  Step 2 — Confirm Reset                                             */
+/*  Step 2 - Confirm Reset                                             */
 /* ------------------------------------------------------------------ */
 
 const confirmSchema = z

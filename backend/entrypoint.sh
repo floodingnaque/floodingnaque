@@ -65,18 +65,18 @@ if [ "${SKIP_MIGRATIONS:-false}" != "true" ]; then
         if alembic upgrade head 2>&1; then
             echo "OK: Database migrations applied successfully"
         else
-            echo "ERROR: Alembic migration failed — database schema may be inconsistent"
+            echo "ERROR: Alembic migration failed - database schema may be inconsistent"
             echo "Set SKIP_MIGRATIONS=true to bypass, or check the migration error above"
             exit 1
         fi
     else
-        echo "SKIP: RUN_MIGRATIONS=false — skipping Alembic migrations"
+        echo "SKIP: RUN_MIGRATIONS=false - skipping Alembic migrations"
     fi
 else
-    echo "SKIP: SKIP_MIGRATIONS=true — skipping Alembic migrations"
+    echo "SKIP: SKIP_MIGRATIONS=true - skipping Alembic migrations"
 fi
 
-echo "=== Entrypoint complete — starting application ==="
+echo "=== Entrypoint complete - starting application ==="
 
 # Execute the CMD passed to this entrypoint
 exec "$@"

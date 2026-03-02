@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Alert Notification Service — Main Entry Point
+Alert Notification Service - Main Entry Point
 
 Responsible for:
 - Creating and managing flood alerts based on predictions

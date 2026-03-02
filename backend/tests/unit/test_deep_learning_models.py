@@ -1,5 +1,5 @@
 """
-Tests for Deep Learning Models — LSTM, Transformer, dataset, training.
+Tests for Deep Learning Models - LSTM, Transformer, dataset, training.
 
 Tests that require PyTorch are skipped when torch is not installed.
 """
@@ -24,7 +24,7 @@ needs_torch = pytest.mark.skipif(not _torch_available, reason="PyTorch not insta
 # ═════════════════════════════════════════════════════════════════════════════
 
 class TestDeepLearningConfig:
-    """These tests do NOT require PyTorch — config is plain Python."""
+    """These tests do NOT require PyTorch - config is plain Python."""
 
     def test_config_defaults(self):
         from app.services.deep_learning_models import DeepLearningConfig

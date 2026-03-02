@@ -2,10 +2,10 @@
 User profile routes.
 
 Endpoints:
-  GET    /api/v1/users/          — List users (admin only)
-  GET    /api/v1/users/<id>      — Get user profile
-  PUT    /api/v1/users/<id>      — Update user profile
-  DELETE /api/v1/users/<id>      — Soft-delete user
+  GET    /api/v1/users/          - List users (admin only)
+  GET    /api/v1/users/<id>      - Get user profile
+  PUT    /api/v1/users/<id>      - Update user profile
+  DELETE /api/v1/users/<id>      - Soft-delete user
 """
 
 import logging

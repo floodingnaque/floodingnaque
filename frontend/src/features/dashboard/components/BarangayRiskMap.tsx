@@ -1,5 +1,5 @@
 /**
- * BarangayRiskMap Component (P1 — MUST HAVE)
+ * BarangayRiskMap Component (P1 - MUST HAVE)
  *
  * Leaflet map rendering all 16 Parañaque barangay polygons,
  * color-filled by risk level.  Click a polygon to see the risk
@@ -65,7 +65,7 @@ const MAP_CENTER: [number, number] = [14.4793, 121.0198];
 const MAP_ZOOM = 13;
 
 // ---------------------------------------------------------------------------
-// Dynamic risk overlay — if prediction data is present, override static risk
+// Dynamic risk overlay - if prediction data is present, override static risk
 // ---------------------------------------------------------------------------
 
 function riskForBarangay(

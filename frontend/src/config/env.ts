@@ -23,7 +23,7 @@ const envSchema = z.object({
   VITE_SSE_URL: z.string().url().optional(),
 
   // ── Monitoring ───────────────────────────────────────────────
-  /** Sentry DSN — omit for local dev (Sentry will no-op). */
+  /** Sentry DSN - omit for local dev (Sentry will no-op). */
   VITE_SENTRY_DSN: z.string().url().optional(),
 
   /** Sentry environment label. */
@@ -74,7 +74,7 @@ function parseEnv() {
       throw new Error(msg);
     }
 
-    // In dev, warn loudly but don't crash — allows running without .env
+    // In dev, warn loudly but don't crash - allows running without .env
     console.warn(msg);
 
     // Fallback: return raw values (un-validated) so the app can still boot

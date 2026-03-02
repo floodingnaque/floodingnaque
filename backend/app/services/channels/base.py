@@ -59,7 +59,7 @@ class NotificationChannel(ABC):
         """
         if self.sandbox:
             logger.info(
-                "[SANDBOX] %s alert would be sent — risk=%s, location=%s, recipients=%s",
+                "[SANDBOX] %s alert would be sent - risk=%s, location=%s, recipients=%s",
                 self.display_name,
                 risk_label,
                 location,
@@ -69,7 +69,7 @@ class NotificationChannel(ABC):
 
         if not self.is_configured():
             logger.warning(
-                "%s channel not configured — skipping dispatch", self.display_name
+                "%s channel not configured - skipping dispatch", self.display_name
             )
             return "not_configured"
 

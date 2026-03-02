@@ -62,7 +62,7 @@ def fetch_weather_by_coordinates(lat: float, lon: float) -> dict:
         owm_data = openweathermap_breaker.call(_call_owm)
 
     except CircuitOpenError:
-        logger.error("OpenWeatherMap circuit breaker is open — cannot fetch weather.")
+        logger.error("OpenWeatherMap circuit breaker is open - cannot fetch weather.")
         raise WeatherFetchError("Weather service is temporarily unavailable. Please try again later.")
     except requests.exceptions.RequestException as exc:
         logger.error(f"OpenWeatherMap request failed for ({lat}, {lon}): {exc}")

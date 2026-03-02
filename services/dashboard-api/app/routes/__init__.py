@@ -1,4 +1,4 @@
-"""Dashboard API Service — Route Registration."""
+"""Dashboard API Service - Route Registration."""
 
 from flask import Flask
 

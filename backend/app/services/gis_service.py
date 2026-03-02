@@ -21,13 +21,13 @@ from app.core.constants import STUDY_AREA_BOUNDS
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Barangay GIS data — elevation, drainage, and hazard classifications
+# Barangay GIS data - elevation, drainage, and hazard classifications
 # ---------------------------------------------------------------------------
 
 # Elevation data derived from SRTM 30m DEM (metres above sea level)
 # Two key metrics per barangay:
-#   mean_elevation_m — average terrain height
-#   min_elevation_m  — lowest point (flood-prone areas collect water here)
+#   mean_elevation_m - average terrain height
+#   min_elevation_m  - lowest point (flood-prone areas collect water here)
 
 BARANGAY_ELEVATION: Dict[str, Dict[str, float]] = {
     "baclaran": {"mean_elevation_m": 3.2, "min_elevation_m": 1.0, "slope_pct": 0.3},
@@ -48,7 +48,7 @@ BARANGAY_ELEVATION: Dict[str, Dict[str, float]] = {
     "sucat": {"mean_elevation_m": 9.0, "min_elevation_m": 5.5, "slope_pct": 1.2},
 }
 
-# Drainage network proximity — how close the barangay centroid is to major
+# Drainage network proximity - how close the barangay centroid is to major
 # waterways / drainage channels, plus estimated drainage capacity.
 # Parañaque's main waterways: Parañaque River, Wawa River, La Huerta Creek.
 
@@ -217,13 +217,13 @@ def _compute_hazard_score(
     Compute composite flood hazard score for a barangay.
 
     Scoring factors (0–1 scale, higher = more hazardous):
-    1. Elevation factor  — lower elevation ⇒ higher risk
-    2. Slope factor      — flatter terrain ⇒ more ponding
-    3. Drainage factor   — poorer drainage ⇒ higher risk
-    4. Proximity factor  — closer to waterway ⇒ higher risk
-    5. Imperviousness    — more impervious surface ⇒ more runoff
-    6. History factor    — more historical events ⇒ higher risk
-    7. Rainfall factor   — current rainfall contribution (dynamic)
+    1. Elevation factor  - lower elevation ⇒ higher risk
+    2. Slope factor      - flatter terrain ⇒ more ponding
+    3. Drainage factor   - poorer drainage ⇒ higher risk
+    4. Proximity factor  - closer to waterway ⇒ higher risk
+    5. Imperviousness    - more impervious surface ⇒ more runoff
+    6. History factor    - more historical events ⇒ higher risk
+    7. Rainfall factor   - current rainfall contribution (dynamic)
 
     Returns a composite score and hazard classification.
     """
@@ -255,7 +255,7 @@ def _compute_hazard_score(
     # 7. Current rainfall (dynamic, 0mm → 0, 50mm → 1.0)
     rain_score = min(current_rainfall_mm / 50.0, 1.0) if current_rainfall_mm > 0 else 0.0
 
-    # Weighted composite — research-derived weights
+    # Weighted composite - research-derived weights
     weights = {
         "elevation": 0.20,
         "slope": 0.10,

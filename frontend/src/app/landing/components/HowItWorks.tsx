@@ -14,7 +14,7 @@ const STEPS = [
     num: 1,
     icon: CloudRain,
     title: 'Collect Weather Data',
-    desc: 'Real-time weather observations are gathered from PAGASA-Parañaque and OpenWeatherMap — rainfall, humidity, wind speed, cloud cover, tidal levels, and more.',
+    desc: 'Real-time weather observations are gathered from PAGASA-Parañaque and OpenWeatherMap - rainfall, humidity, wind speed, cloud cover, tidal levels, and more.',
   },
   {
     num: 2,
@@ -26,7 +26,7 @@ const STEPS = [
     num: 3,
     icon: Bell,
     title: 'Alert in Real-Time',
-    desc: 'Each barangay is assigned a risk level — SAFE, ALERT, or CRITICAL — delivered instantly via the dashboard, SSE push, and simulated SMS broadcast.',
+    desc: 'Each barangay is assigned a risk level - SAFE, ALERT, or CRITICAL - delivered instantly via the dashboard, SSE push, and simulated SMS broadcast.',
   },
 ] as const;
 
@@ -58,7 +58,7 @@ export function HowItWorks() {
             From Raw Weather Data to Flood Alerts
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Three automated steps power every prediction — no manual input required.
+            Three automated steps power every prediction - no manual input required.
           </p>
         </div>
 

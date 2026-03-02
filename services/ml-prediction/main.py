@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ML Prediction Service — Main Entry Point
+ML Prediction Service - Main Entry Point
 
 Responsible for:
 - Loading and managing trained ML models (Random Forest, XGBoost, LightGBM)

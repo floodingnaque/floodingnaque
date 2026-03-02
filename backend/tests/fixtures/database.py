@@ -1,4 +1,4 @@
-"""Database fixtures — sessions, mocking, and integration helpers."""
+"""Database fixtures - sessions, mocking, and integration helpers."""
 
 import os
 from unittest.mock import MagicMock, patch

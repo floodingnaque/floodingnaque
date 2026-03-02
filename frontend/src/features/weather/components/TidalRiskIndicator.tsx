@@ -1,5 +1,5 @@
 /**
- * TidalRiskIndicator Component (P3 — SHOULD HAVE)
+ * TidalRiskIndicator Component (P3 - SHOULD HAVE)
  *
  * Standalone card showing current tide height, risk factor badge,
  * next high-tide time, and advisory message.  Gracefully handles
@@ -71,7 +71,7 @@ export const TidalRiskIndicator = memo(function TidalRiskIndicator({
 
   const isLoading = currentLoading || predLoading;
 
-  // Not configured / unreachable — show graceful fallback
+  // Not configured / unreachable - show graceful fallback
   if (!isLoading && (currentError || predError)) {
     return (
       <Card className={className}>
@@ -133,7 +133,7 @@ export const TidalRiskIndicator = memo(function TidalRiskIndicator({
               <strong>
                 {typeof nextHigh.height === 'number'
                   ? `${nextHigh.height.toFixed(2)} m`
-                  : '—'}
+                  : '-'}
               </strong>
             </span>
             {nextHigh.date && (

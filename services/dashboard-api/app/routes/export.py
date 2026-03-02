@@ -1,5 +1,5 @@
 """
-Dashboard API — Export Routes
+Dashboard API - Export Routes
 
 Data export endpoints for CSV, JSON, and Excel downloads.
 """

@@ -179,7 +179,7 @@ jobs:
         cd backend
         # Stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Enforce style — max-complexity and line-length violations block CI
+        # Enforce style - max-complexity and line-length violations block CI
         flake8 . --count --max-complexity=10 --max-line-length=120 --statistics
       continue-on-error: false
 
@@ -216,7 +216,7 @@ jobs:
         fail_ci_if_error: true
 
   # ==========================================================================
-  # Frontend — Reuse dedicated workflow
+  # Frontend - Reuse dedicated workflow
   # ==========================================================================
   frontend:
     name: Frontend CI

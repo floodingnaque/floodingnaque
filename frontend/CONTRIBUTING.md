@@ -8,7 +8,7 @@ Thank you for contributing! This guide covers the development workflow, coding s
    ```bash
    git checkout -b feat/my-feature main
    ```
-2. **Make changes** — follow the guidelines below.
+2. **Make changes** - follow the guidelines below.
 3. **Write or update tests** for any new or changed behaviour.
 4. **Verify locally:**
    ```bash
@@ -18,7 +18,7 @@ Thank you for contributing! This guide covers the development workflow, coding s
    ```
 5. **Create a pull request** with a clear description.
 6. **Get review and approval** from at least one team member.
-7. **Merge to `main`** — Vercel auto-deploys to production.
+7. **Merge to `main`** - Vercel auto-deploys to production.
 
 ## Commit Messages
 
@@ -44,9 +44,9 @@ docs: update API endpoint table
 
 ## Code Style
 
-- **TypeScript strict mode** — no `any` without justification.
+- **TypeScript strict mode** - no `any` without justification.
 - **Named exports** for components (not `export default`).
-- **Functional components** with hooks — no class components (except `ErrorBoundary`).
+- **Functional components** with hooks - no class components (except `ErrorBoundary`).
 - **Props interface** defined above the component.
 - **Destructure props** in the function signature.
 - Use `cn()` from `@/lib/utils` for conditional Tailwind classes.
@@ -88,7 +88,7 @@ Export only the public surface from `index.ts`. Consumers import from `@/feature
 
 | Principle | Details |
 | --------- | ------- |
-| **Test user behaviour** | Use Testing Library queries (`getByRole`, `getByText`) — avoid implementation details. |
+| **Test user behaviour** | Use Testing Library queries (`getByRole`, `getByText`) - avoid implementation details. |
 | **Mock APIs with MSW** | Handlers live in `src/tests/mocks/handlers.ts`. |
 | **Use the custom render** | `src/test/utils.tsx` wraps components in providers. |
 | **Aim for ≥ 70 % coverage** | Focus on critical paths (auth, predictions, alerts). |

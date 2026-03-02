@@ -1,7 +1,7 @@
 # Frontend Architecture
 
-> **Stack** — React 19 · TypeScript 5.9 · Vite 7 · Tailwind CSS 4  
-> **Last updated** — February 2026
+> **Stack** - React 19 · TypeScript 5.9 · Vite 7 · Tailwind CSS 4  
+> **Last updated** - February 2026
 
 ---
 
@@ -56,7 +56,7 @@ All page components are **lazy-loaded** (`React.lazy` + `<Suspense>`).
 
 ## State Management
 
-### Client State — Zustand
+### Client State - Zustand
 
 Three stores in `state/stores/`, each with granular selector hooks:
 
@@ -66,7 +66,7 @@ Three stores in `state/stores/`, each with granular selector hooks:
 | `useUIStore` | `localStorage` (`ui-storage`) | Sidebar collapsed state, light/dark theme |
 | `useAlertStore` | No (ephemeral) | Live SSE alerts (max 50), unread count |
 
-### Server State — TanStack React Query
+### Server State - TanStack React Query
 
 All data fetching goes through React Query. Configuration lives in `providers/QueryProvider.tsx`:
 - Stale time: **5 min**
@@ -98,8 +98,8 @@ Each feature is self-contained under `features/<name>/` with barrel exports via 
 
 ### auth
 - **Components**: `LoginForm`, `RegisterForm`, `ProtectedRoute`
-- **Hooks**: `useAuth` — login / register / logout / profile mutations + queries
-- **Service**: `authApi` — credential endpoints
+- **Hooks**: `useAuth` - login / register / logout / profile mutations + queries
+- **Service**: `authApi` - credential endpoints
 
 ### dashboard
 - **Components**: `StatsCards`, `RecentActivity`, `RecentAlerts`, `QuickActions`
@@ -110,11 +110,11 @@ Each feature is self-contained under `features/<name>/` with barrel exports via 
 - **Components**: `PredictionForm` (react-hook-form + Zod), `PredictionResult`, `RiskDisplay`
 - **Hooks**: `usePrediction` (mutation)
 - **Service**: `predictionApi`
-- **Utils**: `temperature.ts` — Kelvin ↔ Celsius conversion
+- **Utils**: `temperature.ts` - Kelvin ↔ Celsius conversion
 
 ### alerts
 - **Components**: `AlertCard`, `AlertList`, `AlertBadge`, `LiveAlertsBanner`, `ConnectionStatus`
-- **Hooks**: `useAlerts`, `useRecentAlerts`, `useAlertHistory` (queries); `useAcknowledgeAlert`, `useAcknowledgeAll` (mutations); `useAlertStream` (SSE with auto-reconnect — max 10 attempts, 5 s delay)
+- **Hooks**: `useAlerts`, `useRecentAlerts`, `useAlertHistory` (queries); `useAcknowledgeAlert`, `useAcknowledgeAll` (mutations); `useAlertStream` (SSE with auto-reconnect - max 10 attempts, 5 s delay)
 - **Service**: `alertsApi`
 
 ### weather
@@ -124,7 +124,7 @@ Each feature is self-contained under `features/<name>/` with barrel exports via 
 
 ### map
 - **Components**: `FloodMap` (Leaflet/react-leaflet), `RiskMarkers`, `LocationPicker`
-- No hooks or services — renders geo data passed from parent
+- No hooks or services - renders geo data passed from parent
 
 ### reports
 - **Components**: `ReportGenerator`
@@ -168,9 +168,9 @@ Defined in `hooks/useMediaQuery.ts`:
 |--------|---------|
 | `api-client.ts` | Axios instance with Bearer-token injection and 401 refresh queue |
 | `utils.ts` | `cn()` Tailwind class merge, `truncate()`, `formatRelativeTime()` |
-| `sentry.ts` | `initSentry()` — opt-in via `VITE_SENTRY_DSN` env var |
+| `sentry.ts` | `initSentry()` - opt-in via `VITE_SENTRY_DSN` env var |
 | `security.ts` | `sanitizeInput()` XSS defense-in-depth, URL validation |
-| `toast.ts` | `showToast.success/error/info/warning` — Sonner wrapper |
+| `toast.ts` | `showToast.success/error/info/warning` - Sonner wrapper |
 
 ---
 

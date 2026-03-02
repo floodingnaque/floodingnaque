@@ -1,5 +1,5 @@
 """
-Dashboard API Service — Flask Application Factory
+Dashboard API Service - Flask Application Factory
 
 Aggregates data from weather-collector, ml-prediction,
 alert-notification, and user-management services to serve
@@ -65,7 +65,7 @@ def create_app(testing: bool = False) -> Flask:
         register_error_handlers(app)
         setup_tracing_middleware(app, "dashboard-api")
     except ImportError:
-        logger.warning("Shared package not available — running in standalone mode")
+        logger.warning("Shared package not available - running in standalone mode")
 
     # ---------- service blueprints ----------
     from app.routes import register_blueprints
@@ -95,7 +95,7 @@ def _init_service_clients(app: Flask) -> None:
         app.user_client = create_user_client()
         logger.info("Inter-service clients initialised")
     except ImportError:
-        logger.warning("Service clients unavailable — direct HTTP fallback")
+        logger.warning("Service clients unavailable - direct HTTP fallback")
         app.weather_client = None
         app.prediction_client = None
         app.alert_client = None

@@ -1,5 +1,5 @@
 """
-Dashboard API — Data Aggregation Routes
+Dashboard API - Data Aggregation Routes
 
 Cross-service data aggregation and correlation endpoints.
 """

@@ -1,5 +1,5 @@
 """
-ML Prediction Service — Flask Application Factory.
+ML Prediction Service - Flask Application Factory.
 """
 
 import logging
@@ -105,7 +105,7 @@ def _subscribe_to_events():
 
         def on_weather_collected(event_data):
             """Auto-predict when new weather data arrives."""
-            logger.info("Weather data event received — triggering prediction")
+            logger.info("Weather data event received - triggering prediction")
             try:
                 predictor = FloodPredictor.get_instance()
                 result = predictor.predict_from_latest()

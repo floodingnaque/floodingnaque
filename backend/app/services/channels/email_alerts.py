@@ -6,15 +6,15 @@ SMTP infrastructure from ``app.services.alerts`` in the new
 ``NotificationChannel`` interface.
 
 Required environment variables:
-    SMTP_HOST      — SMTP server hostname
-    SMTP_PORT      — SMTP server port (default 587)
-    SMTP_USERNAME  — SMTP login username
-    SMTP_PASSWORD  — SMTP login password
+    SMTP_HOST      - SMTP server hostname
+    SMTP_PORT      - SMTP server port (default 587)
+    SMTP_USERNAME  - SMTP login username
+    SMTP_PASSWORD  - SMTP login password
 
 Optional:
-    SMTP_FROM_EMAIL    — Sender address (default: alerts@floodingnaque.com)
-    SMTP_USE_TLS       — Enable STARTTLS (default: True)
-    EMAIL_SANDBOX_MODE — Set to "True" to skip real delivery
+    SMTP_FROM_EMAIL    - Sender address (default: alerts@floodingnaque.com)
+    SMTP_USE_TLS       - Enable STARTTLS (default: True)
+    EMAIL_SANDBOX_MODE - Set to "True" to skip real delivery
 """
 
 import logging
@@ -65,7 +65,7 @@ class EmailAlertChannel(NotificationChannel):
         smtp_from = os.getenv("SMTP_FROM_EMAIL", "alerts@floodingnaque.com")
         use_tls = os.getenv("SMTP_USE_TLS", "True").lower() == "true"
 
-        subject = f"[Floodingnaque Alert] {risk_label} — {location}"
+        subject = f"[Floodingnaque Alert] {risk_label} - {location}"
         html_body = self._build_html(risk_label, location, message)
 
         success = 0

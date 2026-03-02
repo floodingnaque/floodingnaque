@@ -48,7 +48,7 @@ services:
       - RATE_LIMIT_ENABLED=True
       # Security
       - AUTH_BYPASS_ENABLED=False
-      # Database SSL — explicit verification matching production behavior
+      # Database SSL - explicit verification matching production behavior
       - DB_SSL_MODE=verify-full
       - DB_SSL_CA_CERT=/etc/ssl/certs/ca-certificates.crt
       # CORS - Set your staging frontend domain
@@ -62,7 +62,7 @@ services:
       # Scheduler
       - SCHEDULER_ENABLED=True
       - SCHEDULER_TIMEZONE=Asia/Manila
-      # Model integrity — checksum verification without requiring HMAC signature
+      # Model integrity - checksum verification without requiring HMAC signature
       - VERIFY_MODEL_INTEGRITY=True
       - REQUIRE_MODEL_SIGNATURE=False
     env_file:
@@ -77,7 +77,7 @@ services:
         condition: service_healthy
     networks:
       - floodingnaque-staging
-    # Healthcheck — uses curl (installed in production image via Dockerfile)
+    # Healthcheck - uses curl (installed in production image via Dockerfile)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s

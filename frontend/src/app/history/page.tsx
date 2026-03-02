@@ -410,10 +410,10 @@ export default function HistoryPage() {
                           <TableCell className="font-medium">
                             {typeof pred.flood_probability === 'number'
                               ? `${(pred.flood_probability * 100).toFixed(1)}%`
-                              : '—'}
+                              : '-'}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {pred.location || '—'}
+                            {pred.location || '-'}
                           </TableCell>
                         </TableRow>
                       );

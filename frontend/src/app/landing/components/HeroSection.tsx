@@ -3,11 +3,12 @@
  *
  * Full-width navy hero with live risk badge, headline, subheadline,
  * and a streamlined CTA that scrolls to the "Get Started" section.
- * Redundant Sign In / LGU buttons removed — DualCTA handles role routing.
+ * Redundant Sign In / LGU buttons removed - DualCTA handles role routing.
  */
 
 import { motion } from 'framer-motion';
-import { Droplets, ShieldCheck, AlertTriangle, ShieldAlert, ArrowDown } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, ShieldAlert, ArrowDown } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -61,7 +62,7 @@ export function HeroSection() {
           {/* Logo */}
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center justify-center h-20 w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
-              <Droplets className="h-10 w-10 text-white" />
+              <FloodIcon className="h-10 w-10 text-white" />
             </div>
             <span className="text-xs font-semibold tracking-[0.35em] uppercase text-white/50">
               Floodingnaque

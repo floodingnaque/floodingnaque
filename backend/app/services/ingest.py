@@ -212,7 +212,7 @@ def ingest_data(lat=None, lon=None):
                 logger.debug(f"Meteostat fallback failed: {e}")
 
     # ---------------------------------------------------------------------------
-    # PAGASA Radar-based precipitation — barangay-level estimates
+    # PAGASA Radar-based precipitation - barangay-level estimates
     # ---------------------------------------------------------------------------
     # If PAGASA radar integration is enabled, fetch per-barangay precipitation
     # from Doppler radar QPE and use the nearest-barangay estimate to supplement
@@ -245,7 +245,7 @@ def ingest_data(lat=None, lon=None):
                                 precipitation = radar_rain
                                 logger.info(
                                     f"PAGASA radar estimate ({radar_rain:.1f} mm) > station "
-                                    f"({data.get('precipitation', 0):.1f} mm) — using radar"
+                                    f"({data.get('precipitation', 0):.1f} mm) - using radar"
                                 )
                             else:
                                 data["precipitation_radar_mm"] = radar_rain

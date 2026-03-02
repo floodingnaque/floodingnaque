@@ -1,5 +1,5 @@
 """
-Dashboard API — DashboardService
+Dashboard API - DashboardService
 
 Orchestrates data aggregation from all microservices (weather-collector,
 ml-prediction, alert-notification, user-management) to construct the
@@ -41,7 +41,7 @@ class DashboardService:
         self.user_url: str = app.config["USER_SERVICE_URL"]
         self._timeout = (5, 15)  # (connect, read) seconds
 
-        # Redis cache (optional — degrades to no-cache)
+        # Redis cache (optional - degrades to no-cache)
         try:
             self._redis = redis.from_url(
                 app.config.get("REDIS_URL", "redis://redis:6379/0"),
@@ -49,7 +49,7 @@ class DashboardService:
             )
             self._redis.ping()
         except Exception:
-            logger.warning("Redis unavailable — caching disabled")
+            logger.warning("Redis unavailable - caching disabled")
             self._redis = None
 
     # ── Public Methods ──────────────────────────────────────────────
@@ -121,7 +121,7 @@ class DashboardService:
                     "type": "weather_observation",
                     "source": "weather-collector",
                     "timestamp": item.get("timestamp", ""),
-                    "summary": f"Weather data recorded — temp: {item.get('temperature', 'N/A')}°C",
+                    "summary": f"Weather data recorded - temp: {item.get('temperature', 'N/A')}°C",
                     "data": item,
                 })
 
@@ -147,7 +147,7 @@ class DashboardService:
                     "type": "alert",
                     "source": "alert-notification",
                     "timestamp": item.get("created_at", ""),
-                    "summary": f"Alert: {item.get('severity', 'N/A')} — {item.get('message', '')}",
+                    "summary": f"Alert: {item.get('severity', 'N/A')} - {item.get('message', '')}",
                     "data": item,
                 })
 

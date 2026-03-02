@@ -1,8 +1,8 @@
 /**
- * SmsSimulationPanel Component (P4 — NICE TO HAVE)
+ * SmsSimulationPanel Component (P4 - NICE TO HAVE)
  *
  * Allows LGU operators to send a simulated SMS alert.
- * Always runs in sandbox mode — no real messages are sent.
+ * Always runs in sandbox mode - no real messages are sent.
  * Displays the simulation result inline after submission.
  */
 

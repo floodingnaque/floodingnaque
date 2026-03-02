@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Weather Data Collector Service — Main Entry Point
+Weather Data Collector Service - Main Entry Point
 
 Responsible for:
 - Collecting weather data from multiple external APIs (Meteostat, Google Weather,
@@ -36,7 +36,7 @@ def main():
     logger.info("Weather Data Collector Service starting on %s:%s", host, port)
 
     if os.name == "nt":
-        # Windows — use waitress
+        # Windows - use waitress
         from waitress import serve
         serve(app, host=host, port=port)
     else:

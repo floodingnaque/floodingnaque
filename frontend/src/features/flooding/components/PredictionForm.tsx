@@ -3,8 +3,8 @@
  *
  * Form for inputting weather parameters for flood risk prediction.
  * Supports two modes:
- *   1. Manual — user enters weather parameters directly
- *   2. Location — user shares GPS coordinates, backend fetches weather
+ *   1. Manual - user enters weather parameters directly
+ *   2. Location - user shares GPS coordinates, backend fetches weather
  *
  * Uses react-hook-form with zod validation for manual mode.
  * Uses HTML5 Geolocation API for location mode.
@@ -216,7 +216,7 @@ export function PredictionForm({ onSuccess }: PredictionFormProps) {
    */
   const handleLocationPredict = () => {
     if (coordinates) {
-      // Coordinates already available — submit immediately
+      // Coordinates already available - submit immediately
       predictByLocation({
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,

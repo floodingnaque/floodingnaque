@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Parañaque City coordinates — sourced from central constants
+# Parañaque City coordinates - sourced from central constants
 PARANAQUE_COORDS: Dict[str, Any] = {
     "lat": DEFAULT_LATITUDE,
     "lon": DEFAULT_LONGITUDE,
@@ -676,7 +676,7 @@ class AlertSystem:
         """
         webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
         if not webhook_url:
-            logger.error("SLACK_WEBHOOK_URL not configured — cannot send Slack alert")
+            logger.error("SLACK_WEBHOOK_URL not configured - cannot send Slack alert")
             return "not_configured"
 
         color_map = {"Safe": "#28a745", "Alert": "#ffc107", "Critical": "#dc3545"}
@@ -686,7 +686,7 @@ class AlertSystem:
             "attachments": [
                 {
                     "color": color,
-                    "title": f":warning: Flood Risk Alert — {risk_label}",
+                    "title": f":warning: Flood Risk Alert - {risk_label}",
                     "text": message,
                     "fields": [
                         {"title": "Location", "value": location, "short": True},

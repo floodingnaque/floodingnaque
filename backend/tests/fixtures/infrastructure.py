@@ -1,4 +1,4 @@
-"""Infrastructure mocking fixtures — Redis, Celery, metrics, logging, time, and file/IO."""
+"""Infrastructure mocking fixtures - Redis, Celery, metrics, logging, time, and file/IO."""
 
 from unittest.mock import MagicMock, patch
 

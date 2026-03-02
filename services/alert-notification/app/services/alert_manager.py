@@ -1,5 +1,5 @@
 """
-Alert Manager — Core Alert Service.
+Alert Manager - Core Alert Service.
 
 Manages the full lifecycle of flood alerts:
 - Creation from predictions or manual triggers
@@ -92,7 +92,7 @@ class AlertManager:
         self._dispatch(alert, channels)
         alert["channels_dispatched"] = channels
 
-        logger.info("Alert created: %s [%s] — %s", alert["id"], alert["severity"], alert["title"])
+        logger.info("Alert created: %s [%s] - %s", alert["id"], alert["severity"], alert["title"])
         return alert
 
     def create_alert_from_prediction(self, prediction: Dict[str, Any]) -> Dict[str, Any]:
@@ -108,7 +108,7 @@ class AlertManager:
 
         data = {
             "severity": severity,
-            "title": f"Flood {'Warning' if risk == 'high' else 'Alert'} — Parañaque City",
+            "title": f"Flood {'Warning' if risk == 'high' else 'Alert'} - Parañaque City",
             "message": f"Flood probability: {prob:.0%}. Contributing factors: {factor_text}.",
             "affected_areas": ["Parañaque City"],
             "flood_probability": prob,
@@ -171,7 +171,7 @@ class AlertManager:
         """Send alert via email."""
         smtp_host = os.getenv("SMTP_HOST")
         if not smtp_host:
-            logger.debug("Email not configured — skipping")
+            logger.debug("Email not configured - skipping")
             return
         # Email sending implementation (uses stdlib smtplib)
         logger.info("Email alert sent: %s", alert["title"])
@@ -180,7 +180,7 @@ class AlertManager:
         """Send alert via SMS gateway."""
         sms_api = os.getenv("SMS_API_URL")
         if not sms_api:
-            logger.debug("SMS not configured — skipping")
+            logger.debug("SMS not configured - skipping")
             return
         logger.info("SMS alert sent: %s", alert["title"])
 
@@ -188,7 +188,7 @@ class AlertManager:
         """Send alert to Slack channel."""
         webhook_url = os.getenv("SLACK_WEBHOOK_URL")
         if not webhook_url:
-            logger.debug("Slack not configured — skipping")
+            logger.debug("Slack not configured - skipping")
             return
         try:
             severity_emoji = {"low": "🟢", "moderate": "🟡", "high": "🔴", "critical": "🚨"}
@@ -212,7 +212,7 @@ class AlertManager:
         """Send push notification via Firebase Cloud Messaging."""
         project_id = os.getenv("FIREBASE_PROJECT_ID")
         if not project_id:
-            logger.debug("Firebase not configured — skipping")
+            logger.debug("Firebase not configured - skipping")
             return
 
         topic = os.getenv("FIREBASE_DEFAULT_TOPIC", "flood_alerts")
@@ -257,7 +257,7 @@ class AlertManager:
             resp.raise_for_status()
             logger.info("Firebase push sent: %s", title)
         except ImportError:
-            logger.warning("google-auth not installed — Firebase push skipped")
+            logger.warning("google-auth not installed - Firebase push skipped")
         except Exception as e:
             logger.error("Firebase push failed: %s", e)
 
@@ -265,7 +265,7 @@ class AlertManager:
         """Send alert via Facebook Messenger Send API."""
         page_token = os.getenv("MESSENGER_PAGE_ACCESS_TOKEN")
         if not page_token:
-            logger.debug("Messenger not configured — skipping")
+            logger.debug("Messenger not configured - skipping")
             return
 
         api_ver = os.getenv("MESSENGER_API_VERSION", "v19.0")
@@ -280,7 +280,7 @@ class AlertManager:
         bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         chat_id = os.getenv("TELEGRAM_DEFAULT_CHAT_ID")
         if not bot_token or not chat_id:
-            logger.debug("Telegram not configured — skipping")
+            logger.debug("Telegram not configured - skipping")
             return
 
         severity_emoji = {"low": "🟢", "moderate": "🟡", "high": "🔴", "critical": "🚨"}
@@ -306,12 +306,12 @@ class AlertManager:
         siren_url = os.getenv("SIREN_API_URL")
         siren_key = os.getenv("SIREN_API_KEY")
         if not siren_url or not siren_key:
-            logger.debug("Siren API not configured — skipping")
+            logger.debug("Siren API not configured - skipping")
             return
 
         # Only trigger for high/critical severity
         if alert.get("severity") not in ("high", "critical"):
-            logger.debug("Siren skipped — severity %s below threshold", alert.get("severity"))
+            logger.debug("Siren skipped - severity %s below threshold", alert.get("severity"))
             return
 
         try:
@@ -332,7 +332,7 @@ class AlertManager:
             else:
                 logger.error("Siren API error: %s", resp.status_code)
         except requests.ConnectionError:
-            logger.critical("Siren API unreachable — MANUAL ACTIVATION REQUIRED for: %s", alert.get("title"))
+            logger.critical("Siren API unreachable - MANUAL ACTIVATION REQUIRED for: %s", alert.get("title"))
         except Exception as e:
             logger.error("Siren trigger failed: %s", e)
 

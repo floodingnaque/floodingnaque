@@ -6,7 +6,7 @@
  * declines, the preference is persisted in `localStorage` so the
  * banner is never shown again.
  *
- * Compliant with GDPR and the Philippine Data Privacy Act — no
+ * Compliant with GDPR and the Philippine Data Privacy Act - no
  * non-essential cookies are set until the user gives consent.
  */
 

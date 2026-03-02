@@ -1,5 +1,5 @@
 """
-Tests for Advanced ML Models — XGBoost, LightGBM, Ensemble, and Comparison.
+Tests for Advanced ML Models - XGBoost, LightGBM, Ensemble, and Comparison.
 
 Tests cover:
 - XGBoost creation, training, and prediction

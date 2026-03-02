@@ -8,7 +8,8 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Droplets, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import { RainEffect } from '@/components/effects/RainEffect';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,7 +27,7 @@ export function LoginPage() {
   const [activeTab, setActiveTab] = useState<string>('login');
 
   // Redirect if already authenticated (e.g. user hits /login via back button).
-  // We do NOT use `from` here — role-based destination is handled by useAuth.ts.
+  // We do NOT use `from` here - role-based destination is handled by useAuth.ts.
   // Using `from` here caused LoginPage to override navigate('/admin') with navigate('/').
   useEffect(() => {
     if (isAuthenticated) {
@@ -41,7 +42,7 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-primary overflow-hidden p-4">
-      {/* Rain + gradient — matches HeroSection */}
+      {/* Rain + gradient - matches HeroSection */}
       <RainEffect />
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
 
@@ -58,7 +59,7 @@ export function LoginPage() {
         {/* Logo and Title */}
         <div className="flex flex-col items-center space-y-2 text-center">
           <div className="flex items-center justify-center h-16 w-16 rounded-full bg-white/15 backdrop-blur-sm">
-            <Droplets className="h-8 w-8 text-white" />
+            <FloodIcon className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Floodingnaque</h1>
           <p className="text-white/60">

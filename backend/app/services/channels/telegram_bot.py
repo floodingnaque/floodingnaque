@@ -5,12 +5,12 @@ Sends flood alerts to subscribed users / groups / channels
 via the Telegram Bot API.
 
 Required environment variables:
-    TELEGRAM_BOT_TOKEN  — Bot API token from @BotFather
+    TELEGRAM_BOT_TOKEN  - Bot API token from @BotFather
 
 Optional:
-    TELEGRAM_DEFAULT_CHAT_ID — Default chat / channel ID for broadcasts
-    TELEGRAM_SANDBOX_MODE    — Set to "True" to skip real delivery
-    TELEGRAM_PARSE_MODE      — Message parse mode (default: HTML)
+    TELEGRAM_DEFAULT_CHAT_ID - Default chat / channel ID for broadcasts
+    TELEGRAM_SANDBOX_MODE    - Set to "True" to skip real delivery
+    TELEGRAM_PARSE_MODE      - Message parse mode (default: HTML)
 """
 
 import logging
@@ -51,7 +51,7 @@ class TelegramBotChannel(NotificationChannel):
         dashboard_url = os.getenv("FRONTEND_URL", "https://floodingnaque.com")
 
         return (
-            f"{emoji} <b>Flood {risk_label}</b> — {location}\n\n"
+            f"{emoji} <b>Flood {risk_label}</b> - {location}\n\n"
             f"{message[:4000]}\n\n"
             f'<a href="{dashboard_url}/dashboard">📊 Open Dashboard</a>\n'
             "<i>Floodingnaque Early Warning System</i>"
@@ -103,7 +103,7 @@ class TelegramBotChannel(NotificationChannel):
         if not chat_ids and self._default_chat:
             chat_ids = [self._default_chat]
         if not chat_ids:
-            logger.warning("TelegramBotChannel.send — no chat IDs provided")
+            logger.warning("TelegramBotChannel.send - no chat IDs provided")
             return "failed"
 
         url = f"https://api.telegram.org/bot{self._bot_token}/sendMessage"
@@ -178,9 +178,9 @@ class TelegramBotChannel(NotificationChannel):
         Process an incoming Telegram update (user command).
 
         Supported commands:
-            /start  — Subscribe to alerts
-            /stop   — Unsubscribe
-            /status — Get current flood status
+            /start  - Subscribe to alerts
+            /stop   - Unsubscribe
+            /status - Get current flood status
 
         Returns a reply message or None.
         """
@@ -194,8 +194,8 @@ class TelegramBotChannel(NotificationChannel):
                 "You will receive real-time flood warnings for "
                 "Parañaque City.\n\n"
                 "Commands:\n"
-                "/status — Current flood status\n"
-                "/stop — Unsubscribe"
+                "/status - Current flood status\n"
+                "/stop - Unsubscribe"
             )
         elif text == "/stop":
             return "You have unsubscribed from flood alerts. Send /start to re-subscribe."

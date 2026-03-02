@@ -235,7 +235,7 @@ services:
       - PGBOUNCER_MIN_POOL_SIZE=2
       - PGBOUNCER_RESERVE_POOL_SIZE=5
       - PGBOUNCER_MAX_DB_CONNECTIONS=20
-      # Admin credentials (MUST be set via environment or .env file — no defaults)
+      # Admin credentials (MUST be set via environment or .env file - no defaults)
       - PGBOUNCER_ADMIN_USER=${PGBOUNCER_ADMIN_USER:?PGBOUNCER_ADMIN_USER must be set}
       - PGBOUNCER_ADMIN_PASSWORD=${PGBOUNCER_ADMIN_PASSWORD:?PGBOUNCER_ADMIN_PASSWORD must be set}
       - PGBOUNCER_STATS_USER=${PGBOUNCER_STATS_USER:?PGBOUNCER_STATS_USER must be set}

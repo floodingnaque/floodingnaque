@@ -32,8 +32,8 @@ joblib==1.4.2  # Serialization format for .joblib files
 scipy==1.14.1  # Used internally by scikit-learn
 
 # Gradient Boosting Frameworks (XGBoost & LightGBM)
-xgboost==2.1.3  # Extreme Gradient Boosting — optimised trees, GPU support
-lightgbm==4.5.0  # Microsoft LightGBM — fast histogram-based gradient boosting
+xgboost==2.1.3  # Extreme Gradient Boosting - optimised trees, GPU support
+lightgbm==4.5.0  # Microsoft LightGBM - fast histogram-based gradient boosting
 
 # ============================================================================
 # SCHEDULING & BACKGROUND TASKS
@@ -175,7 +175,7 @@ flask-sse==1.0.0  # Flask SSE extension for real-time updates
 # GRAPHQL
 # ============================================================================
 graphene==3.4.3  # GraphQL schema definition framework
-# graphql-server removed — unused (graphql-core provides graphql_sync directly)
+# graphql-server removed - unused (graphql-core provides graphql_sync directly)
 #flask-graphql==2.0.1  # GraphQL endpoint integration (superseded by graphql-core)
 graphql-core==3.2.5  # GraphQL core library for schema and execution
 

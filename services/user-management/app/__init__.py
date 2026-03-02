@@ -1,5 +1,5 @@
 """
-User Management Service — Flask Application Factory.
+User Management Service - Flask Application Factory.
 """
 
 import logging

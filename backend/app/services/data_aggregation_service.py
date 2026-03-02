@@ -15,7 +15,7 @@ consistent interface for the flood prediction engine.  Implements:
 
 Architecture
 ------------
-The aggregation layer does NOT replace individual services — it *composes*
+The aggregation layer does NOT replace individual services - it *composes*
 them.  Each underlying service (PAGASA, MMDA, WorldTides, river, etc.)
 retains its own caching and circuit-breaker logic.  This layer adds:
 

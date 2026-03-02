@@ -1,5 +1,5 @@
 """
-Weather Data Collector Service — Flask Application Factory.
+Weather Data Collector Service - Flask Application Factory.
 """
 
 import logging

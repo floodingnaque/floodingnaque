@@ -1,5 +1,5 @@
 /**
- * ForecastPanel Component (P1 — MUST HAVE)
+ * ForecastPanel Component (P1 - MUST HAVE)
  *
  * 3-hour rolling forecast for LGU / MDRRMO operators.
  * Shows hourly risk bars with precipitation, temperature, and tide status.

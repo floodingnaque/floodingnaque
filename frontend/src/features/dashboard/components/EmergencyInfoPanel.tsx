@@ -1,5 +1,5 @@
 /**
- * EmergencyInfoPanel Component (P1 — MUST HAVE)
+ * EmergencyInfoPanel Component (P1 - MUST HAVE)
  *
  * Static emergency contact information and nearest evacuation centers
  * drawn from the centralized paranaque.ts data.
@@ -28,7 +28,7 @@ const RISK_ADVISORIES: Record<RiskLevel, { icon: React.ElementType; title: strin
     items: [
       'Prepare go-bag with essentials',
       'Monitor official DRRMO announcements',
-      'Possible evacuation activation — stay alert',
+      'Possible evacuation activation - stay alert',
       'Avoid low-lying areas and waterways',
     ],
     variant: 'destructive',
@@ -103,7 +103,7 @@ interface EmergencyInfoPanelProps {
   className?: string;
   /** If provided, only show evacuation centers for high-risk barangays */
   filterHighRisk?: boolean;
-  /** Current risk level — when provided, shows dynamic advisory messages */
+  /** Current risk level - when provided, shows dynamic advisory messages */
   riskLevel?: RiskLevel;
 }
 

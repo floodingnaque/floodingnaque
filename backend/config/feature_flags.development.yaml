@@ -1,5 +1,5 @@
 # =============================================================================
-# Floodingnaque Feature Flags — DEVELOPMENT Overrides
+# Floodingnaque Feature Flags - DEVELOPMENT Overrides
 # =============================================================================
 # These values override the base feature_flags.yaml when APP_ENV=development.
 # Optimized for local development workflow with verbose debugging.
@@ -7,7 +7,7 @@
 
 flags:
   # ---------------------------------------------------------------------------
-  # Data Pipeline — disable features that require external credentials
+  # Data Pipeline - disable features that require external credentials
   # ---------------------------------------------------------------------------
   earth_engine_integration:
     enabled: false  # Requires GCP service-account credentials
@@ -16,7 +16,7 @@ flags:
     enabled: false  # Requires WORLDTIDES_API_KEY
 
   # ---------------------------------------------------------------------------
-  # Monitoring — enable verbose debugging
+  # Monitoring - enable verbose debugging
   # ---------------------------------------------------------------------------
   detailed_logging:
     enabled: true
@@ -25,7 +25,7 @@ flags:
     enabled: true
 
   # ---------------------------------------------------------------------------
-  # Alerting — disable real notifications in dev
+  # Alerting - disable real notifications in dev
   # ---------------------------------------------------------------------------
   email_alerts:
     enabled: false  # No SMTP credentials in dev
@@ -37,7 +37,7 @@ flags:
     enabled: false  # No Slack webhook in dev
 
   # ---------------------------------------------------------------------------
-  # Experimental — enable for testing
+  # Experimental - enable for testing
   # ---------------------------------------------------------------------------
   new_prediction_algorithm:
     percentage: 10

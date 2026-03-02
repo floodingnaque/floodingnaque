@@ -1,5 +1,5 @@
 """
-Dashboard API — Dashboard Routes
+Dashboard API - Dashboard Routes
 
 Primary dashboard endpoints aggregating data from all microservices
 to power the frontend overview.

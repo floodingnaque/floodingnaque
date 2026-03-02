@@ -1,5 +1,5 @@
 """
-Tests for Spatial Features — barangay-level feature engineering.
+Tests for Spatial Features - barangay-level feature engineering.
 """
 
 import numpy as np

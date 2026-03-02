@@ -38,7 +38,7 @@ groups:
           summary: "High API error rate"
           description: "More than 5% of API requests are returning 5xx errors over the last 5 minutes. Current value: {{ $value | humanizePercentage }}."
 
-      # Very high error rate (>15% — critical)
+      # Very high error rate (>15% - critical)
       - alert: CriticalErrorRate
         expr: |
           (
@@ -173,7 +173,7 @@ groups:
           summary: "Slow database queries"
           description: "The 95th percentile database query time exceeds 500ms. Current p95: {{ $value | humanizeDuration }}."
 
-      # PostgreSQL exporter — database down
+      # PostgreSQL exporter - database down
       - alert: PostgreSQLDown
         expr: up{job="postgres"} == 0
         for: 2m
@@ -184,7 +184,7 @@ groups:
           summary: "PostgreSQL is down"
           description: "PostgreSQL exporter is unreachable. The database may be down."
 
-      # PgBouncer — connection pool down
+      # PgBouncer - connection pool down
       - alert: PgBouncerDown
         expr: up{job="pgbouncer"} == 0
         for: 2m
@@ -227,7 +227,7 @@ groups:
   # ==========================================================================
   - name: floodingnaque-celery
     rules:
-      # Celery worker down — no heartbeat for 5 minutes
+      # Celery worker down - no heartbeat for 5 minutes
       - alert: CeleryWorkerDown
         expr: up{job="celery-worker"} == 0
         for: 5m
@@ -254,7 +254,7 @@ groups:
           summary: "High Celery task failure rate"
           description: "More than 10% of Celery tasks are failing over the last 15 minutes. Current failure rate: {{ $value | humanizePercentage }}."
 
-      # Queue backlog — tasks waiting longer than 5 minutes
+      # Queue backlog - tasks waiting longer than 5 minutes
       - alert: CeleryQueueBacklog
         expr: |
           celery_task_received_total - celery_task_started_total
@@ -353,7 +353,7 @@ groups:
           summary: "High CPU usage on API"
           description: "Backend CPU usage is consistently high. Current rate: {{ $value }}."
 
-      # Disk space — host filesystem > 85%
+      # Disk space - host filesystem > 85%
       - alert: HostDiskSpaceCritical
         expr: |
           (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) > 0.85
@@ -365,7 +365,7 @@ groups:
           summary: "Host disk space critical"
           description: "Root filesystem usage exceeds 85% on {{ $labels.instance }}. Current: {{ $value | humanizePercentage }}."
 
-      # Database backup staleness — no successful backup in 25 hours
+      # Database backup staleness - no successful backup in 25 hours
       - alert: DatabaseBackupStale
         expr: |
           (time() - floodingnaque_backup_last_success_timestamp_seconds) > 90000
@@ -388,7 +388,7 @@ groups:
           summary: "Database backup failed"
           description: "A database backup job has failed in the last hour. Check backup logs immediately."
 
-      # Disk space — Prometheus storage
+      # Disk space - Prometheus storage
       - alert: PrometheusStorageHigh
         expr: |
           (prometheus_tsdb_storage_blocks_bytes / (1024 * 1024 * 1024)) > 8

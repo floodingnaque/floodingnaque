@@ -7,7 +7,8 @@
 
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Droplets, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 
 import { useAuthStore } from '@/state/stores/authStore';
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm';
@@ -30,10 +31,10 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-primary overflow-hidden p-4">
-      {/* Rain effect — matches LoginPage */}
+      {/* Rain effect - matches LoginPage */}
       <RainEffect />
 
-      {/* Gradient overlay — matches HeroSection / LoginPage */}
+      {/* Gradient overlay - matches HeroSection / LoginPage */}
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
 
       {/* Back to login */}
@@ -49,7 +50,7 @@ export function ForgotPasswordPage() {
         {/* Logo */}
         <div className="flex flex-col items-center space-y-2 text-center">
           <div className="flex items-center justify-center h-16 w-16 rounded-full bg-white/15 backdrop-blur-sm">
-            <Droplets className="h-8 w-8 text-white" />
+            <FloodIcon className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Floodingnaque</h1>
           <p className="text-white/60">

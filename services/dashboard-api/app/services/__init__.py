@@ -1,1 +1,1 @@
-"""Dashboard API — Services Package."""
+"""Dashboard API - Services Package."""

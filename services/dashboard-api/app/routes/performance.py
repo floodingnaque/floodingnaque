@@ -1,5 +1,5 @@
 """
-Dashboard API — Performance Metrics Routes
+Dashboard API - Performance Metrics Routes
 
 Endpoints for system-wide performance monitoring, model metrics,
 and service health aggregation.

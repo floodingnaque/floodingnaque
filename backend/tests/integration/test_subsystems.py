@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ============================================================================
-# 1. RATE LIMITING — exercise the real limiter on a live Flask app
+# 1. RATE LIMITING - exercise the real limiter on a live Flask app
 # ============================================================================
 
 
@@ -95,12 +95,12 @@ class TestRateLimitingIntegration:
                 # 429 means the limiter is working; if rate limiting isn't
                 # applied to /health specifically, the test still passes if the
                 # global default fires.
-                # NOTE: some endpoints are exempt — accept both 200 and 429
+                # NOTE: some endpoints are exempt - accept both 200 and 429
                 assert resp.status_code in (200, 429, 503)
 
 
 # ============================================================================
-# 2. SCHEDULER — init_scheduler() registers jobs without errors
+# 2. SCHEDULER - init_scheduler() registers jobs without errors
 # ============================================================================
 
 
@@ -119,7 +119,7 @@ class TestSchedulerIntegration:
             from app.services.scheduler import init_scheduler
             from app.services.scheduler import scheduler as bg_scheduler
 
-            # scheduler.start() requires a running thread — just test init
+            # scheduler.start() requires a running thread - just test init
             # which registers jobs on the internal scheduler
             init_scheduler()
 
@@ -127,7 +127,7 @@ class TestSchedulerIntegration:
             jobs = bg_scheduler.get_jobs()
             assert len(jobs) >= 1, "init_scheduler should register at least one job"
 
-            # Cleanup — remove jobs so they don't run in background
+            # Cleanup - remove jobs so they don't run in background
             bg_scheduler.remove_all_jobs()
 
     def test_should_run_scheduler_returns_bool(self):
@@ -139,7 +139,7 @@ class TestSchedulerIntegration:
 
 
 # ============================================================================
-# 3. STARTUP HEALTH — run the full health check pipeline
+# 3. STARTUP HEALTH - run the full health check pipeline
 # ============================================================================
 
 
@@ -188,7 +188,7 @@ class TestStartupHealthIntegration:
         """In development, raise_on_failure=True should NOT raise for env-only checks."""
         from app.utils.startup_health import validate_startup_health
 
-        # Skip model check — no .joblib files in test env would cause
+        # Skip model check - no .joblib files in test env would cause
         # a critical failure that is expected to raise.
         report = validate_startup_health(
             check_env=True,
@@ -203,7 +203,7 @@ class TestStartupHealthIntegration:
 
 
 # ============================================================================
-# 4. ENV VALIDATION — exercise the validator with real and missing vars
+# 4. ENV VALIDATION - exercise the validator with real and missing vars
 # ============================================================================
 
 

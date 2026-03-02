@@ -2,10 +2,10 @@
 
 Changes vs. the original module-level approach:
 
-* **C1** — SSL / driver logic moved to :mod:`app.utils.db_connection`.
-* **C2** — Engine is created lazily via :func:`get_engine` (no side-effects
+* **C1** - SSL / driver logic moved to :mod:`app.utils.db_connection`.
+* **C2** - Engine is created lazily via :func:`get_engine` (no side-effects
   at import time).
-* **C3** — ``pool_metrics`` is guarded by :data:`_metrics_lock`.
+* **C3** - ``pool_metrics`` is guarded by :data:`_metrics_lock`.
 """
 
 import logging
@@ -57,7 +57,7 @@ Base = declarative_base()
 _engine: Engine | None = None
 _engine_lock = threading.Lock()
 
-# Pool configuration — read lazily at engine-creation time so that
+# Pool configuration - read lazily at engine-creation time so that
 # environment variables set by load_env() are visible.
 
 
@@ -72,7 +72,7 @@ def _resolve_db_url() -> str:
         raise ValueError(
             f"DATABASE_URL must be set for {app_env}! " "Configure a Supabase PostgreSQL connection string."
         )
-    logger.warning("DATABASE_URL not set — using SQLite for development only")
+    logger.warning("DATABASE_URL not set - using SQLite for development only")
     return "sqlite:///data/floodingnaque.db"
 
 
@@ -322,7 +322,7 @@ def init_db() -> bool:
     try:
         engine = get_engine()
 
-        # Verify connectivity — fail fast at startup
+        # Verify connectivity - fail fast at startup
         from sqlalchemy import text
 
         with engine.connect() as conn:
@@ -335,7 +335,7 @@ def init_db() -> bool:
             setup_slow_query_logging(engine)
             logger.info("Slow query logging initialized")
         except ImportError:
-            logger.debug("Query optimizer not available — slow query logging disabled")
+            logger.debug("Query optimizer not available - slow query logging disabled")
         except Exception as e:
             logger.warning("Failed to initialize slow query logging: %s", e)
 

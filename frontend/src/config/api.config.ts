@@ -91,7 +91,7 @@ export const API_ENDPOINTS = {
 /**
  * Resolve the API base URL.
  *
- * In production / staging the env var MUST be set — a hardcoded
+ * In production / staging the env var MUST be set - a hardcoded
  * localhost fallback would silently bake the wrong URL into the
  * Vite bundle.  In development (served by `vite dev`) falling back
  * to localhost:5000 is acceptable.

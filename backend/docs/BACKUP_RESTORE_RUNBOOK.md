@@ -89,7 +89,7 @@ docker compose -f compose.production.yaml exec backend \
 - [ ] Confirm you have the correct backup file
 - [ ] Verify backup integrity (step 3 above)
 - [ ] Create a fresh backup of the current state BEFORE restoring
-- [ ] Notify the team — this will cause downtime
+- [ ] Notify the team - this will cause downtime
 - [ ] Stop all application traffic (scale down or enable maintenance mode)
 
 ### Step-by-Step Restore Procedure

@@ -6,12 +6,12 @@ Send API.  Users subscribe through the Messenger bot and their
 PSIDs (Page-Scoped IDs) are stored for broadcast alerts.
 
 Required environment variables:
-    MESSENGER_PAGE_ACCESS_TOKEN — Facebook Page long-lived access token
-    MESSENGER_VERIFY_TOKEN      — Webhook verification token (for setup)
+    MESSENGER_PAGE_ACCESS_TOKEN - Facebook Page long-lived access token
+    MESSENGER_VERIFY_TOKEN      - Webhook verification token (for setup)
 
 Optional:
-    MESSENGER_SANDBOX_MODE — Set to "True" to skip real delivery
-    MESSENGER_API_VERSION  — Graph API version (default: v19.0)
+    MESSENGER_SANDBOX_MODE - Set to "True" to skip real delivery
+    MESSENGER_API_VERSION  - Graph API version (default: v19.0)
 """
 
 import logging
@@ -61,7 +61,7 @@ class MessengerBotChannel(NotificationChannel):
                     "template_type": "generic",
                     "elements": [
                         {
-                            "title": f"{emoji} Flood {risk_label} — {location}",
+                            "title": f"{emoji} Flood {risk_label} - {location}",
                             "subtitle": message[:80],
                             "buttons": [
                                 {
@@ -88,7 +88,7 @@ class MessengerBotChannel(NotificationChannel):
         emoji = self._COLOR_EMOJI.get(risk_label, "⚠️")
         return {
             "text": (
-                f"{emoji} *Flood {risk_label}* — {location}\n\n"
+                f"{emoji} *Flood {risk_label}* - {location}\n\n"
                 f"{message[:2000]}\n\n"
                 "Reply STOP to unsubscribe."
             )
@@ -149,7 +149,7 @@ class MessengerBotChannel(NotificationChannel):
                 else:
                     fail += 1
                     logger.error(
-                        "Messenger send failed for PSID %s: %s — %s",
+                        "Messenger send failed for PSID %s: %s - %s",
                         psid,
                         resp.status_code,
                         resp.text[:200],

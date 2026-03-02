@@ -1,5 +1,5 @@
 """
-Dashboard API — GIS / Map Routes
+Dashboard API - GIS / Map Routes
 
 Geographic Information System endpoints for flood risk map
 visualisation in the frontend.

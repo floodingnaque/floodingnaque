@@ -92,7 +92,7 @@ export async function cachePrediction(
     }
   } catch (err) {
     // IndexedDB may be unavailable in some contexts (e.g. private browsing).
-    // Fail silently — the cache is a best-effort enhancement.
+    // Fail silently - the cache is a best-effort enhancement.
     console.warn('[offlineCache] Failed to cache prediction:', err);
   }
 }

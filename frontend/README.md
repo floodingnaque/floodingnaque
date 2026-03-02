@@ -1,4 +1,4 @@
-# Floodingnaque — Frontend
+# Floodingnaque - Frontend
 
 Real-time flood prediction and alert dashboard for Parañaque City, Philippines.
 
@@ -103,7 +103,7 @@ Copy `.env.example` to `.env.development` for local dev, or `.env.local` for ove
 | `VITE_MAP_DEFAULT_LNG`    | Map center longitude                 | `121.0198`             | No       |
 | `VITE_MAP_DEFAULT_ZOOM`   | Map default zoom level               | `13`                   | No       |
 | `VITE_ENABLE_SSE`         | Enable live alert stream             | `true`                 | No       |
-| `VITE_SENTRY_DSN`         | Sentry error tracking DSN            | —                      | No       |
+| `VITE_SENTRY_DSN`         | Sentry error tracking DSN            | -                      | No       |
 | `VITE_SENTRY_ENVIRONMENT` | Sentry environment tag               | `production`           | No       |
 
 ## Deployment

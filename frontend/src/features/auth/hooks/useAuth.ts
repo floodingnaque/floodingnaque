@@ -46,7 +46,7 @@ export function useAuth() {
    * Login mutation
    *
    * `authApi.login` now returns a Zod-validated `AuthResponse`
-   * that carries `user` as a first-class field — no unsafe casts.
+   * that carries `user` as a first-class field - no unsafe casts.
    */
   const loginMutation = useMutation({
     mutationFn: (credentials: LoginRequest) => authApi.login(credentials),
@@ -109,7 +109,7 @@ export function useAuth() {
   const updateProfileMutation = useMutation({
     mutationFn: (data: UpdateProfileRequest) => authApi.updateProfile(data),
     onSuccess: (updatedUser: User) => {
-      // Update user in store — keep existing tokens
+      // Update user in store - keep existing tokens
       setAuth(updatedUser);
       // Invalidate profile query to refetch
       queryClient.invalidateQueries({ queryKey: authQueryKeys.profile() });

@@ -38,7 +38,7 @@ env:
 
 jobs:
   # ==========================================================================
-  # CI Gate Check — abort if CI workflow failed
+  # CI Gate Check - abort if CI workflow failed
   # ==========================================================================
   ci-gate:
     name: CI Gate Check
@@ -48,7 +48,7 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
       - name: CI passed
-        run: echo "CI gate passed — proceeding with deployment"
+        run: echo "CI gate passed - proceeding with deployment"
 
   # ==========================================================================
   # Build and Push Docker Image
@@ -286,7 +286,7 @@ jobs:
         DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
         DEPLOY_KEY: ${{ secrets.STAGING_SSH_KEY }}
       run: |
-        echo "⚠️ Smoke test failed — rolling back staging to previous image..."
+        echo "⚠️ Smoke test failed - rolling back staging to previous image..."
         mkdir -p ~/.ssh
         echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
@@ -382,7 +382,7 @@ jobs:
           echo "=== Creating pre-deploy database backup ==="
           docker compose -f compose.production.yaml exec -T backend \
             python -m scripts.backup_database --postgres --output /app/backups 2>&1 || \
-            echo "WARNING: Pre-deploy backup failed — proceeding with caution"
+            echo "WARNING: Pre-deploy backup failed - proceeding with caution"
 
           echo "=== Pulling and deploying ==="
           # W9: Always include --profile nginx for TLS termination in production

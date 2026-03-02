@@ -134,7 +134,7 @@ class GoogleWeatherService:
         self.cache_dir = Path(os.getenv("EARTHENGINE_CACHE_DIR", "data/earthengine_cache"))
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Default location (Parañaque City — from central config)
+        # Default location (Parañaque City - from central config)
         self.default_lat = float(os.getenv("DEFAULT_LATITUDE", str(DEFAULT_LATITUDE)))
         self.default_lon = float(os.getenv("DEFAULT_LONGITUDE", str(DEFAULT_LONGITUDE)))
 
@@ -247,7 +247,7 @@ class GoogleWeatherService:
                     ee_module.Initialize(project=self.project_id)
                     logger.info("Earth Engine initialized with default credentials")
                 except Exception:
-                    # NEVER fall back to browser-based authentication in production —
+                    # NEVER fall back to browser-based authentication in production -
                     # ee.Authenticate() opens a browser and blocks the process indefinitely
                     # on a headless server.
                     app_env = os.getenv("APP_ENV", "development").lower()

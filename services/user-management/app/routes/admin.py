@@ -2,10 +2,10 @@
 Admin user management routes.
 
 Endpoints for admin-level user operations:
-  POST /api/v1/admin/users/<id>/activate    — Activate user
-  POST /api/v1/admin/users/<id>/deactivate  — Deactivate user
-  POST /api/v1/admin/users/<id>/role        — Change user role
-  GET  /api/v1/admin/users/stats            — User statistics
+  POST /api/v1/admin/users/<id>/activate    - Activate user
+  POST /api/v1/admin/users/<id>/deactivate  - Deactivate user
+  POST /api/v1/admin/users/<id>/role        - Change user role
+  GET  /api/v1/admin/users/stats            - User statistics
 """
 
 import logging

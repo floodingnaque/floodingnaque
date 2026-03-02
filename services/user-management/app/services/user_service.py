@@ -1,5 +1,5 @@
 """
-User Service — Core user management logic.
+User Service - Core user management logic.
 
 Handles user CRUD, authentication, password hashing,
 and JWT token lifecycle.
@@ -21,7 +21,7 @@ try:
     BCRYPT_AVAILABLE = True
 except ImportError:
     BCRYPT_AVAILABLE = False
-    logger.warning("bcrypt not available — using SHA-256 fallback")
+    logger.warning("bcrypt not available - using SHA-256 fallback")
 
 
 class UserService:

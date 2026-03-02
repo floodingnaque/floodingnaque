@@ -24,7 +24,7 @@ try:
     JWT_AVAILABLE = True
 except ImportError:
     JWT_AVAILABLE = False
-    logger.warning("PyJWT not installed — JWT auth disabled")
+    logger.warning("PyJWT not installed - JWT auth disabled")
 
 
 def _get_jwt_secret() -> str:

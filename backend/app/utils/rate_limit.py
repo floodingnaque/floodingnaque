@@ -1,5 +1,5 @@
 """
-Rate Limit Utilities — DEPRECATED.
+Rate Limit Utilities - DEPRECATED.
 
 Import directly from ``app.api.middleware.rate_limit`` instead.
 This shim is kept only for backward compatibility and will be

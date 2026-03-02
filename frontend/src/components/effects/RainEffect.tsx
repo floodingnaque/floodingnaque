@@ -1,5 +1,5 @@
 /**
- * RainEffect — Animated rain drop overlay.
+ * RainEffect - Animated rain drop overlay.
  *
  * Reusable across pages for visual consistency.  Configurable density
  * and opacity so it can be prominent on the hero/login screens and

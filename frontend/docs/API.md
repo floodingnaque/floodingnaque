@@ -18,10 +18,10 @@ getEndpointUrl('auth', 'login');
 
 `src/lib/api-client.ts` exports a configured Axios instance with:
 
-- **Request interceptor** — attaches `Authorization: Bearer <token>` from `authStore`.
-- **Response interceptor** — on 401, silently refreshes the token and retries the original request. Concurrent requests are queued during refresh.
-- **Typed helpers** — `api.get<T>()`, `api.post<T>()`, `api.put<T>()`, `api.patch<T>()`, `api.delete<T>()` that unwrap AxiosResponse and return `T` directly.
-- **Timeout** — 30 seconds.
+- **Request interceptor** - attaches `Authorization: Bearer <token>` from `authStore`.
+- **Response interceptor** - on 401, silently refreshes the token and retries the original request. Concurrent requests are queued during refresh.
+- **Typed helpers** - `api.get<T>()`, `api.post<T>()`, `api.put<T>()`, `api.patch<T>()`, `api.delete<T>()` that unwrap AxiosResponse and return `T` directly.
+- **Timeout** - 30 seconds.
 
 ## Endpoints
 
@@ -32,8 +32,8 @@ getEndpointUrl('auth', 'login');
 | POST | `/api/v1/auth/login` | `LoginRequest` | `TokenResponse` | No |
 | POST | `/api/v1/auth/register` | `RegisterRequest` | `TokenResponse` | No |
 | POST | `/api/v1/auth/refresh` | `RefreshTokenRequest` | `TokenResponse` | No |
-| POST | `/api/v1/auth/logout` | — | — | Yes |
-| GET | `/api/v1/auth/me` | — | `User` | Yes |
+| POST | `/api/v1/auth/logout` | - | - | Yes |
+| GET | `/api/v1/auth/me` | - | `User` | Yes |
 
 **Types:**
 
@@ -135,7 +135,7 @@ interface WeatherDataParams {
 | Method | Endpoint | Query Params | Response | Auth |
 |--------|----------|-------------|----------|------|
 | GET | `/api/v1/alerts` | `AlertParams` | `PaginatedResponse<Alert>` | Yes |
-| GET | `/api/v1/alerts/recent` | — | `Alert[]` | Yes |
+| GET | `/api/v1/alerts/recent` | - | `Alert[]` | Yes |
 
 **Types:**
 

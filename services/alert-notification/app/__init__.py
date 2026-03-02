@@ -1,5 +1,5 @@
 """
-Alert Notification Service — Flask Application Factory.
+Alert Notification Service - Flask Application Factory.
 """
 
 import logging

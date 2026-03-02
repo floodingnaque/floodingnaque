@@ -5,7 +5,8 @@
  * Bottom bar with copyright notice.
  */
 
-import { Droplets, Github, ExternalLink } from 'lucide-react';
+import { Github, ExternalLink } from 'lucide-react';
+import { FloodIcon } from '@/components/icons/FloodIcon';
 import { Link } from 'react-router-dom';
 
 const SYSTEM_LINKS = [
@@ -21,11 +22,11 @@ export function Footer() {
     <footer id="footer" className="bg-primary text-white/80 font-sans">
       <div className="container mx-auto px-4 py-14">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          {/* Column 1 — Brand */}
+          {/* Column 1 - Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center">
-                <Droplets className="h-5 w-5 text-white" />
+                <FloodIcon className="h-5 w-5 text-white" />
               </div>
               <span className="text-lg font-bold text-white tracking-tight leading-none">
                 Floodingnaque
@@ -38,7 +39,7 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Column 2 — System Links */}
+          {/* Column 2 - System Links */}
           <div className="space-y-4">
             <h4 className="text-sm font-semibold uppercase tracking-wider text-white/40">
               System
@@ -69,7 +70,7 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Column 3 — Credits */}
+          {/* Column 3 - Credits */}
           <div className="space-y-4">
             <p className="text-sm text-white/60">
               Developed by Ramil &amp; Friends

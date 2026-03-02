@@ -24,10 +24,10 @@ def create_health_blueprint(service_name: str, version: str = "1.0.0") -> Bluepr
     Create a standardized health check blueprint for a service.
 
     Registers:
-      GET /health       — Full health report
-      GET /health/live  — Kubernetes liveness probe (always 200 if process alive)
-      GET /health/ready — Kubernetes readiness probe (checks dependencies)
-      GET /status       — Simple status string
+      GET /health       - Full health report
+      GET /health/live  - Kubernetes liveness probe (always 200 if process alive)
+      GET /health/ready - Kubernetes readiness probe (checks dependencies)
+      GET /status       - Simple status string
 
     Args:
         service_name: Name of the microservice
@@ -87,12 +87,12 @@ def create_health_blueprint(service_name: str, version: str = "1.0.0") -> Bluepr
 
     @health_bp.route("/health/live")
     def liveness():
-        """Kubernetes liveness probe — process is alive."""
+        """Kubernetes liveness probe - process is alive."""
         return jsonify({"status": "alive", "service": service_name}), 200
 
     @health_bp.route("/health/ready")
     def readiness():
-        """Kubernetes readiness probe — ready to accept traffic."""
+        """Kubernetes readiness probe - ready to accept traffic."""
         for dep_name, check_fn in _dependency_checks.items():
             try:
                 if not check_fn():

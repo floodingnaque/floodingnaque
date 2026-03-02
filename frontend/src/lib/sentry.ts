@@ -2,7 +2,7 @@
  * Sentry Error Monitoring
  *
  * Initialises Sentry for production error tracking.
- * Only activates when VITE_SENTRY_DSN is set — safe to import
+ * Only activates when VITE_SENTRY_DSN is set - safe to import
  * unconditionally in main.tsx.
  *
  * @example
@@ -49,7 +49,7 @@ export function initSentry(): void {
         error instanceof Error &&
         /Network Error|Failed to fetch|Load failed|ERR_NETWORK/i.test(error.message)
       ) {
-        // Drop transient connectivity errors — they overwhelm Sentry and
+        // Drop transient connectivity errors - they overwhelm Sentry and
         // are not actionable.
         return null;
       }

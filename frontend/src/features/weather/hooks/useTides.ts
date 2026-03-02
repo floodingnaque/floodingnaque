@@ -12,7 +12,7 @@ export function useCurrentTide(enabled = true) {
     queryKey: ['tides', 'current'],
     queryFn: tidesApi.getCurrent,
     enabled,
-    staleTime: 30 * 60 * 1000, // 30 min — tides change slowly
+    staleTime: 30 * 60 * 1000, // 30 min - tides change slowly
     refetchInterval: 30 * 60 * 1000,
     retry: 1,
   });

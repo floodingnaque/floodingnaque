@@ -142,7 +142,7 @@ If you need to create an admin user directly:
                print('Admin user created successfully!')
                print('Email: admin@floodingnaque.com')
                print(f'Password: {generated_password}')
-               print('⚠️  Save this password now — it will not be shown again!')
+               print('⚠️  Save this password now - it will not be shown again!')
                print('Please change this password after first login!')
        except Exception as e:
            print(f'Error: {e}')

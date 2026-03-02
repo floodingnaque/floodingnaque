@@ -467,7 +467,7 @@ Common configuration errors and resolutions:
 - [backend/docs/MODEL_MANAGEMENT.md](file://backend/docs/MODEL_MANAGEMENT.md#L1-L482)
 
 ## Conclusion
-The floodingnaque application relies on a simple, robust configuration system centered on environment variables and a minimal loader. By following the documented setup steps, using appropriate database backends, and adhering to security best practices, you can deploy and operate the system reliably in both development and production environments. Configuration directly impacts ingestion, persistence, scheduling, and model loading—ensuring correct values is essential for predictable behavior.
+The floodingnaque application relies on a simple, robust configuration system centered on environment variables and a minimal loader. By following the documented setup steps, using appropriate database backends, and adhering to security best practices, you can deploy and operate the system reliably in both development and production environments. Configuration directly impacts ingestion, persistence, scheduling, and model loading-ensuring correct values is essential for predictable behavior.
 
 [No sources needed since this section summarizes without analyzing specific files]
 

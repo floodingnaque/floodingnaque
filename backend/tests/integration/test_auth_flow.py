@@ -159,7 +159,7 @@ class TestAuthValidKey:
         """POST /api/v1/predict/ with valid key should pass the auth layer.
 
         The endpoint itself may return a 400/422/500 because no model
-        is loaded — but the status should NOT be 401.
+        is loaded - but the status should NOT be 401.
         """
         resp = auth_client.post(
             "/api/v1/predict/",
@@ -238,7 +238,7 @@ class TestAuthKeyLifecycle:
         )
         assert resp.status_code == 401
 
-        # Cleanup — un-revoke so other tests still work
+        # Cleanup - un-revoke so other tests still work
         _revoked_api_keys.clear()
         _clear_failed_attempts("127.0.0.1")
 

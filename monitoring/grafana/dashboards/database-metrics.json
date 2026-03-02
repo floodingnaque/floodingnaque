@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "Database metrics — connection pools, query latency, replication lag, and backup status for Floodingnaque PostgreSQL",
+  "description": "Database metrics - connection pools, query latency, replication lag, and backup status for Floodingnaque PostgreSQL",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -279,7 +279,7 @@
     ]
   },
   "time": { "from": "now-6h", "to": "now" },
-  "title": "Floodingnaque — Database Metrics",
+  "title": "Floodingnaque - Database Metrics",
   "uid": "floodingnaque-database-metrics",
   "version": 1
 }

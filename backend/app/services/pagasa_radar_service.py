@@ -48,7 +48,7 @@ PAGASA_API_URL = os.getenv(
 # Radar mosaic tile resolution (~1 km per pixel at Metro Manila latitudes)
 RADAR_RESOLUTION_KM = 1.0
 
-# Cache TTL for radar data (5 minutes — matches radar sweep interval)
+# Cache TTL for radar data (5 minutes - matches radar sweep interval)
 RADAR_CACHE_TTL_SECONDS = int(os.getenv("PAGASA_RADAR_CACHE_TTL", "300"))
 
 # Request timeout for PAGASA endpoints
@@ -298,7 +298,7 @@ class PAGASARadarService:
         try:
             headers = inject_correlation_headers(self._headers.copy())
 
-            # PAGASA radar precipitation endpoint — grid point extraction
+            # PAGASA radar precipitation endpoint - grid point extraction
             url = f"{PAGASA_API_URL}/v1/radar/precipitation"
             payload = {
                 "points": [{"lat": p["lat"], "lon": p["lon"]} for p in points],
@@ -324,7 +324,7 @@ class PAGASARadarService:
 
             data = _do_fetch()
 
-            # Parse response — expected: { "estimates": [ { "lat", "lon", "rainfall_mm" }, ... ] }
+            # Parse response - expected: { "estimates": [ { "lat", "lon", "rainfall_mm" }, ... ] }
             raw_estimates = data.get("estimates", [])
             for idx, point in enumerate(points):
                 rainfall = 0.0

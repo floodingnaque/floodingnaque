@@ -1,4 +1,4 @@
-"""Backward-compatible shim — canonical location is app.utils.resilience.circuit_breaker."""
+"""Backward-compatible shim - canonical location is app.utils.resilience.circuit_breaker."""
 
 import warnings as _warnings
 

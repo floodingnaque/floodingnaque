@@ -164,11 +164,11 @@ npm run test      # Run Vitest unit tests
 ```
 
 Key directories:
-- `src/components/` — Reusable UI components (shadcn/ui based)
-- `src/pages/` — Route-level page components
-- `src/stores/` — Zustand state management
-- `src/services/` — API client and data fetching
-- `src/lib/` — Shared utilities
+- `src/components/` - Reusable UI components (shadcn/ui based)
+- `src/pages/` - Route-level page components
+- `src/stores/` - Zustand state management
+- `src/services/` - API client and data fetching
+- `src/lib/` - Shared utilities
 
 ## Documentation
 

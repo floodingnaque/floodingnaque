@@ -39,7 +39,7 @@ def _resolve_db_url() -> str:
     if app_env in ("production", "prod", "staging", "stage"):
         raise ValueError(f"DATABASE_URL must be set for {app_env}")
 
-    logger.warning("DATABASE_URL not set — using SQLite for development")
+    logger.warning("DATABASE_URL not set - using SQLite for development")
     return "sqlite:///data/service.db"
 
 

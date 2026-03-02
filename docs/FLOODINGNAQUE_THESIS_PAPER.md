@@ -502,7 +502,7 @@ The results demonstrate that the Random Forest algorithm, when trained on high-q
 
 The progressive training approach revealed interesting patterns: models trained exclusively on official records (v1-v4) achieved 100% accuracy, while the introduction of PAGASA weather station data in v5 and v6 introduced natural variability that slightly reduced accuracy but improved generalization. This trade-off is beneficial for real-world deployment where the model must handle diverse weather conditions.
 
-The dominance of precipitation as a predictive feature (33.77% importance) aligns with the understanding that rainfall intensity is the primary driver of urban flooding. The significant contribution of engineered interaction features—humidity-precipitation interaction (25.53%) and temperature-precipitation interaction (20.85%)—demonstrates that the combination of multiple weather factors provides substantial predictive value beyond individual features alone, collectively accounting for over 79% of the model's decision-making.
+The dominance of precipitation as a predictive feature (33.77% importance) aligns with the understanding that rainfall intensity is the primary driver of urban flooding. The significant contribution of engineered interaction features-humidity-precipitation interaction (25.53%) and temperature-precipitation interaction (20.85%)-demonstrates that the combination of multiple weather factors provides substantial predictive value beyond individual features alone, collectively accounting for over 79% of the model's decision-making.
 
 The integration of multiple data sources strengthens the system's reliability:
 - **PAGASA weather stations** provide localized, ground-truth meteorological observations

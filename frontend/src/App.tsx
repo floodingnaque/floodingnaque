@@ -14,7 +14,7 @@ import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
 import { RouteErrorBoundary, NotFoundFallback } from '@/components/feedback/RouteErrorBoundary';
 import { CookieConsent } from '@/components/feedback/CookieConsent';
 
-// Layout & Auth (loaded eagerly — always needed)
+// Layout & Auth (loaded eagerly - always needed)
 import { Layout } from '@/app/layout';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { RequireRole } from '@/features/auth/components/RequireRole';

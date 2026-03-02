@@ -46,14 +46,14 @@ services:
       - HOST=0.0.0.0
       - PYTHONPATH=/app
       # DATABASE_URL is loaded from .env.development file (points to Supabase)
-      # Rate limiting — enabled to approximate Nginx layer behavior in staging/production.
+      # Rate limiting - enabled to approximate Nginx layer behavior in staging/production.
       # Disable temporarily with RATE_LIMIT_ENABLED=False if it interferes with rapid testing.
       - RATE_LIMIT_ENABLED=True
       - SCHEDULER_ENABLED=True
       - LOG_LEVEL=DEBUG
-      # CORS — explicit dev origins (avoids reliance on debug-mode fallback)
+      # CORS - explicit dev origins (avoids reliance on debug-mode fallback)
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000
-      # Security — stable dev keys so sessions survive restarts
+      # Security - stable dev keys so sessions survive restarts
       # WARNING: These values are for development ONLY. Never use in staging/production.
       - SECRET_KEY=dev-secret-key-not-for-production-do-not-reuse
       - JWT_SECRET_KEY=dev-jwt-secret-not-for-production-do-not-reuse

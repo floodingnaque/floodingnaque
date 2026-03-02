@@ -141,7 +141,7 @@ class SmartAlertEvaluator:
         Run the full smart-alert evaluation pipeline.
 
         Args:
-            risk_classification: Output from ``classify_risk_level()`` —
+            risk_classification: Output from ``classify_risk_level()`` -
                 must contain ``risk_level``, ``risk_label``, ``confidence``.
             weather_data: Dict with optional keys ``precipitation``,
                 ``precipitation_3h``, ``humidity``, ``tide_risk_factor``.
@@ -386,7 +386,7 @@ class SmartAlertEvaluator:
         reason: Optional[str] = None
 
         if risk_level >= 2:
-            # Already Critical — record it
+            # Already Critical - record it
             state.current_level = 2
             state.escalation_state = EscalationState.CRITICAL
             state.consecutive_safe_since = None
@@ -395,7 +395,7 @@ class SmartAlertEvaluator:
             return state.escalation_state, reason
 
         if risk_level == 1:
-            # Alert level — check for time-based escalation
+            # Alert level - check for time-based escalation
             state.consecutive_safe_since = None
 
             if state.escalation_state in (
@@ -427,7 +427,7 @@ class SmartAlertEvaluator:
                         return state.escalation_state, reason
                 return state.escalation_state, None
 
-            # Already CRITICAL via escalation — maintain
+            # Already CRITICAL via escalation - maintain
             if state.escalation_state == EscalationState.CRITICAL:
                 state.consecutive_alert_count += 1
                 return state.escalation_state, "sustained_critical"
@@ -465,7 +465,7 @@ class SmartAlertEvaluator:
                         return state.escalation_state, reason
                 return state.escalation_state, "watching"
 
-            # Already NONE or RESOLVED — stay Safe
+            # Already NONE or RESOLVED - stay Safe
             state.escalation_state = EscalationState.NONE
             state.current_level = 0
             return state.escalation_state, None

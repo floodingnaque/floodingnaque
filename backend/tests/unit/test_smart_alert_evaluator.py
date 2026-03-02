@@ -322,7 +322,7 @@ class TestEscalation:
     def test_alert_does_not_escalate_before_threshold(self, evaluator):
         now = datetime.now(timezone.utc)
         evaluator._update_escalation("loc", 1, now)
-        # 10 minutes later — should NOT escalate
+        # 10 minutes later - should NOT escalate
         later = now + timedelta(minutes=10)
         state, reason = evaluator._update_escalation("loc", 1, later)
         assert state == EscalationState.ALERT
@@ -376,13 +376,13 @@ class TestCooldown:
     def test_cooldown_after_critical(self, evaluator):
         now = datetime.now(timezone.utc)
         evaluator._mark_critical_sent("loc", now)
-        # Immediately after — should be in cooldown
+        # Immediately after - should be in cooldown
         assert evaluator._is_in_cooldown("loc", now + timedelta(seconds=10)) is True
 
     def test_cooldown_expires(self, evaluator):
         now = datetime.now(timezone.utc)
         evaluator._mark_critical_sent("loc", now)
-        # After cooldown period — should NOT be in cooldown
+        # After cooldown period - should NOT be in cooldown
         later = now + timedelta(seconds=ALERT_COOLDOWN_SECONDS + 1)
         assert evaluator._is_in_cooldown("loc", later) is False
 

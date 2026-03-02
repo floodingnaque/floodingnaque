@@ -1,5 +1,5 @@
 # ============================================================================
-# Alert Notification Service — Dependencies
+# Alert Notification Service - Dependencies
 # ============================================================================
 Flask==3.0.3
 flask-cors==6.0.0
@@ -24,7 +24,7 @@ PyJWT==2.10.1
 redis==5.2.1
 
 # Email
-# (uses stdlib smtplib — no extra dep)
+# (uses stdlib smtplib - no extra dep)
 
 # Monitoring
 prometheus-client==0.21.1

@@ -2,9 +2,9 @@
 Prediction routes.
 
 Endpoints:
-  POST /api/v1/predict/           — Run flood risk prediction
-  POST /api/v1/predict/realtime   — Real-time prediction with latest weather
-  GET  /api/v1/predict/risk-levels — Get risk level definitions
+  POST /api/v1/predict/           - Run flood risk prediction
+  POST /api/v1/predict/realtime   - Real-time prediction with latest weather
+  GET  /api/v1/predict/risk-levels - Get risk level definitions
 """
 
 import logging
@@ -129,28 +129,28 @@ def risk_levels():
             "level": "low",
             "threshold": "0.0 - 0.25",
             "color": "#22c55e",
-            "description": "Normal conditions — no flooding expected",
+            "description": "Normal conditions - no flooding expected",
             "action": "No action required",
         },
         {
             "level": "moderate",
             "threshold": "0.25 - 0.50",
             "color": "#f59e0b",
-            "description": "Elevated risk — possible minor flooding in low-lying areas",
+            "description": "Elevated risk - possible minor flooding in low-lying areas",
             "action": "Monitor conditions, prepare drainage systems",
         },
         {
             "level": "high",
             "threshold": "0.50 - 0.75",
             "color": "#ef4444",
-            "description": "High risk — flooding likely in flood-prone barangays",
+            "description": "High risk - flooding likely in flood-prone barangays",
             "action": "Issue alerts, activate emergency response teams",
         },
         {
             "level": "critical",
             "threshold": "0.75 - 1.0",
             "color": "#991b1b",
-            "description": "Severe flooding expected — immediate danger",
+            "description": "Severe flooding expected - immediate danger",
             "action": "Mandatory evacuation of affected areas",
         },
     ]

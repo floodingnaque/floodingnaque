@@ -19,7 +19,7 @@ const LEVELS = [
     dot: 'bg-risk-safe',
     threshold: '< 30 %',
     description:
-      'Flood probability is low. Normal conditions — no action needed. The system continues to monitor all weather inputs.',
+      'Flood probability is low. Normal conditions - no action needed. The system continues to monitor all weather inputs.',
   },
   {
     label: 'ALERT',
@@ -41,7 +41,7 @@ const LEVELS = [
     dot: 'bg-risk-critical',
     threshold: '≥ 75 %',
     description:
-      'High flood probability. Immediate action recommended — follow DRRMO evacuation protocols and move to designated evacuation centres.',
+      'High flood probability. Immediate action recommended - follow DRRMO evacuation protocols and move to designated evacuation centres.',
   },
 ] as const;
 
@@ -71,7 +71,7 @@ export function RiskExplainer() {
             Understanding Flood Risk Levels
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Every prediction is reduced to one of three actionable levels — matching exactly what
+            Every prediction is reduced to one of three actionable levels - matching exactly what
             you see on the dashboard.
           </p>
         </div>

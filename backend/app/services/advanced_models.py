@@ -1,5 +1,5 @@
 """
-Advanced ML Models — XGBoost, LightGBM & Ensemble Classifiers.
+Advanced ML Models - XGBoost, LightGBM & Ensemble Classifiers.
 
 Provides:
 - XGBoostFloodClassifier  : XGBoost wrapper with flood-tuned defaults
@@ -50,7 +50,7 @@ from sklearn.model_selection import (
 logger = logging.getLogger(__name__)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Optional imports — graceful fallback if XGBoost / LightGBM not installed
+# Optional imports - graceful fallback if XGBoost / LightGBM not installed
 # ═════════════════════════════════════════════════════════════════════════════
 try:
     from xgboost import XGBClassifier as _XGBClassifierBase
@@ -238,7 +238,7 @@ def create_xgboost_model(
     config : XGBoostConfig, optional
         Custom configuration.  Falls back to sensible defaults.
     y_train : pd.Series, optional
-        Training labels — used to auto-calculate ``scale_pos_weight``
+        Training labels - used to auto-calculate ``scale_pos_weight``
         for class imbalance.
 
     Returns
@@ -339,7 +339,7 @@ def create_ensemble_model(
     # ── XGBoost ─────────────────────────────────────────────────────────────
     if ensemble_config.include_xgboost:
         if not _XGBOOST_AVAILABLE:
-            logger.warning("XGBoost requested for ensemble but not installed — skipping")
+            logger.warning("XGBoost requested for ensemble but not installed - skipping")
         else:
             xgb = create_xgboost_model(config=xgb_config, y_train=y_train)
             estimators.append(("xgb", xgb))
@@ -347,7 +347,7 @@ def create_ensemble_model(
     # ── LightGBM ────────────────────────────────────────────────────────────
     if ensemble_config.include_lightgbm:
         if not _LIGHTGBM_AVAILABLE:
-            logger.warning("LightGBM requested for ensemble but not installed — skipping")
+            logger.warning("LightGBM requested for ensemble but not installed - skipping")
         else:
             lgbm = create_lightgbm_model(config=lgbm_config)
             estimators.append(("lgbm", lgbm))
@@ -548,14 +548,14 @@ def compare_models(
             xgb = create_xgboost_model(y_train=y_train)
             results.append(_evaluate("XGBoost", "XGBClassifier", xgb))
         else:
-            logger.warning("XGBoost not installed — skipping comparison")
+            logger.warning("XGBoost not installed - skipping comparison")
 
     if include_lightgbm:
         if _LIGHTGBM_AVAILABLE:
             lgbm = create_lightgbm_model()
             results.append(_evaluate("LightGBM", "LGBMClassifier", lgbm))
         else:
-            logger.warning("LightGBM not installed — skipping comparison")
+            logger.warning("LightGBM not installed - skipping comparison")
 
     if include_ensemble and len(trained_models) >= 2:
         ensemble = create_ensemble_model(y_train=y_train)

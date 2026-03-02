@@ -4,7 +4,7 @@
  * Wraps the HTML5 Geolocation API (navigator.geolocation) with React state
  * management. Provides loading, error, and coordinate states.
  *
- * No GPS API key required — uses the browser's built-in Geolocation API.
+ * No GPS API key required - uses the browser's built-in Geolocation API.
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
  */
@@ -55,7 +55,7 @@ function getGeolocationErrorMessage(error: GeolocationPositionError): string {
 }
 
 /**
- * useGeolocation — React hook for HTML5 Geolocation API
+ * useGeolocation - React hook for HTML5 Geolocation API
  *
  * @param options - Optional PositionOptions (enableHighAccuracy, timeout, maximumAge)
  * @returns Geolocation state and request function

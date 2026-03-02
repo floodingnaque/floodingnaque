@@ -39,7 +39,7 @@ const sizeConfig = {
 
 /**
  * Displays SSE connection status with visual feedback.
- * Reads state directly from the alert store — no props needed.
+ * Reads state directly from the alert store - no props needed.
  */
 export function ConnectionStatus({
   className,

@@ -1,7 +1,7 @@
 """
 Unit tests for prediction service.
 
-Tests for app/services/risk_classifier.py — classify_risk_level(),
+Tests for app/services/risk_classifier.py - classify_risk_level(),
 format_alert_message(), and get_risk_thresholds().
 """
 

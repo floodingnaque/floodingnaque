@@ -370,7 +370,7 @@ python main.py
 | F1 Score | 95%+ | Weighted average across classes |
 | ROC-AUC | 0.98+ | Area under ROC curve |
 
-> **Important — Accuracy Disclaimer:** The thesis reports 100% accuracy on
+> **Important - Accuracy Disclaimer:** The thesis reports 100% accuracy on
 > the official DRRMO historical records dataset (N ≈ 200). This result is
 > expected when a Random Forest classifier operates on a small, clean,
 > well-separated dataset and does **not** imply equivalent performance on

@@ -41,7 +41,7 @@ def _send_email(recipient: str, subject: str, text_body: str, html_body: str) ->
     """
     cfg = _get_smtp_config()
     if not all([cfg["host"], cfg["username"], cfg["password"]]):
-        logger.error("SMTP credentials not configured — cannot send email")
+        logger.error("SMTP credentials not configured - cannot send email")
         return False
 
     msg = MIMEMultipart("alternative")

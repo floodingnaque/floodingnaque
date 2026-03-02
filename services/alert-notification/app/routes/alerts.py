@@ -2,14 +2,14 @@
 Alert management routes.
 
 Endpoints:
-  GET  /api/v1/alerts/          — List active alerts
-  POST /api/v1/alerts/          — Create a new alert
-  GET  /api/v1/alerts/<id>      — Get alert details
-  PUT  /api/v1/alerts/<id>      — Update alert status
-  GET  /api/v1/alerts/history   — Get alert history
-  GET  /api/v1/alerts/recent    — Get recent alerts
-  GET  /api/v1/alerts/stats     — Get alert statistics
-  POST /api/v1/alerts/resolve   — Resolve/dismiss an alert
+  GET  /api/v1/alerts/          - List active alerts
+  POST /api/v1/alerts/          - Create a new alert
+  GET  /api/v1/alerts/<id>      - Get alert details
+  PUT  /api/v1/alerts/<id>      - Update alert status
+  GET  /api/v1/alerts/history   - Get alert history
+  GET  /api/v1/alerts/recent    - Get recent alerts
+  GET  /api/v1/alerts/stats     - Get alert statistics
+  POST /api/v1/alerts/resolve   - Resolve/dismiss an alert
 """
 
 import logging
@@ -50,7 +50,7 @@ def create_alert():
     Body:
       {
         "severity": "high",
-        "title": "Flash Flood Warning — Barangay San Isidro",
+        "title": "Flash Flood Warning - Barangay San Isidro",
         "message": "Heavy rainfall detected...",
         "affected_areas": ["San Isidro", "BF Homes"],
         "flood_probability": 0.82,

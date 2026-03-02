@@ -39,11 +39,11 @@ npm run build  # produces dist/
 # Deploy to VPS (scp, rsync, or CI/CD)
 scp -r dist/ user@YOUR_VPS:/opt/floodingnaque/frontend/dist/
 
-# On the VPS — start all services
+# On the VPS - start all services
 cd /opt/floodingnaque
 docker compose -f compose.production.yaml --profile nginx --profile monitoring up -d --build
 
-# Optional — add observability stack
+# Optional - add observability stack
 docker compose -f compose.production.yaml -f compose.observability.yaml \
   --profile nginx --profile monitoring up -d --build
 ```

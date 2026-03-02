@@ -1,5 +1,5 @@
 /**
- * ModelManagement Component (P2 — HIGH VALUE)
+ * ModelManagement Component (P2 - HIGH VALUE)
  *
  * Model version comparison table and feature importance chart
  * for the Admin dashboard. Data sourced from paranaque.ts constants.

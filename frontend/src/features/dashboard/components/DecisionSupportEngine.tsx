@@ -102,7 +102,7 @@ const RISK_CONFIG: Record<RiskLevel, {
   2: {
     icon: ShieldAlert,
     title: 'High Risk Response Protocol',
-    subtitle: 'Immediate action recommended — activate emergency procedures',
+    subtitle: 'Immediate action recommended - activate emergency procedures',
     badgeLabel: 'HIGH RISK',
     badgeClass: 'bg-risk-critical text-white',
     borderClass: 'border-risk-critical/30',
@@ -110,7 +110,7 @@ const RISK_CONFIG: Record<RiskLevel, {
   },
   1: {
     icon: AlertTriangle,
-    title: 'Moderate Risk — Preparedness Mode',
+    title: 'Moderate Risk - Preparedness Mode',
     subtitle: 'Elevated monitoring and team readiness',
     badgeLabel: 'MODERATE',
     badgeClass: 'bg-risk-alert text-black',
@@ -120,7 +120,7 @@ const RISK_CONFIG: Record<RiskLevel, {
   0: {
     icon: ShieldCheck,
     title: 'Normal Operations',
-    subtitle: 'No elevated flood risk detected — routine monitoring active',
+    subtitle: 'No elevated flood risk detected - routine monitoring active',
     badgeLabel: 'SAFE',
     badgeClass: 'bg-risk-safe text-white',
     borderClass: 'border-risk-safe/30',
@@ -222,7 +222,7 @@ export const DecisionSupportEngine = memo(function DecisionSupportEngine({
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center py-4">
-            {config.title} — standard monitoring is active.
+            {config.title} - standard monitoring is active.
           </p>
         )}
       </CardContent>

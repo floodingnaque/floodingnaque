@@ -1,4 +1,4 @@
-# Microservices Architecture — Floodingnaque
+# Microservices Architecture - Floodingnaque
 
 ## Overview
 
@@ -34,7 +34,7 @@ The monolithic Flask backend has been decomposed into **5 independent microservi
 | **Responsibility** | Collects weather data from external APIs (Meteostat, Google Weather, PAGASA, WorldTides, MMDA) on scheduled intervals |
 | **Key Routes** | `GET /api/v1/weather/current`, `POST /api/v1/weather/ingest`, `GET /api/v1/weather/tides`, `GET /api/v1/weather/data` |
 | **Events Published** | `weather.data.collected`, `weather.tides.collected`, `weather.data.ingested` |
-| **Scheduling** | APScheduler — weather every 15 min, tides every 60 min |
+| **Scheduling** | APScheduler - weather every 15 min, tides every 60 min |
 
 ### 2. ML Prediction (`services/ml-prediction/`, port 5002)
 
@@ -44,7 +44,7 @@ The monolithic Flask backend has been decomposed into **5 independent microservi
 | **Key Routes** | `POST /api/v1/predict/`, `GET /api/v1/predict/recent`, `POST /api/v1/predict/batch`, `GET /api/v1/models/` |
 | **Events Published** | `prediction.completed`, `model.retrain.started` |
 | **Events Consumed** | `weather.data.collected` (triggers automatic prediction) |
-| **Resources** | Large — CPU/memory intensive for ML inference |
+| **Resources** | Large - CPU/memory intensive for ML inference |
 
 ### 3. Alert Notification (`services/alert-notification/`, port 5003)
 
@@ -69,9 +69,9 @@ The monolithic Flask backend has been decomposed into **5 independent microservi
 
 | Aspect | Detail |
 |--------|--------|
-| **Responsibility** | Aggregates data from all other services to power the frontend dashboard — summary views, statistics, activity feed, data export, GIS map layers |
+| **Responsibility** | Aggregates data from all other services to power the frontend dashboard - summary views, statistics, activity feed, data export, GIS map layers |
 | **Key Routes** | `GET /api/v1/dashboard/summary`, `GET /api/v1/dashboard/predictions/`, `GET /api/v1/dashboard/export/`, `GET /api/v1/dashboard/gis/risk-zones` |
-| **Pattern** | Backend-for-Frontend (BFF) — makes parallel calls to downstream services |
+| **Pattern** | Backend-for-Frontend (BFF) - makes parallel calls to downstream services |
 | **Caching** | Redis with configurable TTL to reduce downstream load |
 
 ## Shared Package (`services/shared/`)
@@ -80,7 +80,7 @@ Common utilities imported by all services:
 
 | Module | Purpose |
 |--------|---------|
-| `config.py` | `BaseServiceConfig` dataclass — reads env vars, Docker secrets (`_FILE` pattern), service URLs |
+| `config.py` | `BaseServiceConfig` dataclass - reads env vars, Docker secrets (`_FILE` pattern), service URLs |
 | `database.py` | SQLAlchemy engine singleton, `get_db_session()` context manager |
 | `auth.py` | JWT creation/verification, `@require_auth` and `@require_role()` decorators, inter-service tokens |
 | `health.py` | Blueprint factory for `/health`, `/health/live`, `/health/ready`, `/status` |
@@ -112,11 +112,11 @@ alert-notification ──▶  alert.triggered         ──▶  (logged / dashb
 ### API Gateway (nginx)
 
 Path-based routing with:
-- **Rate limiting** — auth endpoints: 10 req/s, general API: 30 req/s, predictions: 5 req/s
-- **SSE support** — unbuffered proxy for `/api/v1/alerts/stream`
-- **CORS** — preflight handling for all `/api/*` routes
-- **Error pages** — RFC 7807 JSON error responses for 429, 502, 503, 504
-- **Request tracing** — `X-Request-ID` header propagation
+- **Rate limiting** - auth endpoints: 10 req/s, general API: 30 req/s, predictions: 5 req/s
+- **SSE support** - unbuffered proxy for `/api/v1/alerts/stream`
+- **CORS** - preflight handling for all `/api/*` routes
+- **Error pages** - RFC 7807 JSON error responses for 429, 502, 503, 504
+- **Request tracing** - `X-Request-ID` header propagation
 
 ## Deployment
 

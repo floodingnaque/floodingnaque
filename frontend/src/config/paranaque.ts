@@ -3,7 +3,7 @@
  *
  * All 16 barangays with coordinates, evacuation centers, and
  * emergency contacts sourced from DRRMO records.
- * Single source of truth for the frontend — matches backend constants.py.
+ * Single source of truth for the frontend - matches backend constants.py.
  */
 
 // ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ export interface BarangayData {
   /** Center coordinate for map marker / API calls */
   lat: number;
   lon: number;
-  /** Population (2020 census) — display only */
+  /** Population (2020 census) - display only */
   population: number;
   /** Polygon coordinates [lat, lon][] for map overlay (simplified boundaries) */
   polygon: [number, number][];
@@ -259,12 +259,12 @@ export const EMERGENCY_CONTACTS = {
   fireStation: {
     name: 'Parañaque Fire Station',
     phone: '(02) 8825-1099',
-    description: 'Bureau of Fire Protection — Parañaque',
+    description: 'Bureau of Fire Protection - Parañaque',
   },
   pnp: {
     name: 'Parañaque PNP',
     phone: '(02) 8826-3906',
-    description: 'Philippine National Police — Parañaque Station',
+    description: 'Philippine National Police - Parañaque Station',
   },
   redCross: {
     name: 'Philippine Red Cross',

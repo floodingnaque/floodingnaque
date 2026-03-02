@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Dashboard API Service — Main Entry Point
+Dashboard API Service - Main Entry Point
 
 Responsible for:
 - Aggregating data from all other microservices for the frontend dashboard

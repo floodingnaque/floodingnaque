@@ -1,8 +1,8 @@
-# Floodingnaque — AI Coding Instructions
+# Floodingnaque - AI Coding Instructions
 
 ## Project Context
 
-**Thesis project** — an academic flood prediction system for Parañaque City built for defense and publication. Prioritize reproducibility (random_state=42, deterministic splits), publication-quality outputs (300 DPI figures), and clear model provenance. The system trains a Random Forest classifier on 3,700+ official DRRMO flood records (2022–2025) with 3-level risk classification (Safe/Alert/Critical).
+**Thesis project** - an academic flood prediction system for Parañaque City built for defense and publication. Prioritize reproducibility (random_state=42, deterministic splits), publication-quality outputs (300 DPI figures), and clear model provenance. The system trains a Random Forest classifier on 3,700+ official DRRMO flood records (2022–2025) with 3-level risk classification (Safe/Alert/Critical).
 
 ## Architecture
 
@@ -14,7 +14,7 @@ backend/            Flask API (Python 3.12+, Gunicorn)
     schemas/        Request/response validation (prediction.py, weather.py)
   app/services/     21 modules: ModelLoader singleton, weather fallback chain,
                     risk_classifier, scheduler, celery tasks, model versioning
-  app/models/       SQLAlchemy ORM — Alembic-only migrations, soft-delete pattern
+  app/models/       SQLAlchemy ORM - Alembic-only migrations, soft-delete pattern
   app/core/         Config dataclass, JWT/bcrypt security, RFC 7807 exceptions
   app/utils/        Caching, circuit breakers, W3C tracing, validation, metrics
   config/           YAML training pipeline config + Pydantic schema validation
@@ -27,7 +27,7 @@ frontend/           React 19 + TypeScript 5.9 + Vite 7
   src/lib/          Axios API client with JWT refresh queue, cn() utility
   src/types/api/    Shared types: ApiResponse<T>, PaginatedResponse<T>
   src/components/ui/ shadcn/ui primitives (Radix + Tailwind)
-compose.yaml        Base anchors — included by environment-specific files
+compose.yaml        Base anchors - included by environment-specific files
 compose.{env}.yaml  development (Supabase), staging, production overlays
 ```
 
@@ -35,21 +35,21 @@ compose.{env}.yaml  development (Supabase), staging, production overlays
 
 ### Backend
 
-- **App factory**: `create_app()` in `app/api/app.py` — registers blueprints, extensions, W3C tracing hooks, RFC 7807 error handlers. Entry point: `main.py` (also exposes `application` for Gunicorn).
-- **Two config systems**: (1) `app/core/config.py` — `@dataclass Config` singleton for API runtime, reads `.env.{APP_ENV}`, validates production requirements. (2) `config/__init__.py` — YAML hierarchy (`training_config.yaml` → `{env}.yaml` → `FLOODINGNAQUE_*` env vars → resource auto-detection) for ML pipeline, validated by Pydantic models in `config/schema.py`. Supports hot-reload via SIGHUP.
+- **App factory**: `create_app()` in `app/api/app.py` - registers blueprints, extensions, W3C tracing hooks, RFC 7807 error handlers. Entry point: `main.py` (also exposes `application` for Gunicorn).
+- **Two config systems**: (1) `app/core/config.py` - `@dataclass Config` singleton for API runtime, reads `.env.{APP_ENV}`, validates production requirements. (2) `config/__init__.py` - YAML hierarchy (`training_config.yaml` → `{env}.yaml` → `FLOODINGNAQUE_*` env vars → resource auto-detection) for ML pipeline, validated by Pydantic models in `config/schema.py`. Supports hot-reload via SIGHUP.
 - **ModelLoader singleton** (`app/services/predict.py`): Lazy-loads `.joblib` models with HMAC verification. `get_instance()`/`reset_instance()` for testability. Prediction returns `{prediction, risk_level, confidence}`.
 - **RiskClassifier** (`app/services/risk_classifier.py`): Maps flood probability + precipitation + humidity → Safe/Alert/Critical. This is the core domain logic.
 - **Weather fallback chain**: Meteostat → OpenWeatherMap → Google Earth Engine. Each has sync + async variants and typed dataclasses (`*_types.py`). Circuit breakers protect external calls.
 - **Database**: Alembic manages all schema changes. Models use soft-delete (`is_deleted`, `deleted_at`, `soft_delete()`, `restore()`). Session via `get_db_session()` context manager. Engine uses lazy singleton with thread-safe double-checked locking.
-- **API responses**: `api_success(data)`, `api_error(message, status)`, `api_created(data)` from `app/core/exceptions.py`. Never return raw dicts — always use these helpers.
+- **API responses**: `api_success(data)`, `api_error(message, status)`, `api_created(data)` from `app/core/exceptions.py`. Never return raw dicts - always use these helpers.
 - **Docker Secrets**: `get_secret("KEY")` checks `KEY_FILE` env var first, falls back to `KEY`.
 
 ### Frontend
 
-- **Feature modules**: `src/features/{name}/` with `components/`, `hooks/`, `services/`, barrel `index.ts`. Each is self-contained — import via `@/features/{name}`. Components export skeleton loading variants (e.g., `StatsCards` + `StatsCardsSkeleton`).
-- **State split**: Server state → TanStack Query hooks in feature `hooks/` (query keys use factory pattern). Client state → Zustand stores. Never mix — no Zustand for server-fetched data.
+- **Feature modules**: `src/features/{name}/` with `components/`, `hooks/`, `services/`, barrel `index.ts`. Each is self-contained - import via `@/features/{name}`. Components export skeleton loading variants (e.g., `StatsCards` + `StatsCardsSkeleton`).
+- **State split**: Server state → TanStack Query hooks in feature `hooks/` (query keys use factory pattern). Client state → Zustand stores. Never mix - no Zustand for server-fetched data.
 - **API client** (`src/lib/api-client.ts`): Axios with 30s timeout, automatic JWT refresh with concurrent retry queue, typed helpers that unwrap `response.data`. Endpoints in `src/config/api.config.ts`. CSRF token attached on mutating requests.
-- **Zustand**: Separate `State` and `Actions` interfaces. Granular selector hooks (`useUser()`, `useIsAuthenticated()`) — never `useStore()` directly. `partialize` excludes tokens from localStorage.
+- **Zustand**: Separate `State` and `Actions` interfaces. Granular selector hooks (`useUser()`, `useIsAuthenticated()`) - never `useStore()` directly. `partialize` excludes tokens from localStorage.
 - **UI**: shadcn/ui components in `src/components/ui/`, feedback components in `src/components/feedback/`. Compose with `cn()` from `src/lib/cn.ts`. Icons: `lucide-react`. Dark mode via CSS class.
 - **Path alias**: `@/` → `src/` in both `vite.config.ts` and `tsconfig.json`.
 
@@ -76,11 +76,11 @@ Each version saves: `.joblib` model, `.json` metadata (date, params, metrics, fe
 
 `compose.yaml` defines shared YAML anchors (`x-backend-base`, `x-redis-base`, `x-postgres-base`, healthcheck templates). Environment files **include** the base via the `include` directive (requires Compose v2.20+):
 
-- `compose.development.yaml` — Supabase-connected dev setup
-- `compose.staging.yaml` — staging with `OWM_API_KEY`
-- `compose.production.yaml` — full stack with PgBouncer, Nginx, monitoring profiles
-- `compose.mlflow.yaml` — MLflow tracking server
-- `compose.observability.yaml` — Prometheus + Grafana + Alertmanager
+- `compose.development.yaml` - Supabase-connected dev setup
+- `compose.staging.yaml` - staging with `OWM_API_KEY`
+- `compose.production.yaml` - full stack with PgBouncer, Nginx, monitoring profiles
+- `compose.mlflow.yaml` - MLflow tracking server
+- `compose.observability.yaml` - Prometheus + Grafana + Alertmanager
 
 Use `docker compose -f compose.{env}.yaml up -d`, never edit `compose.yaml` anchors without checking downstream files.
 
@@ -134,5 +134,5 @@ pre-commit run --all-files    # black, isort, flake8, mypy, bandit, eslint, tsc,
 - **Branching**: `main`/`develop` + feature branches. CI on both + PRs.
 - **New API route**: Create blueprint in `app/api/routes/`, register in `create_app()`. Apply decorators: `@require_api_key`, `@rate_limit_with_burst`, `@validate_request_size`. Return via `api_success()`/`api_error()`.
 - **New frontend feature**: Create `src/features/{name}/` with `components/`, `hooks/`, `services/`, `index.ts` barrel. Add lazy route in `App.tsx`. Server data via TanStack Query hook, not Zustand.
-- **Database changes**: Alembic migration only — `alembic revision --autogenerate -m "msg"` then `alembic upgrade head`. Never raw DDL.
+- **Database changes**: Alembic migration only - `alembic revision --autogenerate -m "msg"` then `alembic upgrade head`. Never raw DDL.
 - **Model changes**: Retrain via progressive pipeline, compare with `compare_models.py`, regenerate thesis report.

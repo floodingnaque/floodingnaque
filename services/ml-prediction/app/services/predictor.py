@@ -1,5 +1,5 @@
 """
-Flood Prediction Service — Core ML Predictor.
+Flood Prediction Service - Core ML Predictor.
 
 Manages ML model lifecycle:
 - Model loading (joblib/pickle) with HMAC integrity verification
@@ -149,7 +149,7 @@ class FloodPredictor:
         model = self._models.get(model_type)
         if model is None:
             # Return a default prediction if no model loaded
-            logger.warning("No model loaded for %s — returning default prediction", model_type)
+            logger.warning("No model loaded for %s - returning default prediction", model_type)
             return self._default_prediction(features, model_type)
 
         try:
@@ -246,7 +246,7 @@ class FloodPredictor:
             "features_used": list(features.keys()),
             "prediction_time_ms": 0.1,
             "contributing_factors": [],
-            "warning": "Using rule-based fallback — ML model not loaded",
+            "warning": "Using rule-based fallback - ML model not loaded",
         }
 
     def predict_from_latest(self) -> Dict[str, Any]:
@@ -289,7 +289,7 @@ class FloodPredictor:
         ]
 
     def trigger_retrain(self, model_type: str = "random_forest") -> Dict:
-        """Trigger model retraining (stub — actual training in background)."""
+        """Trigger model retraining (stub - actual training in background)."""
         logger.info("Retraining triggered for %s", model_type)
         return {"status": "queued", "model": model_type}
 

@@ -254,7 +254,7 @@ def stream_alerts():
     # Enforce per-IP concurrent connection cap
     if not _track_ip_connect(client_ip):
         logger.warning(
-            f"SSE connection rejected — per-IP cap ({MAX_SSE_CONNECTIONS_PER_IP}) "
+            f"SSE connection rejected - per-IP cap ({MAX_SSE_CONNECTIONS_PER_IP}) "
             f"exceeded for {client_ip} [{request_id}]"
         )
         return (
@@ -326,7 +326,7 @@ def get_sse_ticket():
     # Accept JWT Bearer token for authentication
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        # Authenticated user — issue a ticket
+        # Authenticated user - issue a ticket
         ticket = secrets.token_urlsafe(32)
         # Store ticket with expiry (simple in-memory store)
         _sse_tickets[ticket] = {
@@ -338,7 +338,7 @@ def get_sse_ticket():
 
         return jsonify({"ticket": ticket, "expires_in": SSE_TICKET_TTL}), 200
 
-    # No auth — still issue ticket in development for simplicity
+    # No auth - still issue ticket in development for simplicity
     ticket = secrets.token_urlsafe(32)
     _sse_tickets[ticket] = {
         "created": time.time(),
