@@ -6,34 +6,34 @@
 -r requirements.txt
 
 # Development Tools
-jupyter==1.0.0
+jupyter==1.1.1
 ipython==8.18.1
 
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.24.0  # Testing async code with pytest
 pytest-cov==6.0.0
-pytest-mock==3.14.0  # Mock objects for pytest
-pytest-xdist==3.5.0  # Parallel test execution
+pytest-mock==3.15.1  # Mock objects for pytest
+pytest-xdist==3.8.0  # Parallel test execution
 faker==21.0.0  # Generate test data
-responses==0.24.1  # Mock requests library
-httpx==0.25.2  # Async HTTP client for testing
+responses==0.26.0  # Mock requests library
+httpx==0.28.1  # Async HTTP client for testing
 
 # Load Testing
-locust==2.20.1  # Load/performance testing
+locust==2.43.3  # Load/performance testing
 
 # Security Testing
-bandit==1.7.6  # Security linting
-safety==3.2.0  # Dependency vulnerability checking
-pip-audit==2.7.3  # CVE scanning for Python dependencies (CI/CD integration)
+bandit==1.9.4  # Security linting
+safety==3.7.0  # Dependency vulnerability checking
+pip-audit==2.10.0  # CVE scanning for Python dependencies (CI/CD integration)
 
 # Model Explainability (optional, large dependency)
 shap>=0.42.0
 
 # Test Coverage and Reporting
-coverage==7.6.0
-coverage-badge==1.1.0
-pytest-html==4.1.1  # HTML test reports
+coverage==7.13.4
+coverage-badge==1.1.2
+pytest-html==4.2.0  # HTML test reports
 
 # Code Quality & Pre-commit Hooks
 pre-commit>=3.5.0  # Git hooks framework
@@ -54,5 +54,5 @@ pact-python==2.2.2  # Consumer-driven contract testing
 syrupy==4.6.1  # Snapshot testing framework
 
 # Google Cloud Development Tools
-google-cloud-bigquery-storage==2.27.0  # Fast BigQuery reads for testing
+google-cloud-bigquery-storage==2.36.2  # Fast BigQuery reads for testing
 # Note: Use unittest.mock or pytest-mock for mocking Google Cloud services
