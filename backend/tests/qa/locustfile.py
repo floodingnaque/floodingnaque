@@ -5,7 +5,7 @@ Run: locust -f tests/qa/locustfile.py --host=http://localhost:5000 \
             --users 100 --spawn-rate 10 --run-time 10m --headless
 """
 
-from locust import HttpUser, task, between
+from locust import HttpUser, between, task
 
 API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}

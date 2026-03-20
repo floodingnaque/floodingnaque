@@ -28,13 +28,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import joblib
-import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier, VotingClassifier
-from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
-from sklearn.metrics import accuracy_score, classification_report, f1_score
-
 from app.services.data_aggregation_service import DataBundle
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +118,7 @@ class ModelRegistry:
         # HMAC signing (reuse predict.py pattern)
         hmac_sig = None
         try:
-            from app.services.predict import compute_model_hmac_signature, _get_model_signing_key
+            from app.services.predict import _get_model_signing_key, compute_model_hmac_signature
 
             key = _get_model_signing_key()
             if key:
@@ -239,7 +237,10 @@ class EnsembleTrainer:
         """
         logger.info(
             "Training ensemble %s on %d samples, %d features, cv=%d",
-            version, len(X), X.shape[1], self.cv_folds,
+            version,
+            len(X),
+            X.shape[1],
+            self.cv_folds,
         )
 
         # Stratified train/val split for held-out evaluation
@@ -298,8 +299,11 @@ class EnsembleTrainer:
 
         logger.info(
             "Ensemble %s trained: cv=%.4f±%.4f, val_acc=%.4f, val_f1=%.4f",
-            version, metrics["cv_mean"], metrics["cv_std"],
-            val_accuracy, val_f1,
+            version,
+            metrics["cv_mean"],
+            metrics["cv_std"],
+            val_accuracy,
+            val_f1,
         )
         return artifact
 

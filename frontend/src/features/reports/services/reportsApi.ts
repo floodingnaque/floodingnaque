@@ -203,8 +203,6 @@ export const reportsApi = {
     status: "pending" | "running" | "completed" | "failed";
     downloadUrl?: string;
   }> => {
-    return api.get(
-        `${"/api/v1/reports/status"}/${taskId}`,
-    );
+    return api.get(`${"/api/v1/reports/status"}/${taskId}`);
   },
 };

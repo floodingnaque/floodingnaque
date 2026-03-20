@@ -28,6 +28,7 @@ community_reports_bp = Blueprint("community_reports", __name__)
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
+
 def _serialize_report(report: CommunityReport) -> dict:
     """Serialize a report with computed ``time_ago`` string."""
     data = report.to_dict()
@@ -93,13 +94,14 @@ def _resolve_user_id():
         return None
     try:
         from app.core.security import decode_token
+
         token = auth_header.split(" ", 1)[1]
         payload, error = decode_token(token)
         if not error and payload:
             sub = payload.get("sub")
             if sub is not None:
                 return int(sub)
-    except Exception:
+    except Exception:  # nosec B110 — intentional fallback for JWT decode
         pass
     return None
 
@@ -108,6 +110,7 @@ def _post_create_tasks(report_id: int, report_data: dict, risk_label: str, cred_
     """Fire-and-forget credibility scoring and SSE broadcast after report creation."""
     try:
         from app.services.celery_app import celery_app
+
         celery_app.send_task(
             "app.services.tasks.score_community_report",
             args=[report_id],
@@ -122,6 +125,7 @@ def _post_create_tasks(report_id: int, report_data: dict, risk_label: str, cred_
 
     try:
         from app.api.routes.sse import get_sse_manager
+
         sse = get_sse_manager()
         sse.broadcast("flood_report", report_data)
         if risk_label == "Critical" and cred_score >= 0.6:
@@ -131,6 +135,7 @@ def _post_create_tasks(report_id: int, report_data: dict, risk_label: str, cred_
 
 
 # ── POST / — Submit a new report ────────────────────────────────────────
+
 
 @community_reports_bp.route("/", methods=["POST"])
 @rate_limit_with_burst("10 per hour")
@@ -164,7 +169,11 @@ def create_report():
             return jsonify({"success": False, "error": "description must be at most 280 characters"}), 400
 
         # Reverse-geocode barangay (use override if provided)
-        barangay = barangay_override.strip() if barangay_override and barangay_override.strip() else reverse_geocode_barangay(lat, lon)
+        barangay = (
+            barangay_override.strip()
+            if barangay_override and barangay_override.strip()
+            else reverse_geocode_barangay(lat, lon)
+        )
 
         # Get authenticated user (optional)
         user_id = _resolve_user_id()
@@ -210,6 +219,7 @@ def create_report():
 
 # ── GET /stats — Aggregate stats ────────────────────────────────────────
 
+
 @community_reports_bp.route("/stats", methods=["GET"])
 @rate_limit_with_burst("60 per minute")
 def report_stats():
@@ -232,15 +242,20 @@ def report_stats():
             pending = base.filter(CommunityReport.status == "pending").count()
             critical = base.filter(CommunityReport.risk_label == "Critical").count()
 
-            return jsonify({
-                "success": True,
-                "stats": {
-                    "total": total,
-                    "verified": verified,
-                    "pending": pending,
-                    "critical": critical,
-                },
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "stats": {
+                            "total": total,
+                            "verified": verified,
+                            "pending": pending,
+                            "critical": critical,
+                        },
+                    }
+                ),
+                200,
+            )
 
     except Exception as exc:
         logger.error("Failed to get report stats: %s", exc, exc_info=True)
@@ -248,6 +263,7 @@ def report_stats():
 
 
 # ── GET / — List reports (paginated) ────────────────────────────────────
+
 
 @community_reports_bp.route("/", methods=["GET"])
 @rate_limit_with_burst("60 per minute")
@@ -265,12 +281,9 @@ def list_reports():
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         with get_db_session() as session:
-            query = (
-                session.query(CommunityReport)
-                .filter(
-                    CommunityReport.is_deleted.is_(False),
-                    CommunityReport.created_at >= cutoff,
-                )
+            query = session.query(CommunityReport).filter(
+                CommunityReport.is_deleted.is_(False),
+                CommunityReport.created_at >= cutoff,
             )
 
             if barangay:
@@ -284,20 +297,20 @@ def list_reports():
             total = query.count()
             pages = max(1, (total + limit - 1) // limit)
 
-            reports = (
-                query.order_by(CommunityReport.created_at.desc())
-                .offset(offset)
-                .limit(limit)
-                .all()
-            )
+            reports = query.order_by(CommunityReport.created_at.desc()).offset(offset).limit(limit).all()
 
-            return jsonify({
-                "success": True,
-                "reports": [_serialize_report(r) for r in reports],
-                "total": total,
-                "pages": pages,
-                "page": page,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "reports": [_serialize_report(r) for r in reports],
+                        "total": total,
+                        "pages": pages,
+                        "page": page,
+                    }
+                ),
+                200,
+            )
 
     except Exception as exc:
         logger.error("Failed to list reports: %s", exc, exc_info=True)
@@ -305,6 +318,7 @@ def list_reports():
 
 
 # ── GET /<id> — Single report detail ────────────────────────────────────
+
 
 @community_reports_bp.route("/<int:report_id>", methods=["GET"])
 @rate_limit_with_burst("60 per minute")
@@ -329,6 +343,7 @@ def get_report(report_id: int):
 
 # ── PATCH /<id> — Edit own report (within 10 minutes) ──────────────────
 
+
 @community_reports_bp.route("/<int:report_id>", methods=["PATCH"])
 @rate_limit_with_burst("30 per hour")
 @require_auth_or_api_key
@@ -351,9 +366,14 @@ def edit_report(report_id: int):
             if report.user_id != user_id:
                 return jsonify({"success": False, "error": "You can only edit your own reports"}), 403
 
-            created = report.created_at.replace(tzinfo=timezone.utc) if report.created_at else datetime.now(timezone.utc)
+            created = (
+                report.created_at.replace(tzinfo=timezone.utc) if report.created_at else datetime.now(timezone.utc)
+            )
             if datetime.now(timezone.utc) - created > timedelta(minutes=10):
-                return jsonify({"success": False, "error": "Reports can only be edited within 10 minutes of creation"}), 403
+                return (
+                    jsonify({"success": False, "error": "Reports can only be edited within 10 minutes of creation"}),
+                    403,
+                )
 
             # Editable fields
             if "description" in data:
@@ -380,6 +400,7 @@ def edit_report(report_id: int):
 
 # ── DELETE /<id> — Soft-delete own report ───────────────────────────────
 
+
 @community_reports_bp.route("/<int:report_id>", methods=["DELETE"])
 @rate_limit_with_burst("30 per hour")
 @require_auth_or_api_key
@@ -401,9 +422,14 @@ def delete_report(report_id: int):
             if report.user_id != user_id:
                 return jsonify({"success": False, "error": "You can only delete your own reports"}), 403
 
-            created = report.created_at.replace(tzinfo=timezone.utc) if report.created_at else datetime.now(timezone.utc)
+            created = (
+                report.created_at.replace(tzinfo=timezone.utc) if report.created_at else datetime.now(timezone.utc)
+            )
             if datetime.now(timezone.utc) - created > timedelta(minutes=10):
-                return jsonify({"success": False, "error": "Reports can only be deleted within 10 minutes of creation"}), 403
+                return (
+                    jsonify({"success": False, "error": "Reports can only be deleted within 10 minutes of creation"}),
+                    403,
+                )
 
             report.soft_delete()
             session.add(report)
@@ -415,6 +441,7 @@ def delete_report(report_id: int):
 
 
 # ── PATCH /<id>/verify — Admin verify/reject ───────────────────────────
+
 
 @community_reports_bp.route("/<int:report_id>/verify", methods=["PATCH"])
 @rate_limit_with_burst("30 per hour")
@@ -457,6 +484,7 @@ def verify_report(report_id: int):
 
 # ── POST /<id>/confirm — Community vote ─────────────────────────────────
 
+
 @community_reports_bp.route("/<int:report_id>/confirm", methods=["POST"])
 @rate_limit_with_burst("30 per hour")
 def confirm_report(report_id: int):
@@ -487,14 +515,19 @@ def confirm_report(report_id: int):
             if vote == "confirm":
                 try:
                     check_auto_verify(report_id)
-                except Exception:
+                except Exception:  # nosec B110 — non-critical post-vote task
                     pass
 
-            return jsonify({
-                "success": True,
-                "confirmation_count": report.confirmation_count,
-                "dispute_count": report.dispute_count,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "confirmation_count": report.confirmation_count,
+                        "dispute_count": report.dispute_count,
+                    }
+                ),
+                200,
+            )
 
     except Exception as exc:
         logger.error("Failed to vote on report %d: %s", report_id, exc, exc_info=True)
@@ -502,6 +535,7 @@ def confirm_report(report_id: int):
 
 
 # ── POST /<id>/flag — Abuse flagging ────────────────────────────────────
+
 
 @community_reports_bp.route("/<int:report_id>/flag", methods=["POST"])
 @rate_limit_with_burst("10 per hour")
@@ -526,11 +560,16 @@ def flag_report(report_id: int):
 
             session.add(report)
 
-            return jsonify({
-                "success": True,
-                "abuse_flag_count": report.abuse_flag_count,
-                "status": report.status,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "abuse_flag_count": report.abuse_flag_count,
+                        "status": report.status,
+                    }
+                ),
+                200,
+            )
 
     except Exception as exc:
         logger.error("Failed to flag report %d: %s", report_id, exc, exc_info=True)
@@ -538,6 +577,7 @@ def flag_report(report_id: int):
 
 
 # ── POST /admin/bulk-delete — Admin bulk soft-delete ────────────────────
+
 
 @community_reports_bp.route("/admin/bulk-delete", methods=["POST"])
 @require_auth_or_api_key
@@ -594,20 +634,30 @@ def admin_bulk_delete_reports():
                 return jsonify({"success": True, "deleted_count": 0, "message": "No matching records found"}), 200
 
             if total_count > MAX_BULK:
-                return jsonify({
-                    "success": False,
-                    "error": f"Query matches {total_count} records, exceeds max of {MAX_BULK}. Add stricter filters.",
-                }), 400
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": f"Query matches {total_count} records, exceeds max of {MAX_BULK}. Add stricter filters.",
+                        }
+                    ),
+                    400,
+                )
 
             now = datetime.now(timezone.utc)
             deleted = query.update({"is_deleted": True, "deleted_at": now}, synchronize_session="fetch")
 
         logger.info("Admin bulk-deleted %d community reports", deleted)
-        return jsonify({
-            "success": True,
-            "deleted_count": deleted,
-            "message": f"Successfully deleted {deleted} community report(s)",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "deleted_count": deleted,
+                    "message": f"Successfully deleted {deleted} community report(s)",
+                }
+            ),
+            200,
+        )
 
     except Exception as exc:
         logger.error("Admin bulk delete reports failed: %s", exc, exc_info=True)

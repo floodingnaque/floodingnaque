@@ -5,4 +5,3 @@ export type {
   HourlyResponse,
   SensorFormValues, SensorSubmitPayload
 } from "./types";
-

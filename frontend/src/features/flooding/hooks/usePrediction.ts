@@ -50,8 +50,9 @@ export interface UsePredictionOptions {
  * predict({ temperature: 298.15, humidity: 85, precipitation: 50, wind_speed: 15 });
  */
 export function usePrediction(options?: UsePredictionOptions) {
-  const [optimisticRisk, setOptimisticRisk] =
-    useOptimistic<RiskLevel | null>(null);
+  const [optimisticRisk, setOptimisticRisk] = useOptimistic<RiskLevel | null>(
+    null,
+  );
   const [isPendingTransition, startTransition] = useTransition();
 
   const mutationOptions: UseMutationOptions<

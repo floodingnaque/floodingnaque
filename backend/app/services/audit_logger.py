@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Audit event taxonomy
 # ---------------------------------------------------------------------------
 
+
 class AuditAction(str, Enum):
     """Enumerated audit event types."""
 
@@ -29,8 +30,8 @@ class AuditAction(str, Enum):
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILED = "login_failed"
     LOGOUT = "logout"
-    TOKEN_REFRESH = "token_refresh"
-    TOKEN_REVOKED = "token_revoked"
+    TOKEN_REFRESH = "token_refresh"  # nosec B105 — enum label, not a password
+    TOKEN_REVOKED = "token_revoked"  # nosec B105
 
     # Account lifecycle
     ACCOUNT_CREATED = "account_created"
@@ -41,9 +42,9 @@ class AuditAction(str, Enum):
     ACCOUNT_DELETED = "account_deleted"
 
     # Password management
-    PASSWORD_CHANGED = "password_changed"
-    PASSWORD_RESET_REQUESTED = "password_reset_requested"
-    PASSWORD_RESET_COMPLETED = "password_reset_completed"
+    PASSWORD_CHANGED = "password_changed"  # nosec B105 — enum label, not a password
+    PASSWORD_RESET_REQUESTED = "password_reset_requested"  # nosec B105
+    PASSWORD_RESET_COMPLETED = "password_reset_completed"  # nosec B105
 
     # Authorization
     ROLE_CHANGED = "role_changed"
@@ -64,7 +65,7 @@ class AuditAction(str, Enum):
     # Security incidents
     SUSPICIOUS_ACTIVITY = "suspicious_activity"
     CSRF_VIOLATION = "csrf_violation"
-    INVALID_TOKEN = "invalid_token"
+    INVALID_TOKEN = "invalid_token"  # nosec B105 — enum label, not a password
 
 
 class AuditSeverity(str, Enum):
@@ -137,6 +138,7 @@ def _flush_buffer() -> None:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def log_audit_event(
     action: AuditAction,
@@ -213,6 +215,7 @@ def flush() -> None:
 
 
 # Convenience helpers ----------------------------------------------------------
+
 
 def audit_login_success(user_id: int, email: str) -> None:
     log_audit_event(AuditAction.LOGIN_SUCCESS, user_id=user_id, user_email=email)

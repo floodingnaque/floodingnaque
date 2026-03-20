@@ -7,9 +7,10 @@ Objective: Confirm no existing functionality broke after a hypothetical
            limiting works, model versions listed, schemas stable.
 """
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pytest
 
 VALID_API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 AUTH = {"X-API-Key": VALID_API_KEY, "Content-Type": "application/json"}
@@ -103,9 +104,7 @@ class TestRegression:
         ]
         for payload in bad_payloads:
             resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-            assert resp.status_code == 400, (
-                f"Payload {payload} returned {resp.status_code}, expected 400"
-            )
+            assert resp.status_code == 400, f"Payload {payload} returned {resp.status_code}, expected 400"
 
     # ------------------------------------------------------------------
     # R-5: Health endpoint still available
@@ -114,9 +113,7 @@ class TestRegression:
         """R-5: /health and /status still return 200."""
         for endpoint in ["/health", "/status"]:
             resp = client.get(endpoint)
-            assert resp.status_code == 200, (
-                f"{endpoint} returned {resp.status_code} after upgrade"
-            )
+            assert resp.status_code == 200, f"{endpoint} returned {resp.status_code} after upgrade"
 
     # ------------------------------------------------------------------
     # R-6: Response schema backward-compatible
@@ -145,9 +142,7 @@ class TestRegression:
     def test_r7_predict_method_restriction(self, client):
         """R-7: GET /api/v1/predict/ returns 405 Method Not Allowed."""
         resp = client.get("/api/v1/predict/", headers=AUTH)
-        assert resp.status_code == 405, (
-            f"GET /api/v1/predict/ returned {resp.status_code}, expected 405"
-        )
+        assert resp.status_code == 405, f"GET /api/v1/predict/ returned {resp.status_code}, expected 405"
 
     # ------------------------------------------------------------------
     # R-8: Root endpoint still returns API info

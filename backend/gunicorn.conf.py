@@ -10,7 +10,7 @@ import multiprocessing
 import os
 
 # ── Server socket ────────────────────────────────────────────────────────
-bind = f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '5000')}"
+bind = f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '5000')}"  # nosec B104 — container bind
 
 # ── Worker processes ─────────────────────────────────────────────────────
 workers = int(os.getenv("GUNICORN_WORKERS", min(multiprocessing.cpu_count() * 2 + 1, 9)))

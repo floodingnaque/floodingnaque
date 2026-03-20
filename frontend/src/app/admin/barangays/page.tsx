@@ -1262,14 +1262,24 @@ export default function AdminBarangaysPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <SortableHead label="Barangay" field="name" sortField={sortField} toggleSort={toggleSort} />
+                            <SortableHead
+                              label="Barangay"
+                              field="name"
+                              sortField={sortField}
+                              toggleSort={toggleSort}
+                            />
                             <SortableHead
                               label="Population"
                               field="population"
                               sortField={sortField}
                               toggleSort={toggleSort}
                             />
-                            <SortableHead label="Area" field="area" sortField={sortField} toggleSort={toggleSort} />
+                            <SortableHead
+                              label="Area"
+                              field="area"
+                              sortField={sortField}
+                              toggleSort={toggleSort}
+                            />
                             <TableHead>Zone</TableHead>
                             <SortableHead
                               label="Flood Risk"
@@ -1277,7 +1287,12 @@ export default function AdminBarangaysPage() {
                               sortField={sortField}
                               toggleSort={toggleSort}
                             />
-                            <SortableHead label="Floods" field="floodEvents" sortField={sortField} toggleSort={toggleSort} />
+                            <SortableHead
+                              label="Floods"
+                              field="floodEvents"
+                              sortField={sortField}
+                              toggleSort={toggleSort}
+                            />
                             <TableHead>Evac. Center</TableHead>
                             <TableHead>Evac. Status</TableHead>
                             <TableHead className="text-right">

@@ -7,16 +7,16 @@
  * Uses the `idb` library for a promise-based IndexedDB API.
  */
 
-import { openDB, type IDBPDatabase } from 'idb';
-import type { PredictionResponse } from '@/types';
+import type { PredictionResponse } from "@/types";
+import { openDB, type IDBPDatabase } from "idb";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const DB_NAME = 'floodingnaque-offline';
+const DB_NAME = "floodingnaque-offline";
 const DB_VERSION = 1;
-const STORE_NAME = 'predictions';
+const STORE_NAME = "predictions";
 /** Maximum number of cached prediction results */
 const MAX_CACHED = 50;
 
@@ -45,10 +45,10 @@ function getDb(): Promise<IDBPDatabase> {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, {
-            keyPath: 'id',
+            keyPath: "id",
             autoIncrement: true,
           });
-          store.createIndex('by-cached', 'cachedAt');
+          store.createIndex("by-cached", "cachedAt");
         }
       },
     });
@@ -79,7 +79,7 @@ export async function cachePrediction(
     // Evict oldest if over limit
     const count = await db.count(STORE_NAME);
     if (count > MAX_CACHED) {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const tx = db.transaction(STORE_NAME, "readwrite");
       const store = tx.objectStore(STORE_NAME);
       let cursor = await store.openCursor();
       let toDelete = count - MAX_CACHED;
@@ -93,7 +93,7 @@ export async function cachePrediction(
   } catch (err) {
     // IndexedDB may be unavailable in some contexts (e.g. private browsing).
     // Fail silently - the cache is a best-effort enhancement.
-    console.warn('[offlineCache] Failed to cache prediction:', err);
+    console.warn("[offlineCache] Failed to cache prediction:", err);
   }
 }
 
@@ -107,9 +107,7 @@ export async function getCachedPredictions(
     const db = await getDb();
     const all = await db.getAll(STORE_NAME);
     // Sort newest-first and take the requested amount
-    return all
-      .sort((a, b) => b.cachedAt.localeCompare(a.cachedAt))
-      .slice(0, n);
+    return all.sort((a, b) => b.cachedAt.localeCompare(a.cachedAt)).slice(0, n);
   } catch {
     return [];
   }

@@ -60,12 +60,17 @@ def list_incidents():
             total = q.count()
             incidents = q.order_by(Incident.created_at.desc()).offset(offset).limit(limit).all()
 
-            return jsonify({
-                "success": True,
-                "data": [_serialize_incident(i) for i in incidents],
-                "pagination": {"total": total, "limit": limit, "offset": offset},
-                "request_id": request_id,
-            }), HTTP_OK
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "data": [_serialize_incident(i) for i in incidents],
+                        "pagination": {"total": total, "limit": limit, "offset": offset},
+                        "request_id": request_id,
+                    }
+                ),
+                HTTP_OK,
+            )
 
     except Exception as e:
         logger.error("list_incidents failed [%s]: %s", request_id, e, exc_info=True)
@@ -157,9 +162,18 @@ def update_incident(incident_id: int):
             return api_error("NoInput", "No update data provided", HTTP_BAD_REQUEST, request_id)
 
         editable = [
-            "title", "description", "incident_type", "risk_level", "barangay",
-            "location_detail", "latitude", "longitude", "affected_families",
-            "evacuated_families", "casualties", "estimated_damage",
+            "title",
+            "description",
+            "incident_type",
+            "risk_level",
+            "barangay",
+            "location_detail",
+            "latitude",
+            "longitude",
+            "affected_families",
+            "evacuated_families",
+            "casualties",
+            "estimated_damage",
             "broadcast_channels",
         ]
 
@@ -281,8 +295,7 @@ def incident_stats():
             # Single query: count by status using conditional aggregation
             status_list = ["alert_raised", "lgu_confirmed", "broadcast_sent", "resolved", "closed"]
             status_cols = {
-                s: func.count(case((Incident.status == s, 1)))  # type: ignore[arg-type]
-                for s in status_list
+                s: func.count(case((Incident.status == s, 1))) for s in status_list  # type: ignore[arg-type]
             }
             status_row = (
                 session.query(*status_cols.values())
@@ -294,8 +307,7 @@ def incident_stats():
             # Single query: count by risk_level using conditional aggregation
             risk_levels = [0, 1, 2]
             risk_cols = {
-                rl: func.count(case((Incident.risk_level == rl, 1)))  # type: ignore[arg-type]
-                for rl in risk_levels
+                rl: func.count(case((Incident.risk_level == rl, 1))) for rl in risk_levels  # type: ignore[arg-type]
             }
             risk_row = (
                 session.query(*risk_cols.values())
@@ -305,9 +317,7 @@ def incident_stats():
             by_risk_level = {str(rl): cnt for rl, cnt in zip(risk_levels, risk_row)}
 
             # total_active = everything except resolved and closed
-            total_active = sum(
-                cnt for s, cnt in by_status.items() if s not in ("resolved", "closed")
-            )
+            total_active = sum(cnt for s, cnt in by_status.items() if s not in ("resolved", "closed"))
 
             stats = {
                 "total_active": total_active,
@@ -337,11 +347,7 @@ def incident_analytics():
         with get_db_session() as session:
             # Average times: confirmation, broadcast, resolution
             avg_confirm = (
-                session.query(
-                    func.avg(
-                        extract("epoch", Incident.confirmed_at) - extract("epoch", Incident.created_at)
-                    )
-                )
+                session.query(func.avg(extract("epoch", Incident.confirmed_at) - extract("epoch", Incident.created_at)))
                 .filter(
                     Incident.is_deleted.is_(False),
                     Incident.confirmed_at.isnot(None),
@@ -350,9 +356,7 @@ def incident_analytics():
             )
             avg_broadcast = (
                 session.query(
-                    func.avg(
-                        extract("epoch", Incident.broadcast_sent_at) - extract("epoch", Incident.confirmed_at)
-                    )
+                    func.avg(extract("epoch", Incident.broadcast_sent_at) - extract("epoch", Incident.confirmed_at))
                 )
                 .filter(
                     Incident.is_deleted.is_(False),
@@ -362,11 +366,7 @@ def incident_analytics():
                 .scalar()
             )
             avg_resolve = (
-                session.query(
-                    func.avg(
-                        extract("epoch", Incident.resolved_at) - extract("epoch", Incident.created_at)
-                    )
-                )
+                session.query(func.avg(extract("epoch", Incident.resolved_at) - extract("epoch", Incident.created_at)))
                 .filter(
                     Incident.is_deleted.is_(False),
                     Incident.resolved_at.isnot(None),
@@ -404,7 +404,10 @@ def incident_analytics():
             false_alarm_rate = (false_alarms / resolved_count) if resolved_count > 0 else 0
 
             # AAR metrics
-            total_aars = session.query(func.count(AfterActionReport.id)).filter(AfterActionReport.is_deleted.is_(False)).scalar() or 0
+            total_aars = (
+                session.query(func.count(AfterActionReport.id)).filter(AfterActionReport.is_deleted.is_(False)).scalar()
+                or 0
+            )
             approved_aars = (
                 session.query(func.count(AfterActionReport.id))
                 .filter(AfterActionReport.is_deleted.is_(False), AfterActionReport.status == "approved")
@@ -432,9 +435,7 @@ def incident_analytics():
                 .limit(12)
                 .all()
             )
-            monthly_frequency = [
-                {"year": int(r.year), "month": int(r.month), "count": r.count} for r in monthly
-            ]
+            monthly_frequency = [{"year": int(r.year), "month": int(r.month), "count": r.count} for r in monthly]
 
             # Stalled incidents: in alert_raised or lgu_confirmed for > 24h
             stall_threshold = datetime.now(timezone.utc).timestamp() - 86400  # 24h ago
@@ -492,11 +493,16 @@ def list_aar(incident_id: int):
                 .order_by(AfterActionReport.created_at.desc())
                 .all()
             )
-            return jsonify({
-                "success": True,
-                "data": [_serialize_aar(r) for r in reports],
-                "request_id": request_id,
-            }), HTTP_OK
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "data": [_serialize_aar(r) for r in reports],
+                        "request_id": request_id,
+                    }
+                ),
+                HTTP_OK,
+            )
     except Exception as e:
         logger.error("list_aar failed [%s]: %s", request_id, e, exc_info=True)
         return api_error("InternalError", "Failed to list reports", HTTP_INTERNAL_ERROR, request_id)
@@ -569,11 +575,25 @@ def update_aar(aar_id: int):
             return api_error("NoInput", "No update data provided", HTTP_BAD_REQUEST, request_id)
 
         editable = [
-            "title", "summary", "timeline", "response_actions", "resources_deployed",
-            "response_time_minutes", "evacuation_time_minutes", "warning_lead_time_minutes",
-            "prediction_accuracy", "lessons_learned", "recommendations", "follow_up_actions",
-            "prepared_by", "reviewed_by", "approved_by", "status",
-            "ra10121_compliant", "submitted_to_ndrrmc", "submitted_to_dilg",
+            "title",
+            "summary",
+            "timeline",
+            "response_actions",
+            "resources_deployed",
+            "response_time_minutes",
+            "evacuation_time_minutes",
+            "warning_lead_time_minutes",
+            "prediction_accuracy",
+            "lessons_learned",
+            "recommendations",
+            "follow_up_actions",
+            "prepared_by",
+            "reviewed_by",
+            "approved_by",
+            "status",
+            "ra10121_compliant",
+            "submitted_to_ndrrmc",
+            "submitted_to_dilg",
         ]
 
         with get_db_session() as session:

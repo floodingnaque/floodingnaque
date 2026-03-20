@@ -7,9 +7,10 @@ Objective: Verify correct business logic for all major endpoints including
            HTTP status codes, and field type correctness.
 """
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pytest
 
 VALID_API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 AUTH = {"X-API-Key": VALID_API_KEY, "Content-Type": "application/json"}

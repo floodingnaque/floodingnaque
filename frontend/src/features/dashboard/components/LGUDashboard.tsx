@@ -491,7 +491,10 @@ function KPIStatCard({
 
 function FeatureImportanceChart({ className }: { className?: string }) {
   const { data: fiData } = useModelFeatureImportance();
-  const featureImportances = useMemo(() => fiData?.features ?? [], [fiData?.features]);
+  const featureImportances = useMemo(
+    () => fiData?.features ?? [],
+    [fiData?.features],
+  );
 
   const chartData = useMemo(
     () =>
@@ -546,7 +549,10 @@ function FeatureImportanceChart({ className }: { className?: string }) {
                 borderRadius: "0.5rem",
                 fontSize: 12,
               }}
-              formatter={(v: string | number | undefined) => [`${v ?? 0}%`, "Importance"]}
+              formatter={(v: string | number | undefined) => [
+                `${v ?? 0}%`,
+                "Importance",
+              ]}
             />
             <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
               {chartData.map((_, idx) => (

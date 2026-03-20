@@ -8,11 +8,12 @@ Objective: Verify system health under sustained operation — memory stability,
 """
 
 import gc
-import time
-import pytest
-import numpy as np
-from unittest.mock import patch, MagicMock, PropertyMock
 import sys
+import time
+from unittest.mock import MagicMock, PropertyMock, patch
+
+import numpy as np
+import pytest
 
 VALID_API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 AUTH = {"X-API-Key": VALID_API_KEY, "Content-Type": "application/json"}
@@ -82,9 +83,7 @@ class TestReliability:
         # memory measurement; gc.get_objects() is a coarse proxy.
         growth = final_objects - baseline_objects
         growth_pct = growth / max(baseline_objects, 1) * 100
-        assert growth_pct < 300, (
-            f"Object count grew {growth_pct:.0f}% ({baseline_objects} → {final_objects})"
-        )
+        assert growth_pct < 300, f"Object count grew {growth_pct:.0f}% ({baseline_objects} → {final_objects})"
 
     # ------------------------------------------------------------------
     # REL-2: Response consistency over sustained period
@@ -103,9 +102,7 @@ class TestReliability:
                         predictions.add(data.get("prediction"))
 
         # Same input should always produce the same prediction
-        assert len(predictions) == 1, (
-            f"Inconsistent predictions over 500 requests: {predictions}"
-        )
+        assert len(predictions) == 1, f"Inconsistent predictions over 500 requests: {predictions}"
 
     # ------------------------------------------------------------------
     # REL-3: Circuit breaker state transitions
@@ -178,9 +175,7 @@ class TestReliability:
                     if resp.status_code >= 500:
                         server_errors += 1
 
-        assert server_errors == 0, (
-            f"{server_errors}/300 requests returned 5xx under clean conditions"
-        )
+        assert server_errors == 0, f"{server_errors}/300 requests returned 5xx under clean conditions"
 
     # ------------------------------------------------------------------
     # REL-7: Multiple endpoint types remain stable
@@ -206,9 +201,7 @@ class TestReliability:
                     if resp.status_code >= 500:
                         server_errors += 1
 
-        assert server_errors == 0, (
-            f"{server_errors} server errors across {endpoints_tested}"
-        )
+        assert server_errors == 0, f"{server_errors} server errors across {endpoints_tested}"
 
     # ------------------------------------------------------------------
     # REL-8: GC collection doesn't disrupt requests

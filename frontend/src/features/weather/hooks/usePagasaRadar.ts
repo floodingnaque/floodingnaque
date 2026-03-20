@@ -5,10 +5,10 @@
  * Provides per-barangay rainfall data and city-wide summary.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import api from '@/lib/api-client';
-import { API_ENDPOINTS } from '@/config/api.config';
-import { captureException } from '@/lib/sentry';
+import { API_ENDPOINTS } from "@/config/api.config";
+import api from "@/lib/api-client";
+import { captureException } from "@/lib/sentry";
+import { useCallback, useEffect, useState } from "react";
 
 /** Per-barangay precipitation estimate */
 export interface BarangayPrecipitation {
@@ -17,7 +17,13 @@ export interface BarangayPrecipitation {
   lat: number;
   lon: number;
   rainfall_mm: number;
-  intensity: 'no_rain' | 'light' | 'moderate' | 'heavy' | 'intense' | 'torrential';
+  intensity:
+    | "no_rain"
+    | "light"
+    | "moderate"
+    | "heavy"
+    | "intense"
+    | "torrential";
   timestamp: string;
   source: string;
   confidence: number;
@@ -37,7 +43,7 @@ export interface PrecipitationSummary {
 
 /** Full PAGASA precipitation response */
 export interface PagasaPrecipitationData {
-  status: 'ok' | 'disabled' | 'error';
+  status: "ok" | "disabled" | "error";
   city: string;
   timestamp: string;
   summary: PrecipitationSummary;
@@ -47,7 +53,7 @@ export interface PagasaPrecipitationData {
 
 /** Rainfall advisory data */
 export interface RainfallAdvisory {
-  status: 'ok' | 'unavailable' | 'disabled';
+  status: "ok" | "unavailable" | "disabled";
   warning_level: string;
   title: string;
   description: string;
@@ -84,14 +90,17 @@ interface UsePagasaRadarReturn {
 /**
  * Hook for fetching PAGASA radar precipitation data
  */
-export function usePagasaRadar(options: UsePagasaRadarOptions = {}): UsePagasaRadarReturn {
+export function usePagasaRadar(
+  options: UsePagasaRadarOptions = {},
+): UsePagasaRadarReturn {
   const {
     enabled = true,
     refreshInterval = 300_000, // 5 minutes
     includeAdvisory = false,
   } = options;
 
-  const [precipitation, setPrecipitation] = useState<PagasaPrecipitationData | null>(null);
+  const [precipitation, setPrecipitation] =
+    useState<PagasaPrecipitationData | null>(null);
   const [advisory, setAdvisory] = useState<RainfallAdvisory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,13 +136,14 @@ export function usePagasaRadar(options: UsePagasaRadarOptions = {}): UsePagasaRa
           }
         } catch (advErr) {
           // Advisory fetch failure is non-critical
-          console.warn('Failed to fetch rainfall advisory:', advErr);
+          console.warn("Failed to fetch rainfall advisory:", advErr);
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch PAGASA data';
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch PAGASA data";
       setError(message);
-      captureException(err, { context: 'usePagasaRadar fetch' });
+      captureException(err, { context: "usePagasaRadar fetch" });
     } finally {
       setIsLoading(false);
     }

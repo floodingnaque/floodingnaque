@@ -143,7 +143,10 @@ export const EnhancedPredictionCard = memo(function EnhancedPredictionCard({
   className?: string;
 }) {
   const { data: fiData } = useModelFeatureImportance();
-  const featureImportances = useMemo(() => fiData?.features ?? [], [fiData?.features]);
+  const featureImportances = useMemo(
+    () => fiData?.features ?? [],
+    [fiData?.features],
+  );
 
   const contributions = useMemo<FeatureContribution[]>(() => {
     if (!prediction) return [];
@@ -166,7 +169,10 @@ export const EnhancedPredictionCard = memo(function EnhancedPredictionCard({
     // Fallback: real feature importances from model
     if (!featureImportances.length) return [];
     const top = featureImportances.slice(0, 6);
-    const total = top.reduce((s: number, f: { importance: number }) => s + f.importance, 0);
+    const total = top.reduce(
+      (s: number, f: { importance: number }) => s + f.importance,
+      0,
+    );
     return top.map((f: { feature: string; importance: number }) => ({
       name: f.feature,
       label: f.feature.replace(/_/g, " "),

@@ -28,6 +28,7 @@ lerna-debug.log*
 coverage/
 playwright-report/
 test-results/
+.eslintcache
 
 # Editor directories and files
 .vscode/*

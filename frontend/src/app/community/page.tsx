@@ -350,10 +350,10 @@ export default function CommunityPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {reports.map((report) => {
-                    const risk =
-                      (RISK_BADGE[report.risk_label] ?? RISK_BADGE.Safe)!;
-                    const statusInfo =
-                      (STATUS_BADGE[report.status] ?? STATUS_BADGE.pending)!;
+                    const risk = (RISK_BADGE[report.risk_label] ??
+                      RISK_BADGE.Safe)!;
+                    const statusInfo = (STATUS_BADGE[report.status] ??
+                      STATUS_BADGE.pending)!;
                     return (
                       <GlassCard
                         key={report.id}

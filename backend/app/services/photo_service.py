@@ -133,7 +133,11 @@ def compress_image(
             clean = clean.resize((new_w, new_h), resample)
             logger.info(
                 "Image resized from %dx%d to %dx%d (max_dimension=%d)",
-                w, h, new_w, new_h, _max_dim,
+                w,
+                h,
+                new_w,
+                new_h,
+                _max_dim,
             )
 
         # ── 3. Re-encode as JPEG ───────────────────────────────────────

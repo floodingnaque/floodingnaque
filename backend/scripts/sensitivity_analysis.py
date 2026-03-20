@@ -203,8 +203,10 @@ def train_with_weight(
     metrics["missed_floods"] = int(fn)
     metrics["false_alarms"] = int(fp)
 
-    logger.info(f"    Accuracy={metrics['accuracy']:.4f}  F2={metrics['f2_score']:.4f}  "
-                f"Recall={metrics['recall']:.4f}  Missed={fn}  FalseAlarms={fp}")
+    logger.info(
+        f"    Accuracy={metrics['accuracy']:.4f}  F2={metrics['f2_score']:.4f}  "
+        f"Recall={metrics['recall']:.4f}  Missed={fn}  FalseAlarms={fp}"
+    )
 
     return {
         "name": name,
@@ -306,14 +308,10 @@ def main():
             y_train, y_test = y[train_mask], y[test_mask]
             logger.info(f"  Temporal split: train < {max_year}, test = {max_year}")
         else:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42, stratify=y
-            )
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
             logger.info("  Random split (temporal inadequate)")
     else:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
         logger.info("  Random split")
 
     logger.info(f"  Train: {len(X_train)}, Test: {len(X_test)}")
@@ -322,8 +320,15 @@ def main():
     results = []
     for config in WEIGHT_CONFIGS:
         result = train_with_weight(
-            X_train, y_train, X_test, y_test, X, y,
-            config, args.cv_folds, args.quick,
+            X_train,
+            y_train,
+            X_test,
+            y_test,
+            X,
+            y,
+            config,
+            args.cv_folds,
+            args.quick,
         )
         results.append(result)
 

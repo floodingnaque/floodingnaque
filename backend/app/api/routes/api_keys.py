@@ -29,6 +29,7 @@ MAX_KEYS_PER_USER = 10
 # POST /  —  create a new API key
 # ---------------------------------------------------------------------------
 
+
 @api_keys_bp.route("", methods=["POST"])
 @api_keys_bp.route("/", methods=["POST"])
 @require_auth
@@ -112,6 +113,7 @@ def create_api_key():
 # GET /  —  list user's API keys (masked)
 # ---------------------------------------------------------------------------
 
+
 @api_keys_bp.route("", methods=["GET"])
 @api_keys_bp.route("/", methods=["GET"])
 @require_auth
@@ -131,15 +133,21 @@ def list_api_keys():
             .order_by(APIKey.created_at.desc())
             .all()
         )
-        return jsonify({
-            "success": True,
-            "data": [k.to_dict() for k in keys],
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": [k.to_dict() for k in keys],
+                }
+            ),
+            HTTP_OK,
+        )
 
 
 # ---------------------------------------------------------------------------
 # DELETE /<id>  —  revoke a key
 # ---------------------------------------------------------------------------
+
 
 @api_keys_bp.route("/<int:key_id>", methods=["DELETE"])
 @require_auth
@@ -174,6 +182,7 @@ def revoke_api_key(key_id: int):
 # ---------------------------------------------------------------------------
 # POST /<id>/rotate  —  revoke old + issue new
 # ---------------------------------------------------------------------------
+
 
 @api_keys_bp.route("/<int:key_id>/rotate", methods=["POST"])
 @require_auth
@@ -222,7 +231,9 @@ def rotate_api_key(key_id: int):
 
         logger.info(
             "API key rotated: %s... → %s... for user %d",
-            old_key.key_prefix, key_prefix, user_id,
+            old_key.key_prefix,
+            key_prefix,
+            user_id,
         )
 
     return jsonify({"success": True, "data": result}), HTTP_OK

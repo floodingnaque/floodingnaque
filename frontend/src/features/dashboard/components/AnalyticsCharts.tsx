@@ -166,7 +166,7 @@ export const RainfallTrend = memo(function RainfallTrend({
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
                 formatter={(v: string | number | undefined) => [
-                  `${typeof v === "number" ? v.toFixed(1) : v ?? ""} mm`,
+                  `${typeof v === "number" ? v.toFixed(1) : (v ?? "")} mm`,
                   "Precipitation",
                 ]}
               />

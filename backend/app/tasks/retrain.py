@@ -35,9 +35,8 @@ def retrain_ensemble(
         Dict with artifact metadata or error information.
     """
     import pandas as pd
-
     from app.ml.dataset_validator import DatasetValidator
-    from app.ml.ensemble_model import EnsembleTrainer, FEATURE_NAMES
+    from app.ml.ensemble_model import FEATURE_NAMES, EnsembleTrainer
 
     # Validate dataset
     validator = DatasetValidator()

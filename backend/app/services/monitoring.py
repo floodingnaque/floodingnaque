@@ -52,29 +52,37 @@ def get_uptime_seconds() -> float:
 def record_health_check(healthy: bool, response_ms: float) -> None:
     """Record an aggregate health-check result for uptime calculation."""
     with _health_lock:
-        _health_checks.append({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "healthy": healthy,
-            "response_ms": round(response_ms, 2),
-        })
+        _health_checks.append(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "healthy": healthy,
+                "response_ms": round(response_ms, 2),
+            }
+        )
 
 
 def _record_service_check(
-    service: str, status: str, latency_ms: float, detail: str = "",
+    service: str,
+    status: str,
+    latency_ms: float,
+    detail: str = "",
 ) -> None:
     """Record a per-service health probe result."""
     with _service_lock:
         if service not in _service_checks:
             _service_checks[service] = deque(maxlen=500)
-        _service_checks[service].append({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "status": status,  # "healthy" | "degraded" | "offline"
-            "latency_ms": round(latency_ms, 2),
-            "detail": detail,
-        })
+        _service_checks[service].append(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": status,  # "healthy" | "degraded" | "offline"
+                "latency_ms": round(latency_ms, 2),
+                "detail": detail,
+            }
+        )
 
 
 # ── Individual service probes ──────────────────────────────────────────────
+
 
 def _probe_api_server() -> None:
     """Probe the API server by checking if we're inside a live process."""
@@ -82,6 +90,7 @@ def _probe_api_server() -> None:
     try:
         # Simply verify the Flask app is importable and has been initialised
         from flask import current_app  # noqa: F401
+
         latency = (time.perf_counter() - start) * 1000
         _record_service_check("api_server", "healthy", latency, "Process alive")
     except Exception as exc:
@@ -95,6 +104,7 @@ def _probe_database() -> None:
     try:
         from app.models.db import get_db_session
         from sqlalchemy import text
+
         with get_db_session() as session:
             session.execute(text("SELECT 1"))
         latency = (time.perf_counter() - start) * 1000
@@ -110,6 +120,7 @@ def _probe_ml_model() -> None:
     start = time.perf_counter()
     try:
         from app.services.predict import get_current_model_info
+
         info = get_current_model_info()
         latency = (time.perf_counter() - start) * 1000
         if info and info.get("loaded"):
@@ -130,7 +141,9 @@ def _probe_redis() -> None:
         return
     try:
         from urllib.parse import urlparse
+
         import redis as _redis
+
         parsed = urlparse(storage_url)
         r = _redis.Redis(
             host=parsed.hostname or "localhost",
@@ -152,6 +165,7 @@ def _probe_scheduler() -> None:
     start = time.perf_counter()
     try:
         from app.services.scheduler import scheduler
+
         latency = (time.perf_counter() - start) * 1000
         if scheduler and getattr(scheduler, "running", False):
             _record_service_check("scheduler", "healthy", latency, "Running")
@@ -167,6 +181,7 @@ def _probe_sentry() -> None:
     start = time.perf_counter()
     try:
         from app.utils.observability.sentry import is_sentry_enabled
+
         latency = (time.perf_counter() - start) * 1000
         if is_sentry_enabled():
             _record_service_check("sentry", "healthy", latency, "Enabled")
@@ -237,14 +252,16 @@ def get_service_statuses() -> List[Dict[str, Any]]:
         for svc in MONITORED_SERVICES:
             checks = list(_service_checks.get(svc, []))
             if not checks:
-                result.append({
-                    "service": svc,
-                    "status": "unknown",
-                    "latency_ms": 0,
-                    "last_checked": None,
-                    "detail": "No checks yet",
-                    "uptime_pct_24h": None,
-                })
+                result.append(
+                    {
+                        "service": svc,
+                        "status": "unknown",
+                        "latency_ms": 0,
+                        "last_checked": None,
+                        "detail": "No checks yet",
+                        "uptime_pct_24h": None,
+                    }
+                )
                 continue
             latest = checks[-1]
             # Calculate uptime % over last 24h
@@ -252,14 +269,16 @@ def get_service_statuses() -> List[Dict[str, Any]]:
             recent = [c for c in checks if c["timestamp"] >= cutoff]
             healthy_count = sum(1 for c in recent if c["status"] == "healthy")
             uptime_pct = round((healthy_count / len(recent)) * 100, 2) if recent else None
-            result.append({
-                "service": svc,
-                "status": latest["status"],
-                "latency_ms": latest["latency_ms"],
-                "last_checked": latest["timestamp"],
-                "detail": latest.get("detail", ""),
-                "uptime_pct_24h": uptime_pct,
-            })
+            result.append(
+                {
+                    "service": svc,
+                    "status": latest["status"],
+                    "latency_ms": latest["latency_ms"],
+                    "last_checked": latest["timestamp"],
+                    "detail": latest.get("detail", ""),
+                    "uptime_pct_24h": uptime_pct,
+                }
+            )
     return result
 
 
@@ -313,13 +332,15 @@ def record_api_response(
 ) -> None:
     """Record an API response for metrics tracking."""
     with _api_lock:
-        _api_metrics.append({
-            "endpoint": endpoint,
-            "method": method,
-            "status_code": status_code,
-            "response_ms": round(response_ms, 2),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        _api_metrics.append(
+            {
+                "endpoint": endpoint,
+                "method": method,
+                "status_code": status_code,
+                "response_ms": round(response_ms, 2),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
 
 def get_api_response_stats(minutes: int = 60) -> Dict[str, Any]:
@@ -369,15 +390,17 @@ def get_api_response_stats(minutes: int = 60) -> Dict[str, Any]:
     for ep, data in ep_data.items():
         t = sorted(data["times"])
         n = len(t)
-        slowest.append({
-            "endpoint": ep,
-            "avg_ms": round(sum(t) / n, 2),
-            "p95_ms": round(t[int(n * 0.95)] if n > 1 else t[0], 2),
-            "p99_ms": round(t[int(n * 0.99)] if n > 1 else t[0], 2),
-            "count": n,
-            "error_count": data["errors"],
-            "sla_exceeded": (sum(t) / n) > 1000,
-        })
+        slowest.append(
+            {
+                "endpoint": ep,
+                "avg_ms": round(sum(t) / n, 2),
+                "p95_ms": round(t[int(n * 0.95)] if n > 1 else t[0], 2),
+                "p99_ms": round(t[int(n * 0.99)] if n > 1 else t[0], 2),
+                "count": n,
+                "error_count": data["errors"],
+                "sla_exceeded": (sum(t) / n) > 1000,
+            }
+        )
 
     slowest.sort(key=lambda x: x["avg_ms"], reverse=True)
     slowest = slowest[:10]
@@ -419,11 +442,13 @@ def set_baseline_distribution(distribution: Dict[str, float]) -> None:
 def record_prediction_result(risk_label: str, confidence: float) -> None:
     """Record a single prediction for drift monitoring."""
     with _prediction_lock:
-        _prediction_window.append({
-            "risk_label": risk_label,
-            "confidence": confidence,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        _prediction_window.append(
+            {
+                "risk_label": risk_label,
+                "confidence": confidence,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
 
 def get_prediction_drift_stats(window_minutes: int = 60) -> Dict[str, Any]:
@@ -493,7 +518,11 @@ def get_prediction_drift_stats(window_minutes: int = 60) -> Dict[str, Any]:
             "min": round(sorted_conf[0], 4),
             "max": round(sorted_conf[-1], 4),
             "p50": round(sorted_conf[len(sorted_conf) // 2], 4),
-            "p95": round(sorted_conf[int(len(sorted_conf) * 0.95)], 4) if len(sorted_conf) > 1 else round(sorted_conf[0], 4),
+            "p95": (
+                round(sorted_conf[int(len(sorted_conf) * 0.95)], 4)
+                if len(sorted_conf) > 1
+                else round(sorted_conf[0], 4)
+            ),
         },
     }
 
@@ -501,6 +530,7 @@ def get_prediction_drift_stats(window_minutes: int = 60) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Alert delivery tracking
 # ---------------------------------------------------------------------------
+
 
 def get_alert_delivery_stats(hours: int = 24) -> Dict[str, Any]:
     """Query alert delivery statistics from the database.
@@ -590,6 +620,7 @@ def get_alert_delivery_stats(hours: int = 24) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Combined monitoring summary
 # ---------------------------------------------------------------------------
+
 
 def get_monitoring_summary() -> Dict[str, Any]:
     """Return a combined monitoring dashboard payload."""

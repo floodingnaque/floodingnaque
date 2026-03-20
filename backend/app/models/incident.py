@@ -43,7 +43,9 @@ class Incident(Base):
         default="alert_raised",
         info={"description": "alert_raised → lgu_confirmed → broadcast_sent → resolved → closed"},
     )
-    confirmed_by = Column(String(100), nullable=True, info={"description": "Name or user-id of LGU officer who confirmed"})
+    confirmed_by = Column(
+        String(100), nullable=True, info={"description": "Name or user-id of LGU officer who confirmed"}
+    )
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
     broadcast_sent_at = Column(DateTime(timezone=True), nullable=True)
     broadcast_channels = Column(
@@ -67,7 +69,9 @@ class Incident(Base):
         default="manual",
         info={"description": "manual / system_alert / barangay_report / pagasa"},
     )
-    related_alert_id = Column(Integer, nullable=True, index=True, info={"description": "FK-like ref to alert_history.id"})
+    related_alert_id = Column(
+        Integer, nullable=True, index=True, info={"description": "FK-like ref to alert_history.id"}
+    )
 
     # ── Metadata ─────────────────────────────────────────────────────────
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)

@@ -6,22 +6,22 @@
  * default risk level.
  */
 
-import { Suspense, lazy, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
-import { MapPin, Loader2 } from 'lucide-react';
-import { BARANGAYS } from '@/config/paranaque';
+import { BARANGAYS } from "@/config/paranaque";
+import { motion, useInView } from "framer-motion";
+import { Loader2, MapPin } from "lucide-react";
+import { Suspense, lazy, useRef } from "react";
 
 // Lazy-load the heavy map component (Leaflet + tiles)
 const BarangayRiskMap = lazy(() =>
-  import('@/features/dashboard/components/BarangayRiskMap').then((m) => ({
+  import("@/features/dashboard/components/BarangayRiskMap").then((m) => ({
     default: m.BarangayRiskMap,
   })),
 );
 
 const RISK_LABEL: Record<string, { text: string; className: string }> = {
-  high: { text: 'High', className: 'text-risk-critical font-semibold' },
-  moderate: { text: 'Moderate', className: 'text-risk-alert font-semibold' },
-  low: { text: 'Low', className: 'text-risk-safe font-semibold' },
+  high: { text: "High", className: "text-risk-critical font-semibold" },
+  moderate: { text: "Moderate", className: "text-risk-alert font-semibold" },
+  low: { text: "Low", className: "text-risk-safe font-semibold" },
 };
 
 export function BarangayMapSection() {
@@ -45,8 +45,8 @@ export function BarangayMapSection() {
             All 16 Barangays at a Glance
           </h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Each polygon on the map is coloured by its historical flood risk. Click any barangay for
-            details, population, and evacuation centre.
+            Each polygon on the map is coloured by its historical flood risk.
+            Click any barangay for details, population, and evacuation centre.
           </p>
         </motion.div>
 
@@ -81,17 +81,34 @@ export function BarangayMapSection() {
           </h3>
 
           <div className="overflow-x-auto rounded-lg border border-border/40 bg-background">
-            <table className="w-full text-sm" aria-label="Barangay flood risk summary">
+            <table
+              className="w-full text-sm"
+              aria-label="Barangay flood risk summary"
+            >
               <thead>
                 <tr className="bg-muted/50 text-left">
-                  <th scope="col" className="px-4 py-2.5 font-medium text-muted-foreground">Barangay</th>
-                  <th scope="col" className="px-4 py-2.5 font-medium text-muted-foreground text-right">
+                  <th
+                    scope="col"
+                    className="px-4 py-2.5 font-medium text-muted-foreground"
+                  >
+                    Barangay
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-2.5 font-medium text-muted-foreground text-right"
+                  >
                     Population
                   </th>
-                  <th scope="col" className="px-4 py-2.5 font-medium text-muted-foreground text-center">
+                  <th
+                    scope="col"
+                    className="px-4 py-2.5 font-medium text-muted-foreground text-center"
+                  >
                     Flood Risk
                   </th>
-                  <th scope="col" className="px-4 py-2.5 font-medium text-muted-foreground">
+                  <th
+                    scope="col"
+                    className="px-4 py-2.5 font-medium text-muted-foreground"
+                  >
                     Evacuation Centre
                   </th>
                 </tr>
@@ -100,12 +117,19 @@ export function BarangayMapSection() {
                 {BARANGAYS.map((b) => {
                   const risk = (RISK_LABEL[b.floodRisk] ?? RISK_LABEL.low)!;
                   return (
-                    <tr key={b.key} className="hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-2 font-medium text-foreground">{b.name}</td>
+                    <tr
+                      key={b.key}
+                      className="hover:bg-muted/20 transition-colors"
+                    >
+                      <td className="px-4 py-2 font-medium text-foreground">
+                        {b.name}
+                      </td>
                       <td className="px-4 py-2 text-right text-muted-foreground tabular-nums">
                         {b.population.toLocaleString()}
                       </td>
-                      <td className={`px-4 py-2 text-center ${risk.className}`}>{risk.text}</td>
+                      <td className={`px-4 py-2 text-center ${risk.className}`}>
+                        {risk.text}
+                      </td>
                       <td className="px-4 py-2 text-muted-foreground text-xs">
                         {b.evacuationCenter}
                       </td>

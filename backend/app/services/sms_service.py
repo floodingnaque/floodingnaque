@@ -11,7 +11,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import requests as http_requests
-
 from app.models.db import User, get_db_session
 from app.models.evacuation_alert_log import EvacuationAlertLog
 from app.services.evacuation_service import get_nearest_centers

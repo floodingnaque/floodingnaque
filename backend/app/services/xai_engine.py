@@ -86,6 +86,7 @@ def _label(feature: str) -> str:
 # Global feature importances  (model-level, not per-prediction)
 # ---------------------------------------------------------------------------
 
+
 def compute_global_importances(model: Any) -> List[Dict[str, Any]]:
     """
     Extract global feature importances from a fitted sklearn model.
@@ -120,9 +121,8 @@ def compute_global_importances(model: Any) -> List[Dict[str, Any]]:
 # Per-prediction feature contributions  (tree-path based)
 # ---------------------------------------------------------------------------
 
-def _tree_based_contributions(
-    model: Any, X: pd.DataFrame
-) -> Optional[np.ndarray]:
+
+def _tree_based_contributions(model: Any, X: pd.DataFrame) -> Optional[np.ndarray]:
     """
     Compute per-prediction, per-feature contributions via mean decrease
     in impurity across trees.  For a Random Forest this is the *marginal*
@@ -158,9 +158,7 @@ def _tree_based_contributions(
     return None
 
 
-def compute_prediction_contributions(
-    model: Any, input_data: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+def compute_prediction_contributions(model: Any, input_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Compute per-feature SHAP-like contributions for a single prediction.
 
@@ -185,13 +183,15 @@ def compute_prediction_contributions(
         abs_val = abs(float(val))
         if abs_val < 0.001:
             continue  # skip negligible contributions
-        items.append({
-            "feature": name,
-            "label": _label(name),
-            "contribution": round(float(val), 4),
-            "abs_contribution": round(abs_val, 4),
-            "direction": "increases_risk" if val > 0 else "decreases_risk",
-        })
+        items.append(
+            {
+                "feature": name,
+                "label": _label(name),
+                "contribution": round(float(val), 4),
+                "abs_contribution": round(abs_val, 4),
+                "direction": "increases_risk" if val > 0 else "decreases_risk",
+            }
+        )
 
     items.sort(key=lambda d: d["abs_contribution"], reverse=True)
     return items
@@ -200,6 +200,7 @@ def compute_prediction_contributions(
 # ---------------------------------------------------------------------------
 # Why-alert natural-language explanation
 # ---------------------------------------------------------------------------
+
 
 def _kelvin_to_celsius(k: float) -> float:
     return k - 273.15
@@ -280,10 +281,12 @@ def generate_why_alert(
             if not already_covered:
                 pct = round(c["abs_contribution"] * 100)
                 if pct > 0:
-                    factors.append({
-                        "text": f"{c['label']} (+{pct}% risk)",
-                        "severity": "medium" if c["abs_contribution"] > 0.05 else "low",
-                    })
+                    factors.append(
+                        {
+                            "text": f"{c['label']} (+{pct}% risk)",
+                            "severity": "medium" if c["abs_contribution"] > 0.05 else "low",
+                        }
+                    )
 
     # --- Build summary sentence ---
     confidence_pct = round(confidence * 100)
@@ -310,6 +313,7 @@ def generate_why_alert(
 # ---------------------------------------------------------------------------
 # Public entry point — combine everything
 # ---------------------------------------------------------------------------
+
 
 def generate_explanation(
     model: Any,

@@ -32,8 +32,12 @@ class AfterActionReport(Base):
     # ── Effectiveness metrics ────────────────────────────────────────────
     response_time_minutes = Column(Integer, nullable=True, info={"description": "Minutes from alert to first response"})
     evacuation_time_minutes = Column(Integer, nullable=True, info={"description": "Minutes to complete evacuation"})
-    warning_lead_time_minutes = Column(Integer, nullable=True, info={"description": "Minutes between warning and event onset"})
-    prediction_accuracy = Column(Float, nullable=True, info={"description": "0-1 score of model prediction accuracy for this event"})
+    warning_lead_time_minutes = Column(
+        Integer, nullable=True, info={"description": "Minutes between warning and event onset"}
+    )
+    prediction_accuracy = Column(
+        Float, nullable=True, info={"description": "0-1 score of model prediction accuracy for this event"}
+    )
 
     # ── Lessons & recommendations ────────────────────────────────────────
     lessons_learned = Column(Text, nullable=True)
@@ -41,8 +45,12 @@ class AfterActionReport(Base):
     follow_up_actions = Column(Text, nullable=True, info={"description": "Action items for future preparedness"})
 
     # ── Compliance ───────────────────────────────────────────────────────
-    ra10121_compliant = Column(Boolean, default=True, nullable=False, info={"description": "Follows RA 10121 reporting requirements"})
-    submitted_to_ndrrmc = Column(Boolean, default=False, nullable=False, info={"description": "Report forwarded to NDRRMC"})
+    ra10121_compliant = Column(
+        Boolean, default=True, nullable=False, info={"description": "Follows RA 10121 reporting requirements"}
+    )
+    submitted_to_ndrrmc = Column(
+        Boolean, default=False, nullable=False, info={"description": "Report forwarded to NDRRMC"}
+    )
     submitted_to_dilg = Column(Boolean, default=False, nullable=False, info={"description": "Report forwarded to DILG"})
 
     # ── Metadata ─────────────────────────────────────────────────────────

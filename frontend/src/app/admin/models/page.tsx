@@ -267,7 +267,10 @@ export default function AdminModelsPage() {
   const { data: historyData, isLoading: historyLoading } = useModelHistory();
   const { data: importanceData, isLoading: importanceLoading } =
     useFeatureImportance();
-  const modelVersions = useMemo(() => historyData?.models ?? [], [historyData?.models]);
+  const modelVersions = useMemo(
+    () => historyData?.models ?? [],
+    [historyData?.models],
+  );
   const retrainStatus = useRetrainStatus(taskId);
   const triggerRetrain = useTriggerRetrain();
   const rollback = useRollbackModel();

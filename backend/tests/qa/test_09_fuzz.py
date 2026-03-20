@@ -8,13 +8,14 @@ Objective: Verify API stability against malformed, random, and boundary
 """
 
 import math
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pytest
 
 # Conditionally import hypothesis — degrade gracefully if not installed
 try:
-    from hypothesis import given, settings, HealthCheck, assume
+    from hypothesis import HealthCheck, assume, given, settings
     from hypothesis import strategies as st
 
     HAS_HYPOTHESIS = True
@@ -74,7 +75,7 @@ class TestFuzz:
             "\x00",
             "🌊",
             "DROP TABLE predictions;",
-            '<script>alert(1)</script>',
+            "<script>alert(1)</script>",
             "../../../../etc/passwd",
         ],
     )
@@ -82,9 +83,7 @@ class TestFuzz:
         """FZ-1: Non-numeric temperature values return 400, never 500."""
         payload = {"temperature": temp_value, "humidity": 50.0, "precipitation": 5.0}
         resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-        assert resp.status_code < 500, (
-            f"temperature={temp_value!r} caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"temperature={temp_value!r} caused {resp.status_code}"
 
     # ------------------------------------------------------------------
     # FZ-2: Random type in humidity field
@@ -97,9 +96,7 @@ class TestFuzz:
         """FZ-2: Invalid humidity values return 400, never 500."""
         payload = {"temperature": 298.15, "humidity": hum_value, "precipitation": 5.0}
         resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-        assert resp.status_code < 500, (
-            f"humidity={hum_value!r} caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"humidity={hum_value!r} caused {resp.status_code}"
 
     # ------------------------------------------------------------------
     # FZ-3: Random type in precipitation field
@@ -112,9 +109,7 @@ class TestFuzz:
         """FZ-3: Invalid precipitation values return 400, never 500."""
         payload = {"temperature": 298.15, "humidity": 50.0, "precipitation": precip_value}
         resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-        assert resp.status_code < 500, (
-            f"precipitation={precip_value!r} caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"precipitation={precip_value!r} caused {resp.status_code}"
 
     # ------------------------------------------------------------------
     # FZ-4: Completely random JSON payloads
@@ -137,9 +132,7 @@ class TestFuzz:
     def test_fz4_random_json_payloads(self, client, mock_model_comprehensive, payload):
         """FZ-4: Arbitrary JSON structures never cause 500."""
         resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-        assert resp.status_code < 500, (
-            f"Payload {payload!r} caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"Payload {payload!r} caused {resp.status_code}"
 
     # ------------------------------------------------------------------
     # FZ-5: Unicode and emoji injection
@@ -161,9 +154,7 @@ class TestFuzz:
         """FZ-5: Unicode/emoji in fields returns 400, never 500."""
         payload = {"temperature": unicode_val, "humidity": 50.0, "precipitation": 5.0}
         resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-        assert resp.status_code < 500, (
-            f"Unicode value caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"Unicode value caused {resp.status_code}"
 
     # ------------------------------------------------------------------
     # FZ-6: Extremely large numeric values
@@ -176,15 +167,17 @@ class TestFuzz:
         """FZ-6: Extreme numeric values handled without crash."""
         payload = {"temperature": extreme, "humidity": 50.0, "precipitation": 5.0}
         resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-        assert resp.status_code < 500, (
-            f"Extreme value {extreme} caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"Extreme value {extreme} caused {resp.status_code}"
 
     # ------------------------------------------------------------------
     # FZ-7: Hypothesis property-based fuzzing (if hypothesis installed)
     # ------------------------------------------------------------------
     @pytest.mark.skipif(not HAS_HYPOTHESIS, reason="hypothesis not installed")
-    @settings(max_examples=50, deadline=None, suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+    )
     @given(
         temp=st.one_of(
             st.floats(allow_nan=True, allow_infinity=True),
@@ -208,9 +201,7 @@ class TestFuzz:
         with app.test_client() as c:
             payload = {"temperature": temp, "humidity": hum, "precipitation": precip}
             resp = c.post("/api/v1/predict/", json=payload, headers=AUTH)
-            assert resp.status_code < 500, (
-                f"Hypothesis input caused {resp.status_code}: {payload}"
-            )
+            assert resp.status_code < 500, f"Hypothesis input caused {resp.status_code}: {payload}"
 
     # ------------------------------------------------------------------
     # FZ-8: SQL injection string corpus
@@ -231,9 +222,7 @@ class TestFuzz:
         """FZ-8: SQL injection strings return 400, never 500."""
         payload = {"temperature": sqli, "humidity": 50.0, "precipitation": 5.0}
         resp = client.post("/api/v1/predict/", json=payload, headers=AUTH)
-        assert resp.status_code < 500, (
-            f"SQLi '{sqli}' caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"SQLi '{sqli}' caused {resp.status_code}"
 
     # ------------------------------------------------------------------
     # FZ-9: XSS string corpus
@@ -241,10 +230,10 @@ class TestFuzz:
     @pytest.mark.parametrize(
         "xss",
         [
-            '<script>alert(1)</script>',
+            "<script>alert(1)</script>",
             '"><img src=x onerror=alert(1)>',
             "javascript:alert(1)",
-            '<svg onload=alert(1)>',
+            "<svg onload=alert(1)>",
             "'-alert(1)-'",
         ],
     )
@@ -279,6 +268,4 @@ class TestFuzz:
             data=body,
             headers={**AUTH, "Content-Type": content_type},
         )
-        assert resp.status_code < 500, (
-            f"Body {body!r} ({content_type}) caused {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"Body {body!r} ({content_type}) caused {resp.status_code}"

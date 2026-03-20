@@ -14,6 +14,7 @@ repos:
       - id: check-yaml
         args: ["--unsafe"] # allow custom YAML tags in compose files
       - id: end-of-file-fixer
+        exclude: \.eslintcache$
       - id: trailing-whitespace
         args: ["--markdown-linebreak-ext=md"]
 
@@ -67,7 +68,7 @@ repos:
       - id: eslint
         name: eslint
         language: system
-        entry: npx --prefix frontend eslint --cache --config frontend/eslint.config.js --max-warnings 0
+        entry: npx --prefix frontend eslint --cache --cache-location frontend/.eslintcache --config frontend/eslint.config.js --max-warnings 0
         types_or: [javascript, jsx, ts, tsx]
         files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
 

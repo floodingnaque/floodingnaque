@@ -11,7 +11,6 @@ import os
 from typing import Any, Dict, List
 
 import requests as http_requests
-
 from app.models.community_report import CommunityReport
 from app.models.db import get_db_session
 from app.models.evacuation_center import EvacuationCenter
@@ -62,13 +61,15 @@ def get_nearest_centers(lat: float, lon: float, limit: int = 3) -> List[Dict[str
                 f"&destination={c.latitude},{c.longitude}"
                 f"&travelmode=walking"
             )
-            results.append({
-                "center": c.to_dict(),
-                "distance_km": round(dist, 2),
-                "available_slots": c.available_slots,
-                "occupancy_pct": c.occupancy_pct,
-                "google_maps_url": google_url,
-            })
+            results.append(
+                {
+                    "center": c.to_dict(),
+                    "distance_km": round(dist, 2),
+                    "available_slots": c.available_slots,
+                    "occupancy_pct": c.occupancy_pct,
+                    "google_maps_url": google_url,
+                }
+            )
 
         # Sort by distance ascending
         results.sort(key=lambda r: r["distance_km"])
@@ -101,7 +102,10 @@ def get_safe_route(
     # Count flooded segments in the bounding box
     if avoid_flooded:
         flood_count = _count_flood_reports_in_bbox(
-            origin_lat, origin_lon, dest_lat, dest_lon,
+            origin_lat,
+            origin_lon,
+            dest_lat,
+            dest_lon,
         )
 
     # ── Try OSRM ────────────────────────────────────────────────────────
@@ -148,7 +152,10 @@ def get_safe_route(
 
 
 def _count_flood_reports_in_bbox(
-    lat1: float, lon1: float, lat2: float, lon2: float,
+    lat1: float,
+    lon1: float,
+    lat2: float,
+    lon2: float,
 ) -> int:
     """Count recent non-rejected Alert/Critical reports within a bounding box."""
     from datetime import datetime, timedelta, timezone

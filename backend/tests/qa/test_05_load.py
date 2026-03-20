@@ -15,12 +15,13 @@ NOTE: This file contains both the Locust file for live testing and pytest
       simulated load tests that can run without a live server.
 """
 
-import time
-import statistics
 import concurrent.futures
-import pytest
+import statistics
+import time
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pytest
 
 VALID_API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 AUTH = {"X-API-Key": VALID_API_KEY, "Content-Type": "application/json"}
@@ -61,6 +62,7 @@ class TestLoad:
 
         with patch("app.services.predict._get_model_loader", return_value=_loader(model)):
             with app.test_client() as c:
+
                 def make_request(_):
                     start = time.monotonic()
                     resp = c.post("/api/v1/predict/", json=PREDICT_PAYLOAD, headers=AUTH)
@@ -140,16 +142,12 @@ class TestLoad:
             error_rate = errors / total
             if name == "predict":
                 # Core endpoint — strict error threshold
-                assert error_rate < 0.05, (
-                    f"{name}: error rate {error_rate:.1%} exceeds 5%"
-                )
+                assert error_rate < 0.05, f"{name}: error rate {error_rate:.1%} exceeds 5%"
             else:
                 # DB-dependent endpoints may lack tables in SQLite test env;
                 # verify they respond (any status) without hanging
                 responded = sum(1 for s, _ in reqs if s > 0)
-                assert responded == total, (
-                    f"{name}: {total - responded}/{total} requests did not respond"
-                )
+                assert responded == total, f"{name}: {total - responded}/{total} requests did not respond"
 
     # ------------------------------------------------------------------
     # L-5: Sustained prediction throughput
@@ -173,9 +171,9 @@ class TestLoad:
         first_quarter = statistics.mean(latencies[: len(latencies) // 4])
         last_quarter = statistics.mean(latencies[-len(latencies) // 4 :])
         # Last quarter should not be >3x slower than first quarter
-        assert last_quarter < first_quarter * 3, (
-            f"Latency degraded: first={first_quarter:.0f}ms last={last_quarter:.0f}ms"
-        )
+        assert (
+            last_quarter < first_quarter * 3
+        ), f"Latency degraded: first={first_quarter:.0f}ms last={last_quarter:.0f}ms"
 
 
 # ==========================================================================

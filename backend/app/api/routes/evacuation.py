@@ -29,6 +29,7 @@ evacuation_bp = Blueprint("evacuation", __name__)
 
 # ── GET /centers — List all centers ─────────────────────────────────────
 
+
 @evacuation_bp.route("/centers", methods=["GET"])
 @rate_limit_with_burst("60 per minute")
 def list_centers():
@@ -42,10 +43,15 @@ def list_centers():
                 .all()
             )
 
-            return jsonify({
-                "success": True,
-                "centers": [c.to_dict() for c in centers],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "centers": [c.to_dict() for c in centers],
+                    }
+                ),
+                200,
+            )
 
     except Exception as exc:
         logger.error("Failed to list evacuation centers: %s", exc, exc_info=True)
@@ -53,6 +59,7 @@ def list_centers():
 
 
 # ── GET /centers/<id> — Single center detail ────────────────────────────
+
 
 @evacuation_bp.route("/centers/<int:center_id>", methods=["GET"])
 @rate_limit_with_burst("60 per minute")
@@ -76,6 +83,7 @@ def get_center(center_id: int):
 
 
 # ── PATCH /centers/<id>/capacity — Update capacity ──────────────────────
+
 
 @evacuation_bp.route("/centers/<int:center_id>/capacity", methods=["PATCH"])
 @rate_limit_with_burst("30 per hour")
@@ -112,6 +120,7 @@ def update_capacity(center_id: int):
         # ── SSE broadcast ───────────────────────────────────────────────
         try:
             from app.api.routes.sse import get_sse_manager
+
             sse = get_sse_manager()
             event_data = {
                 "type": "capacity_update",
@@ -139,6 +148,7 @@ def update_capacity(center_id: int):
 
 # ── GET /nearest — Find nearest centers ─────────────────────────────────
 
+
 @evacuation_bp.route("/nearest", methods=["GET"])
 @rate_limit_with_burst("60 per minute")
 def nearest_centers():
@@ -161,6 +171,7 @@ def nearest_centers():
 
 
 # ── GET /route — Get safe route ─────────────────────────────────────────
+
 
 @evacuation_bp.route("/route", methods=["GET"])
 @rate_limit_with_burst("30 per minute")
@@ -189,14 +200,22 @@ def safe_route():
                     dest_lon = center.longitude
 
         if any(v is None for v in (origin_lat, origin_lon, dest_lat, dest_lon)):
-            return jsonify({"success": False, "error": "origin coordinates and destination (dest_lat/dest_lon or center_id) are required"}), 400
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "origin coordinates and destination (dest_lat/dest_lon or center_id) are required",
+                    }
+                ),
+                400,
+            )
 
         # Type narrowing after None check (all are guaranteed float at this point)
         route = get_safe_route(
             float(origin_lat),  # type: ignore[arg-type]
             float(origin_lon),  # type: ignore[arg-type]
-            float(dest_lat),    # type: ignore[arg-type]
-            float(dest_lon),    # type: ignore[arg-type]
+            float(dest_lat),  # type: ignore[arg-type]
+            float(dest_lon),  # type: ignore[arg-type]
             avoid_flooded=avoid_flooded,
         )
 
@@ -207,11 +226,16 @@ def safe_route():
             f"&travelmode=walking"
         )
 
-        return jsonify({
-            "success": True,
-            "route": route,
-            "google_maps_url": google_maps_url,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "route": route,
+                    "google_maps_url": google_maps_url,
+                }
+            ),
+            200,
+        )
 
     except Exception as exc:
         logger.error("Failed to get safe route: %s", exc, exc_info=True)
@@ -219,6 +243,7 @@ def safe_route():
 
 
 # ── POST /alert — Trigger SMS dispatch ──────────────────────────────────
+
 
 @evacuation_bp.route("/alert", methods=["POST"])
 @rate_limit_with_burst("10 per hour")
@@ -244,24 +269,35 @@ def trigger_alert():
         # Dispatch (sync or async via Celery)
         try:
             from app.services.celery_app import celery_app
+
             task = celery_app.send_task(
                 "app.services.tasks.dispatch_sms_alert",
                 args=[barangay, risk_label],
                 queue="notification_tasks",
             )
-            return jsonify({
-                "success": True,
-                "status": "queued",
-                "task_id": task.id,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "status": "queued",
+                        "task_id": task.id,
+                    }
+                ),
+                200,
+            )
         except Exception:
             # Sync fallback
             dispatched = dispatch_evacuation_sms(barangay, risk_label)
-            return jsonify({
-                "success": True,
-                "status": "completed",
-                "dispatched_count": dispatched,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "status": "completed",
+                        "dispatched_count": dispatched,
+                    }
+                ),
+                200,
+            )
 
     except Exception as exc:
         logger.error("Failed to trigger alert: %s", exc, exc_info=True)
@@ -294,6 +330,7 @@ def get_capacity_stream_ticket():
 
 # ── GET /capacity-stream — SSE for capacity updates ─────────────────────
 
+
 @evacuation_bp.route("/capacity-stream", methods=["GET"])
 def capacity_stream():
     """Server-Sent Events stream for real-time capacity updates."""
@@ -303,15 +340,16 @@ def capacity_stream():
     # Register with main SSE manager for capacity_update events
     try:
         from app.api.routes.sse import get_sse_manager
+
         sse = get_sse_manager()
         client_queue = sse.add_client(client_id)
-    except Exception:
+    except Exception:  # nosec B110 — SSE client registration fallback
         pass
 
     def generate():
         try:
             # Send initial connection event
-            yield f"event: connected\ndata: {{\"client_id\": \"{client_id}\"}}\n\n"
+            yield f'event: connected\ndata: {{"client_id": "{client_id}"}}\n\n'
 
             while True:
                 try:
@@ -321,14 +359,15 @@ def capacity_stream():
                         yield message
                 except queue.Empty:
                     # Send heartbeat to keep connection alive
-                    yield f"event: heartbeat\ndata: {{\"time\": \"{datetime.now(timezone.utc).isoformat()}\"}}\n\n"
+                    yield f'event: heartbeat\ndata: {{"time": "{datetime.now(timezone.utc).isoformat()}"}}\n\n'
         except GeneratorExit:
             pass
         finally:
             try:
                 from app.api.routes.sse import get_sse_manager
+
                 get_sse_manager().remove_client(client_id)
-            except Exception:
+            except Exception:  # nosec B110 — SSE cleanup best-effort
                 pass
 
     return Response(

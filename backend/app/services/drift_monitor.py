@@ -220,10 +220,14 @@ def _load_drift_data(features: List[str]) -> tuple:
 
     # --- Reference: load from model metadata ---
     models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
-    metadata_files = sorted(
-        [f for f in os.listdir(models_dir) if f.endswith("_metadata.json")],
-        reverse=True,
-    ) if os.path.isdir(models_dir) else []
+    metadata_files = (
+        sorted(
+            [f for f in os.listdir(models_dir) if f.endswith("_metadata.json")],
+            reverse=True,
+        )
+        if os.path.isdir(models_dir)
+        else []
+    )
 
     if metadata_files:
         with open(os.path.join(models_dir, metadata_files[0])) as f:
@@ -237,8 +241,9 @@ def _load_drift_data(features: List[str]) -> tuple:
 
     # --- Current: load from recent weather observations ---
     try:
-        from app.models.db import WeatherData, get_db_session
         from datetime import datetime, timedelta, timezone
+
+        from app.models.db import WeatherData, get_db_session
         from sqlalchemy import desc
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=7)
@@ -251,11 +256,7 @@ def _load_drift_data(features: List[str]) -> tuple:
                 .all()
             )
             for feat in features:
-                current_data[feat] = [
-                    getattr(row, feat, None)
-                    for row in rows
-                    if getattr(row, feat, None) is not None
-                ]
+                current_data[feat] = [getattr(row, feat, None) for row in rows if getattr(row, feat, None) is not None]
     except Exception as e:
         logger.warning("Could not load current data for drift check: %s", e)
 

@@ -9,10 +9,11 @@ Objective: Verify end-to-end data flow across all system layers — prediction
 
 import json
 import time
-import pytest
-import numpy as np
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
+
+import numpy as np
+import pytest
 
 VALID_API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 AUTH = {"X-API-Key": VALID_API_KEY, "Content-Type": "application/json"}
@@ -124,9 +125,7 @@ class TestIntegration:
                 )
             # Location endpoint should work via fallback
             # Accept 200 (success) or 502 (if all APIs fail in test env)
-            assert resp.status_code in (200, 400, 502, 500), (
-                f"Location prediction returned {resp.status_code}"
-            )
+            assert resp.status_code in (200, 400, 502, 500), f"Location prediction returned {resp.status_code}"
 
     # ------------------------------------------------------------------
     # I-4: SSE endpoint establishes connection
@@ -135,9 +134,7 @@ class TestIntegration:
         """I-4: GET /api/v1/sse/status returns SSE status."""
         resp = client.get("/api/v1/sse/status")
         # SSE status endpoint returns 200 with JSON
-        assert resp.status_code == 200, (
-            f"SSE status returned {resp.status_code}"
-        )
+        assert resp.status_code == 200, f"SSE status returned {resp.status_code}"
 
     # ------------------------------------------------------------------
     # I-5: Dashboard aggregates data from multiple sources

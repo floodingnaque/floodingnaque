@@ -49,10 +49,12 @@ export const RiverLevelMonitor = memo(function RiverLevelMonitor({
 
   const latest = useMemo<RiverReading | null>(() => {
     if (!readings?.length) return null;
-    return [...readings].sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    )[0] ?? null;
+    return (
+      [...readings].sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      )[0] ?? null
+    );
   }, [readings]);
 
   const chartData = useMemo(() => {

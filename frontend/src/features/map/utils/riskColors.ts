@@ -30,7 +30,7 @@ export function getRiskLevelStyle(risk: string): {
 } {
   const key = risk.toLowerCase();
   return {
-    color: (RISK_COLORS[key] ?? RISK_COLORS.unknown) ?? "#6c757d",
-    fillColor: (RISK_FILL_COLORS[key] ?? RISK_FILL_COLORS.unknown) ?? "#6c757d80",
+    color: RISK_COLORS[key] ?? RISK_COLORS.unknown ?? "#6c757d",
+    fillColor: RISK_FILL_COLORS[key] ?? RISK_FILL_COLORS.unknown ?? "#6c757d80",
   };
 }

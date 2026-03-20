@@ -4,15 +4,15 @@
  * Tests for flood risk prediction mutation hook.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
-import { http, HttpResponse } from 'msw';
-import { server } from '@/tests/mocks/server';
-import { createWrapper } from '@/test/utils';
-import { usePrediction } from '@/features/flooding/hooks/usePrediction';
-import type { PredictionRequest } from '@/types';
+import { usePrediction } from "@/features/flooding/hooks/usePrediction";
+import { createWrapper } from "@/test/utils";
+import { server } from "@/tests/mocks/server";
+import type { PredictionRequest } from "@/types";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe('usePrediction', () => {
+describe("usePrediction", () => {
   const validPredictionData: PredictionRequest = {
     temperature: 298.15, // ~25°C in Kelvin
     humidity: 75,
@@ -26,8 +26,10 @@ describe('usePrediction', () => {
     server.resetHandlers();
   });
 
-  it('should return initial state correctly', () => {
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+  it("should return initial state correctly", () => {
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
     expect(result.current.predict).toBeDefined();
     expect(result.current.predictAsync).toBeDefined();
@@ -38,12 +40,11 @@ describe('usePrediction', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('should make prediction successfully', async () => {
+  it("should make prediction successfully", async () => {
     const onSuccess = vi.fn();
-    const { result } = renderHook(
-      () => usePrediction({ onSuccess }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => usePrediction({ onSuccess }), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       result.current.predict(validPredictionData);
@@ -65,8 +66,10 @@ describe('usePrediction', () => {
     });
   });
 
-  it('should return Safe risk for low precipitation', async () => {
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+  it("should return Safe risk for low precipitation", async () => {
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       result.current.predict({
@@ -79,11 +82,13 @@ describe('usePrediction', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.risk_level).toBe(0);
-    expect(result.current.data?.risk_label).toBe('Safe');
+    expect(result.current.data?.risk_label).toBe("Safe");
   });
 
-  it('should return Alert risk for moderate precipitation', async () => {
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+  it("should return Alert risk for moderate precipitation", async () => {
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       result.current.predict({
@@ -96,11 +101,13 @@ describe('usePrediction', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.risk_level).toBe(1);
-    expect(result.current.data?.risk_label).toBe('Alert');
+    expect(result.current.data?.risk_label).toBe("Alert");
   });
 
-  it('should return Critical risk for high precipitation', async () => {
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+  it("should return Critical risk for high precipitation", async () => {
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       result.current.predict({
@@ -113,24 +120,23 @@ describe('usePrediction', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.risk_level).toBe(2);
-    expect(result.current.data?.risk_label).toBe('Critical');
+    expect(result.current.data?.risk_label).toBe("Critical");
   });
 
-  it('should handle prediction error', async () => {
+  it("should handle prediction error", async () => {
     server.use(
-      http.post('*/api/v1/predict', () => {
+      http.post("*/api/v1/predict", () => {
         return HttpResponse.json(
-          { code: 'PREDICTION_FAILED', message: 'Model unavailable' },
-          { status: 500 }
+          { code: "PREDICTION_FAILED", message: "Model unavailable" },
+          { status: 500 },
         );
-      })
+      }),
     );
 
     const onError = vi.fn();
-    const { result } = renderHook(
-      () => usePrediction({ onError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => usePrediction({ onError }), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       result.current.predict(validPredictionData);
@@ -142,14 +148,16 @@ describe('usePrediction', () => {
     expect(onError).toHaveBeenCalled();
   });
 
-  it('should handle network error', async () => {
+  it("should handle network error", async () => {
     server.use(
-      http.post('*/api/v1/predict', () => {
+      http.post("*/api/v1/predict", () => {
         return HttpResponse.error();
-      })
+      }),
     );
 
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       result.current.predict(validPredictionData);
@@ -159,8 +167,10 @@ describe('usePrediction', () => {
     expect(result.current.error).toBeDefined();
   });
 
-  it('should reset mutation state', async () => {
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+  it("should reset mutation state", async () => {
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
     act(() => {
       result.current.predict(validPredictionData);
@@ -180,10 +190,14 @@ describe('usePrediction', () => {
     expect(result.current.isPending).toBe(false);
   });
 
-  it('should support predictAsync for promise-based usage', async () => {
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+  it("should support predictAsync for promise-based usage", async () => {
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
-    let predictionResult: Awaited<ReturnType<typeof result.current.predictAsync>> | undefined;
+    let predictionResult:
+      | Awaited<ReturnType<typeof result.current.predictAsync>>
+      | undefined;
     await act(async () => {
       predictionResult = await result.current.predictAsync(validPredictionData);
     });
@@ -193,8 +207,10 @@ describe('usePrediction', () => {
     expect(predictionResult?.risk_level).toBeDefined();
   });
 
-  it('should handle optional pressure parameter', async () => {
-    const { result } = renderHook(() => usePrediction(), { wrapper: createWrapper() });
+  it("should handle optional pressure parameter", async () => {
+    const { result } = renderHook(() => usePrediction(), {
+      wrapper: createWrapper(),
+    });
 
     const dataWithoutPressure: PredictionRequest = {
       temperature: 298.15,

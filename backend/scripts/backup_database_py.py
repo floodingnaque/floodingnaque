@@ -72,34 +72,42 @@ def backup_with_psycopg2(database_url: str, output_dir: Path) -> Path:
     cur = conn.cursor()
 
     # Get all user tables in public schema
-    cur.execute("""
+    cur.execute(
+        """
         SELECT tablename FROM pg_tables
         WHERE schemaname = 'public'
         ORDER BY tablename
-    """)
+    """
+    )
     all_tables = [row[0] for row in cur.fetchall()]
 
     # Identify partitioned parent tables
-    cur.execute("""
+    cur.execute(
+        """
         SELECT relname FROM pg_class
         WHERE relkind = 'p' AND relnamespace = 'public'::regnamespace
-    """)
+    """
+    )
     partitioned_parents = {row[0] for row in cur.fetchall()}
 
     # Identify partition children (inheriting from a parent)
-    cur.execute("""
+    cur.execute(
+        """
         SELECT c.relname
         FROM pg_inherits i
         JOIN pg_class c ON i.inhrelid = c.oid
         WHERE c.relnamespace = 'public'::regnamespace
-    """)
+    """
+    )
     partition_children = {row[0] for row in cur.fetchall()}
 
     # Export parent tables (data aggregated from partitions via SELECT *) and
     # non-partition tables. Skip partition children to avoid duplicates.
     tables = [t for t in all_tables if t not in partition_children]
-    logger.info(f"Found {len(all_tables)} tables total, {len(tables)} to export "
-                f"({len(partition_children)} partition children skipped)")
+    logger.info(
+        f"Found {len(all_tables)} tables total, {len(tables)} to export "
+        f"({len(partition_children)} partition children skipped)"
+    )
     logger.info(f"Tables: {', '.join(tables)}")
 
     with open(backup_file, "w", encoding="utf-8") as f:
@@ -112,19 +120,21 @@ def backup_with_psycopg2(database_url: str, output_dir: Path) -> Path:
             logger.info(f"  Exporting: {table}")
 
             # Get CREATE TABLE DDL
-            cur.execute(f"""
+            # nosec B608 — table_name from pg_class, not user input; value is parameterized via %s
+            col_query = """
                 SELECT column_name, data_type, is_nullable, column_default
                 FROM information_schema.columns
                 WHERE table_schema = 'public' AND table_name = %s
                 ORDER BY ordinal_position
-            """, (table,))
+            """
+            cur.execute(col_query, (table,))
             columns = cur.fetchall()
 
             f.write(f"\n-- Table: {table} ({len(columns)} columns)\n")
             f.write(f"-- Columns: {', '.join(c[0] for c in columns)}\n")
 
             # Get row count
-            cur.execute(f'SELECT COUNT(*) FROM "{table}"')  # noqa: S608
+            cur.execute(f'SELECT COUNT(*) FROM "{table}"')  # nosec B608  # noqa: S608
             count = cur.fetchone()[0]
             f.write(f"-- Rows: {count}\n")
 
@@ -138,9 +148,12 @@ def backup_with_psycopg2(database_url: str, output_dir: Path) -> Path:
             f.write(f"COPY \"{table}\" FROM stdin WITH (FORMAT csv, HEADER true, NULL 'NULL');\n")
 
             import io
+
             buf = io.BytesIO()
             # Use COPY (SELECT ...) variant which works for both regular and partitioned tables
-            copy_sql = f'COPY (SELECT * FROM "{table}") TO STDOUT WITH (FORMAT csv, HEADER true, NULL \'NULL\')'
+            copy_sql = (
+                f"COPY (SELECT * FROM \"{table}\") TO STDOUT WITH (FORMAT csv, HEADER true, NULL 'NULL')"  # nosec B608
+            )
             cur.copy_expert(copy_sql, buf)
             buf.seek(0)
             f.write(buf.read().decode("utf-8"))
@@ -165,9 +178,12 @@ def backup_with_psycopg2(database_url: str, output_dir: Path) -> Path:
 
 def main():
     parser = argparse.ArgumentParser(description="Python-based PostgreSQL backup")
-    parser.add_argument("--env", default=os.getenv("APP_ENV", "development"),
-                        choices=["development", "staging", "production"],
-                        help="Environment to backup (default: APP_ENV or development)")
+    parser.add_argument(
+        "--env",
+        default=os.getenv("APP_ENV", "development"),
+        choices=["development", "staging", "production"],
+        help="Environment to backup (default: APP_ENV or development)",
+    )
     parser.add_argument("--output", default=None, help="Output directory")
     args = parser.parse_args()
 

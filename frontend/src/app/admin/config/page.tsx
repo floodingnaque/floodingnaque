@@ -31,11 +31,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import type { FeatureFlagDetail } from "@/features/admin/services/adminApi";
 import {
   useFeatureFlags,
   useUpdateFeatureFlag,
 } from "@/features/admin/hooks/useAdmin";
+import type { FeatureFlagDetail } from "@/features/admin/services/adminApi";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { motion, useInView } from "framer-motion";
@@ -83,7 +83,8 @@ const FLAG_META: Record<
   },
   sms_alerts: {
     label: "SMS Alert Delivery",
-    description: "Enable SMS broadcast to registered disaster response contacts",
+    description:
+      "Enable SMS broadcast to registered disaster response contacts",
     category: "notifications",
   },
   sms_simulation: {
@@ -313,7 +314,11 @@ function loadThresholds(): ThresholdConfig {
   } catch {
     /* use defaults */
   }
-  return { alertThreshold: 30, criticalThreshold: 60, alertCooldownMinutes: 15 };
+  return {
+    alertThreshold: 30,
+    criticalThreshold: 60,
+    alertCooldownMinutes: 15,
+  };
 }
 
 function saveThresholds(config: ThresholdConfig) {
@@ -492,9 +497,7 @@ export default function AdminConfigPage() {
     const a = document.createElement("a");
     a.href = url;
     a.download =
-      "floodingnaque-config-" +
-      new Date().toISOString().slice(0, 10) +
-      ".json";
+      "floodingnaque-config-" + new Date().toISOString().slice(0, 10) + ".json";
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Configuration exported");
@@ -785,9 +788,7 @@ export default function AdminConfigPage() {
                     </p>
                     <Button
                       onClick={handleSaveThresholds}
-                      disabled={
-                        !thresholdsDirty || thresholdErrors.length > 0
-                      }
+                      disabled={!thresholdsDirty || thresholdErrors.length > 0}
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Save Thresholds

@@ -12,9 +12,9 @@ Endpoints under test:
   GET  /api/models (model listing)
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -39,9 +39,7 @@ class TestSmoke:
     def test_s1_root_endpoint_returns_200(self, client):
         """S-1: GET / must return 200 with API name."""
         response = client.get("/")
-        assert response.status_code == 200, (
-            f"Root endpoint returned {response.status_code}, expected 200"
-        )
+        assert response.status_code == 200, f"Root endpoint returned {response.status_code}, expected 200"
         data = response.get_json()
         assert data is not None, "Root endpoint returned no JSON body"
         # Should contain API identification info
@@ -55,9 +53,7 @@ class TestSmoke:
     def test_s2_status_endpoint_returns_200(self, client):
         """S-2: GET /status must return 200 with status field."""
         response = client.get("/status")
-        assert response.status_code == 200, (
-            f"/status returned {response.status_code}, expected 200"
-        )
+        assert response.status_code == 200, f"/status returned {response.status_code}, expected 200"
         data = response.get_json()
         assert data is not None
         assert "status" in data, f"/status response missing 'status' key: {data}"
@@ -68,9 +64,7 @@ class TestSmoke:
     def test_s3_health_endpoint_returns_200(self, client):
         """S-3: GET /health must return 200 with health components."""
         response = client.get("/health")
-        assert response.status_code == 200, (
-            f"/health returned {response.status_code}, expected 200"
-        )
+        assert response.status_code == 200, f"/health returned {response.status_code}, expected 200"
         data = response.get_json()
         assert data is not None
         assert "status" in data, f"/health missing 'status': {data}"
@@ -78,9 +72,7 @@ class TestSmoke:
     # ------------------------------------------------------------------
     # S-4: POST /api/v1/predict/ accepts valid input
     # ------------------------------------------------------------------
-    def test_s4_predict_endpoint_accepts_valid_payload(
-        self, client, mock_model_comprehensive
-    ):
+    def test_s4_predict_endpoint_accepts_valid_payload(self, client, mock_model_comprehensive):
         """S-4: POST /api/v1/predict/ must return 200 on valid weather data."""
         response = client.post(
             "/api/v1/predict/",
@@ -88,8 +80,7 @@ class TestSmoke:
             headers=AUTH_HEADERS,
         )
         assert response.status_code == 200, (
-            f"/api/v1/predict/ returned {response.status_code}, expected 200. "
-            f"Body: {response.get_json()}"
+            f"/api/v1/predict/ returned {response.status_code}, expected 200. " f"Body: {response.get_json()}"
         )
         data = response.get_json()
         assert data is not None
@@ -106,9 +97,7 @@ class TestSmoke:
             headers=AUTH_HEADERS,
             content_type="application/json",
         )
-        assert response.status_code == 400, (
-            f"Empty body returned {response.status_code}, expected 400"
-        )
+        assert response.status_code == 400, f"Empty body returned {response.status_code}, expected 400"
 
     # ------------------------------------------------------------------
     # S-6: /api/models returns model list
@@ -117,9 +106,7 @@ class TestSmoke:
         """S-6: GET /api/models returns model listing."""
         response = client.get("/api/models", headers=AUTH_HEADERS)
         # Accept 200 or 404 (if route not registered under this path)
-        assert response.status_code in (200, 404, 401), (
-            f"/api/models returned {response.status_code}"
-        )
+        assert response.status_code in (200, 404, 401), f"/api/models returned {response.status_code}"
 
     # ------------------------------------------------------------------
     # S-7: Server returns JSON content-type
@@ -129,6 +116,6 @@ class TestSmoke:
         for path in ["/", "/status", "/health"]:
             response = client.get(path)
             content_type = response.content_type or ""
-            assert "json" in content_type.lower() or response.status_code == 200, (
-                f"{path} returned content-type '{content_type}', expected JSON"
-            )
+            assert (
+                "json" in content_type.lower() or response.status_code == 200
+            ), f"{path} returned content-type '{content_type}', expected JSON"

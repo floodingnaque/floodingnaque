@@ -8,9 +8,10 @@ Objective: Verify system behavior beyond normal limits and ensure
 """
 
 import time
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pytest
 
 VALID_API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 AUTH = {"X-API-Key": VALID_API_KEY, "Content-Type": "application/json"}
@@ -63,9 +64,7 @@ class TestStress:
                         server_errors += 1
 
         # Zero server errors — only 200 or 429 are acceptable
-        assert server_errors == 0, (
-            f"{server_errors} server errors in 500 requests (unacceptable)"
-        )
+        assert server_errors == 0, f"{server_errors} server errors in 500 requests (unacceptable)"
         assert success > 0, "No successful requests at all"
 
     # ------------------------------------------------------------------
@@ -76,9 +75,7 @@ class TestStress:
         oversized: dict[str, object] = {"temperature": 298.15, "humidity": 50.0, "precipitation": 5.0}
         oversized["padding"] = "x" * (1024 * 1024)  # ~1MB payload
         resp = client.post("/api/v1/predict/", json=oversized, headers=AUTH)
-        assert resp.status_code in (400, 413, 422), (
-            f"Oversized payload returned {resp.status_code}, expected 400/413"
-        )
+        assert resp.status_code in (400, 413, 422), f"Oversized payload returned {resp.status_code}, expected 400/413"
 
     # ------------------------------------------------------------------
     # ST-3: System returns valid responses after burst
@@ -97,9 +94,7 @@ class TestStress:
                 resp = c.post("/api/v1/predict/", json=PAYLOAD, headers=AUTH)
 
         # Accept 200 or 429 (rate limited) — not 500
-        assert resp.status_code in (200, 429), (
-            f"Post-burst request returned {resp.status_code}"
-        )
+        assert resp.status_code in (200, 429), f"Post-burst request returned {resp.status_code}"
         if resp.status_code == 200:
             data = resp.get_json()
             assert "prediction" in data
@@ -122,9 +117,7 @@ class TestStress:
             )
         # System may return 200 (graceful degradation without weather enrichment),
         # 400 (missing required fields), or 5xx (propagated upstream failure).
-        assert resp.status_code in (200, 400, 500, 502, 503), (
-            f"All-API failure returned {resp.status_code}"
-        )
+        assert resp.status_code in (200, 400, 500, 502, 503), f"All-API failure returned {resp.status_code}"
         # Response should still be valid JSON
         data = resp.get_json()
         assert data is not None
@@ -161,9 +154,7 @@ class TestStress:
                     headers=AUTH,
                     content_type="application/json",
                 )
-                assert resp.status_code < 500, (
-                    f"Malformed JSON caused server error {resp.status_code}"
-                )
+                assert resp.status_code < 500, f"Malformed JSON caused server error {resp.status_code}"
 
     # ------------------------------------------------------------------
     # ST-7: Rapid alternating endpoints

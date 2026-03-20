@@ -240,7 +240,8 @@ export function Navbar() {
           <div className="container mx-auto px-4 py-4 space-y-1">
             {NAV_LINKS.map((link, idx) => {
               const isActive = activeSection === link.target;
-              const prevGroup = idx > 0 ? NAV_LINKS[idx - 1]?.group : link.group;
+              const prevGroup =
+                idx > 0 ? NAV_LINKS[idx - 1]?.group : link.group;
               const showDivider = idx > 0 && prevGroup !== link.group;
               return (
                 <div key={link.target}>

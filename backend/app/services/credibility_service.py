@@ -53,6 +53,7 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 # ── Nearby-reports query ─────────────────────────────────────────────────
 
+
 def get_reports_near(
     lat: float,
     lon: float,
@@ -70,14 +71,11 @@ def get_reports_near(
     cutoff = datetime.now(timezone.utc) - timedelta(hours=within_hours)
 
     with get_db_session() as session:
-        query = (
-            session.query(CommunityReport)
-            .filter(
-                CommunityReport.is_deleted.is_(False),
-                CommunityReport.created_at >= cutoff,
-                CommunityReport.latitude.between(lat - degree_delta, lat + degree_delta),
-                CommunityReport.longitude.between(lon - degree_delta, lon + degree_delta),
-            )
+        query = session.query(CommunityReport).filter(
+            CommunityReport.is_deleted.is_(False),
+            CommunityReport.created_at >= cutoff,
+            CommunityReport.latitude.between(lat - degree_delta, lat + degree_delta),
+            CommunityReport.longitude.between(lon - degree_delta, lon + degree_delta),
         )
         if exclude_id is not None:
             query = query.filter(CommunityReport.id != exclude_id)
@@ -85,13 +83,11 @@ def get_reports_near(
         candidates = query.all()
 
         # Exact Haversine distance filter
-        return [
-            r for r in candidates
-            if _haversine_m(lat, lon, r.latitude, r.longitude) <= radius_m
-        ]
+        return [r for r in candidates if _haversine_m(lat, lon, r.latitude, r.longitude) <= radius_m]
 
 
 # ── Core scoring function ────────────────────────────────────────────────
+
 
 def score_report(report_id: int) -> float:
     """Compute the credibility score for a report and persist it.
@@ -144,8 +140,11 @@ def score_report(report_id: int) -> float:
 
         # ── Signal 3: Corroboration count (0.25) ────────────────────────
         nearby = get_reports_near(
-            report.latitude, report.longitude,
-            radius_m=500, within_hours=1, exclude_id=report.id,
+            report.latitude,
+            report.longitude,
+            radius_m=500,
+            within_hours=1,
+            exclude_id=report.id,
         )
         corroboration_score = min(len(nearby) / 5.0, 1.0)
 
@@ -177,8 +176,11 @@ def score_report(report_id: int) -> float:
         # ── Signal 6: Duplicate proximity penalty (0.05) ────────────────
         duplicate_penalty = 0.0
         dupl_nearby = get_reports_near(
-            report.latitude, report.longitude,
-            radius_m=200, within_hours=0.25, exclude_id=report.id,
+            report.latitude,
+            report.longitude,
+            radius_m=200,
+            within_hours=0.25,
+            exclude_id=report.id,
         )
         if dupl_nearby:
             duplicate_penalty = -0.05
@@ -199,8 +201,14 @@ def score_report(report_id: int) -> float:
 
         logger.info(
             "Scored report %d: %.3f (age=%.2f acc=%.2f corr=%.2f ml=%.2f photo=%.2f dup=%.2f)",
-            report_id, final_score, age_score, accuracy_score,
-            corroboration_score, ml_score, photo_score, duplicate_penalty,
+            report_id,
+            final_score,
+            age_score,
+            accuracy_score,
+            corroboration_score,
+            ml_score,
+            photo_score,
+            duplicate_penalty,
         )
         return final_score
 
@@ -229,8 +237,12 @@ def check_auto_verify(report_id: int) -> bool:
             report.verified = True
             report.status = "accepted"
             session.add(report)
-            logger.info("Auto-verified report %d (score=%.3f, confirmations=%d)",
-                        report_id, report.credibility_score, report.confirmation_count)
+            logger.info(
+                "Auto-verified report %d (score=%.3f, confirmations=%d)",
+                report_id,
+                report.credibility_score,
+                report.confirmation_count,
+            )
             return True
 
     return False

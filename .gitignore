@@ -117,6 +117,7 @@ backend/htmlcov/
 .coverage.*
 .coveragerc
 .cache
+.eslintcache
 nosetests.xml
 coverage.xml
 *.cover

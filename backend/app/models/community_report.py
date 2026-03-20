@@ -129,7 +129,9 @@ class CommunityReport(Base):
             "contact_number": self.contact_number,
             "photo_url": self.photo_url,
             "risk_label": self.risk_label,
-            "credibility_score": round(cast(float, self.credibility_score), 3) if self.credibility_score is not None else None,
+            "credibility_score": (
+                round(cast(float, self.credibility_score), 3) if self.credibility_score is not None else None
+            ),
             "verified": self.verified,
             "status": self.status,
             "confirmation_count": self.confirmation_count,

@@ -7,7 +7,7 @@ completeness requirements before it enters the ML training pipeline.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import pandas as pd
 
@@ -102,9 +102,7 @@ class DatasetValidator:
 
     def _check_minimum_rows(self, df: pd.DataFrame, result: ValidationResult) -> None:
         if len(df) < self.min_rows:
-            result.errors.append(
-                f"Dataset has {len(df)} rows, minimum is {self.min_rows}"
-            )
+            result.errors.append(f"Dataset has {len(df)} rows, minimum is {self.min_rows}")
 
     def _check_required_columns(self, df: pd.DataFrame, result: ValidationResult) -> None:
         missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
@@ -122,13 +120,10 @@ class DatasetValidator:
                 null_pct = null_count / len(df)
                 if null_pct > self.max_null_pct:
                     result.errors.append(
-                        f"Column '{col}' has {null_pct:.1%} null values "
-                        f"(max: {self.max_null_pct:.1%})"
+                        f"Column '{col}' has {null_pct:.1%} null values " f"(max: {self.max_null_pct:.1%})"
                     )
                 else:
-                    result.warnings.append(
-                        f"Column '{col}' has {null_count} null values ({null_pct:.1%})"
-                    )
+                    result.warnings.append(f"Column '{col}' has {null_count} null values ({null_pct:.1%})")
 
     def _check_ranges(self, df: pd.DataFrame, result: ValidationResult) -> None:
         for col, bounds in COLUMN_RANGES.items():
@@ -142,28 +137,21 @@ class DatasetValidator:
                 result.out_of_range[col] = total_out
                 if total_out / len(df) > 0.05:
                     result.errors.append(
-                        f"Column '{col}' has {total_out} values outside "
-                        f"[{bounds['min']}, {bounds['max']}]"
+                        f"Column '{col}' has {total_out} values outside " f"[{bounds['min']}, {bounds['max']}]"
                     )
                 else:
-                    result.warnings.append(
-                        f"Column '{col}' has {total_out} out-of-range values"
-                    )
+                    result.warnings.append(f"Column '{col}' has {total_out} out-of-range values")
 
     def _check_class_balance(self, df: pd.DataFrame, result: ValidationResult) -> None:
         if "flood_occurred" not in df.columns:
             return
         counts = df["flood_occurred"].value_counts()
         if len(counts) < 2:
-            result.warnings.append(
-                "Target variable has only one class — model cannot learn"
-            )
+            result.warnings.append("Target variable has only one class — model cannot learn")
             return
         minority_pct = counts.min() / counts.sum()
         if minority_pct < 0.05:
-            result.warnings.append(
-                f"Severe class imbalance: minority class is {minority_pct:.1%}"
-            )
+            result.warnings.append(f"Severe class imbalance: minority class is {minority_pct:.1%}")
 
     def validate_file(self, csv_path: str) -> ValidationResult:
         """

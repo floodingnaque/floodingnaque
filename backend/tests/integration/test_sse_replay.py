@@ -12,7 +12,6 @@ Tests the SSEManager class and /api/v1/sse/alerts endpoint:
 import json
 
 import pytest
-
 from app.api.routes.sse import SSEManager
 
 
@@ -33,7 +32,7 @@ class TestSSEManagerEventIDs:
         mgr.broadcast("alert", {"level": "Critical"})
         msg = client_q.get_nowait()
         assert "id: 1\n" in msg
-        assert 'event: alert\n' in msg
+        assert "event: alert\n" in msg
 
         mgr.broadcast("alert", {"level": "Safe"})
         msg2 = client_q.get_nowait()
@@ -131,7 +130,7 @@ class TestSSEFormatting:
         msg = SSEManager._format_sse("alert", data, event_id=1)
         # Extract data line
         data_line = [line for line in msg.split("\n") if line.startswith("data: ")][0]
-        parsed = json.loads(data_line[len("data: "):])
+        parsed = json.loads(data_line[len("data: ") :])
         assert parsed == data
 
 

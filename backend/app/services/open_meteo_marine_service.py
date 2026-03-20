@@ -197,9 +197,7 @@ class OpenMeteoMarineService:
 
                 next_high = next((e for e in future if e.type == "High"), None)
                 if next_high:
-                    result["hours_until_high_tide"] = round(
-                        (next_high.timestamp - now).total_seconds() / 3600, 2
-                    )
+                    result["hours_until_high_tide"] = round((next_high.timestamp - now).total_seconds() / 3600, 2)
                     result["next_high_tide_height"] = next_high.height
 
         # Simple risk factor

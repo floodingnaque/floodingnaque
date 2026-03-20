@@ -7,9 +7,10 @@ Objective: Verify resistance to injection, unauthorized access, data leakage,
            violations, IDOR, oversized payloads, brute force lockout.
 """
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pytest
 
 VALID_API_KEY = "xK9mR-vL2pN8qW5jT7bF4hD6cY0aG3sE"
 AUTH = {"X-API-Key": VALID_API_KEY, "Content-Type": "application/json"}
@@ -53,9 +54,7 @@ class TestSecurity:
             },
             headers=AUTH,
         )
-        assert resp.status_code == 400, (
-            f"SQL injection returned {resp.status_code}, expected 400"
-        )
+        assert resp.status_code == 400, f"SQL injection returned {resp.status_code}, expected 400"
 
     # ------------------------------------------------------------------
     # SEC-2: SQL injection via UNION SELECT
@@ -102,9 +101,7 @@ class TestSecurity:
             json={"temperature": 298.15, "humidity": 50.0, "precipitation": 5.0},
             headers={"Content-Type": "application/json"},
         )
-        assert resp.status_code in (401, 403), (
-            f"Missing API key returned {resp.status_code}, expected 401"
-        )
+        assert resp.status_code in (401, 403), f"Missing API key returned {resp.status_code}, expected 401"
 
     # ------------------------------------------------------------------
     # SEC-5: Invalid API key returns 401
@@ -126,9 +123,7 @@ class TestSecurity:
         large_payload: dict[str, object] = {"temperature": 298.15, "humidity": 50.0, "precipitation": 5.0}
         large_payload["padding"] = "A" * (100 * 1024)  # 100KB
         resp = client.post("/api/v1/predict/", json=large_payload, headers=AUTH)
-        assert resp.status_code in (400, 413, 422), (
-            f"100KB payload returned {resp.status_code}"
-        )
+        assert resp.status_code in (400, 413, 422), f"100KB payload returned {resp.status_code}"
 
     # ------------------------------------------------------------------
     # SEC-7: Error responses don't leak server internals
@@ -143,7 +138,7 @@ class TestSecurity:
         body = resp.get_data(as_text=True).lower()
         # Should not contain Python-specific error internals
         assert "traceback" not in body, "Stack trace leaked in error response"
-        assert "file \"/" not in body, "File path leaked in error response"
+        assert 'file "/' not in body, "File path leaked in error response"
         assert "line " not in body or "validation" in body, "Line number leaked"
 
     # ------------------------------------------------------------------
@@ -161,9 +156,7 @@ class TestSecurity:
             },
             headers=AUTH,
         )
-        assert resp.status_code in (400, 404), (
-            f"Path traversal returned {resp.status_code}"
-        )
+        assert resp.status_code in (400, 404), f"Path traversal returned {resp.status_code}"
 
     # ------------------------------------------------------------------
     # SEC-9: CORS headers present
@@ -189,9 +182,7 @@ class TestSecurity:
             },
             headers=AUTH,
         )
-        assert resp.status_code in (400, 422), (
-            f"Null byte injection returned {resp.status_code}"
-        )
+        assert resp.status_code in (400, 422), f"Null byte injection returned {resp.status_code}"
 
     # ------------------------------------------------------------------
     # SEC-11: Admin endpoints require authentication
@@ -206,6 +197,9 @@ class TestSecurity:
         for path in admin_paths:
             resp = client.get(path)
             # Should require auth (401/403) or not be found (404)
-            assert resp.status_code in (401, 403, 404, 405), (
-                f"Admin endpoint {path} returned {resp.status_code} without auth"
-            )
+            assert resp.status_code in (
+                401,
+                403,
+                404,
+                405,
+            ), f"Admin endpoint {path} returned {resp.status_code} without auth"
