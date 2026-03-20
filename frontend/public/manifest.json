@@ -8,7 +8,7 @@
   "background_color": "#ffffff",
   "orientation": "portrait-primary",
   "scope": "/",
-  "lang": "en",
+  "lang": "en-PH",
   "categories": ["weather", "utilities"],
   "icons": [
     {

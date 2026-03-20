@@ -5,14 +5,14 @@
  * Bottom bar with copyright notice.
  */
 
-import { Github, ExternalLink } from 'lucide-react';
-import { FloodIcon } from '@/components/icons/FloodIcon';
-import { Link } from 'react-router-dom';
+import { FloodIcon } from "@/components/icons/FloodIcon";
+import { ExternalLink, Github } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const SYSTEM_LINKS = [
-  { label: 'Resident Dashboard', to: '/login' },
-  { label: 'LGU Dashboard', to: '/login?role=lgu' },
-  { label: 'Admin Portal', to: '/login?role=admin' },
+  { label: "Resident Dashboard", to: "/login" },
+  { label: "LGU Dashboard", to: "/login?role=lgu" },
+  { label: "Admin Portal", to: "/login?role=admin" },
 ] as const;
 
 export function Footer() {
@@ -58,7 +58,7 @@ export function Footer() {
               ))}
               <li>
                 <a
-                  href="https://github.com/KyaRhamil/floodingnaque"
+                  href="https://github.com/floodingnaque/floodingnaque"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-white/60 hover:text-white transition-colors inline-flex items-center gap-1"
@@ -82,9 +82,7 @@ export function Footer() {
       {/* Bottom bar */}
       <div className="border-t border-white/10">
         <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-white/40">
-            &copy; {year} Floodingnaque
-          </p>
+          <p className="text-xs text-white/40">&copy; {year} Floodingnaque</p>
           <p className="text-xs text-white/30">
             Built with React · Flask · Random Forest · Leaflet
           </p>

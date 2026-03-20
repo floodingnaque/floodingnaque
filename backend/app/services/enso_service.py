@@ -57,15 +57,25 @@ ENSO_THRESHOLDS = {
 
 # ── Season names used in ONI data ───────────────────────────────────────────
 SEASON_MAP = {
-    "DJF": 1, "JFM": 2, "FMA": 3, "MAM": 4,
-    "AMJ": 5, "MJJ": 6, "JJA": 7, "JAS": 8,
-    "ASO": 9, "SON": 10, "OND": 11, "NDJ": 12,
+    "DJF": 1,
+    "JFM": 2,
+    "FMA": 3,
+    "MAM": 4,
+    "AMJ": 5,
+    "MJJ": 6,
+    "JJA": 7,
+    "JAS": 8,
+    "ASO": 9,
+    "SON": 10,
+    "OND": 11,
+    "NDJ": 12,
 }
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Data Fetching
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 def _fetch_text(url: str, timeout: int = 30) -> str:
     """Fetch plain-text data from a URL with error handling."""
@@ -179,6 +189,7 @@ def fetch_mei_data() -> pd.DataFrame:
 # ═════════════════════════════════════════════════════════════════════════════
 # Feature Engineering
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 def classify_enso_phase(oni: float) -> str:
     """
@@ -402,6 +413,7 @@ def get_enso_feature_names(include_lags: bool = True) -> List[str]:
 # Convenience: current ENSO state for real-time inference
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 def get_current_enso_state() -> Dict[str, Any]:
     """
     Get the current ENSO state for real-time prediction enrichment.
@@ -436,10 +448,14 @@ def get_current_enso_state() -> Dict[str, Any]:
                 state["enso_phase"] = phase
                 state["enso_phase_encoded"] = encode_enso_phase(phase)
                 rainfall_modifiers = {
-                    "strong_la_nina": 1.30, "moderate_la_nina": 1.20,
-                    "weak_la_nina": 1.10, "neutral": 1.00,
-                    "weak_el_nino": 0.90, "moderate_el_nino": 0.85,
-                    "strong_el_nino": 0.75, "unknown": 1.00,
+                    "strong_la_nina": 1.30,
+                    "moderate_la_nina": 1.20,
+                    "weak_la_nina": 1.10,
+                    "neutral": 1.00,
+                    "weak_el_nino": 0.90,
+                    "moderate_el_nino": 0.85,
+                    "strong_el_nino": 0.75,
+                    "unknown": 1.00,
                 }
                 state["enso_rainfall_modifier"] = rainfall_modifiers.get(phase, 1.0)
     except Exception as e:
@@ -453,8 +469,8 @@ def get_current_enso_state() -> Dict[str, Any]:
                 match = soi_df.sort_values(["year", "month"]).tail(1)
             if not match.empty:
                 state["soi"] = float(match.iloc[0]["soi"])
-    except Exception:
-        pass
+    except Exception:  # nosec B110
+        pass  # SOI is optional supplementary data
 
     logger.info(f"Current ENSO state: {state['enso_phase']} (ONI={state['oni']:.2f})")
     return state

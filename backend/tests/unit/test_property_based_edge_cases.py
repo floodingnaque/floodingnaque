@@ -321,9 +321,9 @@ class TestDateTimeEdgeCases:
     @settings(max_examples=100, deadline=None)
     def test_unix_timestamp_range(self, timestamp):
         """Property: Valid Unix timestamps should be handled."""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        dt = datetime.utcfromtimestamp(timestamp)
+        dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
         assert dt.year >= 1970
         assert dt.year <= 2038
 

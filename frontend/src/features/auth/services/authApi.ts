@@ -6,23 +6,24 @@
  * Responses are validated at runtime with Zod schemas.
  */
 
-import api from '@/lib/api-client';
-import { API_CONFIG } from '@/config/api.config';
+import { API_CONFIG } from "@/config/api.config";
+import api from "@/lib/api-client";
+import type {
+  ChangePasswordRequest,
+  LoginRequest,
+  PasswordResetConfirmRequest,
+  PasswordResetRequest,
+  PasswordResetResponse,
+  RefreshTokenRequest,
+  RegisterRequest,
+  UpdateProfileRequest,
+  User,
+} from "@/types";
 import {
   AuthResponseSchema,
   MeResponseSchema,
   type AuthResponse,
-} from '@/types/api/auth.schemas';
-import type {
-  LoginRequest,
-  RegisterRequest,
-  User,
-  RefreshTokenRequest,
-  ChangePasswordRequest,
-  UpdateProfileRequest,
-  PasswordResetRequest,
-  PasswordResetConfirmRequest,
-} from '@/types';
+} from "@/types/api/auth.schemas";
 
 const { endpoints } = API_CONFIG;
 
@@ -91,15 +92,23 @@ export const authApi = {
   /**
    * Request a password reset token (sent via email).
    * Always returns success to prevent email enumeration.
+   * In dev mode (SMTP not configured), response may include `dev_token`.
    */
-  requestPasswordReset: async (data: PasswordResetRequest): Promise<void> => {
-    return api.post<void>(endpoints.auth.passwordResetRequest, data);
+  requestPasswordReset: async (
+    data: PasswordResetRequest,
+  ): Promise<PasswordResetResponse> => {
+    return api.post<PasswordResetResponse>(
+      endpoints.auth.passwordResetRequest,
+      data,
+    );
   },
 
   /**
    * Confirm a password reset using the emailed token
    */
-  confirmPasswordReset: async (data: PasswordResetConfirmRequest): Promise<void> => {
+  confirmPasswordReset: async (
+    data: PasswordResetConfirmRequest,
+  ): Promise<void> => {
     return api.post<void>(endpoints.auth.passwordResetConfirm, data);
   },
 };

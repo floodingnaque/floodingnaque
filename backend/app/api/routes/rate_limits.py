@@ -9,7 +9,7 @@ import html
 from app.api.middleware.rate_limit import get_current_rate_limit_info, get_endpoint_limit, limiter
 from app.utils.api_constants import HTTP_BAD_REQUEST, HTTP_OK
 from app.utils.api_responses import api_error, api_success
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 from app.utils.rate_limit_tiers import check_rate_limit_status, get_api_key_tier
 from flask import Blueprint, g, request
 

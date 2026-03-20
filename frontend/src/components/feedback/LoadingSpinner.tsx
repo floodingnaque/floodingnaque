@@ -1,6 +1,6 @@
 /**
  * LoadingSpinner Component
- * 
+ *
  * Animated loading spinner using Lucide's Loader2 icon.
  * Supports different sizes and optional fullscreen mode.
  */
@@ -27,15 +27,15 @@ const sizeClasses = {
 
 /**
  * Displays an animated loading spinner.
- * 
+ *
  * @example
  * // Basic usage
  * <LoadingSpinner />
- * 
+ *
  * @example
  * // Large spinner centered fullscreen
  * <LoadingSpinner size="lg" fullscreen />
- * 
+ *
  * @example
  * // Small inline spinner
  * <LoadingSpinner size="sm" />

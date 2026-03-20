@@ -51,8 +51,10 @@ DPWH_HYDRO_URL = os.getenv(
     "https://hydro.dpwh.gov.ph/api",
 )
 
-RIVER_CACHE_TTL = int(os.getenv("RIVER_CACHE_TTL", "300"))   # 5 min
-RIVER_TIMEOUT = int(os.getenv("RIVER_TIMEOUT", "15"))
+RIVER_CACHE_TTL = int(os.getenv("RIVER_CACHE_TTL", "300"))  # 5 min
+RIVER_CONNECT_TIMEOUT = int(os.getenv("RIVER_CONNECT_TIMEOUT", "5"))
+RIVER_READ_TIMEOUT = int(os.getenv("RIVER_READ_TIMEOUT", "10"))
+RIVER_TIMEOUT = (RIVER_CONNECT_TIMEOUT, RIVER_READ_TIMEOUT)
 
 river_level_breaker = CircuitBreaker(
     failure_threshold=4,
@@ -144,6 +146,7 @@ class RiverAlarmLevel(str, Enum):
 @dataclass
 class RiverReading:
     """Single water-level reading from a river station."""
+
     station_id: str
     station_name: str
     river: str
@@ -167,6 +170,7 @@ class RiverReading:
 @dataclass
 class RiverSystemStatus:
     """Aggregated status for an entire river system."""
+
     river_name: str
     overall_alarm: RiverAlarmLevel
     station_count: int
@@ -190,9 +194,7 @@ class RiverSystemStatus:
 # ---------------------------------------------------------------------------
 
 
-def _classify_river_alarm(
-    water_level: float, station_info: Dict[str, Any]
-) -> RiverAlarmLevel:
+def _classify_river_alarm(water_level: float, station_info: Dict[str, Any]) -> RiverAlarmLevel:
     """Classify alarm level based on station thresholds."""
     if water_level >= station_info["overflow_level_m"]:
         return RiverAlarmLevel.OVERFLOW
@@ -338,6 +340,16 @@ class RiverWaterLevelService:
                 "readings": [r.to_dict() for r in readings],
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
             }
+
+            # Surface degraded status when all stations rely on synthetic fallback
+            fallback_count = sum(1 for r in readings if r.source == "fallback")
+            if fallback_count == len(readings) and readings:
+                result["status"] = "degraded"
+                result["message"] = "All data sources (EFCOS/DPWH) unreachable — values are estimated"
+            elif fallback_count > 0:
+                result["partial_fallback"] = True
+                result["fallback_stations"] = fallback_count
+
             self._set_cached("all_readings", result)
             return result
 
@@ -395,18 +407,20 @@ class RiverWaterLevelService:
             except ValueError:
                 overall = RiverAlarmLevel.UNKNOWN
 
-            summaries.append(RiverSystemStatus(
-                river_name=river_name,
-                overall_alarm=overall,
-                station_count=len(stations),
-                highest_level_m=max(levels) if levels else 0,
-                average_level_m=round(sum(levels) / len(levels), 2) if levels else 0,
-                stations_at_alert=sum(1 for a in alarms if a == "alert"),
-                stations_at_critical=sum(1 for a in alarms if a == "critical"),
-                stations_at_overflow=sum(1 for a in alarms if a == "overflow"),
-                flood_risk_score=all_data.get("flood_risk_score", 0),
-                timestamp=now,
-            ).to_dict())
+            summaries.append(
+                RiverSystemStatus(
+                    river_name=river_name,
+                    overall_alarm=overall,
+                    station_count=len(stations),
+                    highest_level_m=max(levels) if levels else 0,
+                    average_level_m=round(sum(levels) / len(levels), 2) if levels else 0,
+                    stations_at_alert=sum(1 for a in alarms if a == "alert"),
+                    stations_at_critical=sum(1 for a in alarms if a == "critical"),
+                    stations_at_overflow=sum(1 for a in alarms if a == "overflow"),
+                    flood_risk_score=all_data.get("flood_risk_score", 0),
+                    timestamp=now,
+                ).to_dict()
+            )
 
         return {
             "status": "ok",
@@ -414,9 +428,7 @@ class RiverWaterLevelService:
             "timestamp": now.isoformat(),
         }
 
-    def get_historical_readings(
-        self, station_id: str, hours: int = 24
-    ) -> Dict[str, Any]:
+    def get_historical_readings(self, station_id: str, hours: int = 24) -> Dict[str, Any]:
         """
         Get historical water-level readings for a station.
 
@@ -460,9 +472,7 @@ class RiverWaterLevelService:
 
         return readings
 
-    def _fetch_single_station(
-        self, station_id: str, info: Dict[str, Any]
-    ) -> RiverReading:
+    def _fetch_single_station(self, station_id: str, info: Dict[str, Any]) -> RiverReading:
         """
         Fetch a reading for a single station.
 
@@ -471,14 +481,14 @@ class RiverWaterLevelService:
         # Try EFCOS first
         try:
             return self._fetch_efcos_station(station_id, info)
-        except Exception:
-            pass
+        except Exception:  # nosec B110
+            pass  # Fall through to next data source
 
         # Try DPWH hydro
         try:
             return self._fetch_dpwh_station(station_id, info)
-        except Exception:
-            pass
+        except Exception:  # nosec B110
+            pass  # Fall through to synthetic fallback
 
         # Synthetic fallback (station exists but data is unavailable)
         logger.warning(f"No data source available for station {station_id}, returning unknown")
@@ -497,9 +507,7 @@ class RiverWaterLevelService:
             confidence=0.0,
         )
 
-    def _fetch_efcos_station(
-        self, station_id: str, info: Dict[str, Any]
-    ) -> RiverReading:
+    def _fetch_efcos_station(self, station_id: str, info: Dict[str, Any]) -> RiverReading:
         """Fetch from EFCOS (DPWH) telemetry."""
         response = river_level_breaker.call(
             requests.get,
@@ -528,9 +536,7 @@ class RiverWaterLevelService:
             confidence=0.90,
         )
 
-    def _fetch_dpwh_station(
-        self, station_id: str, info: Dict[str, Any]
-    ) -> RiverReading:
+    def _fetch_dpwh_station(self, station_id: str, info: Dict[str, Any]) -> RiverReading:
         """Fallback: DPWH hydrometric API."""
         response = river_level_breaker.call(
             requests.get,
@@ -560,9 +566,7 @@ class RiverWaterLevelService:
             confidence=0.80,
         )
 
-    def _fetch_station_history(
-        self, station_id: str, hours: int
-    ) -> List[Dict[str, Any]]:
+    def _fetch_station_history(self, station_id: str, hours: int) -> List[Dict[str, Any]]:
         """Fetch historical readings for a station."""
         try:
             now = datetime.now(timezone.utc)

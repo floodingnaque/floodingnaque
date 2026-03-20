@@ -6,23 +6,36 @@
  * missing WorldTides API configuration (shows "not configured" state).
  */
 
-import { memo } from 'react';
-import { Waves, ArrowUp, Clock, AlertTriangle, Info } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import { useCurrentTide, useTidePrediction } from '../hooks/useTides';
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { AlertTriangle, ArrowUp, Clock, Info, Waves } from "lucide-react";
+import { memo } from "react";
+import { useCurrentTide, useTidePrediction } from "../hooks/useTides";
 
 // ---------------------------------------------------------------------------
 // Risk-factor colour mapping
 // ---------------------------------------------------------------------------
 
-const RISK_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  low: { bg: 'bg-risk-safe text-white', text: 'text-risk-safe', label: 'Low' },
-  moderate: { bg: 'bg-risk-alert text-black', text: 'text-risk-alert', label: 'Moderate' },
-  high: { bg: 'bg-risk-critical text-white', text: 'text-risk-critical', label: 'High' },
-};
+const RISK_COLORS: Record<string, { bg: string; text: string; label: string }> =
+  {
+    low: {
+      bg: "bg-risk-safe text-white",
+      text: "text-risk-safe",
+      label: "Low",
+    },
+    moderate: {
+      bg: "bg-risk-alert text-black",
+      text: "text-risk-alert",
+      label: "Moderate",
+    },
+    high: {
+      bg: "bg-risk-critical text-white",
+      text: "text-risk-critical",
+      label: "High",
+    },
+  };
 
 // ---------------------------------------------------------------------------
 // Loading skeleton
@@ -97,8 +110,8 @@ export const TidalRiskIndicator = memo(function TidalRiskIndicator({
   if (isLoading) return <TidalRiskIndicatorSkeleton />;
 
   const height = currentTide?.height ?? prediction?.current_height ?? null;
-  const riskFactor = prediction?.risk_factor ?? 'low';
-  const riskStyle = RISK_COLORS[riskFactor] ?? RISK_COLORS.low;
+  const riskFactor = prediction?.risk_factor ?? "low";
+  const riskStyle = (RISK_COLORS[riskFactor] ?? RISK_COLORS.low)!;
   const message = prediction?.message;
   const nextHigh = prediction?.next_high_tide;
 
@@ -108,7 +121,7 @@ export const TidalRiskIndicator = memo(function TidalRiskIndicator({
         <CardTitle className="text-base flex items-center gap-2">
           <Waves className="h-4 w-4" />
           Tidal Risk
-          <Badge className={cn('ml-auto text-xs', riskStyle.bg)}>
+          <Badge className={cn("ml-auto text-xs", riskStyle.bg)}>
             {riskStyle.label}
           </Badge>
         </CardTitle>
@@ -117,7 +130,7 @@ export const TidalRiskIndicator = memo(function TidalRiskIndicator({
         {/* Current height */}
         {height != null && (
           <div className="flex items-baseline gap-2">
-            <span className={cn('text-3xl font-bold', riskStyle.text)}>
+            <span className={cn("text-3xl font-bold", riskStyle.text)}>
               {height.toFixed(2)}
             </span>
             <span className="text-sm text-muted-foreground">m MSL</span>
@@ -129,19 +142,19 @@ export const TidalRiskIndicator = memo(function TidalRiskIndicator({
           <div className="flex items-center gap-2 text-sm">
             <ArrowUp className="h-4 w-4 text-muted-foreground" />
             <span>
-              Next high tide:{' '}
+              Next high tide:{" "}
               <strong>
-                {typeof nextHigh.height === 'number'
+                {typeof nextHigh.height === "number"
                   ? `${nextHigh.height.toFixed(2)} m`
-                  : '-'}
+                  : "-"}
               </strong>
             </span>
             {nextHigh.date && (
               <span className="flex items-center gap-1 text-muted-foreground ml-auto text-xs">
                 <Clock className="h-3 w-3" />
-                {new Date(nextHigh.date).toLocaleTimeString('en-PH', {
-                  hour: '2-digit',
-                  minute: '2-digit',
+                {new Date(nextHigh.date).toLocaleTimeString("en-PH", {
+                  hour: "2-digit",
+                  minute: "2-digit",
                 })}
               </span>
             )}
@@ -152,12 +165,12 @@ export const TidalRiskIndicator = memo(function TidalRiskIndicator({
         {message && (
           <div
             className={cn(
-              'flex items-start gap-2 rounded-lg px-3 py-2 text-xs',
-              riskFactor === 'high'
-                ? 'bg-red-50 dark:bg-red-950/30 text-risk-critical'
-                : riskFactor === 'moderate'
-                ? 'bg-amber-50 dark:bg-amber-950/30 text-risk-alert'
-                : 'bg-green-50 dark:bg-green-950/30 text-risk-safe',
+              "flex items-start gap-2 rounded-lg px-3 py-2 text-xs",
+              riskFactor === "high"
+                ? "bg-risk-critical/10 text-risk-critical"
+                : riskFactor === "moderate"
+                  ? "bg-risk-alert/10 text-risk-alert"
+                  : "bg-risk-safe/10 text-risk-safe",
             )}
           >
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />

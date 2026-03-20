@@ -61,11 +61,12 @@ FETCH_TIMEOUT = int(os.getenv("DATA_AGGREGATION_TIMEOUT", "30"))
 
 class SourceQuality(str, Enum):
     """Quality tier for a data source."""
+
     AUTHORITATIVE = "authoritative"  # Official gov API, telemetry
-    PRIMARY = "primary"              # Well-known API with SLA
-    SECONDARY = "secondary"          # RSS, scraped, community
-    FALLBACK = "fallback"            # Computed/estimated locally
-    UNAVAILABLE = "unavailable"      # Source is down / circuit open
+    PRIMARY = "primary"  # Well-known API with SLA
+    SECONDARY = "secondary"  # RSS, scraped, community
+    FALLBACK = "fallback"  # Computed/estimated locally
+    UNAVAILABLE = "unavailable"  # Source is down / circuit open
 
 
 # Base confidence weights per quality tier
@@ -81,13 +82,14 @@ _QUALITY_WEIGHTS: Dict[SourceQuality, float] = {
 @dataclass
 class SourceResult:
     """Result from a single data source with reliability metadata."""
+
     source_name: str
-    category: str               # e.g. "rainfall", "tide", "river", "advisory"
+    category: str  # e.g. "rainfall", "tide", "river", "advisory"
     quality: SourceQuality
-    data: Any                   # The actual payload
-    confidence: float           # 0-1 composite confidence
-    freshness_seconds: float    # Age of data in seconds
-    latency_ms: float           # How long the fetch took
+    data: Any  # The actual payload
+    confidence: float  # 0-1 composite confidence
+    freshness_seconds: float  # Age of data in seconds
+    latency_ms: float  # How long the fetch took
     error: Optional[str] = None
     is_fallback: bool = False
     timestamp: str = ""
@@ -101,8 +103,9 @@ class SourceResult:
 @dataclass
 class AggregatedData:
     """Unified multi-source data envelope for flood prediction."""
+
     sources: Dict[str, Any]
-    reliability_score: float           # Global composite 0-1
+    reliability_score: float  # Global composite 0-1
     source_count: int
     sources_available: int
     sources_failed: int
@@ -399,17 +402,19 @@ class DataAggregationService:
                     results.append(result)
                 except Exception as exc:
                     logger.error(f"Aggregation chain [{category}] raised: {exc}")
-                    results.append(SourceResult(
-                        source_name="none",
-                        category=category,
-                        quality=SourceQuality.UNAVAILABLE,
-                        data=None,
-                        confidence=0.0,
-                        freshness_seconds=0,
-                        latency_ms=0,
-                        error=str(exc),
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    ))
+                    results.append(
+                        SourceResult(
+                            source_name="none",
+                            category=category,
+                            quality=SourceQuality.UNAVAILABLE,
+                            data=None,
+                            confidence=0.0,
+                            freshness_seconds=0,
+                            latency_ms=0,
+                            error=str(exc),
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        )
+                    )
 
         # --- Cross-source consistency ---
         rainfall_mm = self._extract_rainfall(results)
@@ -516,56 +521,78 @@ class DataAggregationService:
     def _build_fallback_chains(self) -> List[FallbackChain]:
         """Build the fallback chains for each data category."""
         return [
-            FallbackChain("rainfall", [
-                ("pagasa_radar", SourceQuality.AUTHORITATIVE, self._fetch_pagasa_radar),
-                ("pagasa_bulletin", SourceQuality.PRIMARY, self._fetch_pagasa_bulletin_rainfall),
-                ("meteostat", SourceQuality.SECONDARY, self._fetch_meteostat_rainfall),
-            ]),
-            FallbackChain("flood_advisory", [
-                ("mmda_flood", SourceQuality.AUTHORITATIVE, self._fetch_mmda_advisories),
-                ("pagasa_bulletin", SourceQuality.PRIMARY, self._fetch_pagasa_bulletin_advisories),
-            ]),
-            FallbackChain("tide", [
-                ("worldtides", SourceQuality.PRIMARY, self._fetch_worldtides),
-                ("manila_bay_tide", SourceQuality.SECONDARY, self._fetch_manila_bay_tide),
-            ]),
-            FallbackChain("river", [
-                ("efcos_dpwh", SourceQuality.AUTHORITATIVE, self._fetch_river_levels),
-                ("mmda_stations", SourceQuality.SECONDARY, self._fetch_mmda_stations),
-            ]),
-            FallbackChain("severe_weather", [
-                ("pagasa_severe", SourceQuality.AUTHORITATIVE, self._fetch_severe_weather),
-            ]),
+            FallbackChain(
+                "rainfall",
+                [
+                    ("pagasa_radar", SourceQuality.AUTHORITATIVE, self._fetch_pagasa_radar),
+                    ("pagasa_bulletin", SourceQuality.PRIMARY, self._fetch_pagasa_bulletin_rainfall),
+                    ("meteostat", SourceQuality.SECONDARY, self._fetch_meteostat_rainfall),
+                ],
+            ),
+            FallbackChain(
+                "flood_advisory",
+                [
+                    ("mmda_flood", SourceQuality.AUTHORITATIVE, self._fetch_mmda_advisories),
+                    ("pagasa_bulletin", SourceQuality.PRIMARY, self._fetch_pagasa_bulletin_advisories),
+                ],
+            ),
+            FallbackChain(
+                "tide",
+                [
+                    ("worldtides", SourceQuality.PRIMARY, self._fetch_worldtides),
+                    ("manila_bay_tide", SourceQuality.SECONDARY, self._fetch_manila_bay_tide),
+                ],
+            ),
+            FallbackChain(
+                "river",
+                [
+                    ("efcos_dpwh", SourceQuality.AUTHORITATIVE, self._fetch_river_levels),
+                    ("mmda_stations", SourceQuality.SECONDARY, self._fetch_mmda_stations),
+                ],
+            ),
+            FallbackChain(
+                "severe_weather",
+                [
+                    ("pagasa_severe", SourceQuality.AUTHORITATIVE, self._fetch_severe_weather),
+                ],
+            ),
         ]
 
     # -- individual source fetchers ------------------------------------------
 
     def _fetch_pagasa_radar(self) -> Dict[str, Any]:
         from app.services.pagasa_radar_service import get_pagasa_radar_service
+
         return get_pagasa_radar_service().get_city_precipitation()
 
     def _fetch_pagasa_bulletin_rainfall(self) -> Dict[str, Any]:
         from app.services.pagasa_bulletin_service import get_pagasa_bulletin_service
+
         return get_pagasa_bulletin_service().get_active_advisories(paranaque_only=True)
 
     def _fetch_pagasa_bulletin_advisories(self) -> Dict[str, Any]:
         from app.services.pagasa_bulletin_service import get_pagasa_bulletin_service
+
         return get_pagasa_bulletin_service().get_combined_status()
 
     def _fetch_severe_weather(self) -> Dict[str, Any]:
         from app.services.pagasa_bulletin_service import get_pagasa_bulletin_service
+
         return get_pagasa_bulletin_service().get_severe_weather_bulletins(paranaque_only=True)
 
     def _fetch_mmda_advisories(self) -> Dict[str, Any]:
         from app.services.mmda_flood_service import get_mmda_flood_service
+
         return get_mmda_flood_service().get_active_advisories(paranaque_only=True)
 
     def _fetch_mmda_stations(self) -> Dict[str, Any]:
         from app.services.mmda_flood_service import get_mmda_flood_service
+
         return get_mmda_flood_service().get_station_readings()
 
     def _fetch_worldtides(self) -> Dict[str, Any]:
         from app.services.worldtides_service import WorldTidesService
+
         wt = WorldTidesService.get_instance()
         if not wt.enabled:
             return {"status": "disabled"}
@@ -582,14 +609,17 @@ class DataAggregationService:
 
     def _fetch_manila_bay_tide(self) -> Dict[str, Any]:
         from app.services.manila_bay_tide_service import get_manila_bay_tide_service
+
         return get_manila_bay_tide_service().get_current_tide()
 
     def _fetch_river_levels(self) -> Dict[str, Any]:
         from app.services.river_water_level_service import get_river_water_level_service
+
         return get_river_water_level_service().get_all_readings()
 
     def _fetch_meteostat_rainfall(self) -> Dict[str, Any]:
         from app.services.meteostat_service import get_meteostat_service
+
         svc = get_meteostat_service()
         data = svc.get_current_weather()
         if data:
@@ -606,6 +636,7 @@ class DataAggregationService:
     def _check_pagasa_radar(self) -> str:
         try:
             from app.services.pagasa_radar_service import get_pagasa_radar_service
+
             svc = get_pagasa_radar_service()
             return "ok" if svc.is_enabled() else "disabled"
         except Exception:
@@ -614,6 +645,7 @@ class DataAggregationService:
     def _check_pagasa_bulletin(self) -> str:
         try:
             from app.services.pagasa_bulletin_service import get_pagasa_bulletin_service
+
             svc = get_pagasa_bulletin_service()
             return "ok" if svc.is_enabled() else "disabled"
         except Exception:
@@ -622,6 +654,7 @@ class DataAggregationService:
     def _check_mmda(self) -> str:
         try:
             from app.services.mmda_flood_service import get_mmda_flood_service
+
             svc = get_mmda_flood_service()
             return "ok" if svc.is_enabled() else "disabled"
         except Exception:
@@ -630,6 +663,7 @@ class DataAggregationService:
     def _check_worldtides(self) -> str:
         try:
             from app.services.worldtides_service import WorldTidesService
+
             svc = WorldTidesService.get_instance()
             return "ok" if svc.enabled else "disabled"
         except Exception:
@@ -638,6 +672,7 @@ class DataAggregationService:
     def _check_manila_bay(self) -> str:
         try:
             from app.services.manila_bay_tide_service import get_manila_bay_tide_service
+
             svc = get_manila_bay_tide_service()
             return "ok" if svc.is_enabled() else "disabled"
         except Exception:
@@ -646,6 +681,7 @@ class DataAggregationService:
     def _check_river(self) -> str:
         try:
             from app.services.river_water_level_service import get_river_water_level_service
+
             svc = get_river_water_level_service()
             return "ok" if svc.is_enabled() else "disabled"
         except Exception:
@@ -654,6 +690,7 @@ class DataAggregationService:
     def _check_meteostat(self) -> str:
         try:
             from app.services.meteostat_service import get_meteostat_service
+
             svc = get_meteostat_service()
             return "ok" if svc else "disabled"
         except Exception:
@@ -699,6 +736,204 @@ class DataAggregationService:
                 if isinstance(r.data, dict):
                     return r.data.get("overall_alarm")
         return None
+
+
+# ---------------------------------------------------------------------------
+# Per-Source Reliability Tracking (EMA)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SourceReliability:
+    """
+    Track per-source reliability using an Exponential Moving Average (EMA).
+
+    Each call to ``record_success()`` / ``record_failure()`` updates the
+    running EMA score which weights recent observations more heavily than
+    older ones.  This gives a smooth reliability signal that adapts to
+    changing source quality without needing a sliding window.
+    """
+
+    source_name: str
+    total_calls: int = 0
+    success_calls: int = 0
+    failure_calls: int = 0
+    ema_score: float = 1.0  # Start optimistic
+    last_success: Optional[str] = None
+    last_failure: Optional[str] = None
+    last_latency_ms: float = 0.0
+    _alpha: float = 0.3  # EMA smoothing factor
+
+    def record_success(self, latency_ms: float = 0.0) -> None:
+        self.total_calls += 1
+        self.success_calls += 1
+        self.last_success = datetime.now(timezone.utc).isoformat()
+        self.last_latency_ms = latency_ms
+        self.ema_score = self._alpha * 1.0 + (1 - self._alpha) * self.ema_score
+
+    def record_failure(self) -> None:
+        self.total_calls += 1
+        self.failure_calls += 1
+        self.last_failure = datetime.now(timezone.utc).isoformat()
+        self.ema_score = self._alpha * 0.0 + (1 - self._alpha) * self.ema_score
+
+    @property
+    def success_rate(self) -> float:
+        if self.total_calls == 0:
+            return 1.0
+        return round(self.success_calls / self.total_calls, 3)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "source_name": self.source_name,
+            "total_calls": self.total_calls,
+            "success_calls": self.success_calls,
+            "failure_calls": self.failure_calls,
+            "ema_score": round(self.ema_score, 3),
+            "success_rate": self.success_rate,
+            "last_success": self.last_success,
+            "last_failure": self.last_failure,
+            "last_latency_ms": round(self.last_latency_ms, 1),
+        }
+
+
+# Module-level registry of per-source reliability trackers
+_reliability_registry: Dict[str, SourceReliability] = {}
+_reliability_lock = threading.Lock()
+
+
+def _get_reliability(source_name: str) -> SourceReliability:
+    """Get or create the reliability tracker for *source_name*."""
+    with _reliability_lock:
+        if source_name not in _reliability_registry:
+            _reliability_registry[source_name] = SourceReliability(source_name=source_name)
+        return _reliability_registry[source_name]
+
+
+def track_reliability(source_name: str) -> Callable:
+    """
+    Decorator that auto-records success/failure in the EMA reliability
+    tracker for the named source.
+
+    Usage::
+
+        @track_reliability("pagasa_radar")
+        def _fetch_pagasa_radar(self):
+            ...
+    """
+
+    def decorator(fn: Callable) -> Callable:
+        from functools import wraps
+
+        @wraps(fn)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            tracker = _get_reliability(source_name)
+            start = time.perf_counter()
+            try:
+                result = fn(*args, **kwargs)
+                latency = (time.perf_counter() - start) * 1000
+                tracker.record_success(latency_ms=latency)
+                return result
+            except Exception:
+                tracker.record_failure()
+                raise
+
+        return wrapper
+
+    return decorator
+
+
+def reliability_snapshot() -> Dict[str, Any]:
+    """
+    Return a snapshot of all per-source EMA reliability scores.
+
+    Intended for the ``/api/v1/data/reliability`` endpoint.
+    """
+    with _reliability_lock:
+        sources = {name: tracker.to_dict() for name, tracker in _reliability_registry.items()}
+
+    return {
+        "source_count": len(sources),
+        "sources": sources,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# DataBundle — typed, model-ready output
+# ---------------------------------------------------------------------------
+
+# V6 feature order — must match backend/scripts/train_progressive_v6.py
+_V6_FEATURE_NAMES: List[str] = [
+    "temperature",
+    "humidity",
+    "precipitation",
+    "is_monsoon_season",
+    "month",
+    "temp_humidity_interaction",
+    "humidity_precip_interaction",
+    "monsoon_precip_interaction",
+    "saturation_risk",
+    "precip_3day_sum",
+    "precip_7day_sum",
+    "precip_14day_sum",
+    "rain_streak",
+    "tide_height",
+]
+
+
+@dataclass
+class DataBundle:
+    """
+    Model-ready data bundle assembled from aggregated sources.
+
+    Provides ``to_feature_vector()`` that returns values in the exact
+    order expected by the v6 Random Forest model.
+    """
+
+    temperature: float = 0.0
+    humidity: float = 0.0
+    precipitation: float = 0.0
+    is_monsoon_season: int = 0
+    month: int = 1
+    temp_humidity_interaction: float = 0.0
+    humidity_precip_interaction: float = 0.0
+    monsoon_precip_interaction: float = 0.0
+    saturation_risk: float = 0.0
+    precip_3day_sum: float = 0.0
+    precip_7day_sum: float = 0.0
+    precip_14day_sum: float = 0.0
+    rain_streak: int = 0
+    tide_height: float = 0.0
+    reliability_score: float = 0.0
+    timestamp: str = ""
+
+    def to_feature_vector(self) -> List[float]:
+        """Return feature values in V6 training order."""
+        return [
+            self.temperature,
+            self.humidity,
+            self.precipitation,
+            float(self.is_monsoon_season),
+            float(self.month),
+            self.temp_humidity_interaction,
+            self.humidity_precip_interaction,
+            self.monsoon_precip_interaction,
+            self.saturation_risk,
+            self.precip_3day_sum,
+            self.precip_7day_sum,
+            self.precip_14day_sum,
+            float(self.rain_streak),
+            self.tide_height,
+        ]
+
+    @staticmethod
+    def feature_names() -> List[str]:
+        """Return feature names in V6 training order."""
+        return list(_V6_FEATURE_NAMES)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
 
 
 # ---------------------------------------------------------------------------

@@ -22,14 +22,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-
 from app.services.dataset_validation import (
     DatasetPhase,
     DatasetValidator,
@@ -91,7 +90,7 @@ class TransitionReport:
     """Full report for a dataset transition audit."""
 
     phase: str
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     validation: Optional[Dict[str, Any]] = None
     consistency: Optional[Dict[str, Any]] = None
     readiness: Optional[Dict[str, Any]] = None
@@ -224,9 +223,7 @@ class DatasetTransitionPlan:
         df = pd.read_csv(path)
         return self.evaluate(df, phase, **kwargs)
 
-    def generate_phase_summary(
-        self, phase: TransitionPhase
-    ) -> Dict[str, Any]:
+    def generate_phase_summary(self, phase: TransitionPhase) -> Dict[str, Any]:
         """Return a description of what a phase entails."""
         return self._phase_metadata(phase)
 
@@ -264,32 +261,24 @@ class DatasetTransitionPlan:
 
         # Check row count
         if len(df) < PHASE_1_TO_2_MIN_ROWS:
-            readiness.blockers.append(
-                f"Need ≥ {PHASE_1_TO_2_MIN_ROWS} rows, have {len(df)}."
-            )
+            readiness.blockers.append(f"Need ≥ {PHASE_1_TO_2_MIN_ROWS} rows, have {len(df)}.")
             readiness.ready = False
 
         # Check validation passed
         if not val_report.passed:
-            readiness.blockers.append(
-                f"Validation failed with {val_report.error_count} errors."
-            )
+            readiness.blockers.append(f"Validation failed with {val_report.error_count} errors.")
             readiness.ready = False
 
         # Check class count
         if "flood" in df.columns:
             n_classes = df["flood"].nunique()
             if n_classes < PHASE_1_TO_2_MIN_CLASSES:
-                readiness.blockers.append(
-                    "Target 'flood' has only one class."
-                )
+                readiness.blockers.append("Target 'flood' has only one class.")
                 readiness.ready = False
 
         # Warnings
         if con_report.total_issues > 0:
-            readiness.warnings.append(
-                f"{con_report.total_issues} label consistency issues found."
-            )
+            readiness.warnings.append(f"{con_report.total_issues} label consistency issues found.")
 
         # Improvement suggestions
         readiness.improvements = [
@@ -320,32 +309,24 @@ class DatasetTransitionPlan:
         )
 
         if len(df) < PHASE_2_TO_3_MIN_ROWS:
-            readiness.blockers.append(
-                f"Need ≥ {PHASE_2_TO_3_MIN_ROWS} rows, have {len(df)}."
-            )
+            readiness.blockers.append(f"Need ≥ {PHASE_2_TO_3_MIN_ROWS} rows, have {len(df)}.")
             readiness.ready = False
 
         if not val_report.passed:
-            readiness.blockers.append(
-                f"Validation failed with {val_report.error_count} errors."
-            )
+            readiness.blockers.append(f"Validation failed with {val_report.error_count} errors.")
             readiness.ready = False
 
         # Check confidence scores
         if "label_confidence" in df.columns:
             mean_conf = float(df["label_confidence"].mean())
             if mean_conf < PHASE_2_TO_3_MIN_CONFIDENCE:
-                readiness.blockers.append(
-                    f"Mean label confidence {mean_conf:.2f} < {PHASE_2_TO_3_MIN_CONFIDENCE}."
-                )
+                readiness.blockers.append(f"Mean label confidence {mean_conf:.2f} < {PHASE_2_TO_3_MIN_CONFIDENCE}.")
                 readiness.ready = False
             readiness.metrics["mean_confidence"] = round(mean_conf, 4)
 
         # Check labeled ratio
         if "label_source" in df.columns:
-            verified = df["label_source"].isin(
-                ["official", "manual", "drrmo", "verified"]
-            )
+            verified = df["label_source"].isin(["official", "manual", "drrmo", "verified"])
             labeled_ratio = float(verified.mean())
             if labeled_ratio < PHASE_2_TO_3_MIN_LABELED_RATIO:
                 readiness.warnings.append(
@@ -356,9 +337,7 @@ class DatasetTransitionPlan:
 
         # High consistency issues → warning
         if not con_report.consistent:
-            readiness.warnings.append(
-                "Label consistency check flagged high-severity issues."
-            )
+            readiness.warnings.append("Label consistency check flagged high-severity issues.")
 
         readiness.improvements = [
             "Obtain official DRRMO flood records for all target years.",
@@ -391,15 +370,11 @@ class DatasetTransitionPlan:
         )
 
         if len(df) < PHASE_3_MIN_ROWS:
-            readiness.blockers.append(
-                f"Need ≥ {PHASE_3_MIN_ROWS} rows, have {len(df)}."
-            )
+            readiness.blockers.append(f"Need ≥ {PHASE_3_MIN_ROWS} rows, have {len(df)}.")
             readiness.ready = False
 
         if not val_report.passed:
-            readiness.blockers.append(
-                f"Validation failed with {val_report.error_count} errors."
-            )
+            readiness.blockers.append(f"Validation failed with {val_report.error_count} errors.")
             readiness.ready = False
 
         # Check temporal breadth
@@ -421,15 +396,10 @@ class DatasetTransitionPlan:
             n_bar = df["barangay"].nunique()
             readiness.metrics["unique_barangays"] = n_bar
             if n_bar < PHASE_3_MIN_BARANGAYS:
-                readiness.warnings.append(
-                    f"Only {n_bar} unique barangays "
-                    f"(recommend ≥ {PHASE_3_MIN_BARANGAYS})."
-                )
+                readiness.warnings.append(f"Only {n_bar} unique barangays " f"(recommend ≥ {PHASE_3_MIN_BARANGAYS}).")
 
         if not con_report.consistent:
-            readiness.warnings.append(
-                "Label consistency issues remain – resolve before production."
-            )
+            readiness.warnings.append("Label consistency issues remain – resolve before production.")
 
         readiness.improvements = [
             "Dataset is at production quality – proceed with progressive training.",

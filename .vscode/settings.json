@@ -1,81 +1,92 @@
 {
-    "python.testing.unittestArgs": [
-        "-v",
-        "-s",
-        ".",
-        "-p",
-        "*test.py"
-    ],
-    "python.testing.pytestEnabled": true,
-    "python.testing.unittestEnabled": false,
-    "python.analysis.extraPaths": [
-        "${workspaceFolder}/backend"
-    ],
-    "github.copilot.chat.agent.autoFix": true,
-    "github.copilot.chat.agent.tools.enabled": true,
-    "github.copilot.chat.codesearch.enabled": true,
-    "github.copilot.chat.customAgents.showOrganizationAndEnterpriseAgents": true,
-    "github.copilot.chat.generateTests.codeLens": true,
-    "github.copilot.chat.githubMcpServer.enabled": true,
-    "github.copilot.chat.tools.memory.enabled": true,
-    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-    "github.copilot.enable": {
-        "markdown": true,
-        "plaintext": true
-    },
-    "github.copilot.nextEditSuggestions.extendedRange": true,
-    "problems.visibility": {
-        "hint": false
-    },
-    "cursorpyright.analysis.extraPaths": [
-        "${workspaceFolder}/backend"
-    ],
-
-    // --- Editor defaults ---
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    ".",
+    "-p",
+    "*test.py"
+  ],
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/backend"
+  ],
+  "github.copilot.chat.agent.autoFix": true,
+  "github.copilot.chat.agent.tools.enabled": true,
+  "github.copilot.chat.codesearch.enabled": true,
+  "github.copilot.chat.customAgents.showOrganizationAndEnterpriseAgents": true,
+  "github.copilot.chat.generateTests.codeLens": true,
+  "github.copilot.chat.githubMcpServer.enabled": true,
+  "github.copilot.chat.tools.memory.enabled": true,
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "github.copilot.enable": {
+    "markdown": true,
+    "plaintext": true
+  },
+  "github.copilot.nextEditSuggestions.extendedRange": true,
+  "problems.visibility": {
+    "hint": false
+  },
+  "cursorpyright.analysis.extraPaths": [
+    "${workspaceFolder}/backend"
+  ],
+  // --- Editor defaults ---
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.rulers": [
+    100
+  ],
+  // --- File handling ---
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  // --- TypeScript ---
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  // --- Python ---
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.tabSize": 4,
     "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "explicit",
-        "source.organizeImports": "explicit"
-    },
-    "editor.tabSize": 2,
-    "editor.insertSpaces": true,
-    "editor.rulers": [100],
-
-    // --- File handling ---
-    "files.associations": {
-        "*.css": "tailwindcss"
-    },
-    "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
-
-    // --- TypeScript ---
-    "typescript.preferences.importModuleSpecifier": "non-relative",
-    "typescript.tsdk": "frontend/node_modules/typescript/lib",
-
-    // --- Python ---
-    "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter",
-        "editor.tabSize": 4,
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": "explicit"
-        }
-    },
-    "python.analysis.typeCheckingMode": "basic",
-
-    // --- Tailwind CSS ---
-    "tailwindCSS.experimental.classRegex": [
-        ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
-        ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
-    ],
-
-    // --- Search exclusions ---
-    "search.exclude": {
-        "**/node_modules": true,
-        "**/dist": true,
-        "**/.venv": true,
-        "**/htmlcov": true,
-        "**/playwright-report": true,
-        "**/__pycache__": true
+      "source.organizeImports": "explicit"
     }
+  },
+  "python.analysis.typeCheckingMode": "basic",
+  // --- Tailwind CSS ---
+  "tailwindCSS.experimental.classRegex": [
+    [
+      "cva\\(([^)]*)\\)",
+      "[\"'`]([^\"'`]*).*?[\"'`]"
+    ],
+    [
+      "cn\\(([^)]*)\\)",
+      "[\"'`]([^\"'`]*).*?[\"'`]"
+    ]
+  ],
+  // --- Search exclusions ---
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.venv": true,
+    "**/htmlcov": true,
+    "**/playwright-report": true,
+    "**/__pycache__": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "chat.tools.terminal.autoApprove": {
+    "npm run build": true
+  },
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-containers"
+  }
 }

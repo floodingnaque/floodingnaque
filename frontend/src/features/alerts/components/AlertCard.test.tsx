@@ -169,7 +169,7 @@ describe('AlertCard', () => {
       const { container } = render(<AlertCard alert={mockAlert} />);
 
       // The hover class is applied to the Card component which is the first child
-      expect(container.firstChild).toHaveClass('hover:shadow-md');
+      expect(container.firstChild).toHaveClass('hover:shadow-lg');
     });
   });
 });

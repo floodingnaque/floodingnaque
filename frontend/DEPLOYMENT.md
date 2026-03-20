@@ -2,22 +2,22 @@
 
 ## URLs
 
-| Environment | URL |
-|-------------|-----|
-| Production  | `https://YOUR_DOMAIN` (self-hosted VPS) |
-| Staging     | `https://staging.YOUR_DOMAIN` *(if configured)* |
-| Backend API | `https://api.YOUR_DOMAIN` |
-| Frontend    | Served by Nginx from the same VPS |
+| Environment | URL                                             |
+| ----------- | ----------------------------------------------- |
+| Production  | `https://YOUR_DOMAIN` (self-hosted VPS)         |
+| Staging     | `https://staging.YOUR_DOMAIN` _(if configured)_ |
+| Backend API | `https://api.YOUR_DOMAIN`                       |
+| Frontend    | Served by Nginx from the same VPS               |
 
 ## Monitoring
 
-| Service     | URL |
-|-------------|-----|
-| Grafana     | `http://YOUR_VPS_IP:3000` (behind VPN / SSH tunnel) |
-| Prometheus  | `http://YOUR_VPS_IP:9090` (internal only) |
-| Alertmanager| `http://YOUR_VPS_IP:9093` (internal only) |
-| Sentry      | `https://sentry.io/organizations/YOUR_ORG/projects/floodingnaque/` *(optional)* |
-| UptimeRobot | `https://uptimerobot.com/dashboard` *(optional)* |
+| Service      | URL                                                                             |
+| ------------ | ------------------------------------------------------------------------------- |
+| Grafana      | `http://YOUR_VPS_IP:3000` (behind VPN / SSH tunnel)                             |
+| Prometheus   | `http://YOUR_VPS_IP:9090` (internal only)                                       |
+| Alertmanager | `http://YOUR_VPS_IP:9093` (internal only)                                       |
+| Sentry       | `https://sentry.io/organizations/YOUR_ORG/projects/floodingnaque/` _(optional)_ |
+| UptimeRobot  | `https://uptimerobot.com/dashboard` _(optional)_                                |
 
 ## Architecture
 
@@ -56,13 +56,13 @@ docker compose -f compose.production.yaml -f compose.observability.yaml \
 
 Set in `frontend/.env.production` (build-time) or pass via CI:
 
-| Variable                  | Notes                            |
-|---------------------------|----------------------------------|
+| Variable                  | Notes                                                 |
+| ------------------------- | ----------------------------------------------------- |
 | `VITE_API_BASE_URL`       | Backend API root URL (e.g. `https://api.YOUR_DOMAIN`) |
-| `VITE_SSE_URL`            | SSE endpoint for live alerts     |
-| `VITE_SENTRY_DSN`         | From sentry.io project settings *(optional)* |
-| `VITE_SENTRY_ENVIRONMENT` | `production`                     |
-| `VITE_APP_VERSION`        | `1.0.0`                          |
+| `VITE_SSE_URL`            | SSE endpoint for live alerts                          |
+| `VITE_SENTRY_DSN`         | From sentry.io project settings _(optional)_          |
+| `VITE_SENTRY_ENVIRONMENT` | `production`                                          |
+| `VITE_APP_VERSION`        | `1.0.0`                                               |
 
 > **Note:** Do not commit real values to the repository. The checked-in
 > `.env.production` contains only placeholder/default values.
@@ -120,7 +120,7 @@ sudo usermod -aG docker $USER
 
 ```bash
 cd /opt
-git clone https://github.com/KyaRhamil/floodingnaque.git
+git clone https://github.com/floodingnaque/floodingnaque.git
 cd floodingnaque
 
 # Copy and edit environment files

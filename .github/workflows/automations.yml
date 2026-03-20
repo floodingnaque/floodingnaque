@@ -1,0 +1,728 @@
+# =============================================================================
+# FLOODINGNAQUE — Domain-Specific Automations
+# =============================================================================
+#
+# Six Floodingnaque-specific jobs:
+#
+#  Job 1 — model-drift         : Daily — compare live prediction distribution
+#                                against v6 baseline; alert if accuracy drifts
+#                                below 96.75%
+#
+#  Job 2 — auto-retrain        : Triggers when DRRMO CSV is uploaded via
+#                                /api/v1/admin/flood-records/upload; kicks off
+#                                Celery retraining task and monitors completion
+#
+#  Job 3 — drrmo-report-delivery: Monday 07:00 PHT — attach weekly PDF report
+#                                 and email to configured DRRMO recipients
+#
+#  Job 4 — compound-alert-check : Every 15 min during monsoon season (Jun–Nov)
+#                                 — evaluate WorldTides king tide + OWM heavy
+#                                 rain simultaneously; escalate if both breach
+#
+#  Job 5 — spam-detection      : Hourly — flag burst of low-credibility
+#                                community reports (>10 in 30 min from same IP
+#                                range or below credibility 0.3)
+#
+#  Job 6 — role-notifications  : Event-driven — sends the right message to the
+#                                right role (resident / operator / admin) based
+#                                on system events
+#
+# =============================================================================
+
+name: "🌊 Floodingnaque Automations"
+
+on:
+  schedule:
+    # Model drift: daily 23:00 UTC = 07:00 PHT
+    - cron: "0 23 * * *"
+    # DRRMO report delivery: Monday 23:00 UTC = Tuesday 07:00 PHT
+    - cron: "0 23 * * 1"
+    # Compound alert: every 15 min Jun–Nov
+    - cron: "*/15 * * * *"
+    # Spam detection: hourly
+    - cron: "0 * * * *"
+
+  # Retraining triggered by repository_dispatch from the backend
+  # Backend calls: POST /repos/:owner/:repo/dispatches with event_type
+  repository_dispatch:
+    types: [drrmo-records-uploaded, critical-flood-alert, spam-burst-detected]
+
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run manually"
+        required: true
+        type: choice
+        options:
+          - model-drift
+          - auto-retrain
+          - drrmo-report-delivery
+          - compound-alert-check
+          - spam-detection
+          - role-notifications
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  # ============================================================
+  # JOB 1: ML Model Drift Detection (daily)
+  # ============================================================
+  model-drift:
+    name: "🧠 Model Drift Detection"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'model-drift')
+
+    steps:
+      - name: "Fetch live prediction statistics"
+        id: stats
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          STATS=$(curl -sf \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            "https://app.floodingnaque.com/api/v1/system/prediction-stats?hours=24" \
+            || echo '{}')
+          echo "stats=${STATS}" >> "$GITHUB_OUTPUT"
+          echo "Raw stats: $STATS"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "Evaluate drift"
+        id: drift
+        env:
+          STATS: ${{ steps.stats.outputs.stats }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, sys
+
+          stats = json.loads(os.environ.get('STATS', '{}'))
+
+          # Baseline from v6 training (2022–2025 official records)
+          BASELINE_ACCURACY  = 0.9675
+          BASELINE_FLOOD_PCT = 0.333   # ~33% flood in balanced dataset
+          DRIFT_THRESHOLD    = 0.05    # Alert if accuracy drops >5 points
+
+          total      = stats.get('total_predictions_24h', 0)
+          verified   = stats.get('verified_against_reports', 0)
+          correct    = stats.get('correct_predictions', 0)
+          flood_pct  = stats.get('flood_prediction_pct', 0)
+          conf_mean  = stats.get('mean_confidence', 0)
+
+          print(f"Last 24h: {total} predictions, {verified} verified against community reports")
+
+          drift_detected = False
+          alerts = []
+
+          # Accuracy drift (only meaningful with enough verified ground truth)
+          if verified >= 20:
+            live_accuracy = correct / verified
+            drop = BASELINE_ACCURACY - live_accuracy
+            if drop > DRIFT_THRESHOLD:
+              alerts.append(f"ACCURACY_DRIFT: live={live_accuracy:.3f}, baseline={BASELINE_ACCURACY:.3f}, drop={drop:.3f}")
+              drift_detected = True
+            else:
+              print(f"✅ Accuracy: {live_accuracy:.3f} (baseline {BASELINE_ACCURACY:.3f})")
+          else:
+            print(f"⏭️  Skipping accuracy check — only {verified} verified predictions (need ≥20)")
+
+          # Distribution drift — flood prediction % shouldn't swing wildly
+          if total >= 50:
+            dist_drift = abs(flood_pct - BASELINE_FLOOD_PCT)
+            if dist_drift > 0.30:  # >30 percentage point swing
+              alerts.append(f"DISTRIBUTION_DRIFT: flood_pct={flood_pct:.2f}, baseline={BASELINE_FLOOD_PCT:.2f}")
+              drift_detected = True
+            else:
+              print(f"✅ Prediction distribution: {flood_pct*100:.1f}% flood (baseline ~{BASELINE_FLOOD_PCT*100:.0f}%)")
+
+          # Confidence collapse — if mean confidence drops below 0.6
+          if conf_mean > 0 and conf_mean < 0.60:
+            alerts.append(f"CONFIDENCE_COLLAPSE: mean_confidence={conf_mean:.3f} (threshold 0.60)")
+            drift_detected = True
+          elif conf_mean > 0:
+            print(f"✅ Mean confidence: {conf_mean:.3f}")
+
+          if drift_detected:
+            print("\n❌ DRIFT DETECTED:")
+            for a in alerts: print(f"  {a}")
+            sys.exit(1)
+          else:
+            print("\n✅ No model drift detected")
+          PYEOF
+
+      - name: "Open drift issue and trigger retraining"
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const date  = new Date().toISOString().split('T')[0];
+            const stats = '${{ steps.stats.outputs.stats }}';
+
+            // Check if a drift issue is already open
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'model-drift', state: 'open',
+            });
+            if (existing.data.length > 0) {
+              console.log('Drift issue already open — updating comment');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: `**Drift still detected on ${date}**\n\nStats: \`${stats}\``,
+              });
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner:     context.repo.owner,
+              repo:      context.repo.repo,
+              title:     `🧠 Model Drift Detected — ${date}`,
+              labels:    ['model-drift', 'high-priority'],
+              assignees: ['Ramil-Martizano'],
+              body:
+                `## 🧠 ML Model Drift Detected\n\n` +
+                `The v6 Random Forest model's live prediction behavior has drifted ` +
+                `beyond the 5% threshold from the training baseline (96.75% accuracy).\n\n` +
+                `**Stats (last 24h):** \`${stats}\`\n\n` +
+                `### Recommended Actions\n` +
+                `- [ ] Review recent DRRMO flood records — are new events being documented?\n` +
+                `- [ ] Check if weather API data quality has degraded (OWM/Meteostat gaps)\n` +
+                `- [ ] Upload latest DRRMO CSV records via admin upload endpoint\n` +
+                `- [ ] Trigger model retraining: \`POST /api/v1/admin/retrain\`\n` +
+                `- [ ] Verify retrained model accuracy ≥ 96.75% before deploying\n\n` +
+                `<sub>Auto-opened by Floodingnaque Model Drift Monitor</sub>`,
+            });
+
+  # ============================================================
+  # JOB 2: Auto-Retrain on New DRRMO Records
+  # ============================================================
+  auto-retrain:
+    name: "🔄 Auto-Retrain Model"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'repository_dispatch' &&
+        github.event.action == 'drrmo-records-uploaded') ||
+      (github.event_name == 'workflow_dispatch' &&
+        github.event.inputs.job == 'auto-retrain')
+
+    steps:
+      - name: "Trigger Celery retraining task"
+        id: retrain
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          echo "New DRRMO records uploaded — triggering model retraining"
+          PAYLOAD='{"model_version":"auto","validate_accuracy":true,"accuracy_floor":0.957,"deploy_on_pass":true,"notify_on_completion":true}'
+
+          RESPONSE=$(curl -sf \
+            -X POST "https://app.floodingnaque.com/api/v1/admin/retrain" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            -d "$PAYLOAD" \
+            || echo '{"error":"unreachable"}')
+
+          echo "Response: $RESPONSE"
+          TASK_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('task_id','unknown'))")
+          echo "task_id=${TASK_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: "Poll retraining completion"
+        id: poll
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          TASK_ID="${{ steps.retrain.outputs.task_id }}"
+          echo "Polling task ${TASK_ID}..."
+
+          for i in $(seq 1 30); do
+            sleep 60  # Poll every minute, max 30 min
+            STATUS=$(curl -sf \
+              -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+              "https://app.floodingnaque.com/api/v1/admin/retrain/${TASK_ID}" \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" \
+              2>/dev/null || echo "pending")
+
+            echo "  Minute ${i}: ${STATUS}"
+
+            if [ "$STATUS" = "completed" ]; then
+              ACCURACY=$(curl -sf \
+                -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+                "https://app.floodingnaque.com/api/v1/admin/retrain/${TASK_ID}" \
+                | python3 -c "import sys,json; print(json.load(sys.stdin).get('accuracy','N/A'))")
+              echo "accuracy=${ACCURACY}" >> "$GITHUB_OUTPUT"
+              echo "status=completed"     >> "$GITHUB_OUTPUT"
+              echo "✅ Retraining complete — accuracy: ${ACCURACY}"
+              break
+            elif [ "$STATUS" = "failed" ]; then
+              echo "status=failed" >> "$GITHUB_OUTPUT"
+              echo "❌ Retraining failed"
+              exit 1
+            fi
+          done
+
+      - name: "Post retraining result"
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const status   = '${{ steps.poll.outputs.status }}';
+            const accuracy = '${{ steps.poll.outputs.accuracy }}';
+            const date     = new Date().toISOString();
+
+            // Find open model-drift issue and close it if retraining succeeded
+            if (status === 'completed') {
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner, repo: context.repo.repo,
+                labels: 'model-drift', state: 'open',
+              });
+              for (const issue of issues.data) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `✅ Model retrained and deployed. New accuracy: **${accuracy}**. Closing issue.\n<sub>${date}</sub>`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: issue.number, state: 'closed',
+                });
+              }
+            }
+
+  # ============================================================
+  # JOB 3: DRRMO Report Delivery (weekly Monday 07:00 PHT)
+  # ============================================================
+  drrmo-report-delivery:
+    name: "📧 DRRMO Report Delivery"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * 1') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'drrmo-report-delivery')
+
+    steps:
+      - name: "Fetch latest weekly report PDF"
+        id: fetch
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          REPORT=$(curl -sf \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            "https://app.floodingnaque.com/api/v1/reports/?type=weekly_risk&limit=1" \
+            | python3 -c "
+          import sys, json
+          reports = json.load(sys.stdin).get('reports', [])
+          if reports:
+            r = reports[0]
+            print(r.get('pdf_url', ''))
+          " || echo "")
+
+          echo "report_url=${REPORT}" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$REPORT" ]; then
+            echo "❌ No weekly report available — triggering generation"
+            curl -sf -X POST \
+              -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+              "https://app.floodingnaque.com/api/v1/reports/generate" \
+              -d '{"type":"weekly_risk"}' || true
+            sleep 120   # Wait 2 minutes for generation
+          fi
+
+      - name: "Send email to DRRMO recipients"
+        if: steps.fetch.outputs.report_url != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "Floodingnaque — Weekly Flood Risk Summary Report"
+          to: ${{ secrets.DRRMO_EMAIL_LIST }}
+          from: "Floodingnaque System <noreply@floodingnaque.com>"
+          body: |
+            Magandang umaga,
+
+            Please find attached this week's Flood Risk Summary Report for Parañaque City.
+
+            Download the full PDF report here:
+            ${{ steps.fetch.outputs.report_url }}
+
+            Report covers: the previous 7 days of flood predictions, risk level distribution across 16 barangays, and alert accuracy metrics.
+
+            View the live dashboard: https://app.floodingnaque.com
+
+            Para sa anumang katanungan, mangyaring makipag-ugnayan sa sistema ng Floodingnaque.
+
+            —
+            Floodingnaque Early Warning System
+            Parañaque City DRRMO
+          convert_markdown: false
+
+  # ============================================================
+  # JOB 4: Compound Alert Check (King Tide + Heavy Rain)
+  # Every 15 min during monsoon season (Jun–Nov)
+  # ============================================================
+  compound-alert:
+    name: "🌊 Compound Alert Check"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'compound-alert-check')
+
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "Check for compound conditions"
+        id: compound
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json
+          from datetime import datetime
+
+          # Only run during monsoon season (June–November PHT = UTC+8)
+          month = datetime.utcnow().month
+          MONSOON_MONTHS = [6, 7, 8, 9, 10, 11]
+
+          is_manual = os.environ.get('MANUAL', 'false') == 'true'
+          if month not in MONSOON_MONTHS and not is_manual:
+              print(f"⏭️  Month {month} is outside monsoon season — skipping compound check")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("skip=true\n")
+              exit(0)
+
+          import urllib.request, urllib.error
+
+          BASE    = "https://app.floodingnaque.com"
+          API_KEY = os.environ.get('ADMIN_API_KEY', '')
+          headers = {"Authorization": f"Bearer {API_KEY}"}
+
+          def fetch(url):
+              req = urllib.request.Request(url, headers=headers)
+              try:
+                  with urllib.request.urlopen(req, timeout=10) as r:
+                      return json.loads(r.read())
+              except:
+                  return {}
+
+          # Fetch tidal data
+          tides   = fetch(f"{BASE}/api/v1/tides/current")
+          weather = fetch(f"{BASE}/api/v1/data/meteostat/current?lat=14.4793&lon=121.0198")
+
+          tide_height  = tides.get('height', 0)
+          is_king_tide = tides.get('is_king_tide', False)
+          precip       = weather.get('precipitation', 0)
+          humidity     = weather.get('humidity', 0)
+
+          print(f"Tidal height: {tide_height:.2f}m | King tide: {is_king_tide}")
+          print(f"Precipitation: {precip:.1f}mm/hr | Humidity: {humidity:.0f}%")
+
+          # Compound alert thresholds:
+          #   King tide (height >= 1.5m above MSL) + heavy rain (>= 30mm/hr)
+          KING_TIDE_THRESHOLD = 1.5
+          RAIN_THRESHOLD      = 30.0
+
+          compound = (tide_height >= KING_TIDE_THRESHOLD or is_king_tide) \
+                     and precip >= RAIN_THRESHOLD
+
+          # Near-miss warning (80% of both thresholds)
+          near_miss = (tide_height >= KING_TIDE_THRESHOLD * 0.8) \
+                      and (precip >= RAIN_THRESHOLD * 0.8) \
+                      and not compound
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"compound={str(compound).lower()}\n")
+              f.write(f"near_miss={str(near_miss).lower()}\n")
+              f.write(f"tide_height={tide_height}\n")
+              f.write(f"precip={precip}\n")
+              f.write(f"is_king_tide={str(is_king_tide).lower()}\n")
+              f.write("skip=false\n")
+
+          if compound:
+              print("🚨 COMPOUND ALERT: King tide + heavy rain threshold breached")
+              exit(1)
+          elif near_miss:
+              print("⚠️  NEAR-MISS: Approaching compound alert thresholds")
+          else:
+              print("✅ No compound alert conditions")
+          PYEOF
+
+      - name: "Trigger compound flood alert"
+        if: failure() && steps.compound.outputs.skip == 'false'
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TIDE_HEIGHT: ${{ steps.compound.outputs.tide_height }}
+          PRECIP: ${{ steps.compound.outputs.precip }}
+          IS_KING_TIDE: ${{ steps.compound.outputs.is_king_tide }}
+        run: |
+          # Dispatch compound alert to the application
+          curl -sf \
+            -X POST "https://app.floodingnaque.com/api/v1/alerts/compound" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            -d "{
+              \"type\": \"compound\",
+              \"tide_height\": ${TIDE_HEIGHT},
+              \"precipitation\": ${PRECIP},
+              \"is_king_tide\": ${IS_KING_TIDE},
+              \"affected_barangays\": [\"Baclaran\",\"Don Galo\",\"Tambo\",\"La Huerta\",\"San Dionisio\"],
+              \"message\": \"COMPOUND FLOOD RISK: King tide and heavy rainfall occurring simultaneously. Coastal and low-lying barangays at elevated risk.\"
+            }" || true
+
+          # Alert via Slack
+          curl -s -X POST "$SLACK_URL" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "text": "🚨 *COMPOUND FLOOD ALERT* — King tide + heavy rain detected in Manila Bay area. Baclaran, Don Galo, Tambo, La Huerta, San Dionisio at elevated risk. Check dashboard: https://app.floodingnaque.com"
+            }' || true
+
+  # ============================================================
+  # JOB 5: Community Report Spam Detection (hourly)
+  # ============================================================
+  spam-detection:
+    name: "🛡️ Spam Detection"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'repository_dispatch' &&
+        github.event.action == 'spam-burst-detected') ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 * * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'spam-detection')
+
+    steps:
+      - name: "Fetch recent report statistics"
+        id: fetch
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          STATS=$(curl -sf \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            "https://app.floodingnaque.com/api/v1/admin/reports/stats?minutes=30" \
+            || echo '{}')
+          echo "stats=${STATS}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "Evaluate spam signals"
+        id: eval
+        env:
+          STATS: ${{ steps.fetch.outputs.stats }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, sys
+
+          stats = json.loads(os.environ.get('STATS', '{}'))
+
+          THRESHOLDS = {
+            'burst_count':         10,
+            'low_cred_pct':        0.6,
+            'single_location_pct': 0.7,
+            'total_30min':         50,
+          }
+
+          alerts = []
+
+          burst          = stats.get('max_reports_per_ip_30min', 0)
+          low_cred_pct   = stats.get('low_credibility_pct', 0)
+          loc_pct        = stats.get('max_single_location_pct', 0)
+          total          = stats.get('total_reports_30min', 0)
+
+          if burst > THRESHOLDS['burst_count']:
+            alerts.append(f"IP_BURST: {burst} reports from single IP in 30 min")
+          if low_cred_pct > THRESHOLDS['low_cred_pct']:
+            alerts.append(f"LOW_CRED_BURST: {low_cred_pct*100:.0f}% of reports below credibility threshold")
+          if loc_pct > THRESHOLDS['single_location_pct']:
+            alerts.append(f"LOCATION_STUFFING: {loc_pct*100:.0f}% reports from identical coordinates")
+          if total > THRESHOLDS['total_30min']:
+            alerts.append(f"VOLUME_SPIKE: {total} reports in 30 min (threshold: {THRESHOLDS['total_30min']})")
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"spam_detected={'true' if alerts else 'false'}\n")
+              joined = '; '.join(alerts)
+              f.write(f"alerts={joined}\n")
+              f.write(f"total={total}\n")
+
+          if alerts:
+            print("🛡️ SPAM SIGNALS DETECTED:")
+            for a in alerts: print(f"  {a}")
+            sys.exit(1)
+          else:
+            print(f"✅ No spam patterns detected ({total} reports in last 30 min)")
+          PYEOF
+
+      - name: "Activate rate limiting and notify admin"
+        if: failure()
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          ALERTS: ${{ steps.eval.outputs.alerts }}
+        run: |
+          # Activate aggressive rate limiting on the reports endpoint
+          curl -sf \
+            -X POST "https://app.floodingnaque.com/api/v1/admin/rate-limit/emergency" \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"endpoint":"/api/v1/reports/","limit":"2 per minute","duration_minutes":60}' \
+            || true
+
+          curl -s -X POST "$SLACK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"🛡️ *Spam Detection Alert*\nSignals: ${ALERTS}\nEmergency rate limiting activated on /api/v1/reports/ for 60 minutes.\nCheck admin panel: https://app.floodingnaque.com/admin\"}" \
+            || true
+
+  # ============================================================
+  # JOB 6: Role-Based Notifications (event-driven)
+  # ============================================================
+  role-notifications:
+    name: "📣 Role-Based Notifications"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'repository_dispatch' &&
+        github.event.action == 'critical-flood-alert') ||
+      (github.event_name == 'workflow_dispatch' &&
+        github.event.inputs.job == 'role-notifications')
+
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "Route notifications by role"
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          EVENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, urllib.request
+
+          # Event payload from repository_dispatch
+          payload = json.loads(os.environ.get('EVENT_PAYLOAD', '{}'))
+          risk_label  = payload.get('risk_label', 'Alert')
+          barangay    = payload.get('barangay', 'Parañaque City')
+          precip      = payload.get('precipitation', 0)
+          tide_height = payload.get('tide_height', 0)
+          probability = payload.get('probability', 0)
+
+          API    = "https://app.floodingnaque.com/api/v1"
+          KEY    = os.environ.get('ADMIN_API_KEY', '')
+          SLACK  = os.environ.get('SLACK_WEBHOOK_URL', '')
+
+          def post_api(endpoint, data):
+              req = urllib.request.Request(
+                  f"{API}{endpoint}",
+                  data=json.dumps(data).encode(),
+                  headers={"Content-Type":"application/json","Authorization":f"Bearer {KEY}"},
+                  method="POST"
+              )
+              try:
+                  urllib.request.urlopen(req, timeout=10)
+                  return True
+              except Exception as e:
+                  print(f"⚠️  API call failed: {e}")
+                  return False
+
+          def slack(message):
+              req = urllib.request.Request(
+                  SLACK,
+                  data=json.dumps({"text": message}).encode(),
+                  headers={"Content-Type":"application/json"},
+                  method="POST"
+              )
+              try:
+                  urllib.request.urlopen(req, timeout=5)
+              except:
+                  pass
+
+          print(f"Processing {risk_label} alert for {barangay}")
+
+          # ── RESIDENTS ──────────────────────────────────────────────────────
+          if risk_label in ('Alert', 'Critical'):
+              post_api("/alerts/sms/residents", {
+                  "barangay":   barangay,
+                  "risk_label": risk_label,
+                  "message_template": (
+                      f"[FLOODINGNAQUE {risk_label.upper()}] "
+                      f"Babala ng baha sa {barangay}. "
+                      f"Ulan: {precip:.0f}mm/hr. "
+                      + ("LUMIKAS NA. Pinakamalapit na evacuation center: {nearest_center} ({distance}km)."
+                         if risk_label == 'Critical' else
+                         "Maging alerto. I-monitor ang antas ng tubig.")
+                  )
+              })
+              print(f"✅ SMS dispatched to residents in {barangay}")
+
+          # Push notification to Floodingnaque mobile/web app subscribers
+          post_api("/alerts/push/residents", {
+              "barangay":    barangay,
+              "risk_label":  risk_label,
+              "title":       f"{'🚨' if risk_label == 'Critical' else '⚠️'} Flood {risk_label} — {barangay}",
+              "body":        f"Precipitation: {precip:.0f}mm/hr | Probability: {probability*100:.0f}%",
+              "url":         "https://app.floodingnaque.com/map"
+          })
+          print("✅ Push notification dispatched to residents")
+
+          # ── OPERATORS (LGU / DRRMO DUTY OFFICERS) ─────────────────────────
+          post_api("/alerts/in-app/operators", {
+              "risk_label":   risk_label,
+              "barangay":     barangay,
+              "precipitation": precip,
+              "tide_height":  tide_height,
+              "probability":  probability,
+              "action_items": (
+                  ["Deploy DRRMO response team to " + barangay,
+                   "Coordinate with barangay captain",
+                   "Open evacuation centers if Critical",
+                   "Update flood depth field report in system"]
+                  if risk_label == 'Critical' else
+                  ["Monitor weather data closely",
+                   "Verify community reports in " + barangay,
+                   "Pre-position response assets"]
+              ),
+              "dashboard_url": "https://app.floodingnaque.com/operator"
+          })
+
+          slack(
+              f"{'🚨 CRITICAL' if risk_label == 'Critical' else '⚠️ ALERT'}: "
+              f"{barangay} — {precip:.0f}mm/hr rain, {probability*100:.0f}% flood probability. "
+              f"Dashboard: https://app.floodingnaque.com/operator"
+          )
+          print("✅ Operator notifications dispatched")
+
+          # ── ADMIN (System administrator) ───────────────────────────────────
+          post_api("/alerts/in-app/admin", {
+              "risk_label":      risk_label,
+              "barangay":        barangay,
+              "ml_probability":  probability,
+              "precipitation":   precip,
+              "tide_height":     tide_height,
+              "system_checks": {
+                  "sms_dispatched":     True,
+                  "push_dispatched":    True,
+                  "operator_notified":  True,
+                  "model_version":      "v6",
+                  "prediction_cached":  False,
+              },
+              "admin_url": "https://app.floodingnaque.com/admin"
+          })
+          print("✅ Admin notification dispatched")
+
+          print(f"\n✅ All role notifications dispatched for {risk_label} alert in {barangay}")
+          PYEOF

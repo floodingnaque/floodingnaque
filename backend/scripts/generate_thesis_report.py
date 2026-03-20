@@ -104,6 +104,7 @@ try:
     import plotly.express as px
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
+
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
@@ -112,6 +113,7 @@ except ImportError:
 # Check for openpyxl (Excel export)
 try:
     import openpyxl
+
     EXCEL_AVAILABLE = True
 except ImportError:
     EXCEL_AVAILABLE = False
@@ -128,6 +130,7 @@ COLORS = ["#2ecc71", "#3498db", "#e74c3c", "#f39c12", "#9b59b6", "#1abc9c"]
 # ==============================================================================
 # UTILITY FUNCTIONS
 # ==============================================================================
+
 
 def load_model_and_metadata(model_path):
     """Load model and its metadata JSON if present."""
@@ -234,13 +237,17 @@ def find_optimal_threshold(y_true, y_pred_proba):
 # STATIC CHARTS
 # ==============================================================================
 
+
 def plot_feature_importance(model, output_dir, top_n=20):
     logger.info("  → Feature importance (bar)...")
     if not hasattr(model, "feature_importances_"):
         logger.warning("Model has no feature_importances_. Skipping.")
         return
-    feature_names = (list(model.feature_names_in_) if hasattr(model, "feature_names_in_")
-                     else [f"Feature {i}" for i in range(len(model.feature_importances_))])
+    feature_names = (
+        list(model.feature_names_in_)
+        if hasattr(model, "feature_names_in_")
+        else [f"Feature {i}" for i in range(len(model.feature_importances_))]
+    )
     imp_df = pd.DataFrame({"feature": feature_names, "importance": model.feature_importances_})
     imp_df = imp_df.sort_values("importance", ascending=False).head(top_n)
 
@@ -255,8 +262,7 @@ def plot_feature_importance(model, output_dir, top_n=20):
     axes[0].set_title("Feature Importance (Bar)", fontweight="bold")
 
     # Dot plot
-    axes[1].scatter(imp_df["importance"], imp_df["feature"], s=80, c=imp_df["importance"],
-                    cmap="viridis", zorder=3)
+    axes[1].scatter(imp_df["importance"], imp_df["feature"], s=80, c=imp_df["importance"], cmap="viridis", zorder=3)
     for _, row in imp_df.iterrows():
         axes[1].hlines(row["feature"], 0, row["importance"], colors="gray", alpha=0.4, linewidth=1)
     axes[1].set_xlabel("Importance", fontweight="bold")
@@ -280,14 +286,18 @@ def plot_confusion_matrices(y_true, y_pred, output_dir):
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     for ax, data, fmt, title in zip(
-        axes,
-        [cm, cm_norm],
-        ["d", ".2%"],
-        ["Confusion Matrix (Counts)", "Confusion Matrix (Normalized)"]
+        axes, [cm, cm_norm], ["d", ".2%"], ["Confusion Matrix (Counts)", "Confusion Matrix (Normalized)"]
     ):
-        sns.heatmap(data, annot=True, fmt=fmt, cmap="Blues", ax=ax,
-                    xticklabels=labels, yticklabels=labels,
-                    annot_kws={"size": 13, "weight": "bold"})
+        sns.heatmap(
+            data,
+            annot=True,
+            fmt=fmt,
+            cmap="Blues",
+            ax=ax,
+            xticklabels=labels,
+            yticklabels=labels,
+            annot_kws={"size": 13, "weight": "bold"},
+        )
         ax.set_ylabel("Actual", fontweight="bold")
         ax.set_xlabel("Predicted", fontweight="bold")
         ax.set_title(title, fontweight="bold")
@@ -318,8 +328,9 @@ def plot_roc_curve(y_true, y_pred_proba, output_dir, optimal_threshold=None):
     # Mark optimal threshold point
     if optimal_threshold is not None:
         idx = np.argmin(np.abs(thresholds - optimal_threshold))
-        plt.scatter(fpr[idx], tpr[idx], s=120, color="red", zorder=5,
-                    label=f"Optimal Threshold ({optimal_threshold:.2f})")
+        plt.scatter(
+            fpr[idx], tpr[idx], s=120, color="red", zorder=5, label=f"Optimal Threshold ({optimal_threshold:.2f})"
+        )
 
     plt.xlim([-0.01, 1.01])
     plt.ylim([-0.01, 1.05])
@@ -402,8 +413,13 @@ def plot_threshold_analysis(y_true, y_pred_proba, output_dir):
     axes[0].plot(thresholds, precisions, label="Precision", color="#3498db", lw=2)
     axes[0].plot(thresholds, recalls, label="Recall / Sensitivity", color="#e74c3c", lw=2)
     axes[0].plot(thresholds, f1s, label="F1 Score", color="#f39c12", lw=2.5)
-    axes[0].axvline(thresholds[best_idx], color="black", linestyle="--", alpha=0.6,
-                    label=f"Best F1 threshold ({thresholds[best_idx]:.2f})")
+    axes[0].axvline(
+        thresholds[best_idx],
+        color="black",
+        linestyle="--",
+        alpha=0.6,
+        label=f"Best F1 threshold ({thresholds[best_idx]:.2f})",
+    )
     axes[0].set_ylabel("Score", fontweight="bold")
     axes[0].set_title("Precision / Recall / F1 vs Classification Threshold", fontweight="bold")
     axes[0].legend()
@@ -426,14 +442,16 @@ def plot_threshold_analysis(y_true, y_pred_proba, output_dir):
     logger.info(f"    Saved: {path.name}")
 
     # Also return the table data
-    return pd.DataFrame({
-        "threshold": thresholds,
-        "precision": precisions,
-        "recall": recalls,
-        "f1": f1s,
-        "accuracy": accuracies,
-        "specificity": specificities,
-    })
+    return pd.DataFrame(
+        {
+            "threshold": thresholds,
+            "precision": precisions,
+            "recall": recalls,
+            "f1": f1s,
+            "accuracy": accuracies,
+            "specificity": specificities,
+        }
+    )
 
 
 def plot_probability_distribution(y_true, y_pred_proba, output_dir):
@@ -459,6 +477,7 @@ def plot_probability_distribution(y_true, y_pred_proba, output_dir):
     # KDE
     try:
         from scipy.stats import gaussian_kde
+
         x = np.linspace(0, 1, 200)
         if len(no_flood_proba) > 1:
             kde0 = gaussian_kde(no_flood_proba)
@@ -473,8 +492,9 @@ def plot_probability_distribution(y_true, y_pred_proba, output_dir):
         axes[1].set_title("Probability Density (KDE) by Class", fontweight="bold")
         axes[1].legend()
     except ImportError:
-        axes[1].text(0.5, 0.5, "scipy not installed\n(pip install scipy)", ha="center", va="center",
-                     transform=axes[1].transAxes)
+        axes[1].text(
+            0.5, 0.5, "scipy not installed\n(pip install scipy)", ha="center", va="center", transform=axes[1].transAxes
+        )
 
     plt.suptitle("Prediction Probability Distribution", fontsize=14, fontweight="bold")
     plt.tight_layout()
@@ -501,10 +521,11 @@ def plot_calibration_curve(y_true, y_pred_proba, output_dir):
     for n_bins, color, style in [(10, "#e74c3c", "-"), (20, "#3498db", "--")]:
         try:
             fraction_pos, mean_pred = calibration_curve(y_true, proba_pos, n_bins=n_bins)
-            plt.plot(mean_pred, fraction_pos, marker="o", linestyle=style, color=color,
-                     label=f"RF ({n_bins} bins)", lw=2)
-        except Exception:
-            pass
+            plt.plot(
+                mean_pred, fraction_pos, marker="o", linestyle=style, color=color, label=f"RF ({n_bins} bins)", lw=2
+            )
+        except Exception:  # nosec B110
+            pass  # Skip bins that can't be computed
 
     plt.plot([0, 1], [0, 1], "k--", lw=1.5, label="Perfectly Calibrated")
     plt.xlabel("Mean Predicted Probability", fontsize=12, fontweight="bold")
@@ -521,9 +542,7 @@ def plot_calibration_curve(y_true, y_pred_proba, output_dir):
 def plot_learning_curves(model, X, y, output_dir):
     logger.info("  → Learning curves (this may take a moment)...")
     train_sizes, train_scores, test_scores = learning_curve(
-        model, X, y, cv=5, n_jobs=-1,
-        train_sizes=np.linspace(0.1, 1.0, 10),
-        scoring="f1_weighted", random_state=42
+        model, X, y, cv=5, n_jobs=-1, train_sizes=np.linspace(0.1, 1.0, 10), scoring="f1_weighted", random_state=42
     )
     train_mean = np.mean(train_scores, axis=1)
     train_std = np.std(train_scores, axis=1)
@@ -564,12 +583,19 @@ def plot_metrics_summary(metrics, output_dir):
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
     # Bar chart
-    bars = axes[0].bar(list(display_metrics.keys()), list(display_metrics.values()),
-                       color=COLORS * 3, alpha=0.85, edgecolor="black", linewidth=0.5)
+    bars = axes[0].bar(
+        list(display_metrics.keys()),
+        list(display_metrics.values()),
+        color=COLORS * 3,
+        alpha=0.85,
+        edgecolor="black",
+        linewidth=0.5,
+    )
     for bar in bars:
         h = bar.get_height()
-        axes[0].text(bar.get_x() + bar.get_width() / 2, h + 0.01, f"{h:.3f}",
-                     ha="center", fontsize=9, fontweight="bold")
+        axes[0].text(
+            bar.get_x() + bar.get_width() / 2, h + 0.01, f"{h:.3f}", ha="center", fontsize=9, fontweight="bold"
+        )
     axes[0].set_ylim([0, 1.15])
     axes[0].set_ylabel("Score", fontweight="bold")
     axes[0].set_title("All Performance Metrics", fontweight="bold")
@@ -613,19 +639,29 @@ def plot_metrics_summary(metrics, output_dir):
 def plot_permutation_importance(model, X, y, output_dir, n_repeats=10, top_n=20):
     logger.info("  → Permutation importance (this may take a moment)...")
     try:
-        result = permutation_importance(model, X, y, n_repeats=n_repeats, random_state=42,
-                                        n_jobs=-1, scoring="f1_weighted")
+        result = permutation_importance(
+            model, X, y, n_repeats=n_repeats, random_state=42, n_jobs=-1, scoring="f1_weighted"
+        )
         imp_mean = result.importances_mean
         imp_std = result.importances_std
-        feature_names = (list(model.feature_names_in_) if hasattr(model, "feature_names_in_")
-                         else [f"Feature {i}" for i in range(X.shape[1])])
+        feature_names = (
+            list(model.feature_names_in_)
+            if hasattr(model, "feature_names_in_")
+            else [f"Feature {i}" for i in range(X.shape[1])]
+        )
 
         perm_df = pd.DataFrame({"feature": feature_names, "mean": imp_mean, "std": imp_std})
         perm_df = perm_df.sort_values("mean", ascending=False).head(top_n)
 
         plt.figure(figsize=(10, max(6, len(perm_df) * 0.35)))
-        plt.barh(perm_df["feature"][::-1], perm_df["mean"][::-1],
-                 xerr=perm_df["std"][::-1], color="#9b59b6", alpha=0.8, capsize=4)
+        plt.barh(
+            perm_df["feature"][::-1],
+            perm_df["mean"][::-1],
+            xerr=perm_df["std"][::-1],
+            color="#9b59b6",
+            alpha=0.8,
+            capsize=4,
+        )
         plt.xlabel("Mean Decrease in F1 Score", fontweight="bold")
         plt.title("Permutation Feature Importance\n(with ± 1 std dev error bars)", fontweight="bold")
         plt.tight_layout()
@@ -654,8 +690,14 @@ def plot_class_distribution(y, output_dir):
     axes[0].set_title("Class Distribution (Counts)", fontweight="bold")
 
     # Pie
-    axes[1].pie([counts.get(0, 0), counts.get(1, 0)], labels=labels, colors=colors,
-                autopct="%1.1f%%", startangle=90, textprops={"fontsize": 11})
+    axes[1].pie(
+        [counts.get(0, 0), counts.get(1, 0)],
+        labels=labels,
+        colors=colors,
+        autopct="%1.1f%%",
+        startangle=90,
+        textprops={"fontsize": 11},
+    )
     axes[1].set_title("Class Distribution (Proportions)", fontweight="bold")
 
     fig.suptitle("Target Class Distribution", fontsize=13, fontweight="bold")
@@ -673,8 +715,17 @@ def plot_feature_correlation(X, output_dir, top_n=25):
 
     plt.figure(figsize=(max(10, len(corr) * 0.5), max(8, len(corr) * 0.45)))
     mask = np.triu(np.ones_like(corr, dtype=bool))
-    sns.heatmap(corr, mask=mask, annot=len(corr) <= 15, fmt=".2f", cmap="coolwarm",
-                center=0, square=True, linewidths=0.3, cbar_kws={"shrink": 0.8})
+    sns.heatmap(
+        corr,
+        mask=mask,
+        annot=len(corr) <= 15,
+        fmt=".2f",
+        cmap="coolwarm",
+        center=0,
+        square=True,
+        linewidths=0.3,
+        cbar_kws={"shrink": 0.8},
+    )
     plt.title(f"Feature Correlation Heatmap (Top {len(corr)} features)", fontsize=13, fontweight="bold")
     plt.tight_layout()
     path = Path(output_dir) / "feature_correlation.png"
@@ -705,8 +756,9 @@ def plot_cumulative_gain_lift(y_true, y_pred_proba, output_dir):
     # Cumulative Gain
     axes[0].plot(cum_pct_samples * 100, cum_gain * 100, color="#e74c3c", lw=2.5, label="Model")
     axes[0].plot([0, 100], [0, 100], "k--", lw=1.5, label="Random Baseline")
-    axes[0].fill_between(cum_pct_samples * 100, cum_gain * 100,
-                         np.linspace(0, 100, len(cum_gain)), alpha=0.1, color="#e74c3c")
+    axes[0].fill_between(
+        cum_pct_samples * 100, cum_gain * 100, np.linspace(0, 100, len(cum_gain)), alpha=0.1, color="#e74c3c"
+    )
     axes[0].set_xlabel("% of Samples (Ranked by Probability)", fontweight="bold")
     axes[0].set_ylabel("% of Flood Events Captured", fontweight="bold")
     axes[0].set_title("Cumulative Gain Chart", fontweight="bold")
@@ -744,7 +796,9 @@ def plot_error_analysis(X, y_true, y_pred, y_pred_proba, output_dir):
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
 
     # Confidence of errors vs correct
-    axes[0].hist(proba_pos[~errors], bins=30, alpha=0.6, color="#2ecc71", label=f"Correct ({(~errors).sum()})", density=True)
+    axes[0].hist(
+        proba_pos[~errors], bins=30, alpha=0.6, color="#2ecc71", label=f"Correct ({(~errors).sum()})", density=True
+    )
     axes[0].hist(proba_pos[errors], bins=30, alpha=0.6, color="#e74c3c", label=f"Errors ({errors.sum()})", density=True)
     axes[0].set_xlabel("Predicted Probability (Flood)", fontweight="bold")
     axes[0].set_ylabel("Density", fontweight="bold")
@@ -753,9 +807,23 @@ def plot_error_analysis(X, y_true, y_pred, y_pred_proba, output_dir):
 
     # FP vs FN confidence
     if fp_mask.sum() > 0:
-        axes[1].hist(proba_pos[fp_mask], bins=20, alpha=0.7, color="#f39c12", label=f"False Positives ({fp_mask.sum()})", density=True)
+        axes[1].hist(
+            proba_pos[fp_mask],
+            bins=20,
+            alpha=0.7,
+            color="#f39c12",
+            label=f"False Positives ({fp_mask.sum()})",
+            density=True,
+        )
     if fn_mask.sum() > 0:
-        axes[1].hist(proba_pos[fn_mask], bins=20, alpha=0.7, color="#9b59b6", label=f"False Negatives ({fn_mask.sum()})", density=True)
+        axes[1].hist(
+            proba_pos[fn_mask],
+            bins=20,
+            alpha=0.7,
+            color="#9b59b6",
+            label=f"False Negatives ({fn_mask.sum()})",
+            density=True,
+        )
     axes[1].set_xlabel("Predicted Probability (Flood)", fontweight="bold")
     axes[1].set_ylabel("Density", fontweight="bold")
     axes[1].set_title("FP vs FN Confidence Distribution", fontweight="bold")
@@ -773,8 +841,14 @@ def plot_error_analysis(X, y_true, y_pred, y_pred_proba, output_dir):
     bar_colors = ["#2ecc71", "#3498db", "#e74c3c", "#f39c12"]
     bars = axes[2].bar(categories, counts_vals, color=bar_colors, alpha=0.85, edgecolor="black")
     for bar, count in zip(bars, counts_vals):
-        axes[2].text(bar.get_x() + bar.get_width() / 2, bar.get_height() + total * 0.005,
-                     f"{count}\n({count/total*100:.1f}%)", ha="center", fontsize=9, fontweight="bold")
+        axes[2].text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + total * 0.005,
+            f"{count}\n({count/total*100:.1f}%)",
+            ha="center",
+            fontsize=9,
+            fontweight="bold",
+        )
     axes[2].set_ylabel("Count", fontweight="bold")
     axes[2].set_title("Prediction Outcome Breakdown", fontweight="bold")
     axes[2].grid(True, axis="y", alpha=0.3)
@@ -812,8 +886,14 @@ def plot_per_class_metrics(y_true, y_pred, output_dir):
 
     # Support pie
     supports = [report[cls]["support"] for cls in classes]
-    axes[1].pie(supports, labels=classes, autopct="%1.1f%%",
-                colors=["#3498db", "#e74c3c"], startangle=90, textprops={"fontsize": 11})
+    axes[1].pie(
+        supports,
+        labels=classes,
+        autopct="%1.1f%%",
+        colors=["#3498db", "#e74c3c"],
+        startangle=90,
+        textprops={"fontsize": 11},
+    )
     axes[1].set_title(f"Test Set Class Distribution\n(n={sum(supports):,})", fontweight="bold")
 
     plt.suptitle("Per-Class Performance Metrics", fontsize=14, fontweight="bold")
@@ -843,8 +923,7 @@ def plot_model_comparison(model_results, output_dir):
         bars = ax.bar(x + i * width, vals, width, label=name, alpha=0.85)
         for bar in bars:
             h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.004, f"{h:.3f}",
-                    ha="center", fontsize=7, rotation=45)
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.004, f"{h:.3f}", ha="center", fontsize=7, rotation=45)
 
     ax.set_xticks(x + width * (len(model_names) - 1) / 2)
     ax.set_xticklabels(metric_labels, fontsize=11)
@@ -872,8 +951,9 @@ def plot_tree_depth_distribution(model, output_dir):
     plt.axvline(np.mean(depths), color="red", linestyle="--", lw=2, label=f"Mean depth: {np.mean(depths):.1f}")
     plt.xlabel("Tree Depth", fontweight="bold")
     plt.ylabel("Count", fontweight="bold")
-    plt.title(f"Random Forest – Individual Tree Depth Distribution\n({len(model.estimators_)} trees)",
-              fontweight="bold")
+    plt.title(
+        f"Random Forest – Individual Tree Depth Distribution\n({len(model.estimators_)} trees)", fontweight="bold"
+    )
     plt.legend()
     plt.tight_layout()
     path = Path(output_dir) / "tree_depth_distribution.png"
@@ -885,6 +965,7 @@ def plot_tree_depth_distribution(model, output_dir):
 # ==============================================================================
 # INTERACTIVE CHARTS (PLOTLY)
 # ==============================================================================
+
 
 def generate_all_interactive(model, X, y_true, y_pred, y_pred_proba, metrics, output_dir):
     if not PLOTLY_AVAILABLE:
@@ -904,14 +985,26 @@ def generate_all_interactive(model, X, y_true, y_pred, y_pred_proba, metrics, ou
 def _interactive_feature_importance(model, output_dir, top_n=20):
     if not hasattr(model, "feature_importances_"):
         return
-    feature_names = (list(model.feature_names_in_) if hasattr(model, "feature_names_in_")
-                     else [f"Feature {i}" for i in range(len(model.feature_importances_))])
-    imp_df = (pd.DataFrame({"feature": feature_names, "importance": model.feature_importances_})
-              .sort_values("importance").tail(top_n))
-    fig = px.bar(imp_df, x="importance", y="feature", orientation="h",
-                 title="Feature Importance – Flood Prediction Model",
-                 color="importance", color_continuous_scale="Viridis",
-                 labels={"importance": "Importance", "feature": "Feature"})
+    feature_names = (
+        list(model.feature_names_in_)
+        if hasattr(model, "feature_names_in_")
+        else [f"Feature {i}" for i in range(len(model.feature_importances_))]
+    )
+    imp_df = (
+        pd.DataFrame({"feature": feature_names, "importance": model.feature_importances_})
+        .sort_values("importance")
+        .tail(top_n)
+    )
+    fig = px.bar(
+        imp_df,
+        x="importance",
+        y="feature",
+        orientation="h",
+        title="Feature Importance – Flood Prediction Model",
+        color="importance",
+        color_continuous_scale="Viridis",
+        labels={"importance": "Importance", "feature": "Feature"},
+    )
     fig.update_layout(height=max(400, len(imp_df) * 26), showlegend=False)
     fig.write_html(str(Path(output_dir) / "interactive_feature_importance.html"))
 
@@ -919,9 +1012,15 @@ def _interactive_feature_importance(model, output_dir, top_n=20):
 def _interactive_confusion_matrix(y_true, y_pred, output_dir):
     cm = confusion_matrix(y_true, y_pred)
     labels = ["No Flood", "Flood"]
-    fig = px.imshow(cm, x=labels, y=labels, text_auto=True, color_continuous_scale="Blues",
-                    title="Confusion Matrix – Flood Prediction Model",
-                    labels={"x": "Predicted", "y": "Actual"})
+    fig = px.imshow(
+        cm,
+        x=labels,
+        y=labels,
+        text_auto=True,
+        color_continuous_scale="Blues",
+        title="Confusion Matrix – Flood Prediction Model",
+        labels={"x": "Predicted", "y": "Actual"},
+    )
     fig.write_html(str(Path(output_dir) / "interactive_confusion_matrix.html"))
 
 
@@ -930,12 +1029,15 @@ def _interactive_roc(y_true, y_pred_proba, output_dir):
     fpr, tpr, _ = roc_curve(y_true, proba_pos)
     roc_auc = auc(fpr, tpr)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=f"ROC (AUC={roc_auc:.4f})",
-                             line=dict(color="darkorange", width=2.5)))
-    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines", name="Random",
-                             line=dict(color="navy", dash="dash")))
-    fig.update_layout(title="ROC Curve – Flood Prediction Model",
-                      xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
+    fig.add_trace(
+        go.Scatter(
+            x=fpr, y=tpr, mode="lines", name=f"ROC (AUC={roc_auc:.4f})", line=dict(color="darkorange", width=2.5)
+        )
+    )
+    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines", name="Random", line=dict(color="navy", dash="dash")))
+    fig.update_layout(
+        title="ROC Curve – Flood Prediction Model", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate"
+    )
     fig.write_html(str(Path(output_dir) / "interactive_roc_curve.html"))
 
 
@@ -944,10 +1046,14 @@ def _interactive_pr_curve(y_true, y_pred_proba, output_dir):
     precision, recall, _ = precision_recall_curve(y_true, proba_pos)
     pr_auc = auc(recall, precision)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=recall, y=precision, mode="lines", name=f"PR (AUC={pr_auc:.4f})",
-                             line=dict(color="steelblue", width=2.5)))
-    fig.update_layout(title="Precision-Recall Curve – Flood Prediction Model",
-                      xaxis_title="Recall", yaxis_title="Precision")
+    fig.add_trace(
+        go.Scatter(
+            x=recall, y=precision, mode="lines", name=f"PR (AUC={pr_auc:.4f})", line=dict(color="steelblue", width=2.5)
+        )
+    )
+    fig.update_layout(
+        title="Precision-Recall Curve – Flood Prediction Model", xaxis_title="Recall", yaxis_title="Precision"
+    )
     fig.write_html(str(Path(output_dir) / "interactive_pr_curve.html"))
 
 
@@ -960,20 +1066,40 @@ def _interactive_metrics_dashboard(metrics, output_dir):
         "ROC AUC": metrics["roc_auc"],
         "MCC": (metrics["matthews_corrcoef"] + 1) / 2,
     }
-    fig = make_subplots(rows=1, cols=2,
-                        specs=[[{"type": "bar"}, {"type": "indicator"}]],
-                        subplot_titles=("Performance Metrics", "F1 Score"))
-    fig.add_trace(go.Bar(x=list(main_metrics.keys()), y=list(main_metrics.values()),
-                         marker_color=COLORS[:len(main_metrics)],
-                         text=[f"{v:.3f}" for v in main_metrics.values()],
-                         textposition="outside"), row=1, col=1)
-    fig.add_trace(go.Indicator(mode="gauge+number+delta",
-                               value=metrics["f1_weighted"],
-                               gauge={"axis": {"range": [0, 1]},
-                                      "steps": [{"range": [0, 0.5], "color": "#e74c3c"},
-                                                 {"range": [0.5, 0.75], "color": "#f1c40f"},
-                                                 {"range": [0.75, 1], "color": "#2ecc71"}],
-                                      "bar": {"color": "#f39c12"}}), row=1, col=2)
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        specs=[[{"type": "bar"}, {"type": "indicator"}]],
+        subplot_titles=("Performance Metrics", "F1 Score"),
+    )
+    fig.add_trace(
+        go.Bar(
+            x=list(main_metrics.keys()),
+            y=list(main_metrics.values()),
+            marker_color=COLORS[: len(main_metrics)],
+            text=[f"{v:.3f}" for v in main_metrics.values()],
+            textposition="outside",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Indicator(
+            mode="gauge+number+delta",
+            value=metrics["f1_weighted"],
+            gauge={
+                "axis": {"range": [0, 1]},
+                "steps": [
+                    {"range": [0, 0.5], "color": "#e74c3c"},
+                    {"range": [0.5, 0.75], "color": "#f1c40f"},
+                    {"range": [0.75, 1], "color": "#2ecc71"},
+                ],
+                "bar": {"color": "#f39c12"},
+            },
+        ),
+        row=1,
+        col=2,
+    )
     fig.update_layout(title="Performance Dashboard – Flood Prediction Model", height=450, showlegend=False)
     fig.write_html(str(Path(output_dir) / "interactive_dashboard.html"))
 
@@ -981,10 +1107,16 @@ def _interactive_metrics_dashboard(metrics, output_dir):
 def _interactive_probability_distribution(y_true, y_pred_proba, output_dir):
     proba_pos = y_pred_proba[:, 1] if y_pred_proba.ndim > 1 else y_pred_proba
     df = pd.DataFrame({"probability": proba_pos, "actual": y_true.map({0: "No Flood", 1: "Flood"})})
-    fig = px.histogram(df, x="probability", color="actual", barmode="overlay",
-                       nbins=50, opacity=0.7,
-                       title="Prediction Probability Distribution",
-                       color_discrete_map={"No Flood": "#3498db", "Flood": "#e74c3c"})
+    fig = px.histogram(
+        df,
+        x="probability",
+        color="actual",
+        barmode="overlay",
+        nbins=50,
+        opacity=0.7,
+        title="Prediction Probability Distribution",
+        color_discrete_map={"No Flood": "#3498db", "Flood": "#e74c3c"},
+    )
     fig.add_vline(x=0.5, line_dash="dash", annotation_text="Default Threshold (0.5)")
     fig.write_html(str(Path(output_dir) / "interactive_probability_dist.html"))
 
@@ -995,28 +1127,35 @@ def _interactive_threshold_sweep(y_true, y_pred_proba, output_dir):
     data = []
     for t in thresholds:
         preds = (proba_pos >= t).astype(int)
-        data.append({
-            "threshold": round(t, 2),
-            "precision": precision_score(y_true, preds, zero_division=0),
-            "recall": recall_score(y_true, preds, zero_division=0),
-            "f1": f1_score(y_true, preds, zero_division=0),
-            "accuracy": accuracy_score(y_true, preds),
-        })
+        data.append(
+            {
+                "threshold": round(t, 2),
+                "precision": precision_score(y_true, preds, zero_division=0),
+                "recall": recall_score(y_true, preds, zero_division=0),
+                "f1": f1_score(y_true, preds, zero_division=0),
+                "accuracy": accuracy_score(y_true, preds),
+            }
+        )
     df = pd.DataFrame(data)
     fig = go.Figure()
     for col, color in [("precision", "blue"), ("recall", "red"), ("f1", "orange"), ("accuracy", "green")]:
-        fig.add_trace(go.Scatter(x=df["threshold"], y=df[col], mode="lines", name=col.capitalize(),
-                                 line=dict(color=color, width=2)))
+        fig.add_trace(
+            go.Scatter(
+                x=df["threshold"], y=df[col], mode="lines", name=col.capitalize(), line=dict(color=color, width=2)
+            )
+        )
     best_t = df.loc[df["f1"].idxmax(), "threshold"]
     fig.add_vline(x=best_t, line_dash="dash", annotation_text=f"Best F1 @ {best_t:.2f}")
-    fig.update_layout(title="Metrics vs Threshold – Flood Prediction Model",
-                      xaxis_title="Threshold", yaxis_title="Score")
+    fig.update_layout(
+        title="Metrics vs Threshold – Flood Prediction Model", xaxis_title="Threshold", yaxis_title="Score"
+    )
     fig.write_html(str(Path(output_dir) / "interactive_threshold_sweep.html"))
 
 
 # ==============================================================================
 # DATA EXPORTS
 # ==============================================================================
+
 
 def export_predictions(X, y_true, y_pred, y_pred_proba, output_dir):
     logger.info("  → Exporting full predictions CSV...")
@@ -1048,12 +1187,22 @@ def export_feature_importance(model, output_dir):
     logger.info("  → Exporting feature importance CSV...")
     if not hasattr(model, "feature_importances_"):
         return
-    feature_names = (list(model.feature_names_in_) if hasattr(model, "feature_names_in_")
-                     else [f"Feature {i}" for i in range(len(model.feature_importances_))])
-    df = (pd.DataFrame({"feature": feature_names, "importance": model.feature_importances_,
-                         "importance_pct": model.feature_importances_ / model.feature_importances_.sum() * 100})
-          .sort_values("importance", ascending=False)
-          .reset_index(drop=True))
+    feature_names = (
+        list(model.feature_names_in_)
+        if hasattr(model, "feature_names_in_")
+        else [f"Feature {i}" for i in range(len(model.feature_importances_))]
+    )
+    df = (
+        pd.DataFrame(
+            {
+                "feature": feature_names,
+                "importance": model.feature_importances_,
+                "importance_pct": model.feature_importances_ / model.feature_importances_.sum() * 100,
+            }
+        )
+        .sort_values("importance", ascending=False)
+        .reset_index(drop=True)
+    )
     df.index += 1
     df.index.name = "rank"
     path = Path(output_dir) / "feature_importance.csv"
@@ -1066,8 +1215,7 @@ def export_metrics_json(metrics, output_dir, model_name="model"):
     export = {
         "model": model_name,
         "generated_at": datetime.now().isoformat(),
-        "metrics": {k: float(v) if isinstance(v, (np.floating, float)) else int(v)
-                    for k, v in metrics.items()}
+        "metrics": {k: float(v) if isinstance(v, (np.floating, float)) else int(v) for k, v in metrics.items()},
     }
     path = Path(output_dir) / "metrics.json"
     with open(path, "w") as f:
@@ -1101,7 +1249,8 @@ def export_excel_workbook(metrics, imp_df, threshold_df, predictions_df, output_
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
         # Metrics
         pd.DataFrame([{"Metric": k, "Value": v} for k, v in metrics.items()]).to_excel(
-            writer, sheet_name="Metrics", index=False)
+            writer, sheet_name="Metrics", index=False
+        )
         # Feature importance
         if imp_df is not None:
             imp_df.reset_index(drop=True).to_excel(writer, sheet_name="Feature Importance", index=False)
@@ -1117,6 +1266,7 @@ def export_excel_workbook(metrics, imp_df, threshold_df, predictions_df, output_
 # ==============================================================================
 # TEXT REPORT & MARKDOWN SUMMARY
 # ==============================================================================
+
 
 def generate_text_report(model, metadata, y_true, y_pred, y_pred_proba, metrics, output_dir):
     logger.info("  → Full text report...")
@@ -1164,10 +1314,16 @@ def generate_text_report(model, metadata, y_true, y_pred, y_pred_proba, metrics,
 
         # Feature Importance
         if hasattr(model, "feature_importances_"):
-            feature_names = (list(model.feature_names_in_) if hasattr(model, "feature_names_in_")
-                             else [f"Feature {i}" for i in range(len(model.feature_importances_))])
-            imp_df = (pd.DataFrame({"feature": feature_names, "importance": model.feature_importances_})
-                      .sort_values("importance", ascending=False).head(20))
+            feature_names = (
+                list(model.feature_names_in_)
+                if hasattr(model, "feature_names_in_")
+                else [f"Feature {i}" for i in range(len(model.feature_importances_))]
+            )
+            imp_df = (
+                pd.DataFrame({"feature": feature_names, "importance": model.feature_importances_})
+                .sort_values("importance", ascending=False)
+                .head(20)
+            )
             f.write("TOP 20 FEATURE IMPORTANCES\n" + "-" * 80 + "\n")
             for i, (_, row) in enumerate(imp_df.iterrows(), 1):
                 bar = "█" * int(row["importance"] * 200)
@@ -1207,8 +1363,16 @@ def generate_markdown_summary(metrics, output_dir, model_path):
         f.write("---\n\n")
         f.write("## Key Performance Metrics\n\n")
         f.write("| Metric | Value |\n|---|---|\n")
-        key_metrics = ["accuracy", "balanced_accuracy", "f1_weighted", "roc_auc",
-                       "precision_weighted", "recall_weighted", "matthews_corrcoef", "cohen_kappa"]
+        key_metrics = [
+            "accuracy",
+            "balanced_accuracy",
+            "f1_weighted",
+            "roc_auc",
+            "precision_weighted",
+            "recall_weighted",
+            "matthews_corrcoef",
+            "cohen_kappa",
+        ]
         for k in key_metrics:
             v = metrics.get(k, "N/A")
             label = k.replace("_", " ").title()
@@ -1230,6 +1394,7 @@ def generate_markdown_summary(metrics, output_dir, model_path):
 # ==============================================================================
 # MAIN ORCHESTRATOR
 # ==============================================================================
+
 
 def generate_full_report(
     model_path,
@@ -1260,7 +1425,9 @@ def generate_full_report(
     optimal_threshold, optimal_f1 = find_optimal_threshold(y, y_pred_proba)
     metrics["optimal_threshold"] = optimal_threshold
     metrics["optimal_threshold_f1"] = optimal_f1
-    logger.info(f"  Accuracy: {metrics['accuracy']:.4f} | F1: {metrics['f1_weighted']:.4f} | AUC: {metrics['roc_auc']:.4f}")
+    logger.info(
+        f"  Accuracy: {metrics['accuracy']:.4f} | F1: {metrics['f1_weighted']:.4f} | AUC: {metrics['roc_auc']:.4f}"
+    )
     logger.info(f"  Optimal threshold: {optimal_threshold:.2f} (F1 = {optimal_f1:.4f})\n")
 
     # Load comparison models if any
@@ -1369,20 +1536,20 @@ Examples:
   python generate_thesis_report.py --model models/flood_model_v6.joblib --data data/dataset.csv --skip-slow
   python generate_thesis_report.py --model models/flood_model_v6.joblib --data data/dataset.csv \\
       --compare models/flood_model_v5.joblib models/flood_model_v4.joblib
-        """
+        """,
     )
-    parser.add_argument("--model", type=str, required=True,
-                        help="Path to trained model (.joblib)")
-    parser.add_argument("--data", type=str, required=True,
-                        help="Path to test dataset CSV")
-    parser.add_argument("--output", type=str, default="reports",
-                        help="Output directory (default: reports)")
-    parser.add_argument("--interactive", action="store_true",
-                        help="Generate interactive Plotly HTML charts (requires plotly)")
-    parser.add_argument("--compare", nargs="+", metavar="MODEL_PATH",
-                        help="Additional model paths to compare against the primary model")
-    parser.add_argument("--skip-slow", action="store_true",
-                        help="Skip slow steps: learning curves & permutation importance")
+    parser.add_argument("--model", type=str, required=True, help="Path to trained model (.joblib)")
+    parser.add_argument("--data", type=str, required=True, help="Path to test dataset CSV")
+    parser.add_argument("--output", type=str, default="reports", help="Output directory (default: reports)")
+    parser.add_argument(
+        "--interactive", action="store_true", help="Generate interactive Plotly HTML charts (requires plotly)"
+    )
+    parser.add_argument(
+        "--compare", nargs="+", metavar="MODEL_PATH", help="Additional model paths to compare against the primary model"
+    )
+    parser.add_argument(
+        "--skip-slow", action="store_true", help="Skip slow steps: learning curves & permutation importance"
+    )
 
     args = parser.parse_args()
 

@@ -12,7 +12,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
+from app.services.dataset_transition import (
+    DatasetTransitionPlan,
+    TransitionPhase,
+    evaluate_dataset_transition,
+)
 from app.services.dataset_validation import (
     DatasetPhase,
     DatasetValidator,
@@ -27,12 +31,6 @@ from app.services.label_consistency import (
     check_label_consistency,
     compare_label_sources,
 )
-from app.services.dataset_transition import (
-    DatasetTransitionPlan,
-    TransitionPhase,
-    evaluate_dataset_transition,
-)
-
 
 # =====================================================================
 # Fixtures
@@ -69,9 +67,7 @@ def semi_supervised_df() -> pd.DataFrame:
             "month": np.random.randint(1, 13, n),
             "flood": np.random.choice([0, 1], n, p=[0.65, 0.35]),
             "label_confidence": np.random.uniform(0.3, 1.0, n),
-            "label_source": np.random.choice(
-                ["pseudo", "official", "manual"], n, p=[0.6, 0.25, 0.15]
-            ),
+            "label_source": np.random.choice(["pseudo", "official", "manual"], n, p=[0.6, 0.25, 0.15]),
         }
     )
 
@@ -82,24 +78,18 @@ def historical_df() -> pd.DataFrame:
     np.random.seed(42)
     n = 300
     dates = pd.date_range("2022-01-01", periods=n, freq="D")
-    barangays = np.random.choice(
-        ["San Isidro", "La Huerta", "Tambo", "BF Homes", "Moonwalk"], n
-    )
+    barangays = np.random.choice(["San Isidro", "La Huerta", "Tambo", "BF Homes", "Moonwalk"], n)
     return pd.DataFrame(
         {
             "temperature": np.random.uniform(24, 35, n),
             "humidity": np.random.uniform(55, 98, n),
             "precipitation": np.random.uniform(0, 120, n),
-            "is_monsoon_season": [
-                1 if d.month in range(6, 12) else 0 for d in dates
-            ],
+            "is_monsoon_season": [1 if d.month in range(6, 12) else 0 for d in dates],
             "month": [d.month for d in dates],
             "date": [str(d.date()) for d in dates],
             "barangay": barangays,
             "flood": np.random.choice([0, 1], n, p=[0.6, 0.4]),
-            "flood_depth_cm": np.random.choice(
-                [0, 0, 0, 8, 15, 48, 100], n
-            ),
+            "flood_depth_cm": np.random.choice([0, 0, 0, 8, 15, 48, 100], n),
         }
     )
 
@@ -134,20 +124,14 @@ class TestDatasetValidation:
         df = synthetic_df.copy()
         df.loc[0:4, "temperature"] = np.nan
         report = validate_dataset(df, phase="synthetic")
-        mv_issues = [
-            i for i in report.issues
-            if i.check == "missing_values" and i.column == "temperature"
-        ]
+        mv_issues = [i for i in report.issues if i.check == "missing_values" and i.column == "temperature"]
         assert len(mv_issues) == 1
 
     def test_out_of_range_values(self, synthetic_df: pd.DataFrame) -> None:
         df = synthetic_df.copy()
         df.loc[0, "temperature"] = 100.0  # above max 45
         report = validate_dataset(df, phase="synthetic")
-        oor = [
-            i for i in report.issues
-            if i.check == "out_of_range" and i.column == "temperature"
-        ]
+        oor = [i for i in report.issues if i.check == "out_of_range" and i.column == "temperature"]
         assert len(oor) >= 1
 
     def test_invalid_flood_values(self) -> None:
@@ -160,10 +144,7 @@ class TestDatasetValidation:
             }
         )
         report = validate_dataset(df, phase="synthetic")
-        bad = [
-            i for i in report.issues
-            if i.check == "invalid_values" and i.column == "flood"
-        ]
+        bad = [i for i in report.issues if i.check == "invalid_values" and i.column == "flood"]
         assert len(bad) == 1
 
     def test_single_class_target(self) -> None:
@@ -188,9 +169,7 @@ class TestDatasetValidation:
                 "flood": [0] * 98 + [1] * 2,
             }
         )
-        report = validate_dataset(
-            df, phase="synthetic", max_class_imbalance_ratio=10.0
-        )
+        report = validate_dataset(df, phase="synthetic", max_class_imbalance_ratio=10.0)
         imb = [i for i in report.issues if i.check == "class_imbalance"]
         assert len(imb) == 1
 
@@ -223,14 +202,10 @@ class TestDatasetValidation:
             }
         )
         report = validate_dataset(df, phase="synthetic")
-        dtype_issues = [
-            i for i in report.issues if i.check == "wrong_dtype"
-        ]
+        dtype_issues = [i for i in report.issues if i.check == "wrong_dtype"]
         assert len(dtype_issues) == 1
 
-    def test_semi_supervised_confidence_check(
-        self, semi_supervised_df: pd.DataFrame
-    ) -> None:
+    def test_semi_supervised_confidence_check(self, semi_supervised_df: pd.DataFrame) -> None:
         report = validate_dataset(semi_supervised_df, phase="semi_supervised")
         assert isinstance(report, ValidationReport)
 
@@ -249,15 +224,11 @@ class TestDatasetValidation:
         conf = [i for i in report.issues if i.check == "missing_confidence"]
         assert len(conf) == 1
 
-    def test_historical_temporal_coverage(
-        self, historical_df: pd.DataFrame
-    ) -> None:
+    def test_historical_temporal_coverage(self, historical_df: pd.DataFrame) -> None:
         report = validate_dataset(historical_df, phase="historical")
         assert "date_range" in report.statistics
 
-    def test_historical_spatial_coverage(
-        self, historical_df: pd.DataFrame
-    ) -> None:
+    def test_historical_spatial_coverage(self, historical_df: pd.DataFrame) -> None:
         report = validate_dataset(historical_df, phase="historical")
         assert "unique_barangays" in report.statistics
         assert report.statistics["unique_barangays"] >= 3
@@ -316,10 +287,7 @@ class TestLabelConsistency:
             }
         )
         report = check_label_consistency(df)
-        meteo = [
-            i for i in report.inconsistencies
-            if i.inconsistency_type == InconsistencyType.METEOROLOGICAL
-        ]
+        meteo = [i for i in report.inconsistencies if i.inconsistency_type == InconsistencyType.METEOROLOGICAL]
         assert len(meteo) >= 1
         # Should flag at least one dry-day flood
         total_flagged = sum(len(i.row_indices) for i in meteo)
@@ -334,10 +302,7 @@ class TestLabelConsistency:
             }
         )
         report = check_label_consistency(df)
-        hum = [
-            i for i in report.inconsistencies
-            if "humidity" in i.message.lower()
-        ]
+        hum = [i for i in report.inconsistencies if "humidity" in i.message.lower()]
         assert len(hum) >= 1
 
     def test_depth_label_mismatch_positive_depth_no_flood(self) -> None:
@@ -350,10 +315,7 @@ class TestLabelConsistency:
             }
         )
         report = check_label_consistency(df)
-        depth = [
-            i for i in report.inconsistencies
-            if i.inconsistency_type == InconsistencyType.DEPTH_LABEL_MISMATCH
-        ]
+        depth = [i for i in report.inconsistencies if i.inconsistency_type == InconsistencyType.DEPTH_LABEL_MISMATCH]
         assert len(depth) >= 1
 
     def test_depth_label_mismatch_flood_zero_depth(self) -> None:
@@ -366,10 +328,7 @@ class TestLabelConsistency:
             }
         )
         report = check_label_consistency(df)
-        depth = [
-            i for i in report.inconsistencies
-            if i.inconsistency_type == InconsistencyType.DEPTH_LABEL_MISMATCH
-        ]
+        depth = [i for i in report.inconsistencies if i.inconsistency_type == InconsistencyType.DEPTH_LABEL_MISMATCH]
         assert len(depth) >= 1
 
     def test_spatial_consistency_conflict(self) -> None:
@@ -383,10 +342,7 @@ class TestLabelConsistency:
             }
         )
         report = check_label_consistency(df)
-        spatial = [
-            i for i in report.inconsistencies
-            if i.inconsistency_type == InconsistencyType.SPATIAL
-        ]
+        spatial = [i for i in report.inconsistencies if i.inconsistency_type == InconsistencyType.SPATIAL]
         assert len(spatial) == 1
 
     def test_duplicate_conflict(self) -> None:
@@ -401,10 +357,7 @@ class TestLabelConsistency:
             }
         )
         report = check_label_consistency(df)
-        dup = [
-            i for i in report.inconsistencies
-            if i.inconsistency_type == InconsistencyType.DUPLICATE_CONFLICT
-        ]
+        dup = [i for i in report.inconsistencies if i.inconsistency_type == InconsistencyType.DUPLICATE_CONFLICT]
         assert len(dup) == 1
 
     def test_cross_source_comparison(self) -> None:
@@ -427,20 +380,13 @@ class TestLabelConsistency:
             source_a_name="synthetic",
             source_b_name="official",
         )
-        cross = [
-            i for i in report.inconsistencies
-            if i.inconsistency_type == InconsistencyType.CROSS_SOURCE
-        ]
+        cross = [i for i in report.inconsistencies if i.inconsistency_type == InconsistencyType.CROSS_SOURCE]
         assert len(cross) == 1
         assert cross[0].details["disagreement_count"] == 2
 
     def test_cross_source_no_overlap(self) -> None:
-        source_a = pd.DataFrame(
-            {"date": ["2023-01-01"], "flood": [1]}
-        )
-        source_b = pd.DataFrame(
-            {"date": ["2024-01-01"], "flood": [0]}
-        )
+        source_a = pd.DataFrame({"date": ["2023-01-01"], "flood": [1]})
+        source_b = pd.DataFrame({"date": ["2024-01-01"], "flood": [0]})
         report = compare_label_sources(source_a, source_b)
         assert len(report.recommendations) > 0
 
@@ -479,10 +425,7 @@ class TestLabelConsistency:
             }
         )
         report = check_label_consistency(df)
-        monsoon = [
-            i for i in report.inconsistencies
-            if "monsoon" in i.message.lower()
-        ]
+        monsoon = [i for i in report.inconsistencies if "monsoon" in i.message.lower()]
         assert len(monsoon) >= 1
 
 
@@ -495,28 +438,20 @@ class TestDatasetTransition:
     """Tests for the DatasetTransitionPlan orchestrator."""
 
     def test_phase1_evaluation(self, synthetic_df: pd.DataFrame) -> None:
-        report = evaluate_dataset_transition(
-            synthetic_df, TransitionPhase.PHASE_1_SYNTHETIC
-        )
+        report = evaluate_dataset_transition(synthetic_df, TransitionPhase.PHASE_1_SYNTHETIC)
         d = report.to_dict()
         assert d["phase"] == "phase_1_synthetic"
         assert d["validation"] is not None
         assert d["consistency"] is not None
         assert d["readiness"] is not None
 
-    def test_phase2_evaluation(
-        self, semi_supervised_df: pd.DataFrame
-    ) -> None:
-        report = evaluate_dataset_transition(
-            semi_supervised_df, TransitionPhase.PHASE_2_SEMI_SUPERVISED
-        )
+    def test_phase2_evaluation(self, semi_supervised_df: pd.DataFrame) -> None:
+        report = evaluate_dataset_transition(semi_supervised_df, TransitionPhase.PHASE_2_SEMI_SUPERVISED)
         d = report.to_dict()
         assert d["phase"] == "phase_2_semi_supervised"
 
     def test_phase3_evaluation(self, historical_df: pd.DataFrame) -> None:
-        report = evaluate_dataset_transition(
-            historical_df, TransitionPhase.PHASE_3_HISTORICAL
-        )
+        report = evaluate_dataset_transition(historical_df, TransitionPhase.PHASE_3_HISTORICAL)
         d = report.to_dict()
         assert d["phase"] == "phase_3_historical"
 
@@ -532,9 +467,7 @@ class TestDatasetTransition:
                 "flood": np.random.choice([0, 1], n, p=[0.7, 0.3]),
             }
         )
-        report = evaluate_dataset_transition(
-            df, TransitionPhase.PHASE_1_SYNTHETIC
-        )
+        report = evaluate_dataset_transition(df, TransitionPhase.PHASE_1_SYNTHETIC)
         readiness = report.readiness
         assert readiness["ready"] is True
         assert readiness["next_phase"] == "phase_2_semi_supervised"
@@ -548,9 +481,7 @@ class TestDatasetTransition:
                 "flood": [0] * 5 + [1] * 5,
             }
         )
-        report = evaluate_dataset_transition(
-            df, TransitionPhase.PHASE_1_SYNTHETIC
-        )
+        report = evaluate_dataset_transition(df, TransitionPhase.PHASE_1_SYNTHETIC)
         readiness = report.readiness
         assert readiness["ready"] is False
         assert any("rows" in b.lower() for b in readiness["blockers"])
@@ -570,15 +501,11 @@ class TestDatasetTransition:
                 "label_source": ["official"] * n,
             }
         )
-        report = evaluate_dataset_transition(
-            df, TransitionPhase.PHASE_2_SEMI_SUPERVISED
-        )
+        report = evaluate_dataset_transition(df, TransitionPhase.PHASE_2_SEMI_SUPERVISED)
         assert "mean_confidence" in report.readiness["metrics"]
 
     def test_phase3_readiness_final(self, historical_df: pd.DataFrame) -> None:
-        report = evaluate_dataset_transition(
-            historical_df, TransitionPhase.PHASE_3_HISTORICAL
-        )
+        report = evaluate_dataset_transition(historical_df, TransitionPhase.PHASE_3_HISTORICAL)
         readiness = report.readiness
         assert readiness["next_phase"] is None  # final phase
 
@@ -627,15 +554,11 @@ class TestDatasetTransition:
 
     def test_string_phase_argument(self, synthetic_df: pd.DataFrame) -> None:
         """Accept phase as a plain string."""
-        report = evaluate_dataset_transition(
-            synthetic_df, "phase_1_synthetic"
-        )
+        report = evaluate_dataset_transition(synthetic_df, "phase_1_synthetic")
         assert report.phase == "phase_1_synthetic"
 
     def test_report_structure(self, synthetic_df: pd.DataFrame) -> None:
-        report = evaluate_dataset_transition(
-            synthetic_df, TransitionPhase.PHASE_1_SYNTHETIC
-        )
+        report = evaluate_dataset_transition(synthetic_df, TransitionPhase.PHASE_1_SYNTHETIC)
         d = report.to_dict()
         assert set(d.keys()) == {
             "phase",

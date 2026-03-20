@@ -1,26 +1,28 @@
 /**
  * AlertList Component
  *
- * Renders a list of alert cards with loading and empty states,
- * and optional filtering controls.
+ * Renders a virtualized list of alert cards with loading and empty states,
+ * and optional filtering controls. Uses @tanstack/react-virtual to avoid
+ * DOM thrashing during monsoon-season alert surges.
  */
 
-import { useState } from 'react';
-import { AlertCircle, Filter } from 'lucide-react';
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { AlertCircle, Filter } from "lucide-react";
+import { useRef, useState } from "react";
 
-import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
-import { AlertCard } from './AlertCard';
-import type { Alert, RiskLevel } from '@/types';
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import type { Alert, RiskLevel } from "@/types";
+import { AlertCard } from "./AlertCard";
 
 /**
  * AlertList component props
@@ -72,13 +74,21 @@ function AlertListSkeleton({ count = 3 }: { count?: number }) {
 /**
  * Empty state component
  */
-function EmptyState({ message }: { message: string }) {
+function EmptyState({
+  message,
+  isFiltered,
+}: {
+  message: string;
+  isFiltered: boolean;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <AlertCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
       <p className="text-lg font-medium text-muted-foreground">{message}</p>
       <p className="text-sm text-muted-foreground/75 mt-1">
-        New alerts will appear here when triggered
+        {isFiltered
+          ? "Try adjusting your filters to see more results"
+          : "New alerts will appear here when triggered"}
       </p>
     </div>
   );
@@ -95,6 +105,13 @@ function EmptyState({ message }: { message: string }) {
  *   showFilters
  * />
  */
+/** Threshold above which we enable virtual scrolling */
+const VIRTUALIZE_THRESHOLD = 30;
+/** Estimated height (px) of a single AlertCard row */
+const ESTIMATED_ROW_HEIGHT = 80;
+/** Height of a compact AlertCard row */
+const ESTIMATED_ROW_HEIGHT_COMPACT = 60;
+
 export function AlertList({
   alerts,
   isLoading = false,
@@ -103,18 +120,21 @@ export function AlertList({
   showFilters = false,
   compact = false,
   className,
-  emptyMessage = 'No alerts',
+  emptyMessage = "No alerts",
 }: AlertListProps) {
   // Local filter state
-  const [riskLevelFilter, setRiskLevelFilter] = useState<RiskLevel | 'all'>(
-    'all'
+  const [riskLevelFilter, setRiskLevelFilter] = useState<RiskLevel | "all">(
+    "all",
   );
   const [showAcknowledged, setShowAcknowledged] = useState(true);
+
+  // Scroll container ref for virtualization
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Filter alerts
   const filteredAlerts = alerts.filter((alert) => {
     // Risk level filter
-    if (riskLevelFilter !== 'all' && alert.risk_level !== riskLevelFilter) {
+    if (riskLevelFilter !== "all" && alert.risk_level !== riskLevelFilter) {
       return false;
     }
     // Acknowledged filter
@@ -122,6 +142,18 @@ export function AlertList({
       return false;
     }
     return true;
+  });
+
+  const shouldVirtualize = filteredAlerts.length > VIRTUALIZE_THRESHOLD;
+
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual is compatible
+  const virtualizer = useVirtualizer({
+    count: filteredAlerts.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () =>
+      compact ? ESTIMATED_ROW_HEIGHT_COMPACT : ESTIMATED_ROW_HEIGHT,
+    overscan: 5,
+    enabled: shouldVirtualize,
   });
 
   // Loading state
@@ -150,9 +182,11 @@ export function AlertList({
 
           {/* Risk Level Filter */}
           <Select
-            value={riskLevelFilter === 'all' ? 'all' : String(riskLevelFilter)}
+            value={riskLevelFilter === "all" ? "all" : String(riskLevelFilter)}
             onValueChange={(value) =>
-              setRiskLevelFilter(value === 'all' ? 'all' : (Number(value) as RiskLevel))
+              setRiskLevelFilter(
+                value === "all" ? "all" : (Number(value) as RiskLevel),
+              )
             }
           >
             <SelectTrigger className="w-32 h-9">
@@ -189,13 +223,60 @@ export function AlertList({
       {filteredAlerts.length === 0 ? (
         <EmptyState
           message={
-            alerts.length > 0
-              ? 'No alerts match your filters'
-              : emptyMessage
+            alerts.length > 0 ? "No alerts match your filters" : emptyMessage
+          }
+          isFiltered={
+            alerts.length > 0 || riskLevelFilter !== "all" || !showAcknowledged
           }
         />
+      ) : shouldVirtualize ? (
+        /* Virtualized rendering for large alert lists (>30 items) */
+        <div
+          ref={scrollContainerRef}
+          className="max-h-[70vh] overflow-auto"
+          role="list"
+          aria-label="Alert list"
+        >
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const alert = filteredAlerts[virtualRow.index];
+              if (!alert) return null;
+              return (
+                <div
+                  key={alert.id}
+                  role="listitem"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  ref={virtualizer.measureElement}
+                  data-index={virtualRow.index}
+                >
+                  <div className={compact ? "pb-2" : "pb-3"}>
+                    <AlertCard
+                      alert={alert}
+                      onAcknowledge={onAcknowledge}
+                      isAcknowledging={acknowledgingId === alert.id}
+                      compact={compact}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       ) : (
-        <div className={cn('space-y-3', compact && 'space-y-2')}>
+        /* Standard rendering for small alert lists */
+        <div className={cn("space-y-3", compact && "space-y-2")}>
           {filteredAlerts.map((alert) => (
             <AlertCard
               key={alert.id}

@@ -2,17 +2,22 @@
  * StatsRow Component
  *
  * Animated count-up statistics that trigger when scrolled into view.
- * Values are sourced from thesis data (MODEL_VERSIONS v6).
+ * Values are sourced from trained model v6 metadata.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Count-up hook
 // ---------------------------------------------------------------------------
 
-function useCountUp(target: number, duration = 2000, isInView: boolean, decimals = 0) {
+function useCountUp(
+  target: number,
+  duration = 2000,
+  isInView: boolean,
+  decimals = 0,
+) {
   const [value, setValue] = useState(0);
   const started = useRef(false);
 
@@ -42,30 +47,30 @@ function useCountUp(target: number, duration = 2000, isInView: boolean, decimals
 const STATS = [
   {
     target: 1182,
-    suffix: '',
-    label: 'Official Flood Records',
-    source: 'Parañaque City DRRMO 2022–2025',
+    suffix: "",
+    label: "Official Flood Records",
+    source: "Parañaque City DRRMO 2022–2025",
     decimals: 0,
   },
   {
     target: 96.75,
-    suffix: '%',
-    label: 'Model Accuracy',
-    source: 'Random Forest v6',
+    suffix: "%",
+    label: "Model Accuracy",
+    source: "Random Forest v6",
     decimals: 2,
   },
   {
     target: 16,
-    suffix: '',
-    label: 'Barangays Monitored',
-    source: 'All barangays of Parañaque',
+    suffix: "",
+    label: "Barangays Monitored",
+    source: "All barangays of Parañaque",
     decimals: 0,
   },
   {
     target: 13698,
-    suffix: '',
-    label: 'Training Samples',
-    source: 'Balanced flood/non-flood instances',
+    suffix: "",
+    label: "Training Samples",
+    source: "Balanced flood/non-flood instances",
     decimals: 0,
   },
 ] as const;
@@ -83,7 +88,12 @@ export function StatsRow() {
       <div className="container mx-auto px-4" ref={ref}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
           {STATS.map((stat, i) => (
-            <StatCard key={stat.label} stat={stat} index={i} isInView={isInView} />
+            <StatCard
+              key={stat.label}
+              stat={stat}
+              index={i}
+              isInView={isInView}
+            />
           ))}
         </div>
       </div>
@@ -115,7 +125,9 @@ function StatCard({
           : Math.round(value).toLocaleString()}
         {stat.suffix}
       </p>
-      <p className="text-sm font-semibold text-foreground tracking-tight">{stat.label}</p>
+      <p className="text-sm font-semibold text-foreground tracking-tight">
+        {stat.label}
+      </p>
       <p className="text-xs text-muted-foreground font-medium">{stat.source}</p>
     </motion.div>
   );

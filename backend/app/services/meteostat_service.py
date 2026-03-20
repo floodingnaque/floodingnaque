@@ -14,14 +14,17 @@ Features:
 import logging
 import os
 import threading
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+import warnings
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.meteostat_types import WeatherObservation
-from app.utils.circuit_breaker import CircuitOpenError, meteostat_breaker
+from app.utils.resilience.cache import cache_get, cache_set
+from app.utils.resilience.circuit_breaker import CircuitOpenError, meteostat_breaker
 from meteostat import Daily, Hourly, Point, Stations
 
 logger = logging.getLogger(__name__)
@@ -90,12 +93,8 @@ class MeteostatService:
             try:
                 return future.result(timeout=self.request_timeout)
             except FuturesTimeoutError:
-                logger.error(
-                    f"Meteostat request timed out after {self.request_timeout}s"
-                )
-                raise TimeoutError(
-                    f"Meteostat upstream did not respond within {self.request_timeout}s"
-                )
+                logger.error(f"Meteostat request timed out after {self.request_timeout}s")
+                raise TimeoutError(f"Meteostat upstream did not respond within {self.request_timeout}s")
 
     def find_nearby_stations(
         self,
@@ -123,6 +122,12 @@ class MeteostatService:
         lat = lat or self.default_lat
         lon = lon or self.default_lon
 
+        # Check cache first (stations rarely change)
+        cache_key = f"meteostat:stations:{lat:.4f}:{lon:.4f}:{limit}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         try:
 
             def _fetch_stations():
@@ -146,7 +151,10 @@ class MeteostatService:
                     )
                 return results
 
-            return self._call_with_timeout(meteostat_breaker.call, _fetch_stations)
+            result = self._call_with_timeout(meteostat_breaker.call, _fetch_stations)
+            if result:
+                cache_set(cache_key, result, ttl=3600)
+            return result
 
         except CircuitOpenError as e:
             logger.warning(f"Meteostat circuit breaker open: {e}")
@@ -191,9 +199,11 @@ class MeteostatService:
                 # Create a Point for the location
                 location = Point(lat, lon)
 
-                # Fetch hourly data
-                data = Hourly(location, start, end)
-                df = data.fetch()
+                # Fetch hourly data (suppress Meteostat's internal freq='H' deprecation)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message=".*'H' is deprecated", category=FutureWarning)
+                    data = Hourly(location, start, end)
+                    df = data.fetch()
 
                 if df.empty:
                     logger.warning(f"No hourly data available for lat={lat}, lon={lon}")
@@ -254,6 +264,12 @@ class MeteostatService:
         end = end or datetime.now()
         start = start or (end - timedelta(days=30))
 
+        # Cache daily data (keyed by location + date range, 30-min TTL)
+        cache_key = f"meteostat:daily:{lat:.4f}:{lon:.4f}:{start.strftime('%Y%m%d')}:{end.strftime('%Y%m%d')}"
+        cached = cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         try:
 
             def _fetch_daily():
@@ -286,7 +302,10 @@ class MeteostatService:
 
                 return results
 
-            return self._call_with_timeout(meteostat_breaker.call, _fetch_daily)
+            result = self._call_with_timeout(meteostat_breaker.call, _fetch_daily)
+            if result:
+                cache_set(cache_key, result, ttl=1800)
+            return result
 
         except CircuitOpenError as e:
             logger.warning(f"Meteostat circuit breaker open: {e}")
@@ -356,8 +375,10 @@ class MeteostatService:
             location = Point(lat, lon)
 
             # First try to get hourly data which includes humidity (rhum)
-            hourly_data = Hourly(location, start, end)
-            hourly_df = hourly_data.fetch()
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message=".*'H' is deprecated", category=FutureWarning)
+                hourly_data = Hourly(location, start, end)
+                hourly_df = hourly_data.fetch()
 
             if not hourly_df.empty and "rhum" in hourly_df.columns:
                 # Aggregate hourly data to daily with actual humidity

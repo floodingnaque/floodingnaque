@@ -48,10 +48,14 @@ class WorldTidesService:
     DEFAULT_LAT = DEFAULT_LATITUDE
     DEFAULT_LON = 120.9822  # Slightly adjusted for Manila Bay coastline
 
+    # Placeholder values that ship in .env templates — treat as "not configured"
+    _PLACEHOLDER_KEYS = {"", "your_worldtides_api_key_here", "changeme", "CHANGE_ME"}
+
     def __init__(self):
         """Initialize the WorldTides service."""
         self.api_key = get_secret("WORLDTIDES_API_KEY", default="")
-        self.enabled = bool(self.api_key) and os.getenv("WORLDTIDES_ENABLED", "True").lower() == "true"
+        key_is_real = bool(self.api_key) and self.api_key not in self._PLACEHOLDER_KEYS
+        self.enabled = key_is_real and os.getenv("WORLDTIDES_ENABLED", "True").lower() == "true"
         self.default_datum = os.getenv("WORLDTIDES_DATUM", "MSL")  # Mean Sea Level
 
         # Default location (from environment or central config)

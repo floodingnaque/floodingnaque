@@ -43,12 +43,36 @@ x-backend-base: &backend-base
     - PORT=5000
     - HOST=0.0.0.0
     - PYTHONPATH=/app
+    - DATA_PROVENANCE_ENABLED=true
+
+# ML training service base configuration (one-shot retraining jobs)
+x-ml-training-base: &ml-training-base
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  restart: "no"
+  environment:
+    - PYTHONPATH=/app
+    - DATA_PROVENANCE_ENABLED=true
+  volumes:
+    - ./backend/models:/app/models
+    - ./backend/data:/app/data:ro
+    - ./backend/reports:/app/reports
+    - ./backend/config:/app/config:ro
+  entrypoint:
+    [
+      "python",
+      "scripts/train_progressive_v6.py",
+      "--grid-search",
+      "--cv-folds",
+      "10",
+    ]
 
 # Health check configurations
 x-backend-healthcheck: &backend-healthcheck
   test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
   interval: 30s
-  timeout: 10s
+  timeout: 20s
   retries: 3
   start_period: 40s
 
@@ -86,7 +110,7 @@ x-logging-production: &logging-production
   driver: "json-file"
   options:
     max-size: "50m"
-    max-file: "5"
+    max-file: "10"
     compress: "true"
 
 # Common labels
@@ -97,27 +121,35 @@ x-labels-common: &labels-common
 # Resource limits
 x-resources-small: &resources-small
   limits:
-    cpus: '0.5'
+    cpus: "0.5"
     memory: 512M
   reservations:
-    cpus: '0.1'
+    cpus: "0.1"
     memory: 128M
 
 x-resources-medium: &resources-medium
   limits:
-    cpus: '1'
+    cpus: "1"
     memory: 1G
   reservations:
-    cpus: '0.25'
+    cpus: "0.25"
     memory: 256M
 
 x-resources-large: &resources-large
   limits:
-    cpus: '2'
+    cpus: "2"
     memory: 2G
   reservations:
-    cpus: '0.5'
+    cpus: "0.5"
     memory: 512M
+
+x-resources-ml-training: &resources-ml-training
+  limits:
+    cpus: "4"
+    memory: 8G
+  reservations:
+    cpus: "1"
+    memory: 2G
 
 # Security options
 x-security-opts: &security-opts

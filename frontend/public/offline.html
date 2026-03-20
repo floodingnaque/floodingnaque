@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en-PH">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline | Floodingnaque</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f8fafc;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+      .card {
+        text-align: center;
+        max-width: 28rem;
+        padding: 2.5rem;
+        background: #fff;
+        border-radius: 1rem;
+        box-shadow: 0 4px 24px rgb(0 0 0/0.08);
+      }
+      .icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+      }
+      p {
+        color: #64748b;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+      }
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background: #1e3a5f;
+        color: #fff;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .btn:hover {
+        background: #2a4a73;
+      }
+      .tip {
+        margin-top: 1.5rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0f172a;
+          color: #e2e8f0;
+        }
+        .card {
+          background: #1e293b;
+          box-shadow: 0 4px 24px rgb(0 0 0/0.25);
+        }
+        p,
+        .tip {
+          color: #94a3b8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card" role="alert">
+      <div class="icon" aria-hidden="true">📡</div>
+      <h1>You're Offline</h1>
+      <p>
+        Floodingnaque needs an internet connection to load real-time flood data
+        and alerts for Parañaque City. Please check your Wi-Fi or mobile data
+        and try again.
+      </p>
+      <button class="btn" onclick="window.location.reload()">Try Again</button>
+      <p class="tip">
+        Previously cached predictions and map data are still available once
+        connectivity is restored.
+      </p>
+    </div>
+  </body>
+</html>

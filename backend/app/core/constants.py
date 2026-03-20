@@ -96,6 +96,7 @@ def is_within_study_area(lat: float, lon: float) -> bool:
         and STUDY_AREA_BOUNDS["lon_min"] <= lon <= STUDY_AREA_BOUNDS["lon_max"]
     )
 
+
 # Weather Data Limits
 MIN_TEMPERATURE_KELVIN = 200.0  # -73°C
 MAX_TEMPERATURE_KELVIN = 330.0  # 57°C

@@ -5,14 +5,15 @@
 This guide covers the full Docker ecosystem for Floodingnaque, including local development, staging, production deployment, monitoring, and troubleshooting.
 
 > **📦 Compose Specification Modernization (February 2026)**
-> 
+>
 > This project has been updated to follow the modern Docker Compose Specification:
+>
 > - **File naming**: `compose.yaml` (replaces `docker-compose.yml`)
 > - **CLI syntax**: `docker compose` (space-separated, replaces `docker-compose`)
 > - **Project names**: Explicit `name:` property in all compose files
 > - **Hot-reload**: `develop.watch` section for automatic file sync
 > - **No `version:`**: Removed obsolete `version: '3.8'` key (deprecated in Compose v2+)
-> 
+>
 > Docker 29.1.5+ and Compose v5.0.1+ required. See [Compose Specification](https://docs.docker.com/compose/compose-file/).
 
 ---
@@ -71,8 +72,8 @@ This guide covers the full Docker ecosystem for Floodingnaque, including local d
 │        │              ┌─────────────────────────────────────────┐          │
 │        │              │       Monitoring Network (Internal)      │          │
 │        └─────────────▶│  ┌──────────┐  ┌──────────┐  ┌───────┐  │          │
-│                       │  │ Datadog  │  │Prometheus│  │Grafana│  │          │
-│                       │  │  Agent   │  │          │  │       │  │          │
+│                       │  │Prometheus│  │ Grafana  │  │Jaeger │  │          │
+│                       │  │          │  │          │  │       │  │          │
 │                       │  └──────────┘  └──────────┘  └───────┘  │          │
 │                       └─────────────────────────────────────────┘          │
 │                                                                             │
@@ -81,15 +82,15 @@ This guide covers the full Docker ecosystem for Floodingnaque, including local d
 
 ### Environment Comparison
 
-| Aspect | Local Dev | Development | Staging | Production |
-|--------|-----------|-------------|---------|------------|
-| **Database** | Local PostgreSQL | Supabase | Supabase | Supabase |
-| **Redis** | Optional | Optional (profile) | Included | Redis Cloud |
-| **TLS** | None | None | Optional | Nginx + Let's Encrypt |
-| **Workers** | None | None | None | Celery + Beat |
-| **Monitoring** | None | None | None | Datadog + Prometheus |
-| **Hot Reload** | Yes | Yes | No | No |
-| **Debug Mode** | Yes | Yes | No | No |
+| Aspect         | Local Dev        | Development        | Staging  | Production            |
+| -------------- | ---------------- | ------------------ | -------- | --------------------- |
+| **Database**   | Local PostgreSQL | Supabase           | Supabase | Supabase              |
+| **Redis**      | Optional         | Optional (profile) | Included | Redis Cloud           |
+| **TLS**        | None             | None               | Optional | Nginx + Let's Encrypt |
+| **Workers**    | None             | None               | None     | Celery + Beat         |
+| **Monitoring** | None             | None               | None     | Prometheus + Grafana  |
+| **Hot Reload** | Yes              | Yes                | No       | No                    |
+| **Debug Mode** | Yes              | Yes                | No       | No                    |
 
 ---
 
@@ -164,15 +165,15 @@ docker compose -f compose.production.yaml `
 
 ### File Overview
 
-| File | Purpose | Services | Use Case |
-|------|---------|----------|----------|
-| `compose.yaml` | Base + Local dev | Backend, PostgreSQL, PgBouncer*, Shared anchors | Quick local testing, base for other files |
-| `compose.development.yaml` | Dev with Supabase | Backend, Redis* | Team development |
-| `compose.staging.yaml` | Pre-production | Backend, Redis | QA testing |
-| `compose.production.yaml` | Full production | All services | Live deployment |
-| `compose.mlflow.yaml` | ML tracking | MLflow, PostgreSQL | Experiment tracking |
+| File                       | Purpose           | Services                                         | Use Case                                  |
+| -------------------------- | ----------------- | ------------------------------------------------ | ----------------------------------------- |
+| `compose.yaml`             | Base + Local dev  | Backend, PostgreSQL, PgBouncer\*, Shared anchors | Quick local testing, base for other files |
+| `compose.development.yaml` | Dev with Supabase | Backend, Redis\*                                 | Team development                          |
+| `compose.staging.yaml`     | Pre-production    | Backend, Redis                                   | QA testing                                |
+| `compose.production.yaml`  | Full production   | All services                                     | Live deployment                           |
+| `compose.mlflow.yaml`      | ML tracking       | MLflow, PostgreSQL                               | Experiment tracking                       |
 
-*\* = Optional via profile*
+_\* = Optional via profile_
 
 ### Combining Compose Files
 
@@ -207,16 +208,16 @@ services:
 
 **Shared configurations in `compose.yaml`:**
 
-| Anchor | Purpose |
-|--------|--------|
-| `x-backend-base` | Base build config, restart policy, core env vars |
-| `x-backend-healthcheck` | Standard health check configuration |
-| `x-redis-healthcheck` / `x-postgres-healthcheck` | Database health checks |
-| `x-redis-base` / `x-postgres-base` | Base image + restart policy |
-| `x-logging-default` / `x-logging-production` | Log rotation settings (10m/50m) |
-| `x-labels-common` | Shared project labels |
-| `x-resources-small/medium/large` | CPU/memory limits |
-| `x-security-opts` | Security hardening (no-new-privileges) |
+| Anchor                                           | Purpose                                          |
+| ------------------------------------------------ | ------------------------------------------------ |
+| `x-backend-base`                                 | Base build config, restart policy, core env vars |
+| `x-backend-healthcheck`                          | Standard health check configuration              |
+| `x-redis-healthcheck` / `x-postgres-healthcheck` | Database health checks                           |
+| `x-redis-base` / `x-postgres-base`               | Base image + restart policy                      |
+| `x-logging-default` / `x-logging-production`     | Log rotation settings (10m/50m)                  |
+| `x-labels-common`                                | Shared project labels                            |
+| `x-resources-small/medium/large`                 | CPU/memory limits                                |
+| `x-security-opts`                                | Security hardening (no-new-privileges)           |
 
 > **Requirements:** Docker Compose v2.20+ (for `include` directive support)
 
@@ -264,11 +265,11 @@ docker build --no-cache --target production -t floodingnaque-api:fresh ./backend
 
 ### Image Details
 
-| Target | Base Image | Size | User | Init System |
-|--------|------------|------|------|-------------|
-| `builder` | python:3.12-slim-bookworm | ~800MB | root | - |
-| `production` | python:3.12-slim-bookworm | ~150MB | appuser (1000) | tini |
-| `development` | (extends production) | ~200MB | appuser (1000) | - |
+| Target        | Base Image                | Size   | User           | Init System |
+| ------------- | ------------------------- | ------ | -------------- | ----------- |
+| `builder`     | python:3.12-slim-bookworm | ~800MB | root           | -           |
+| `production`  | python:3.12-slim-bookworm | ~150MB | appuser (1000) | tini        |
+| `development` | (extends production)      | ~200MB | appuser (1000) | -           |
 
 ### Production Image Features
 
@@ -337,10 +338,6 @@ REDIS_URL=rediss://default:password@redis-cloud-host:6380/0
 CACHE_REDIS_URL=rediss://default:password@redis-cloud-host:6380/1
 CELERY_BROKER_URL=rediss://default:password@redis-cloud-host:6380/2
 
-# Monitoring
-DD_API_KEY=your_datadog_api_key
-DD_SITE=us5.datadoghq.com
-
 # CORS
 CORS_ORIGINS=https://floodingnaque.vercel.app,https://www.floodingnaque.com
 ```
@@ -369,14 +366,14 @@ PGBOUNCER_STATS_PASSWORD=secure_stats_password
 
 ### Backend API
 
-| Property | Development | Production |
-|----------|-------------|------------|
-| **Image** | `floodingnaque-api:development` | `floodingnaque-api:production-v2.0.0` |
-| **Port** | `0.0.0.0:5000` | `127.0.0.1:5000` |
-| **Workers** | 1 (Flask dev server) | 4 Gunicorn workers |
-| **Memory** | 1GB limit | 2GB limit |
-| **CPU** | 1 core limit | 2 cores limit |
-| **Volumes** | Code mounted (hot reload) | Data only (no code mount) |
+| Property    | Development                     | Production                            |
+| ----------- | ------------------------------- | ------------------------------------- |
+| **Image**   | `floodingnaque-api:development` | `floodingnaque-api:production-v2.0.0` |
+| **Port**    | `0.0.0.0:5000`                  | `127.0.0.1:5000`                      |
+| **Workers** | 1 (Flask dev server)            | 4 Gunicorn workers                    |
+| **Memory**  | 1GB limit                       | 2GB limit                             |
+| **CPU**     | 1 core limit                    | 2 cores limit                         |
+| **Volumes** | Code mounted (hot reload)       | Data only (no code mount)             |
 
 ### PostgreSQL (Local)
 
@@ -435,14 +432,18 @@ Config: ./nginx/floodingnaque.conf
 Cert Volume: certbot_conf_prod:/etc/letsencrypt
 ```
 
-### Datadog Agent
+### Frontend
 
-```yaml
-Image: gcr.io/datadoghq/agent:7
-APM Socket: /var/run/datadog/apm.socket
-DogStatsD Socket: /var/run/datadog/dsd.socket
-Memory: 512MB limit
-```
+| Property         | Development                               | Production                   |
+| ---------------- | ----------------------------------------- | ---------------------------- |
+| **Image**        | `node:22-alpine` (dev server)             | `nginx:1.27-alpine` (static) |
+| **Port**         | `3000` (Vite HMR)                         | `3000` (Nginx)               |
+| **Build**        | Multi-stage: deps → builder → production  | Same (3-stage)               |
+| **Memory**       | 1GB limit                                 | 256MB limit                  |
+| **Volumes**      | Code mounted (hot reload)                 | Static assets only           |
+| **Health Check** | `wget -q --spider http://localhost:3000/` | Same                         |
+
+Build args: `VITE_API_BASE_URL`, `VITE_APP_NAME`, `VITE_ENABLE_SSE`
 
 ### Prometheus
 
@@ -473,11 +474,9 @@ Retention: 30 days
 │  ├── celery-worker                                          │
 │  ├── celery-beat                                            │
 │  ├── pgbouncer                                              │
-│  └── datadog-agent                                          │
 │                                                             │
 │  floodingnaque-monitoring (internal only)                   │
 │  ├── prometheus                                             │
-│  ├── datadog-agent                                          │
 │  └── (grafana)                                              │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
@@ -485,15 +484,15 @@ Retention: 30 days
 
 ### Security Features
 
-| Feature | Implementation |
-|---------|----------------|
-| **Non-root containers** | All services run as non-root users |
-| **No new privileges** | `security_opt: no-new-privileges:true` |
-| **Read-only filesystem** | Backend in production |
-| **Internal networks** | Monitoring network isolated |
-| **Localhost binding** | Backend port bound to 127.0.0.1 in prod |
-| **TLS termination** | Nginx with Let's Encrypt |
-| **Rate limiting** | Nginx + Flask-Limiter |
+| Feature                  | Implementation                          |
+| ------------------------ | --------------------------------------- |
+| **Non-root containers**  | All services run as non-root users      |
+| **No new privileges**    | `security_opt: no-new-privileges:true`  |
+| **Read-only filesystem** | Backend in production                   |
+| **Internal networks**    | Monitoring network isolated             |
+| **Localhost binding**    | Backend port bound to 127.0.0.1 in prod |
+| **TLS termination**      | Nginx with Let's Encrypt                |
+| **Rate limiting**        | Nginx + Flask-Limiter                   |
 
 ### Network Configuration
 
@@ -514,17 +513,17 @@ docker network create --driver bridge floodingnaque-custom
 
 ### Volume Overview
 
-| Volume | Purpose | Persistence |
-|--------|---------|-------------|
-| `floodingnaque-models-*` | ML model files (.joblib, .json) | Critical |
-| `floodingnaque-data-*` | Application data | Critical |
-| `floodingnaque-logs-*` | Application logs | Important |
-| `floodingnaque-backups-*` | Database backups | Critical |
-| `floodingnaque-uploads-*` | User uploads | Important |
-| `postgres_data_*` | PostgreSQL data | Critical |
-| `redis_data_*` | Redis persistence | Reconstructable |
-| `prometheus_data_*` | Metrics history | Reconstructable |
-| `certbot_conf_*` | TLS certificates | Critical |
+| Volume                    | Purpose                         | Persistence     |
+| ------------------------- | ------------------------------- | --------------- |
+| `floodingnaque-models-*`  | ML model files (.joblib, .json) | Critical        |
+| `floodingnaque-data-*`    | Application data                | Critical        |
+| `floodingnaque-logs-*`    | Application logs                | Important       |
+| `floodingnaque-backups-*` | Database backups                | Critical        |
+| `floodingnaque-uploads-*` | User uploads                    | Important       |
+| `postgres_data_*`         | PostgreSQL data                 | Critical        |
+| `redis_data_*`            | Redis persistence               | Reconstructable |
+| `prometheus_data_*`       | Metrics history                 | Reconstructable |
+| `certbot_conf_*`          | TLS certificates                | Critical        |
 
 ### Volume Commands
 
@@ -576,12 +575,12 @@ Write-Host "Backup complete: $backupDir"
 
 ### Available Profiles
 
-| Profile | Services | Compose File |
-|---------|----------|--------------|
-| `with-redis` | Redis | compose.development.yaml |
-| `pgbouncer` | PgBouncer | compose.yaml, compose.production.yaml |
-| `nginx` | Nginx, Certbot | compose.production.yaml |
-| `monitoring` | Prometheus | compose.production.yaml |
+| Profile      | Services       | Compose File                          |
+| ------------ | -------------- | ------------------------------------- |
+| `with-redis` | Redis          | compose.development.yaml              |
+| `pgbouncer`  | PgBouncer      | compose.yaml, compose.production.yaml |
+| `nginx`      | Nginx, Certbot | compose.production.yaml               |
+| `monitoring` | Prometheus     | compose.production.yaml               |
 
 ### Using Profiles
 
@@ -603,7 +602,6 @@ docker compose -f compose.production.yaml --profile nginx config --services
 ### Pre-Deployment Checklist
 
 - [ ] `.env.production` configured with all secrets
-- [ ] `DD_API_KEY` set for Datadog
 - [ ] SSL certificates ready or domain configured for Let's Encrypt
 - [ ] Database (Supabase) configured and accessible
 - [ ] Redis Cloud configured and accessible
@@ -673,11 +671,10 @@ docker compose -f compose.production.yaml --profile nginx exec nginx nginx -s re
 
 ### Health Check Endpoints
 
-| Service | Endpoint | Expected Response |
-|---------|----------|-------------------|
-| Backend | `GET /health` | `{"status": "healthy"}` |
+| Service    | Endpoint         | Expected Response       |
+| ---------- | ---------------- | ----------------------- |
+| Backend    | `GET /health`    | `{"status": "healthy"}` |
 | Prometheus | `GET /-/healthy` | `Prometheus is Healthy` |
-| Datadog | `agent health` | Exit code 0 |
 
 ### Prometheus Metrics
 
@@ -687,17 +684,6 @@ Access Prometheus UI (internal): `http://localhost:9090`
 # Scraped targets
 - floodingnaque-api (backend:5000/metrics)
 - prometheus (localhost:9090)
-```
-
-### Datadog Integration
-
-```yaml
-# Environment variables for APM
-DD_ENV=production
-DD_SERVICE=floodingnaque-api
-DD_VERSION=2.0.0
-DD_TRACE_AGENT_URL=unix:///var/run/datadog/apm.socket
-DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket
 ```
 
 ### Log Aggregation
@@ -854,9 +840,9 @@ docker compose -f compose.production.yaml run -e LOG_LEVEL=DEBUG backend
 docker compose down -v --remove-orphans
 
 # Remove all floodingnaque images
-docker images | Select-String "floodingnaque" | ForEach-Object { 
+docker images | Select-String "floodingnaque" | ForEach-Object {
     $imageName = ($_ -split '\s+')[0] + ":" + ($_ -split '\s+')[1]
-    docker rmi $imageName 
+    docker rmi $imageName
 }
 
 # Rebuild and start fresh
@@ -930,29 +916,28 @@ docker compose -f compose.mlflow.yaml up -d
 
 ### Resource Limits Summary
 
-| Service | CPU Limit | Memory Limit | CPU Reserved | Memory Reserved |
-|---------|-----------|--------------|--------------|-----------------|
-| Backend (dev) | 1 | 1GB | 0.25 | 256MB |
-| Backend (prod) | 2 | 2GB | 0.5 | 512MB |
-| Celery Worker | 1.5 | 1.5GB | 0.5 | 512MB |
-| Celery Beat | 0.5 | 512MB | 0.1 | 128MB |
-| Redis | 0.5 | 512MB | - | - |
-| PgBouncer | 0.5 | 256MB | 0.1 | 64MB |
-| Datadog Agent | 1 | 512MB | 0.25 | 256MB |
-| Prometheus | 0.5 | 512MB | 0.1 | 128MB |
-| Nginx | 0.5 | 256MB | 0.1 | 64MB |
+| Service        | CPU Limit | Memory Limit | CPU Reserved | Memory Reserved |
+| -------------- | --------- | ------------ | ------------ | --------------- |
+| Backend (dev)  | 1         | 1GB          | 0.25         | 256MB           |
+| Backend (prod) | 2         | 2GB          | 0.5          | 512MB           |
+| Celery Worker  | 1.5       | 1.5GB        | 0.5          | 512MB           |
+| Celery Beat    | 0.5       | 512MB        | 0.1          | 128MB           |
+| Redis          | 0.5       | 512MB        | -            | -               |
+| PgBouncer      | 0.5       | 256MB        | 0.1          | 64MB            |
+| Prometheus     | 0.5       | 512MB        | 0.1          | 128MB           |
+| Nginx          | 0.5       | 256MB        | 0.1          | 64MB            |
 
 ### Port Mapping Summary
 
-| Port | Service | Environment |
-|------|---------|-------------|
-| 80 | Nginx HTTP | Production |
-| 443 | Nginx HTTPS | Production |
-| 5000 | Backend API | All |
-| 5432 | PostgreSQL | Local dev |
-| 6379 | Redis | All |
-| 6432 | PgBouncer | With profile |
-| 9090 | Prometheus | Production (internal) |
+| Port | Service     | Environment           |
+| ---- | ----------- | --------------------- |
+| 80   | Nginx HTTP  | Production            |
+| 443  | Nginx HTTPS | Production            |
+| 5000 | Backend API | All                   |
+| 5432 | PostgreSQL  | Local dev             |
+| 6379 | Redis       | All                   |
+| 6432 | PgBouncer   | With profile          |
+| 9090 | Prometheus  | Production (internal) |
 
 ### Related Documentation
 
@@ -963,4 +948,4 @@ docker compose -f compose.mlflow.yaml up -d
 
 ---
 
-*Last updated: February 2026*
+_Last updated: February 2026_

@@ -48,6 +48,25 @@ def _get_worldtides_service():
         return None
 
 
+def _get_fallback_service():
+    """Get the Open-Meteo marine fallback service (harmonic tide model)."""
+    try:
+        from app.services.open_meteo_marine_service import get_open_meteo_marine_service
+
+        return get_open_meteo_marine_service()
+    except ImportError:
+        return None
+
+
+def _get_tide_service():
+    """Return the best available tide service (WorldTides → Open-Meteo fallback)."""
+    svc = _get_worldtides_service()
+    if svc and svc.is_available():
+        return svc
+    logger.info("WorldTides unavailable, using Open-Meteo harmonic fallback")
+    return _get_fallback_service()
+
+
 @tides_bp.route("/current", methods=["GET"])
 @limiter.limit("30 per minute")
 def get_current_tide():
@@ -63,11 +82,11 @@ def get_current_tide():
     """
     request_id = _get_request_id()
 
-    service = _get_worldtides_service()
-    if not service or not service.is_available():
+    service = _get_tide_service()
+    if not service:
         return api_error(
             "TideServiceUnavailable",
-            "WorldTides service is not configured or unavailable",
+            "No tide service available (WorldTides + fallback both unavailable)",
             HTTP_SERVICE_UNAVAILABLE,
             request_id,
         )
@@ -119,11 +138,11 @@ def get_tide_extremes():
     """
     request_id = _get_request_id()
 
-    service = _get_worldtides_service()
-    if not service or not service.is_available():
+    service = _get_tide_service()
+    if not service:
         return api_error(
             "TideServiceUnavailable",
-            "WorldTides service is not configured or unavailable",
+            "No tide service available (WorldTides + fallback both unavailable)",
             HTTP_SERVICE_UNAVAILABLE,
             request_id,
         )
@@ -172,11 +191,11 @@ def get_tide_prediction():
     """
     request_id = _get_request_id()
 
-    service = _get_worldtides_service()
-    if not service or not service.is_available():
+    service = _get_tide_service()
+    if not service:
         return api_error(
             "TideServiceUnavailable",
-            "WorldTides service is not configured or unavailable",
+            "No tide service available (WorldTides + fallback both unavailable)",
             HTTP_SERVICE_UNAVAILABLE,
             request_id,
         )
@@ -234,17 +253,25 @@ def get_tide_service_status():
     """
     request_id = _get_request_id()
 
-    service = _get_worldtides_service()
+    wt_service = _get_worldtides_service()
+    fb_service = _get_fallback_service()
 
-    if not service:
-        return api_success(
-            {"installed": False, "enabled": False, "message": "WorldTides service module not found"},
-            "WorldTides service is not installed",
-            HTTP_OK,
-            request_id,
-        )
+    wt_status = wt_service.get_service_status() if wt_service else {"enabled": False}
+    fb_status = fb_service.get_service_status() if fb_service else {"enabled": False}
 
-    status = service.get_service_status()
-    status["installed"] = True
+    active = (
+        "worldtides"
+        if (wt_service and wt_service.is_available())
+        else ("open_meteo_estimated" if fb_service else "none")
+    )
 
-    return api_success(status, "WorldTides service status retrieved", HTTP_OK, request_id)
+    return api_success(
+        {
+            "active_provider": active,
+            "worldtides": {"installed": bool(wt_service), **wt_status},
+            "open_meteo_fallback": {"installed": bool(fb_service), **fb_status},
+        },
+        "Tide service status retrieved",
+        HTTP_OK,
+        request_id,
+    )

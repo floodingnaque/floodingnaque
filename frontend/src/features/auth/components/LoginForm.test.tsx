@@ -49,7 +49,7 @@ describe('LoginForm', () => {
     it('should render password input', () => {
       render(<LoginForm />);
 
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+      expect(screen.getByLabelText('Password')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Enter your password')).toBeInTheDocument();
     });
 
@@ -82,8 +82,8 @@ describe('LoginForm', () => {
       const { user } = render(<LoginForm />);
 
       await user.type(screen.getByLabelText(/email/i), 'invalid-email');
-      await user.type(screen.getByLabelText(/password/i), 'password123');
-      
+      await user.type(screen.getByLabelText('Password'), 'password123');
+
       // Use fireEvent.submit to bypass jsdom's native HTML5 email validation
       // that blocks form submission when type="email" has invalid value
       const form = screen.getByRole('button', { name: /sign in/i }).closest('form')!;
@@ -110,7 +110,7 @@ describe('LoginForm', () => {
       const { user } = render(<LoginForm />);
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/password/i), 'short');
+      await user.type(screen.getByLabelText('Password'), 'short');
       await user.click(screen.getByRole('button', { name: /sign in/i }));
 
       await waitFor(() => {
@@ -124,7 +124,7 @@ describe('LoginForm', () => {
       const { user } = render(<LoginForm />);
 
       await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-      await user.type(screen.getByLabelText(/password/i), 'password123');
+      await user.type(screen.getByLabelText('Password'), 'password123');
       await user.click(screen.getByRole('button', { name: /sign in/i }));
 
       await waitFor(() => {
@@ -153,7 +153,7 @@ describe('LoginForm', () => {
       render(<LoginForm />);
 
       expect(screen.getByRole('button', { name: /signing in/i })).toBeInTheDocument();
-      expect(screen.getByRole('button')).toBeDisabled();
+      expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled();
     });
 
     it('should disable inputs when logging in', () => {
@@ -161,7 +161,7 @@ describe('LoginForm', () => {
       render(<LoginForm />);
 
       expect(screen.getByLabelText(/email/i)).toBeDisabled();
-      expect(screen.getByLabelText(/password/i)).toBeDisabled();
+      expect(screen.getByLabelText('Password')).toBeDisabled();
     });
   });
 
@@ -205,7 +205,7 @@ describe('LoginForm', () => {
       render(<LoginForm />);
 
       expect(screen.getByLabelText(/email/i)).toHaveAttribute('autocomplete', 'email');
-      expect(screen.getByLabelText(/password/i)).toHaveAttribute('autocomplete', 'current-password');
+      expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password');
     });
 
     it('should set aria-invalid when there are errors', async () => {

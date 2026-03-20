@@ -6,12 +6,12 @@
  * by users who lack the required role.
  */
 
-import { Navigate } from 'react-router-dom';
-import { useUser } from '@/state';
+import { useUser } from "@/state";
+import { Navigate } from "react-router-dom";
 
 interface RequireRoleProps {
   /** The role required to render the children */
-  role: string;
+  requiredRole: string;
   /** Content to render when the user has the correct role */
   children: React.ReactNode;
   /** Path to redirect to when the user lacks the role (default: /) */
@@ -24,10 +24,14 @@ interface RequireRoleProps {
  * If the current user does not have the required role, they are
  * redirected to the specified path (default: home).
  */
-export function RequireRole({ role, children, redirectTo = '/' }: RequireRoleProps) {
+export function RequireRole({
+  requiredRole,
+  children,
+  redirectTo = "/",
+}: RequireRoleProps) {
   const user = useUser();
 
-  if (!user || user.role !== role) {
+  if (!user || user.role !== requiredRole) {
     return <Navigate to={redirectTo} replace />;
   }
 

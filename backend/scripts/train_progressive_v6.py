@@ -39,12 +39,15 @@ from typing import Dict, List, Optional, Tuple
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
+    brier_score_loss,
     classification_report,
     f1_score,
     fbeta_score,
+    precision_recall_curve,
     precision_score,
     recall_score,
     roc_auc_score,
@@ -53,6 +56,15 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Optional MLflow integration (enabled when MLFLOW_TRACKING_URI is set or mlflow is installed)
+try:
+    import mlflow
+    import mlflow.sklearn
+
+    MLFLOW_AVAILABLE = True
+except ImportError:
+    MLFLOW_AVAILABLE = False
 
 # Paths
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -224,20 +236,105 @@ class ProgressiveTrainerV6:
         models_dir: Path = MODELS_DIR,
         reports_dir: Path = REPORTS_DIR,
         quick_mode: bool = False,
+        temporal_split: bool = True,
+        grid_search: bool = False,
     ):
         self.models_dir = Path(models_dir)
         self.reports_dir = Path(reports_dir)
         self.models_dir.mkdir(parents=True, exist_ok=True)
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.quick_mode = quick_mode
+        self.temporal_split = temporal_split
+        self.grid_search = grid_search
         self.results: List[Dict] = []
+        self._setup_mlflow()
+
+    def _setup_mlflow(self):
+        """Initialize MLflow tracking if available and configured."""
+        self.mlflow_enabled = False
+        if not MLFLOW_AVAILABLE:
+            return
+
+        import os
+
+        tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "mlruns")
+        experiment_name = os.environ.get("MLFLOW_EXPERIMENT_NAME", "floodingnaque_progressive_training")
+        try:
+            mlflow.set_tracking_uri(tracking_uri)
+            mlflow.set_experiment(experiment_name)
+            self.mlflow_enabled = True
+            logger.info(f"MLflow tracking enabled: {tracking_uri} / {experiment_name}")
+        except Exception as e:
+            logger.warning(f"MLflow setup failed (will continue without tracking): {e}")
+
+    def _log_to_mlflow(self, model, result: Dict):
+        """Log training run to MLflow."""
+        if not self.mlflow_enabled:
+            return
+
+        version = result["version"]
+        metrics = result["metrics"]
+
+        with mlflow.start_run(run_name=f"v{version}_{result['name']}"):
+            # Log parameters
+            mlflow.log_params(
+                {
+                    "version": version,
+                    "name": result["name"],
+                    "quick_mode": self.quick_mode,
+                    "grid_search": self.grid_search,
+                    "temporal_split": self.temporal_split,
+                    "dataset_size": result["dataset_size"],
+                    "num_features": result["num_features"],
+                }
+            )
+            for param_key, param_val in result["model_params"].items():
+                mlflow.log_param(f"model_{param_key}", param_val)
+
+            # Log metrics
+            mlflow.log_metrics(
+                {
+                    "accuracy": metrics["accuracy"],
+                    "precision": metrics["precision"],
+                    "recall": metrics["recall"],
+                    "f1_score": metrics["f1_score"],
+                    "f2_score": metrics["f2_score"],
+                    "roc_auc": metrics["roc_auc"],
+                    "brier_score": metrics["brier_score"],
+                    "cv_mean": metrics["cv_mean"],
+                    "cv_std": metrics["cv_std"],
+                    "optimal_threshold": metrics.get("optimal_threshold", 0.5),
+                }
+            )
+
+            # Log feature importance as metrics
+            for feat, imp in result["feature_importance"].items():
+                mlflow.log_metric(f"fi_{feat}", imp)
+
+            # Log model artifact
+            mlflow.sklearn.log_model(model, f"flood_model_v{version}")
+
+            # Log tags
+            mlflow.set_tags(
+                {
+                    "project": "floodingnaque",
+                    "pipeline": "progressive",
+                    "domain": "flood-prediction",
+                }
+            )
+
+            logger.info(f"  MLflow: logged v{version} run")
 
     def load_data(self, data_files: List[str], fallback_files: List[str]) -> pd.DataFrame:
-        """Load and merge training data from multiple files."""
+        """Load and merge training data from multiple files.
+
+        Only v2 preprocessed files (using real PAGASA data) are accepted.
+        If primary files are missing, raises FileNotFoundError instead of
+        silently falling back to v1 files which may contain synthetic data.
+        """
         dfs = []
         files_loaded = []
 
-        # Try primary files first
         for data_file in data_files:
             path = PROCESSED_DIR / data_file
             if path.exists():
@@ -249,22 +346,11 @@ class ProgressiveTrainerV6:
                 except Exception as e:
                     logger.warning(f"  Failed to load {data_file}: {e}")
 
-        # If no primary files loaded, try fallbacks
         if not dfs:
-            logger.warning("  Primary files not found, trying fallbacks...")
-            for data_file in fallback_files:
-                path = PROCESSED_DIR / data_file
-                if path.exists():
-                    try:
-                        df = pd.read_csv(path)
-                        dfs.append(df)
-                        files_loaded.append(data_file)
-                        logger.info(f"  Loaded (fallback): {data_file} ({len(df)} records)")
-                    except Exception as e:
-                        logger.warning(f"  Failed to load {data_file}: {e}")
-
-        if not dfs:
-            raise FileNotFoundError(f"No data files found. Tried: {data_files + fallback_files}")
+            raise FileNotFoundError(
+                f"Required v2 data files not found: {data_files}. "
+                f"Run 'python scripts/preprocess_official_flood_records_v2.py --create-training' first."
+            )
 
         # Merge and deduplicate
         if len(dfs) > 1:
@@ -329,17 +415,73 @@ class ProgressiveTrainerV6:
         df = self.load_data(data_files, fallback_files)
         X, y = self.prepare_features(df, features)
 
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+        # Split data — temporal or random
+        if self.temporal_split and "date" in df.columns:
+            dates = pd.to_datetime(df.loc[X.index, "date"], errors="coerce")
+            max_year = dates.dt.year.max()
+            train_mask = dates.dt.year < max_year
+            test_mask = dates.dt.year == max_year
+
+            # Require sufficient test samples AND both classes represented
+            test_classes = y[test_mask].nunique() if test_mask.sum() > 0 else 0
+            min_test_size = max(10, int(0.05 * len(X)))  # At least 5% of data
+            if test_mask.sum() < min_test_size or train_mask.sum() < min_test_size or test_classes < 2:
+                reason = (
+                    f"test={test_mask.sum()}, train={train_mask.sum()}, "
+                    f"test_classes={test_classes}, min_required={min_test_size}"
+                )
+                logger.warning(f"  Temporal split inadequate ({reason}), falling back to random split")
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+            else:
+                X_train, X_test = X[train_mask], X[test_mask]
+                y_train, y_test = y[train_mask], y[test_mask]
+                # Guard: ensure no temporal leakage
+                train_dates = dates[train_mask].dropna()
+                test_dates = dates[test_mask].dropna()
+                if len(train_dates) and len(test_dates):
+                    assert (  # nosec B101 — assertion guards data integrity during training
+                        train_dates.max() < test_dates.min()
+                    ), f"Temporal leakage detected: train max {train_dates.max()} >= test min {test_dates.min()}"
+                logger.info(f"  Temporal split: train years < {max_year}, test year = {max_year}")
+        else:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
         logger.info(f"  Train: {len(X_train)}, Test: {len(X_test)}")
 
         # Train model
         params = QUICK_PARAMS if self.quick_mode else DEFAULT_PARAMS
-        model = RandomForestClassifier(**params)
 
-        logger.info(f"  Training with {params['n_estimators']} estimators...")
-        model.fit(X_train, y_train)
+        if self.grid_search and not self.quick_mode:
+            from sklearn.model_selection import RandomizedSearchCV
+
+            logger.info("  Running RandomizedSearchCV hyperparameter tuning...")
+            search_params = {
+                "n_estimators": [100, 150, 200, 250, 300, 400],
+                "max_depth": [10, 15, 20, 25, None],
+                "min_samples_split": [2, 5, 10],
+                "min_samples_leaf": [1, 2, 4],
+                "max_features": ["sqrt", "log2"],
+                "bootstrap": [True, False],
+            }
+            base_model = RandomForestClassifier(class_weight="balanced_subsample", random_state=42, n_jobs=-1)
+            search = RandomizedSearchCV(
+                base_model,
+                search_params,
+                n_iter=100,
+                cv=cv_folds,
+                scoring="f1_weighted",
+                random_state=42,
+                n_jobs=-1,
+                verbose=0,
+            )
+            search.fit(X_train, y_train)
+            model = search.best_estimator_
+            logger.info(f"  Best params: {search.best_params_}")
+            logger.info(f"  Best CV score: {search.best_score_:.4f}")
+        else:
+            model = RandomForestClassifier(**params)
+            logger.info(f"  Training with {params['n_estimators']} estimators...")
+            model.fit(X_train, y_train)
 
         # Evaluate
         y_pred = model.predict(X_test)
@@ -359,6 +501,44 @@ class ProgressiveTrainerV6:
         cv_scores = cross_val_score(model, X, y, cv=cv_folds, scoring="f1_weighted", n_jobs=-1)
         metrics["cv_mean"] = float(cv_scores.mean())
         metrics["cv_std"] = float(cv_scores.std())
+
+        # Brier score (probability calibration quality)
+        metrics["brier_score"] = float(brier_score_loss(y_test, y_pred_proba))
+
+        # Optimal threshold via F2 score maximization (recall-weighted)
+        precisions, recalls, thresholds_pr = precision_recall_curve(y_test, y_pred_proba)
+        f2_scores = np.where(
+            (precisions[:-1] + recalls[:-1]) > 0,
+            (1 + 4) * precisions[:-1] * recalls[:-1] / (4 * precisions[:-1] + recalls[:-1]),
+            0.0,
+        )
+        best_idx = int(np.argmax(f2_scores))
+        optimal_threshold = float(thresholds_pr[best_idx])
+        metrics["optimal_threshold"] = optimal_threshold
+        metrics["optimal_threshold_f2"] = float(f2_scores[best_idx])
+        logger.info(f"  Optimal F2 threshold: {optimal_threshold:.4f} (F2={f2_scores[best_idx]:.4f})")
+
+        # Confidence calibration (isotonic) — only for v5+ with enough data
+        calibrated_model = None
+        calibration_data = None
+        if len(X_train) >= 200 and version >= 5:
+            logger.info("  Applying isotonic calibration...")
+            cal_model = CalibratedClassifierCV(model, method="isotonic", cv=5)
+            cal_model.fit(X_train, y_train)
+            cal_proba = cal_model.predict_proba(X_test)[:, 1]
+            cal_brier = float(brier_score_loss(y_test, cal_proba))
+            logger.info(f"  Calibrated Brier: {cal_brier:.4f} (uncalibrated: {metrics['brier_score']:.4f})")
+            if cal_brier <= metrics["brier_score"]:
+                calibrated_model = cal_model
+                calibration_data = {
+                    "method": "isotonic",
+                    "brier_before": metrics["brier_score"],
+                    "brier_after": cal_brier,
+                    "improvement": metrics["brier_score"] - cal_brier > 0,
+                }
+                logger.info("  Calibration improved probability estimates — saving calibrated model")
+            else:
+                logger.info("  Calibration did not improve — keeping original model")
 
         # Feature importance
         feature_importance = dict(zip(X.columns, model.feature_importances_))
@@ -388,6 +568,8 @@ class ProgressiveTrainerV6:
             "metrics": metrics,
             "feature_importance": feature_importance,
             "model_params": params,
+            "calibration": calibration_data,
+            "calibrated_model": calibrated_model,
         }
         self.results.append(result)
 
@@ -401,6 +583,12 @@ class ProgressiveTrainerV6:
         model_path = self.models_dir / f"flood_model_v{version}.joblib"
         joblib.dump(model, model_path)
         logger.info(f"  Saved model: {model_path}")
+
+        # Save calibrated model if available
+        if result.get("calibrated_model") is not None:
+            cal_path = self.models_dir / f"flood_model_v{version}_calibrated.joblib"
+            joblib.dump(result["calibrated_model"], cal_path)
+            logger.info(f"  Saved calibrated model: {cal_path}")
 
         # Save metadata
         metadata = {
@@ -423,6 +611,8 @@ class ProgressiveTrainerV6:
                 "cv_std": result["metrics"].get("cv_std"),
             },
         }
+        if result.get("calibration"):
+            metadata["calibration"] = result["calibration"]
 
         metadata_path = self.models_dir / f"flood_model_v{version}.json"
         with open(metadata_path, "w") as f:
@@ -459,6 +649,7 @@ class ProgressiveTrainerV6:
             try:
                 model, result = self.train_version(version_config, cv_folds)
                 self.save_model(model, result)
+                self._log_to_mlflow(model, result)
             except FileNotFoundError as e:
                 logger.error(f"Skipping v{version_config['version']}: {e}")
                 continue
@@ -624,6 +815,16 @@ def main():
     parser.add_argument("--quick", action="store_true", help="Quick mode (reduced estimators)")
     parser.add_argument("--cv-folds", type=int, default=5, help="Number of cross-validation folds")
     parser.add_argument("--version", type=int, help="Train specific version only (1-6)")
+    parser.add_argument(
+        "--random-split",
+        action="store_true",
+        help="Use random stratified split instead of temporal (date-based) split",
+    )
+    parser.add_argument(
+        "--grid-search",
+        action="store_true",
+        help="Enable RandomizedSearchCV hyperparameter tuning (uses config/training_config.yaml grid_search settings)",
+    )
 
     args = parser.parse_args()
 
@@ -631,7 +832,11 @@ def main():
         logger.error("Version must be between 1 and 6")
         return 1
 
-    trainer = ProgressiveTrainerV6(quick_mode=args.quick)
+    trainer = ProgressiveTrainerV6(
+        quick_mode=args.quick,
+        temporal_split=not args.random_split,
+        grid_search=args.grid_search,
+    )
     trainer.train_all(cv_folds=args.cv_folds, specific_version=args.version)
 
     # Print summary

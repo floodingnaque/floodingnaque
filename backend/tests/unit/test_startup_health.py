@@ -264,8 +264,8 @@ class TestCheckMLModel:
     def test_model_loads_successfully(self):
         """Test ML model loading success."""
         with (
-            patch("app.utils.ml_version_check.validate_ml_versions") as mock_versions,
-            patch("app.utils.ml_version_check.check_model_training_versions") as mock_training,
+            patch("app.utils.ml.ml_version_check.validate_ml_versions") as mock_versions,
+            patch("app.utils.ml.ml_version_check.check_model_training_versions") as mock_training,
             patch("app.services.predict.get_current_model_info") as mock_model_info,
         ):
             mock_versions.return_value = []
@@ -283,7 +283,7 @@ class TestCheckMLModel:
     def test_model_load_failure(self):
         """Test ML model loading failure."""
         with (
-            patch("app.utils.ml_version_check.validate_ml_versions") as mock_versions,
+            patch("app.utils.ml.ml_version_check.validate_ml_versions") as mock_versions,
             patch("app.services.predict.get_current_model_info") as mock_model_info,
         ):
             mock_versions.return_value = []
@@ -296,7 +296,7 @@ class TestCheckMLModel:
 
     def test_import_error_handling(self):
         """Test handling of import errors."""
-        with patch("app.utils.ml_version_check.validate_ml_versions") as mock_versions:
+        with patch("app.utils.ml.ml_version_check.validate_ml_versions") as mock_versions:
             mock_versions.side_effect = ImportError("No module named 'sklearn'")
 
             result = check_ml_model()

@@ -103,14 +103,53 @@ services:
     networks:
       - floodingnaque-staging
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}", "ping"]
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-a",
+          "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}",
+          "ping",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
+          memory: 256M
+
+  # ===================
+  # Frontend (React SPA)
+  # ===================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://staging-api.floodingnaque.com}
+        VITE_APP_NAME: Floodingnaque
+        VITE_ENABLE_SSE: "true"
+    image: floodingnaque-frontend:staging
+    container_name: floodingnaque-frontend-staging
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - floodingnaque-staging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
           memory: 256M
 
   # ===================
@@ -153,7 +192,8 @@ services:
     networks:
       - floodingnaque-staging
     healthcheck:
-      test: ["CMD", "celery", "-A", "app.services.celery_app", "inspect", "ping"]
+      test:
+        ["CMD", "celery", "-A", "app.services.celery_app", "inspect", "ping"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -161,10 +201,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 1G
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
 
   # ===================
@@ -204,7 +244,11 @@ services:
     networks:
       - floodingnaque-staging
     healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/celerybeat.pid && ps -p $(cat /tmp/celerybeat.pid) > /dev/null"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /tmp/celerybeat.pid && ps -p $(cat /tmp/celerybeat.pid) > /dev/null",
+        ]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -214,8 +258,64 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
+
+  # ===================
+  # Nginx Reverse Proxy (Optional for staging)
+  # ===================
+  # Use with: docker compose -f compose.staging.yaml --profile nginx up -d
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: floodingnaque-nginx-staging
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/floodingnaque.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_conf_staging:/etc/letsencrypt:ro
+      - certbot_www_staging:/var/www/certbot:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - floodingnaque-staging
+    profiles:
+      - nginx
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+  # ===================
+  # Certbot (Let's Encrypt for staging)
+  # ===================
+  certbot:
+    image: certbot/certbot:v2.11.0
+    container_name: floodingnaque-certbot-staging
+    volumes:
+      - certbot_conf_staging:/etc/letsencrypt
+      - certbot_www_staging:/var/www/certbot
+    networks:
+      - floodingnaque-staging
+    profiles:
+      - nginx
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
 
 # ===================
 # Networks
@@ -237,3 +337,7 @@ volumes:
     name: floodingnaque-logs-staging
   floodingnaque_data_staging:
     name: floodingnaque-data-staging
+  certbot_conf_staging:
+    name: floodingnaque-certbot-conf-staging
+  certbot_www_staging:
+    name: floodingnaque-certbot-www-staging

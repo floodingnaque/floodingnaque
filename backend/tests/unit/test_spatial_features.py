@@ -5,7 +5,6 @@ Tests for Spatial Features - barangay-level feature engineering.
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.services.spatial_features import (
     BARANGAY_LAND_USE,
     SPATIAL_FEATURE_NAMES,
@@ -16,10 +15,10 @@ from app.services.spatial_features import (
     get_spatial_features_for_barangay,
 )
 
-
 # ═════════════════════════════════════════════════════════════════════════════
 # Single Barangay Features
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestGetSpatialFeaturesForBarangay:
     """Tests for single-barangay spatial feature computation."""
@@ -47,7 +46,7 @@ class TestGetSpatialFeaturesForBarangay:
     def test_coastal_vs_inland(self):
         """Coastal barangays should have higher susceptibility than inland."""
         tambo = get_spatial_features_for_barangay("tambo")  # Coastal, low-lying
-        sucat = get_spatial_features_for_barangay("sucat")   # Inland, elevated
+        sucat = get_spatial_features_for_barangay("sucat")  # Inland, elevated
         assert tambo["flood_susceptibility_index"] > sucat["flood_susceptibility_index"]
 
     def test_unknown_barangay_defaults(self):
@@ -59,6 +58,7 @@ class TestGetSpatialFeaturesForBarangay:
 # ═════════════════════════════════════════════════════════════════════════════
 # All Barangay Features
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestGetAllBarangayFeatures:
     """Tests for the full barangay features DataFrame."""
@@ -83,32 +83,39 @@ class TestGetAllBarangayFeatures:
 # DataFrame Enrichment
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestAddSpatialFeatures:
     """Tests for merging spatial features into DataFrames."""
 
     def test_with_barangay_column(self):
-        df = pd.DataFrame({
-            "barangay": ["tambo", "bf_homes", "sucat"],
-            "temperature": [30, 31, 29],
-            "flood": [1, 0, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "barangay": ["tambo", "bf_homes", "sucat"],
+                "temperature": [30, 31, 29],
+                "flood": [1, 0, 0],
+            }
+        )
         result = add_spatial_features(df)
         assert "flood_susceptibility_index" in result.columns
         assert len(result) == 3
 
     def test_with_default_barangay(self):
-        df = pd.DataFrame({
-            "temperature": [30, 31],
-            "flood": [1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "temperature": [30, 31],
+                "flood": [1, 0],
+            }
+        )
         result = add_spatial_features(df, default_barangay="tambo")
         assert "flood_susceptibility_index" in result.columns
 
     def test_without_barangay_uses_averages(self):
-        df = pd.DataFrame({
-            "temperature": [30, 31],
-            "flood": [1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "temperature": [30, 31],
+                "flood": [1, 0],
+            }
+        )
         result = add_spatial_features(df)
         assert "flood_susceptibility_index" in result.columns
         # Should have average values (not NaN)
@@ -118,6 +125,7 @@ class TestAddSpatialFeatures:
 # ═════════════════════════════════════════════════════════════════════════════
 # Flood Depth Estimation
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestEstimateFloodDepth:
     """Tests for physics-informed flood depth estimation."""
@@ -153,6 +161,7 @@ class TestEstimateFloodDepth:
 # ═════════════════════════════════════════════════════════════════════════════
 # Feature Name Helpers
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestGetSpatialFeatureNames:
     """Tests for feature name list."""

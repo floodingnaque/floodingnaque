@@ -2,15 +2,17 @@
  * Authentication Store
  *
  * Zustand store for managing authentication state.
- * Access and refresh tokens are kept in memory (never persisted).
- * Only user metadata is persisted to localStorage.
+ * User, tokens, and auth flags are persisted to localStorage
+ * so sessions survive page reloads. The 401-response interceptor
+ * in api-client.ts handles expired access tokens automatically.
  */
 
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { useMemo } from 'react';
-import type { User } from '@/types';
-import { initializeAuthStore } from '@/lib/api-client';
+import { initializeAuthStore } from "@/lib/api-client";
+import { postTabMessage } from "@/lib/tab-sync";
+import type { User } from "@/types";
+import { useMemo } from "react";
+import { create } from "zustand";
+import { createJSONStorage, devtools, persist } from "zustand/middleware";
 
 /**
  * Auth store state interface
@@ -35,13 +37,22 @@ interface AuthState {
  */
 interface AuthActions {
   /** Set authentication data after login / register */
-  setAuth: (user: User, csrfToken?: string, accessToken?: string, refreshToken?: string) => void;
+  setAuth: (
+    user: User,
+    csrfToken?: string,
+    accessToken?: string,
+    refreshToken?: string,
+  ) => void;
   /** Update the CSRF token (e.g. after refresh) */
   setCsrfToken: (csrfToken: string) => void;
   /** Update the access token (e.g. after refresh) */
   setAccessToken: (accessToken: string) => void;
   /** Clear all authentication data (logout) */
   clearAuth: () => void;
+  /** Clear auth without broadcasting to other tabs */
+  clearAuthSilent: () => void;
+  /** Set access token without broadcasting to other tabs */
+  setAccessTokenSilent: (accessToken: string) => void;
   /** Mark Zustand rehydration as complete */
   setHasHydrated: (v: boolean) => void;
 }
@@ -71,56 +82,89 @@ const initialState: AuthState = {
  * for actual authentication.
  */
 export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      ...initialState,
+  devtools(
+    persist(
+      (set) => ({
+        ...initialState,
 
-      setAuth: (user: User, csrfToken?: string, accessToken?: string, refreshToken?: string) => {
-        set({
-          user,
-          isAuthenticated: true,
-          ...(csrfToken != null ? { csrfToken } : {}),
-          ...(accessToken != null ? { accessToken } : {}),
-          ...(refreshToken != null ? { refreshToken } : {}),
-        });
-      },
+        setAuth: (
+          user: User,
+          csrfToken?: string,
+          accessToken?: string,
+          refreshToken?: string,
+        ) => {
+          set({
+            user,
+            isAuthenticated: true,
+            ...(csrfToken != null ? { csrfToken } : {}),
+            ...(accessToken != null ? { accessToken } : {}),
+            ...(refreshToken != null ? { refreshToken } : {}),
+          });
+        },
 
-      setCsrfToken: (csrfToken: string) => {
-        set({ csrfToken });
-      },
+        setCsrfToken: (csrfToken: string) => {
+          set({ csrfToken });
+        },
 
-      setAccessToken: (accessToken: string) => {
-        set({ accessToken });
-      },
+        setAccessToken: (accessToken: string) => {
+          set({ accessToken });
+        },
 
-      clearAuth: () => {
-        set({ ...initialState, hasHydrated: true });
-      },
+        clearAuth: () => {
+          set({ ...initialState, hasHydrated: true });
+          postTabMessage({ type: "AUTH_LOGOUT" });
+        },
 
-      setHasHydrated: (v: boolean) => {
-        set({ hasHydrated: v });
-      },
-    }),
-    {
-      name: 'auth-storage',
-      storage: createJSONStorage(() => localStorage),
-      // Persist only non-sensitive metadata - never tokens
-      partialize: (state) => ({
-        user: state.user,
+        /** Clear auth without broadcasting (called from tab-sync listener) */
+        clearAuthSilent: () => {
+          set({ ...initialState, hasHydrated: true });
+        },
+
+        /** Set access token without broadcasting (called from tab-sync listener) */
+        setAccessTokenSilent: (accessToken: string) => {
+          set({ accessToken });
+        },
+
+        setHasHydrated: (v: boolean) => {
+          set({ hasHydrated: v });
+        },
       }),
-      // After rehydration: persisted user is available but tokens are NOT
-      // (they live in memory only).  Mark isAuthenticated = false so the
-      // app can attempt a silent token refresh rather than flash-then-logout.
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Tokens were not persisted, so we cannot consider the user
-          // truly authenticated until a refresh succeeds.
-          state.isAuthenticated = false;
-          state.hasHydrated = true;
-        }
+      {
+        name: "auth-storage",
+        storage: createJSONStorage(() => localStorage),
+        // Persist user metadata and tokens so sessions survive page reloads.
+        // The access token is short-lived (15 min) and the response
+        // interceptor automatically attempts a refresh on 401.
+        partialize: (state) => ({
+          user: state.user
+            ? {
+                id: state.user.id,
+                role: state.user.role,
+                name: state.user.name,
+              }
+            : null,
+          accessToken: state.accessToken,
+          refreshToken: state.refreshToken,
+          isAuthenticated: state.isAuthenticated,
+          csrfToken: state.csrfToken,
+        }),
+        // After rehydration: restore full auth state from persisted values.
+        // If tokens were persisted, keep isAuthenticated as-is so the user
+        // remains logged in across page reloads without a flash-to-login.
+        onRehydrateStorage: () => (state) => {
+          if (state) {
+            // If we have a user and access token, stay authenticated.
+            // If tokens expired, the response interceptor handles 401 → refresh.
+            if (!state.user || !state.accessToken) {
+              state.isAuthenticated = false;
+            }
+            state.hasHydrated = true;
+          }
+        },
       },
-    }
-  )
+    ),
+    { name: "auth-store", enabled: import.meta.env.DEV },
+  ),
 );
 
 // Initialize the API client with the auth store reference
@@ -130,7 +174,8 @@ initializeAuthStore(useAuthStore);
  * Selector hooks for common auth state
  */
 export const useUser = () => useAuthStore((state) => state.user);
-export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated);
+export const useIsAuthenticated = () =>
+  useAuthStore((state) => state.isAuthenticated);
 export const useHasHydrated = () => useAuthStore((state) => state.hasHydrated);
 export const useCsrfToken = () => useAuthStore((state) => state.csrfToken);
 
@@ -139,7 +184,8 @@ export const useCsrfToken = () => useAuthStore((state) => state.csrfToken);
  * defeating React.memo / shallow-equality checks.
  */
 export const useSetAuth = () => useAuthStore((state) => state.setAuth);
-export const useSetCsrfToken = () => useAuthStore((state) => state.setCsrfToken);
+export const useSetCsrfToken = () =>
+  useAuthStore((state) => state.setCsrfToken);
 export const useClearAuth = () => useAuthStore((state) => state.clearAuth);
 
 /**
@@ -151,7 +197,10 @@ export const useAuthActions = () => {
   const setAuth = useSetAuth();
   const setCsrfToken = useSetCsrfToken();
   const clearAuth = useClearAuth();
-  return useMemo(() => ({ setAuth, setCsrfToken, clearAuth }), [setAuth, setCsrfToken, clearAuth]);
+  return useMemo(
+    () => ({ setAuth, setCsrfToken, clearAuth }),
+    [setAuth, setCsrfToken, clearAuth],
+  );
 };
 
 export default useAuthStore;

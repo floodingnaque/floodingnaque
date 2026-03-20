@@ -9,10 +9,10 @@ import csv
 import io
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.api.middleware.auth import require_api_key
+from app.api.middleware.auth import require_auth_or_api_key, require_scope
 from app.api.middleware.rate_limit import limiter
 from app.models.db import WeatherData, get_db_session
 from app.utils.api_constants import (
@@ -21,7 +21,8 @@ from app.utils.api_constants import (
     HTTP_OK,
 )
 from app.utils.api_responses import api_error
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, Response, g, jsonify, request
+from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
@@ -380,7 +381,8 @@ def _parse_excel_row(row, row_num: int) -> Optional[Dict[str, Any]]:
 
 
 @upload_bp.route("/csv", methods=["POST"])
-@require_api_key
+@require_auth_or_api_key
+@require_scope("data")
 @limiter.limit("10 per hour")
 def upload_csv():
     """
@@ -528,7 +530,8 @@ def upload_csv():
 
 
 @upload_bp.route("/excel", methods=["POST"])
-@require_api_key
+@require_auth_or_api_key
+@require_scope("data")
 @limiter.limit("10 per hour")
 def upload_excel():
     """
@@ -721,7 +724,8 @@ def get_upload_template():
 
 
 @upload_bp.route("/validate", methods=["POST"])
-@require_api_key
+@require_auth_or_api_key
+@require_scope("data")
 @limiter.limit("30 per minute")
 def validate_upload():
     """
@@ -787,3 +791,146 @@ def validate_upload():
     except Exception:
         logger.error(f"File validation failed [{request_id}]")
         return api_error("ValidationFailed", "Failed to validate file", HTTP_INTERNAL_ERROR, request_id)
+
+
+@upload_bp.route("/stats", methods=["GET"])
+@require_auth_or_api_key
+@require_scope("data")
+@limiter.limit("30 per minute")
+def dataset_stats():
+    """
+    Get dataset overview statistics.
+
+    Returns total weather records, date range, active sources,
+    last ingestion timestamp, and records ingested this month.
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        now = datetime.now(timezone.utc)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        with get_db_session() as session:
+            total_records = (
+                session.query(func.count(WeatherData.id)).filter(WeatherData.is_deleted.is_(False)).scalar()
+            ) or 0
+
+            date_range = (
+                session.query(
+                    func.min(WeatherData.timestamp),
+                    func.max(WeatherData.timestamp),
+                )
+                .filter(WeatherData.is_deleted.is_(False))
+                .one()
+            )
+
+            sources_rows = (
+                session.query(WeatherData.source)
+                .filter(
+                    WeatherData.is_deleted.is_(False),
+                    WeatherData.source.isnot(None),
+                )
+                .distinct()
+                .all()
+            )
+
+            last_ingestion = (
+                session.query(func.max(WeatherData.created_at)).filter(WeatherData.is_deleted.is_(False)).scalar()
+            )
+
+            records_this_month = (
+                session.query(func.count(WeatherData.id))
+                .filter(
+                    WeatherData.is_deleted.is_(False),
+                    WeatherData.created_at >= month_start,
+                )
+                .scalar()
+            ) or 0
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "stats": {
+                        "total_records": total_records,
+                        "date_range": {
+                            "earliest": date_range[0].isoformat() if date_range[0] else None,
+                            "latest": date_range[1].isoformat() if date_range[1] else None,
+                        },
+                        "sources": [r[0] for r in sources_rows if r[0]],
+                        "last_ingestion": last_ingestion.isoformat() if last_ingestion else None,
+                        "records_this_month": records_this_month,
+                    },
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
+
+    except Exception:
+        logger.error(f"Dataset stats failed [{request_id}]")
+        return api_error("FetchFailed", "Failed to fetch dataset statistics", HTTP_INTERNAL_ERROR, request_id)
+
+
+@upload_bp.route("/template/csv", methods=["GET"])
+@limiter.limit("30 per minute")
+def download_template_csv():
+    """
+    Download a CSV template for weather data upload.
+    Returns an actual CSV file with headers, data types, and a sample row.
+    """
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow(
+        [
+            "# Floodingnaque Weather Data Upload Template",
+        ]
+    )
+    writer.writerow(
+        [
+            "# Required: temperature (Kelvin), humidity (0-100%), precipitation (mm >=0), timestamp (YYYY-MM-DD HH:MM:SS)",
+        ]
+    )
+    writer.writerow(
+        [
+            "# Optional: wind_speed (m/s), pressure (hPa), source, location_lat, location_lon",
+        ]
+    )
+    writer.writerow([])
+    writer.writerow(
+        [
+            "temperature",
+            "humidity",
+            "precipitation",
+            "timestamp",
+            "wind_speed",
+            "pressure",
+            "source",
+            "location_lat",
+            "location_lon",
+        ]
+    )
+    writer.writerow(
+        [
+            "301.65",
+            "82.0",
+            "12.5",
+            "2025-07-15 14:30:00",
+            "3.2",
+            "1008.5",
+            "PAGASA",
+            "14.4793",
+            "121.0198",
+        ]
+    )
+
+    csv_data = "\ufeff" + output.getvalue()
+
+    return Response(
+        csv_data,
+        mimetype="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=floodingnaque_upload_template.csv",
+        },
+    )

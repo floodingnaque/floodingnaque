@@ -14,7 +14,7 @@ TRAINING DATA
 --------------------------------------------------------------------------------
 Data Source: N/A
 Dataset Shape: N/A
-Features: 
+Features:
 Target Distribution: {}
 
 MODEL PARAMETERS

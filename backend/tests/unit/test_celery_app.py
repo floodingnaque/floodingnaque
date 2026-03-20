@@ -283,9 +283,7 @@ class TestSendNotificationTaskExecution:
         mock_resp.raise_for_status = MagicMock()
 
         with patch("requests.post", return_value=mock_resp) as mock_post:
-            result = fn(
-                fake_self, "webhook", "https://hooks.example.com/flood", "Flood alert!"
-            )
+            result = fn(fake_self, "webhook", "https://hooks.example.com/flood", "Flood alert!")
 
         assert result["status"] == "delivered"
         mock_post.assert_called_once()
@@ -317,14 +315,18 @@ class TestCleanupOldResultsTaskExecution:
         from app.services.tasks import cleanup_old_results
 
         # Simulate two keys: one old (should be deleted), one recent (should survive)
-        old_meta = _json.dumps({
-            "status": "SUCCESS",
-            "date_done": "2025-01-01T00:00:00+00:00",
-        })
-        recent_meta = _json.dumps({
-            "status": "SUCCESS",
-            "date_done": datetime.now(timezone.utc).isoformat(),
-        })
+        old_meta = _json.dumps(
+            {
+                "status": "SUCCESS",
+                "date_done": "2025-01-01T00:00:00+00:00",
+            }
+        )
+        recent_meta = _json.dumps(
+            {
+                "status": "SUCCESS",
+                "date_done": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         mock_redis = MagicMock()
         mock_redis.scan_iter.return_value = [
@@ -346,7 +348,6 @@ class TestCleanupOldResultsTaskExecution:
     def test_cleanup_handles_redis_error(self, mock_secret, mock_redis_cls):
         """Verify cleanup returns 'failed' status on Redis connection error."""
         import redis as _redis
-
         from app.services.tasks import cleanup_old_results
 
         mock_redis_cls.side_effect = _redis.ConnectionError("Connection refused")

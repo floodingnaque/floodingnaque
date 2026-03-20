@@ -1,15 +1,15 @@
 /**
  * ErrorDisplay Component
- * 
+ *
  * Displays error messages with optional retry functionality.
  * Handles different error types including ApiError.
  */
 
-import { AlertCircle, RefreshCw } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import type { ApiError } from '@/types';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { ApiError } from "@/types";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 interface ErrorDisplayProps {
   /** The error to display (Error, ApiError, or null) */
@@ -29,11 +29,11 @@ interface ErrorDisplayProps {
  */
 function isApiError(error: unknown): error is ApiError {
   return (
-    typeof error === 'object' &&
+    typeof error === "object" &&
     error !== null &&
-    'code' in error &&
-    'status' in error &&
-    'message' in error
+    "code" in error &&
+    "status" in error &&
+    "message" in error
   );
 }
 
@@ -42,7 +42,7 @@ function isApiError(error: unknown): error is ApiError {
  */
 function getErrorMessage(error: Error | ApiError | null): string {
   if (!error) {
-    return 'An unknown error occurred';
+    return "An unknown error occurred";
   }
 
   if (isApiError(error)) {
@@ -51,15 +51,15 @@ function getErrorMessage(error: Error | ApiError | null): string {
   }
 
   if (error instanceof Error) {
-    return error.message || 'An unexpected error occurred';
+    return error.message || "An unexpected error occurred";
   }
 
   // Fallback for unknown error shapes
-  if (typeof error === 'object' && 'message' in error) {
+  if (typeof error === "object" && "message" in error) {
     return String((error as { message: unknown }).message);
   }
 
-  return 'An unknown error occurred';
+  return "An unknown error occurred";
 }
 
 /**
@@ -75,7 +75,7 @@ function getErrorDetails(error: Error | ApiError | null): string | null {
     if (error.details && Object.keys(error.details).length > 0) {
       details.push(`Details: ${JSON.stringify(error.details)}`);
     }
-    return details.length > 0 ? details.join(' • ') : null;
+    return details.length > 0 ? details.join(" • ") : null;
   }
 
   // For regular errors, check for cause
@@ -88,19 +88,19 @@ function getErrorDetails(error: Error | ApiError | null): string | null {
 
 /**
  * Displays an error message with optional retry functionality.
- * 
+ *
  * @example
  * // Basic error display
  * <ErrorDisplay error={new Error('Something went wrong')} />
- * 
+ *
  * @example
  * // With retry button
- * <ErrorDisplay 
- *   error={apiError} 
- *   retry={() => refetch()} 
+ * <ErrorDisplay
+ *   error={apiError}
+ *   retry={() => refetch()}
  *   title="Failed to load data"
  * />
- * 
+ *
  * @example
  * // Compact version for inline display
  * <ErrorDisplay error={error} compact />
@@ -119,18 +119,18 @@ export function ErrorDisplay({
 
   const message = getErrorMessage(error);
   const details = getErrorDetails(error);
-  const displayTitle = title || (isApiError(error) ? 'API Error' : 'Error');
+  const displayTitle = title || (isApiError(error) ? "API Error" : "Error");
 
   if (compact) {
     return (
       <div
         className={cn(
-          'flex items-center gap-2 text-sm text-destructive',
-          className
+          "flex items-center gap-2 text-sm text-destructive",
+          className,
         )}
         role="alert"
       >
-        <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+        <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="truncate">{message}</span>
         {retry && (
           <Button
@@ -147,11 +147,7 @@ export function ErrorDisplay({
   }
 
   return (
-    <Alert
-      variant="destructive"
-      className={cn('', className)}
-      role="alert"
-    >
+    <Alert variant="destructive" className={cn("", className)} role="alert">
       <AlertCircle className="h-4 w-4" aria-hidden="true" />
       <AlertTitle>{displayTitle}</AlertTitle>
       <AlertDescription className="mt-2">
@@ -160,12 +156,7 @@ export function ErrorDisplay({
           <p className="mt-1 text-xs opacity-80 font-mono">{details}</p>
         )}
         {retry && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={retry}
-            className="mt-3"
-          >
+          <Button variant="outline" size="sm" onClick={retry} className="mt-3">
             <RefreshCw className="mr-2 h-4 w-4" />
             Try Again
           </Button>

@@ -1,0 +1,359 @@
+# =============================================================================
+# FLOODINGNAQUE — PR Auto-Merge
+# =============================================================================
+#
+# Runs when a PR review is submitted or required status checks pass.
+# Evaluates whether the PR meets all merge conditions, then merges or posts
+# an explanation of what's blocking.
+#
+# Merge conditions:
+#   ✓ All required status checks passed (✅ Validate PR, 📏 Size Check)
+#   ✓ Minimum approvals met (2 for main, 1 for develop)
+#   ✓ Head branch is up-to-date with base branch
+#   ✓ No unresolved review threads (conversations)
+#   ✓ PR author is NOT dependabot[bot] (handled by dependabot-automerge.yml)
+#   ✓ PR has the `auto-merge` label
+#
+# Merge strategy:
+#   main / develop → squash merge (clean history)
+#   staging         → merge commit (preserve feature branch history)
+#   other           → squash merge (default)
+#
+# =============================================================================
+
+name: "🔀 PR Auto-Merge"
+
+on:
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================
+  # JOB 1: EVALUATE
+  # Checks all merge conditions and sets outputs.
+  # ============================================================
+  evaluate:
+    name: "🔍 Evaluate Merge Readiness"
+    runs-on: ubuntu-latest
+
+    # Only run for PRs with the auto-merge label, and skip Dependabot
+    if: |
+      github.event.pull_request.user.login != 'dependabot[bot]' ||
+      github.event_name == 'check_suite'
+
+    outputs:
+      can_merge: ${{ steps.check.outputs.can_merge }}
+      merge_method: ${{ steps.check.outputs.merge_method }}
+      block_reasons: ${{ steps.check.outputs.block_reasons }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+
+    steps:
+      - name: "Check merge conditions"
+        id: check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // ── Resolve PR number ────────────────────────────────────────────
+            let prNumber;
+            if (context.payload.pull_request) {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.payload.check_suite) {
+              // For check_suite events, find the associated PR
+              const prs = context.payload.check_suite.pull_requests;
+              if (!prs || prs.length === 0) {
+                core.setOutput('can_merge', 'false');
+                core.setOutput('block_reasons', 'No PR associated with this check suite');
+                core.setOutput('pr_number', '');
+                return;
+              }
+              prNumber = prs[0].number;
+            }
+            core.setOutput('pr_number', prNumber.toString());
+
+            // ── Get PR details ───────────────────────────────────────────────
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            // ── Skip if Dependabot ───────────────────────────────────────────
+            if (pr.user.login === 'dependabot[bot]') {
+              core.setOutput('can_merge', 'false');
+              core.setOutput('block_reasons', 'Dependabot PRs are handled by dependabot-automerge.yml');
+              return;
+            }
+
+            // ── Check for auto-merge label ───────────────────────────────────
+            const hasAutoMergeLabel = pr.labels.some(l => l.name === 'auto-merge');
+            if (!hasAutoMergeLabel) {
+              core.setOutput('can_merge', 'false');
+              core.setOutput('block_reasons', 'PR does not have the `auto-merge` label. Add it to enable auto-merge.');
+              return;
+            }
+
+            // ── Check PR state ───────────────────────────────────────────────
+            if (pr.state !== 'open') {
+              core.setOutput('can_merge', 'false');
+              core.setOutput('block_reasons', 'PR is not open');
+              return;
+            }
+
+            if (pr.draft) {
+              core.setOutput('can_merge', 'false');
+              core.setOutput('block_reasons', 'PR is still a draft');
+              return;
+            }
+
+            const blockReasons = [];
+
+            // ── Required approvals ───────────────────────────────────────────
+            const baseBranch       = pr.base.ref;
+            const requiredApprovals = baseBranch === 'main' ? 2 : 1;
+
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            // Count unique approving reviewers (latest review per user)
+            const latestReviews = new Map();
+            for (const review of reviews) {
+              if (review.state === 'APPROVED' || review.state === 'CHANGES_REQUESTED') {
+                latestReviews.set(review.user.login, review.state);
+              }
+            }
+
+            const approvals = [...latestReviews.values()].filter(s => s === 'APPROVED').length;
+            const changesRequested = [...latestReviews.values()].filter(s => s === 'CHANGES_REQUESTED').length;
+
+            if (changesRequested > 0) {
+              blockReasons.push(`Changes requested by ${changesRequested} reviewer(s). All reviews must be resolved.`);
+            }
+
+            if (approvals < requiredApprovals) {
+              blockReasons.push(`${approvals}/${requiredApprovals} required approvals for \`${baseBranch}\`.`);
+            }
+
+            // ── Required status checks ───────────────────────────────────────
+            const requiredChecks = ['✅ Validate PR', '📏 Size Check'];
+
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+            });
+
+            for (const requiredName of requiredChecks) {
+              const check = checkRuns.check_runs.find(c => c.name === requiredName);
+              if (!check) {
+                blockReasons.push(`Required check \`${requiredName}\` has not run yet.`);
+              } else if (check.conclusion !== 'success') {
+                blockReasons.push(`Required check \`${requiredName}\` has status: \`${check.conclusion || check.status}\`.`);
+              }
+            }
+
+            // ── Branch up-to-date check ──────────────────────────────────────
+            if (pr.mergeable === false) {
+              blockReasons.push('Branch has merge conflicts or is not up-to-date with base branch.');
+            }
+
+            // ── Unresolved review threads ────────────────────────────────────
+            // Note: GraphQL would be more precise, but REST review comments
+            // with `in_reply_to_id` can approximate unresolved threads. We check
+            // if there are any review comments that have not been resolved via the
+            // pull request review threads.
+            try {
+              const { data: reviewComments } = await github.rest.pulls.listReviewComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                per_page: 100,
+              });
+
+              // Get outstanding threads (comments without `in_reply_to_id` that
+              // don't have a resolution marker)
+              const outdatedThreads = reviewComments.filter(c =>
+                c.in_reply_to_id == null &&
+                !c.body.includes('✅') &&
+                !c.body.toLowerCase().includes('resolved')
+              );
+
+              // This is a rough heuristic — GitHub doesn't expose thread resolution
+              // in the REST API. We only warn, not block.
+              if (outdatedThreads.length > 5) {
+                blockReasons.push(`${outdatedThreads.length} review comments may be unresolved. Please verify all conversations are resolved.`);
+              }
+            } catch (e) {
+              console.log('Could not check review threads:', e.message);
+            }
+
+            // ── Determine merge method ───────────────────────────────────────
+            let mergeMethod;
+            if (baseBranch === 'main' || baseBranch === 'develop') {
+              mergeMethod = 'squash';
+            } else if (baseBranch === 'staging') {
+              mergeMethod = 'merge';
+            } else {
+              mergeMethod = 'squash';
+            }
+
+            const canMerge = blockReasons.length === 0;
+
+            core.setOutput('can_merge',     canMerge.toString());
+            core.setOutput('merge_method',  mergeMethod);
+            core.setOutput('block_reasons', blockReasons.join(' || '));
+
+            console.log(`PR #${prNumber} → ${baseBranch}`);
+            console.log(`Approvals: ${approvals}/${requiredApprovals}`);
+            console.log(`Merge method: ${mergeMethod}`);
+            console.log(`Can merge: ${canMerge}`);
+            if (!canMerge) {
+              console.log('Block reasons:', blockReasons);
+            }
+
+  # ============================================================
+  # JOB 2: MERGE
+  # Performs the actual merge if all conditions are met.
+  # ============================================================
+  merge:
+    name: "🔀 Auto-Merge PR"
+    runs-on: ubuntu-latest
+    needs: evaluate
+    if: needs.evaluate.outputs.can_merge == 'true'
+
+    steps:
+      - name: "Merge PR"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber    = parseInt('${{ needs.evaluate.outputs.pr_number }}');
+            const mergeMethod = '${{ needs.evaluate.outputs.merge_method }}';
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            // Final safety check — PR must be open and mergeable
+            if (pr.state !== 'open') {
+              core.setFailed(`PR #${prNumber} is no longer open`);
+              return;
+            }
+
+            if (pr.mergeable === false) {
+              core.setFailed(`PR #${prNumber} has merge conflicts`);
+              return;
+            }
+
+            try {
+              await github.rest.pulls.merge({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                pull_number:  prNumber,
+                merge_method: mergeMethod,
+                commit_title: `${pr.title} (#${prNumber})`,
+              });
+
+              console.log(`✅ PR #${prNumber} merged via ${mergeMethod}`);
+
+              // Post a success comment
+              await github.rest.issues.createComment({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: prNumber,
+                body:         `## 🔀 Auto-Merged\n\nThis PR was automatically merged via **${mergeMethod}** after all conditions were met.\n\n<sub>🤖 Floodingnaque PR Auto-Merge</sub>`,
+              });
+            } catch (error) {
+              core.setFailed(`Merge failed: ${error.message}`);
+            }
+
+  # ============================================================
+  # JOB 3: EXPLAIN BLOCK
+  # Posts a comment explaining why auto-merge was blocked.
+  # Only runs when the PR has the auto-merge label but can't merge.
+  # ============================================================
+  explain-block:
+    name: "💬 Explain Block"
+    runs-on: ubuntu-latest
+    needs: evaluate
+    if: needs.evaluate.outputs.can_merge == 'false' && needs.evaluate.outputs.pr_number != ''
+
+    steps:
+      - name: "Post block explanation"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber     = parseInt('${{ needs.evaluate.outputs.pr_number }}');
+            const blockReasons = '${{ needs.evaluate.outputs.block_reasons }}';
+
+            // Only post explanation if the PR has the auto-merge label
+            const { data: pr } = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const hasLabel = pr.labels.some(l => l.name === 'auto-merge');
+            if (!hasLabel) {
+              console.log('PR does not have auto-merge label — skipping explanation');
+              return;
+            }
+
+            // Parse block reasons
+            const reasons = blockReasons.split(' || ').filter(Boolean);
+            if (reasons.length === 0) return;
+
+            const reasonList = reasons.map(r => `- ${r}`).join('\n');
+
+            const body = `## ⏳ Auto-Merge Waiting
+
+            This PR has the \`auto-merge\` label but cannot be merged yet:
+
+            ${reasonList}
+
+            Once all conditions are met, this PR will be automatically merged.
+
+            <sub>🤖 Floodingnaque PR Auto-Merge • Updates on each review or status change</sub>`;
+
+            // Find and replace previous explanation comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            for (const c of comments.data) {
+              if (c.user.login === 'github-actions[bot]' &&
+                  c.body.includes('Auto-Merge Waiting')) {
+                await github.rest.issues.deleteComment({
+                  owner:      context.repo.owner,
+                  repo:       context.repo.repo,
+                  comment_id: c.id,
+                });
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });

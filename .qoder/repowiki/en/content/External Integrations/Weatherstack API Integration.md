@@ -283,7 +283,7 @@ Common issues and resolutions:
   - Symptom: ingest raises an error immediately upon startup or when calling the ingest endpoint.
   - Resolution: Set OWM_API_KEY in the environment and ensure the .env file is loaded.
   - Evidence: Early validation checks for OWM API key presence.
-  
+
   **Section sources**
   - [ingest.py](file://backend/app/services/ingest.py#L32-L34)
   - [config.py](file://backend/app/core/config.py#L1-L10)
@@ -293,7 +293,7 @@ Common issues and resolutions:
   - Symptom: Weatherstack API error object is returned; ingest logs a warning and falls back to OpenWeatherMap.
   - Resolution: Verify the Weatherstack API key and ensure it matches the expected provider. If unavailable, rely on OpenWeatherMap fallback.
   - Evidence: Weatherstack error handling and fallback logic.
-  
+
   **Section sources**
   - [ingest.py](file://backend/app/services/ingest.py#L71-L74)
   - [ingest.py](file://backend/app/services/ingest.py#L80-L84)
@@ -302,7 +302,7 @@ Common issues and resolutions:
   - Symptom: requests exceptions are caught and logged as warnings; ingest continues with fallback.
   - Resolution: Retry later or verify network connectivity. Consider increasing timeouts if necessary.
   - Evidence: Exception handling blocks for Weatherstack and OpenWeatherMap.
-  
+
   **Section sources**
   - [ingest.py](file://backend/app/services/ingest.py#L40-L46)
   - [ingest.py](file://backend/app/services/ingest.py#L66-L66)
@@ -312,7 +312,7 @@ Common issues and resolutions:
   - Symptom: KeyError or ValueError during parsing; ingest logs a warning and continues with fallback.
   - Resolution: Inspect the API response shape and update parsing logic if fields change.
   - Evidence: Parsing error handling for Weatherstack and OpenWeatherMap.
-  
+
   **Section sources**
   - [ingest.py](file://backend/app/services/ingest.py#L44-L46)
   - [ingest.py](file://backend/app/services/ingest.py#L82-L84)
@@ -321,7 +321,7 @@ Common issues and resolutions:
   - Symptom: precipitation remains zero after fallback.
   - Resolution: Confirm OpenWeatherMap rain fields exist in the response; otherwise, consider alternative sources or adjust coordinate selection.
   - Evidence: Fallback logic for rain fields and logging.
-  
+
   **Section sources**
   - [ingest.py](file://backend/app/services/ingest.py#L85-L96)
 
@@ -331,7 +331,7 @@ Common issues and resolutions:
     - METEOSTAT_API_KEY or WEATHERSTACK_API_KEY (either is acceptable for Weatherstack)
     - DATABASE_URL
   - Evidence: Environment variable sourcing and example configuration.
-  
+
   **Section sources**
   - [ingest.py](file://backend/app/services/ingest.py#L21-L24)
   - [.env.example](file://backend/.env.example#L1-L4)
@@ -340,7 +340,7 @@ Common issues and resolutions:
 - Logging and diagnostics
   - Use the request_id included in API responses to correlate logs.
   - Configure logging to capture warnings and errors for debugging.
-  
+
   **Section sources**
   - [app.py](file://backend/app/api/app.py#L141-L223)
   - [utils.py](file://backend/app/utils/utils.py#L1-L47)

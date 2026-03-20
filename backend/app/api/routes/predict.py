@@ -8,14 +8,15 @@ Includes input validation, security measures, and response caching.
 import logging
 import os
 import time as _time
+from datetime import datetime, timezone
 
-from app.api.middleware.auth import require_auth_or_api_key
+from app.api.middleware.auth import require_auth_or_api_key, require_scope
 from app.api.middleware.rate_limit import rate_limit_with_burst
 from app.api.schemas.weather import parse_json_safely
 from app.core.constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR, HTTP_NOT_FOUND, HTTP_OK
 from app.core.exceptions import ValidationError, api_error
 from app.services.predict import predict_flood
-from app.utils.cache import (
+from app.utils.resilience.cache import (
     cache_prediction_result,
     get_cached_prediction,
     is_cache_enabled,
@@ -39,6 +40,7 @@ PREDICTION_CACHE_ENABLED = os.getenv("PREDICTION_CACHE_ENABLED", "True").lower()
 @rate_limit_with_burst("60 per hour")
 @validate_request_size(endpoint_name="predict")  # 10KB limit for prediction payloads
 @require_auth_or_api_key
+@require_scope("predict")
 def predict():
     """
     Predict flood risk based on weather data.
@@ -172,6 +174,15 @@ def predict():
         if not input_data:
             return api_error("NoInput", "No input data provided", HTTP_BAD_REQUEST, request_id)
 
+        # Reject non-dict JSON bodies (arrays, strings, integers)
+        if not isinstance(input_data, dict):
+            return api_error(
+                "InvalidInput",
+                "Request body must be a JSON object",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
         # Validate and sanitize input using InputValidator
         try:
             validated_data = InputValidator.validate_prediction_input(input_data)
@@ -221,6 +232,7 @@ def predict():
                 "flood_risk": "high" if prediction["prediction"] == 1 else "low",
                 "model_version": prediction.get("model_version"),
                 "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             # Add probability if available
             if "probability" in prediction:
@@ -232,6 +244,15 @@ def predict():
                 response["risk_color"] = prediction.get("risk_color")
                 response["risk_description"] = prediction.get("risk_description")
                 response["confidence"] = prediction.get("confidence")
+            # Smart alert metadata
+            if "smart_alert" in prediction:
+                response["smart_alert"] = prediction["smart_alert"]
+            # XAI explanation payload
+            if "explanation" in prediction:
+                response["explanation"] = prediction["explanation"]
+            # Features used by the model
+            if "features_used" in prediction:
+                response["features_used"] = prediction["features_used"]
         else:
             # Simple int response - convert to dict with basic info
             response = {
@@ -239,6 +260,7 @@ def predict():
                 "prediction": prediction,
                 "flood_risk": "high" if prediction == 1 else "low",
                 "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
         # Cache the prediction result (stamp with timestamp for staleness tracking)
@@ -246,6 +268,16 @@ def predict():
             response["cached_at"] = _time.time()
             cache_prediction_result(weather_hash, response, PREDICTION_CACHE_TTL)
             logger.debug(f"Prediction cached [{request_id}]: {weather_hash}")
+
+        # Feed monitoring service for drift detection
+        try:
+            from app.services.monitoring import record_prediction_result
+
+            _risk_label = response.get("risk_label") or response.get("flood_risk", "unknown")
+            _confidence = response.get("confidence") or 0.0
+            record_prediction_result(risk_label=str(_risk_label), confidence=float(_confidence))
+        except Exception:  # nosec B110
+            pass  # Non-critical — never break a prediction request
 
         response["cache_hit"] = False
         response.pop("cached_at", None)  # Don't expose raw timestamp on fresh responses
@@ -266,6 +298,9 @@ def predict():
     except FileNotFoundError as e:
         logger.error(f"Model not found [{request_id}]: {e}")
         return api_error("ModelNotFound", "Requested model not found", HTTP_NOT_FOUND, request_id)
+    except (EOFError, ModuleNotFoundError) as e:
+        logger.error(f"Corrupt model artifact [{request_id}]: {e}", exc_info=True)
+        return api_error("ModelError", "Model artifact is corrupt or incompatible", HTTP_INTERNAL_ERROR, request_id)
     except Exception as e:
         logger.error(f"Error in predict endpoint [{request_id}]: {e}", exc_info=True)
         return api_error("PredictionFailed", "An error occurred during prediction", HTTP_INTERNAL_ERROR, request_id)
@@ -275,6 +310,7 @@ def predict():
 @rate_limit_with_burst("60 per hour")
 @validate_request_size(endpoint_name="predict")
 @require_auth_or_api_key
+@require_scope("predict")
 def predict_by_location():
     """
     Predict flood risk based on GPS coordinates.
@@ -444,6 +480,7 @@ def predict_by_location():
                 "flood_risk": "high" if prediction["prediction"] == 1 else "low",
                 "model_version": prediction.get("model_version"),
                 "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "weather_data": weather_data,
             }
             if "probability" in prediction:
@@ -454,12 +491,22 @@ def predict_by_location():
                 response["risk_color"] = prediction.get("risk_color")
                 response["risk_description"] = prediction.get("risk_description")
                 response["confidence"] = prediction.get("confidence")
+            # Smart alert metadata
+            if "smart_alert" in prediction:
+                response["smart_alert"] = prediction["smart_alert"]
+            # XAI explanation payload
+            if "explanation" in prediction:
+                response["explanation"] = prediction["explanation"]
+            # Features used by the model
+            if "features_used" in prediction:
+                response["features_used"] = prediction["features_used"]
         else:
             response = {
                 "success": True,
                 "prediction": prediction,
                 "flood_risk": "high" if prediction == 1 else "low",
                 "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "weather_data": weather_data,
             }
 
@@ -490,6 +537,9 @@ def predict_by_location():
     except FileNotFoundError as e:
         logger.error(f"Model not found [{request_id}]: {e}")
         return api_error("ModelNotFound", "Requested model not found", HTTP_NOT_FOUND, request_id)
+    except (EOFError, ModuleNotFoundError) as e:
+        logger.error(f"Corrupt model artifact [{request_id}]: {e}", exc_info=True)
+        return api_error("ModelError", "Model artifact is corrupt or incompatible", HTTP_INTERNAL_ERROR, request_id)
     except Exception as e:
         logger.error(f"Error in predict/location endpoint [{request_id}]: {e}", exc_info=True)
         return api_error("PredictionFailed", "An error occurred during prediction", HTTP_INTERNAL_ERROR, request_id)

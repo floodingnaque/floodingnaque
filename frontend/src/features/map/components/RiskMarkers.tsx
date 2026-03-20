@@ -5,11 +5,12 @@
  * Each marker displays a popup with alert details.
  */
 
-import { useMemo } from 'react';
-import { Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import type { Alert } from '@/types';
-import type { RiskLevel } from '@/types/api/prediction';
+import { RISK_HEX } from "@/lib/colors";
+import type { Alert } from "@/types";
+import type { RiskLevel } from "@/types/api/prediction";
+import L from "leaflet";
+import { memo, useMemo } from "react";
+import { Marker, Popup } from "react-leaflet";
 
 export interface RiskMarkersProps {
   /** Array of alerts to display as markers */
@@ -20,19 +21,36 @@ export interface RiskMarkersProps {
  * Risk level color mapping (0=Safe/green, 1=Alert/yellow, 2=Critical/red)
  */
 const RISK_COLORS: Record<RiskLevel, string> = {
-  0: '#22c55e', // green-500 - Safe
-  1: '#eab308', // yellow-500 - Alert
-  2: '#ef4444', // red-500 - Critical
+  0: RISK_HEX.safe,
+  1: RISK_HEX.alert,
+  2: RISK_HEX.critical,
 };
 
 /**
  * Risk level label mapping
  */
 const RISK_LABELS: Record<RiskLevel, string> = {
-  0: 'Safe',
-  1: 'Alert',
-  2: 'Critical',
+  0: "Safe",
+  1: "Alert",
+  2: "Critical",
 };
+
+/** Parañaque City approximate bounding box */
+const PARANAQUE_BOUNDS = {
+  latMin: 14.3,
+  latMax: 14.6,
+  lngMin: 120.9,
+  lngMax: 121.1,
+} as const;
+
+function isInBounds(lat: number, lng: number): boolean {
+  return (
+    lat >= PARANAQUE_BOUNDS.latMin &&
+    lat <= PARANAQUE_BOUNDS.latMax &&
+    lng >= PARANAQUE_BOUNDS.lngMin &&
+    lng <= PARANAQUE_BOUNDS.lngMax
+  );
+}
 
 /**
  * Create a custom colored SVG marker icon
@@ -44,9 +62,9 @@ function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
   const svgIcon = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" role="img" aria-label="${label} risk marker">
       <title>${label} risk marker</title>
-      <path 
-        fill="${color}" 
-        stroke="#ffffff" 
+      <path
+        fill="${color}"
+        stroke="#ffffff"
         stroke-width="1.5"
         d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
       />
@@ -56,7 +74,7 @@ function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
 
   return L.divIcon({
     html: svgIcon,
-    className: 'custom-marker-icon',
+    className: "custom-marker-icon",
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
@@ -67,9 +85,9 @@ function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
  * Format date for display
  */
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleString('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+  return new Date(dateString).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
   });
 }
 
@@ -79,7 +97,9 @@ function formatDate(dateString: string): string {
  * @example
  * <RiskMarkers alerts={alerts} />
  */
-export function RiskMarkers({ alerts }: RiskMarkersProps) {
+export const RiskMarkers = memo(function RiskMarkers({
+  alerts,
+}: RiskMarkersProps) {
   // Filter alerts that have valid coordinates
   const validAlerts = useMemo(
     () =>
@@ -88,9 +108,10 @@ export function RiskMarkers({ alerts }: RiskMarkersProps) {
           alert.latitude !== undefined &&
           alert.longitude !== undefined &&
           !isNaN(alert.latitude) &&
-          !isNaN(alert.longitude)
+          !isNaN(alert.longitude) &&
+          isInBounds(alert.latitude, alert.longitude),
       ),
-    [alerts]
+    [alerts],
   );
 
   // Memoize marker icons
@@ -121,9 +142,11 @@ export function RiskMarkers({ alerts }: RiskMarkersProps) {
               <div className="mb-2 flex items-center gap-2">
                 <span
                   className={`inline-block h-3 w-3 rounded-full ${
-                    alert.risk_level === 0 ? 'bg-green-500' :
-                    alert.risk_level === 1 ? 'bg-yellow-500' :
-                    'bg-red-500'
+                    alert.risk_level === 0
+                      ? "bg-risk-safe"
+                      : alert.risk_level === 1
+                        ? "bg-risk-alert"
+                        : "bg-risk-critical"
                   }`}
                 />
                 <span className="font-semibold text-sm">
@@ -143,8 +166,8 @@ export function RiskMarkers({ alerts }: RiskMarkersProps) {
 
               {/* Coordinates */}
               <p className="mb-1 text-xs text-gray-500">
-                <strong>Coordinates:</strong>{' '}
-                {alert.latitude?.toFixed(4)}, {alert.longitude?.toFixed(4)}
+                <strong>Coordinates:</strong> {alert.latitude?.toFixed(4)},{" "}
+                {alert.longitude?.toFixed(4)}
               </p>
 
               {/* Triggered Time */}
@@ -164,11 +187,11 @@ export function RiskMarkers({ alerts }: RiskMarkersProps) {
                 <span
                   className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                     alert.acknowledged
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-yellow-100 text-yellow-700'
+                      ? "bg-risk-safe/15 text-risk-safe"
+                      : "bg-risk-alert/15 text-risk-alert"
                   }`}
                 >
-                  {alert.acknowledged ? 'Acknowledged' : 'Pending'}
+                  {alert.acknowledged ? "Acknowledged" : "Pending"}
                 </span>
               </div>
             </div>
@@ -188,6 +211,6 @@ export function RiskMarkers({ alerts }: RiskMarkersProps) {
       `}</style>
     </>
   );
-}
+});
 
 export default RiskMarkers;

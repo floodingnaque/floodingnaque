@@ -74,8 +74,47 @@ services:
       - floodingnaque_logs_dev:/app/logs
     networks:
       - floodingnaque-dev
-    depends_on: []  # No db dependency (using Supabase)
+    depends_on: [] # No db dependency (using Supabase)
     # Inherits healthcheck, logging, resources from compose.yaml
+
+  # ===================
+  # Frontend (React SPA - Dev Server)
+  # ===================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    image: floodingnaque-frontend:development
+    container_name: floodingnaque-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000
+    volumes:
+      # Mount source for hot-reload
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+    networks:
+      - floodingnaque-dev
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   # ===================
   # Redis (Optional for Dev)
@@ -101,7 +140,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
 
   # ===================
@@ -149,7 +188,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
 
   # ===================
@@ -193,7 +232,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
 
 # ===================

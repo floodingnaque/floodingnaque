@@ -96,6 +96,11 @@ def user_auth_app():
 
 @pytest.fixture()
 def user_client(user_auth_app):
+    # Re-create tables in case the auto_reset_singletons fixture disposed the engine
+    with user_auth_app.app_context():
+        from app.models.db import Base, get_engine
+
+        Base.metadata.create_all(get_engine())
     with user_auth_app.test_client() as c:
         with user_auth_app.app_context():
             yield c

@@ -107,7 +107,7 @@ If you need to create an admin user directly:
    @"
    import sys
    import os
-   
+
    # Add current directory to path
    sys.path.append(os.getcwd())
 
@@ -126,7 +126,7 @@ If you need to create an admin user directly:
                if existing:
                    print('Admin user already exists!')
                    return
-               
+
                print('Creating admin user...')
                # Create admin user
                admin = User(
@@ -137,7 +137,7 @@ If you need to create an admin user directly:
                    is_active=True,
                    is_verified=True
                )
-               
+
                db.add(admin)
                print('Admin user created successfully!')
                print('Email: admin@floodingnaque.com')
@@ -150,7 +150,7 @@ If you need to create an admin user directly:
    if __name__ == '__main__':
        create_admin()
    "@ | Out-File -FilePath create_admin.py -Encoding utf8
-   
+
    python create_admin.py
    ```
 

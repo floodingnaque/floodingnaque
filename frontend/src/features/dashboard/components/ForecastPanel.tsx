@@ -6,22 +6,23 @@
  * Data source: /api/data/hourly
  */
 
-import { memo, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { DataUnavailable } from "@/components/feedback";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { weatherApi } from "@/features/weather/services/weatherApi";
+import { useQuery } from "@tanstack/react-query";
+import { Clock, CloudRain } from "lucide-react";
+import { memo, useMemo } from "react";
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts';
-import { CloudRain, Clock } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { weatherApi } from '@/features/weather/services/weatherApi';
+} from "recharts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,14 +41,12 @@ interface ForecastHour {
 // ---------------------------------------------------------------------------
 
 function riskColor(precip: number): string {
-  if (precip >= 7.5) return '#DC3545'; // Critical
-  if (precip >= 2.5) return '#FFC107'; // Alert
-  return '#28A745'; // Safe
+  if (precip >= 7.5) return "hsl(var(--risk-critical))"; // Critical
+  if (precip >= 2.5) return "hsl(var(--risk-alert))"; // Alert
+  return "hsl(var(--risk-safe))"; // Safe
 }
 
-function kelvinToCelsius(k: number): number {
-  return Math.round(k - 273.15);
-}
+// Meteostat hourly API returns temperature in Celsius — no conversion needed
 
 // ---------------------------------------------------------------------------
 // Component
@@ -63,8 +62,13 @@ export const ForecastPanel = memo(function ForecastPanel({
   className,
   hours = 12,
 }: ForecastPanelProps) {
-  const { data: rawForecast, isLoading } = useQuery({
-    queryKey: ['weather', 'hourly', 'forecast'],
+  const {
+    data: rawForecast,
+    isLoading,
+    refetch,
+    isFetching,
+  } = useQuery({
+    queryKey: ["weather", "hourly", "forecast"],
     queryFn: () =>
       weatherApi.getHourlyForecast({
         lat: 14.4793,
@@ -82,12 +86,12 @@ export const ForecastPanel = memo(function ForecastPanel({
     return rawForecast.slice(0, hours).map((w) => {
       const d = new Date(w.recorded_at);
       return {
-        hour: d.toLocaleTimeString('en-PH', {
-          hour: 'numeric',
+        hour: d.toLocaleTimeString("en-PH", {
+          hour: "numeric",
           hour12: true,
         }),
         precipitation: w.precipitation,
-        temperature: w.temperature ? kelvinToCelsius(w.temperature) : 0,
+        temperature: w.temperature ? Math.round(w.temperature) : 0,
         humidity: w.humidity,
         riskColor: riskColor(w.precipitation),
       };
@@ -120,9 +124,15 @@ export const ForecastPanel = memo(function ForecastPanel({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground py-6 text-center">
-            Forecast data unavailable
-          </p>
+          <DataUnavailable
+            title="Forecast data unavailable"
+            description="Weather data source is temporarily unavailable."
+            action={{
+              label: isFetching ? "Retrying..." : "Retry",
+              onClick: () => void refetch(),
+            }}
+            compact
+          />
         </CardContent>
       </Card>
     );
@@ -143,7 +153,10 @@ export const ForecastPanel = memo(function ForecastPanel({
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={forecastData} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
+          <BarChart
+            data={forecastData}
+            margin={{ top: 5, right: 5, bottom: 5, left: -10 }}
+          >
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="hour"
@@ -157,12 +170,23 @@ export const ForecastPanel = memo(function ForecastPanel({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '0.5rem',
+                backgroundColor: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "0.5rem",
                 fontSize: 12,
               }}
-              formatter={(value) => [`${Number(value).toFixed(1)} mm`, 'Precipitation']}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload as ForecastHour;
+                return (
+                  <div className="rounded-lg border bg-card p-2 text-xs shadow-sm">
+                    <p className="font-medium">{d.hour}</p>
+                    <p>Precipitation: {d.precipitation.toFixed(1)} mm</p>
+                    <p>Temperature: {d.temperature}°C</p>
+                    <p>Humidity: {d.humidity}%</p>
+                  </div>
+                );
+              }}
             />
             <Bar dataKey="precipitation" radius={[4, 4, 0, 0]}>
               {forecastData.map((entry, idx) => (

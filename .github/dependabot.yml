@@ -15,7 +15,7 @@ updates:
       timezone: "Asia/Manila"
     open-pull-requests-limit: 10
     assignees:
-      - "KyaRhamil"
+      - "Ramil-Martizano"
     labels:
       - "dependencies"
       - "python"

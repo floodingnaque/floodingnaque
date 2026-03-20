@@ -4,18 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to rollback'
+        description: "Environment to rollback"
         required: true
         type: choice
         options:
           - staging
           - production
       image_tag:
-        description: 'Docker image tag to rollback to (e.g., main-abc1234 or v1.2.3)'
+        description: "Docker image tag to rollback to (e.g., main-abc1234 or v1.2.3)"
         required: true
         type: string
       reason:
-        description: 'Reason for rollback'
+        description: "Reason for rollback"
         required: true
         type: string
 
@@ -44,26 +44,26 @@ jobs:
       image_exists: ${{ steps.check.outputs.exists }}
 
     steps:
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Check if image tag exists
-      id: check
-      run: |
-        IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
-        echo "Checking for image: $IMAGE"
-        if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
-          echo "✅ Image tag exists"
-          echo "exists=true" >> $GITHUB_OUTPUT
-        else
-          echo "::error::Image tag '${{ github.event.inputs.image_tag }}' not found in registry"
-          echo "exists=false" >> $GITHUB_OUTPUT
-          exit 1
-        fi
+      - name: Check if image tag exists
+        id: check
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+          echo "Checking for image: $IMAGE"
+          if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "✅ Image tag exists"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Image tag '${{ github.event.inputs.image_tag }}' not found in registry"
+            echo "exists=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
 
   # ==========================================================================
   # Rollback Staging
@@ -78,49 +78,49 @@ jobs:
       url: ${{ env.STAGING_URL }}
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Rollback staging deployment
-      env:
-        DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
-        DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
-        DEPLOY_KEY: ${{ secrets.STAGING_SSH_KEY }}
-        IMAGE_TAG: ${{ github.event.inputs.image_tag }}
-        ROLLBACK_REASON: ${{ github.event.inputs.reason }}
-      run: |
-        echo "🔄 Rolling back STAGING to: $IMAGE_TAG"
-        echo "📝 Reason: $ROLLBACK_REASON"
-        echo "👤 Triggered by: ${{ github.actor }}"
+      - name: Rollback staging deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
+          DEPLOY_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+          ROLLBACK_REASON: ${{ github.event.inputs.reason }}
+        run: |
+          echo "🔄 Rolling back STAGING to: $IMAGE_TAG"
+          echo "📝 Reason: $ROLLBACK_REASON"
+          echo "👤 Triggered by: ${{ github.actor }}"
 
-        # Set up SSH
-        mkdir -p ~/.ssh
-        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Set up SSH
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-        # Rollback via SSH - pull specific tag and restart
-        ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << ROLLBACK_SCRIPT
-          cd /opt/floodingnaque
-          export IMAGE_TAG="$IMAGE_TAG"
-          docker compose -f compose.staging.yaml pull
-          docker compose -f compose.staging.yaml up -d --remove-orphans
-        ROLLBACK_SCRIPT
+          # Rollback via SSH - pull specific tag and restart
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << ROLLBACK_SCRIPT
+            cd /opt/floodingnaque
+            export IMAGE_TAG="$IMAGE_TAG"
+            docker compose -f compose.staging.yaml pull
+            docker compose -f compose.staging.yaml up -d --remove-orphans
+          ROLLBACK_SCRIPT
 
-        rm -f ~/.ssh/deploy_key
+          rm -f ~/.ssh/deploy_key
 
-    - name: Verify rollback health
-      run: |
-        echo "🔍 Verifying rollback..."
-        sleep 30
-        curl -f --retry 5 --retry-delay 10 ${{ env.STAGING_URL }}/health || exit 1
-        echo "✅ Staging rollback health check passed"
+      - name: Verify rollback health
+        run: |
+          echo "🔍 Verifying rollback..."
+          sleep 30
+          curl -f --retry 5 --retry-delay 10 ${{ env.STAGING_URL }}/health || exit 1
+          echo "✅ Staging rollback health check passed"
 
-    - name: Notify rollback complete
-      run: |
-        echo "::notice::🔄 Staging rolled back to ${{ github.event.inputs.image_tag }}"
-        echo "::notice::Reason: ${{ github.event.inputs.reason }}"
+      - name: Notify rollback complete
+        run: |
+          echo "::notice::🔄 Staging rolled back to ${{ github.event.inputs.image_tag }}"
+          echo "::notice::Reason: ${{ github.event.inputs.reason }}"
 
   # ==========================================================================
   # Rollback Production (Requires Approval)
@@ -131,55 +131,55 @@ jobs:
     if: github.event.inputs.environment == 'production'
     runs-on: ubuntu-latest
     environment:
-      name: Production  # Requires approval from KyaRhamil
+      name: Production # Requires approval from Ramil-Martizano
       url: ${{ env.PRODUCTION_URL }}
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Rollback production deployment
-      env:
-        DEPLOY_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
-        DEPLOY_USER: ${{ secrets.PRODUCTION_SSH_USER }}
-        DEPLOY_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
-        IMAGE_TAG: ${{ github.event.inputs.image_tag }}
-        ROLLBACK_REASON: ${{ github.event.inputs.reason }}
-      run: |
-        echo "🔄 Rolling back PRODUCTION to: $IMAGE_TAG"
-        echo "📝 Reason: $ROLLBACK_REASON"
-        echo "👤 Triggered by: ${{ github.actor }}"
-        echo "⚠️  This is a PRODUCTION rollback"
+      - name: Rollback production deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+          DEPLOY_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+          ROLLBACK_REASON: ${{ github.event.inputs.reason }}
+        run: |
+          echo "🔄 Rolling back PRODUCTION to: $IMAGE_TAG"
+          echo "📝 Reason: $ROLLBACK_REASON"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "⚠️  This is a PRODUCTION rollback"
 
-        # Set up SSH
-        mkdir -p ~/.ssh
-        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Set up SSH
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-        # Rollback via SSH - pull specific tag and restart
-        ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << ROLLBACK_SCRIPT
-          cd /opt/floodingnaque
-          export IMAGE_TAG="$IMAGE_TAG"
-          docker compose -f compose.production.yaml pull
-          docker compose -f compose.production.yaml up -d --remove-orphans
-        ROLLBACK_SCRIPT
+          # Rollback via SSH - pull specific tag and restart
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" << ROLLBACK_SCRIPT
+            cd /opt/floodingnaque
+            export IMAGE_TAG="$IMAGE_TAG"
+            docker compose -f compose.production.yaml pull
+            docker compose -f compose.production.yaml up -d --remove-orphans
+          ROLLBACK_SCRIPT
 
-        rm -f ~/.ssh/deploy_key
+          rm -f ~/.ssh/deploy_key
 
-    - name: Verify rollback health
-      run: |
-        echo "🔍 Verifying production rollback..."
-        sleep 30
-        curl -f --retry 5 --retry-delay 15 ${{ env.PRODUCTION_URL }}/health || exit 1
-        echo "✅ Production rollback health check passed"
+      - name: Verify rollback health
+        run: |
+          echo "🔍 Verifying production rollback..."
+          sleep 30
+          curl -f --retry 5 --retry-delay 15 ${{ env.PRODUCTION_URL }}/health || exit 1
+          echo "✅ Production rollback health check passed"
 
-    - name: Notify rollback complete
-      run: |
-        echo "::warning::🔄 PRODUCTION rolled back to ${{ github.event.inputs.image_tag }}"
-        echo "::warning::Reason: ${{ github.event.inputs.reason }}"
-        echo "::warning::Triggered by: ${{ github.actor }}"
+      - name: Notify rollback complete
+        run: |
+          echo "::warning::🔄 PRODUCTION rolled back to ${{ github.event.inputs.image_tag }}"
+          echo "::warning::Reason: ${{ github.event.inputs.reason }}"
+          echo "::warning::Triggered by: ${{ github.actor }}"
 
   # ==========================================================================
   # Create Rollback Record
@@ -194,32 +194,32 @@ jobs:
       issues: write
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Create rollback issue for tracking
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const title = `🔄 Rollback: ${context.payload.inputs.environment} → ${context.payload.inputs.image_tag}`;
-          const body = `## Rollback Record
+      - name: Create rollback issue for tracking
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🔄 Rollback: ${context.payload.inputs.environment} → ${context.payload.inputs.image_tag}`;
+            const body = `## Rollback Record
 
-          **Environment:** ${context.payload.inputs.environment}
-          **Rolled back to:** ${context.payload.inputs.image_tag}
-          **Reason:** ${context.payload.inputs.reason}
-          **Triggered by:** @${context.actor}
-          **Timestamp:** ${new Date().toISOString()}
-          **Workflow Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+            **Environment:** ${context.payload.inputs.environment}
+            **Rolled back to:** ${context.payload.inputs.image_tag}
+            **Reason:** ${context.payload.inputs.reason}
+            **Triggered by:** @${context.actor}
+            **Timestamp:** ${new Date().toISOString()}
+            **Workflow Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
 
-          ---
-          This issue was automatically created to track the rollback event.
-          `;
+            ---
+            This issue was automatically created to track the rollback event.
+            `;
 
-          await github.rest.issues.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            title: title,
-            body: body,
-            labels: ['rollback', 'ops', context.payload.inputs.environment]
-          });
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['rollback', 'ops', context.payload.inputs.environment]
+            });

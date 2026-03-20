@@ -40,14 +40,21 @@ class TestUserAuthenticationFlow:
 
                                 mock_user = MagicMock()
                                 mock_user.id = 1
+                                mock_user.email = registration_data["email"]
+                                mock_user.role = "user"
                                 mock_user.to_dict.return_value = {"id": 1, "email": registration_data["email"]}
 
                                 with patch("app.api.routes.users.User", return_value=mock_user):
-                                    register_response = client.post(
-                                        "/api/v1/auth/register",
-                                        data=json.dumps(registration_data),
-                                        content_type="application/json",
-                                    )
+                                    with patch("app.api.routes.users.create_access_token", return_value="mock_access"):
+                                        with patch(
+                                            "app.api.routes.users.create_refresh_token",
+                                            return_value=("mock_refresh", "mock_hash"),
+                                        ):
+                                            register_response = client.post(
+                                                "/api/v1/auth/register",
+                                                data=json.dumps(registration_data),
+                                                content_type="application/json",
+                                            )
 
         assert register_response.status_code == 201
 
@@ -306,6 +313,7 @@ class TestPredictionWorkflow:
                     def __init__(self, pred, total):
                         self._pred = pred
                         self._total = total
+
                     def __getitem__(self, idx):
                         return self._pred
 
@@ -335,9 +343,10 @@ class TestDataExportFlow:
             record.precipitation = 5.0
             record.wind_speed = 10.0
             record.pressure = 1013.25
-            record.latitude = 14.4793
-            record.longitude = 121.0198
-            record.location = "Paranaque City"
+            record.location_lat = 14.4793
+            record.location_lon = 121.0198
+            record.source = "openweathermap"
+            record.is_deleted = False
             mock_records.append(record)
 
         with patch("app.api.middleware.auth.validate_api_key", return_value=(True, "")):

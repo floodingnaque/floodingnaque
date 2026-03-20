@@ -156,6 +156,15 @@ UNSAFE_DEFAULTS = {
     "JWT_SECRET_KEY": ["change_this_to_another_random_secret_key"],
 }
 
+# Flags that must NEVER be true in non-development environments
+DANGEROUS_FLAGS = {
+    "AUTH_BYPASS_ENABLED": {
+        "forbidden_values": ["true", "1", "yes"],
+        "allowed_envs": ["development", "dev"],
+        "message": "AUTH_BYPASS_ENABLED is active — password verification is completely disabled!",
+    },
+}
+
 
 # =============================================================================
 # HEALTH CHECK IMPLEMENTATIONS
@@ -178,6 +187,21 @@ def check_environment_variables() -> HealthCheckResult:
     missing_required = []
     using_unsafe_defaults = []
     missing_recommended = []
+    dangerous_flags_active = []
+
+    # Check dangerous flags (e.g. AUTH_BYPASS_ENABLED) in non-dev environments
+    for flag_name, flag_cfg in DANGEROUS_FLAGS.items():
+        flag_val = os.getenv(flag_name, "false").lower()
+        if flag_val in flag_cfg["forbidden_values"]:
+            if app_env not in flag_cfg["allowed_envs"]:
+                dangerous_flags_active.append(f"{flag_name}: {flag_cfg['message']}")
+            else:
+                logger.warning(
+                    "SECURITY: %s is enabled in %s environment — "
+                    "ensure this is intentional for local development only",
+                    flag_name,
+                    app_env,
+                )
 
     # Check required variables
     required = REQUIRED_ENV_VARS.get("all", []).copy()
@@ -199,6 +223,21 @@ def check_environment_variables() -> HealthCheckResult:
     latency_ms = (time.time() - start) * 1000
 
     # Determine status
+    if dangerous_flags_active:
+        return HealthCheckResult(
+            name="environment_variables",
+            status=HealthCheckStatus.UNHEALTHY,
+            message="CRITICAL: Dangerous security flags active in non-development environment",
+            severity=HealthCheckSeverity.CRITICAL,
+            details={
+                "dangerous_flags": dangerous_flags_active,
+                "missing_required": missing_required,
+                "using_unsafe_defaults": using_unsafe_defaults,
+                "missing_recommended": missing_recommended,
+                "environment": app_env,
+            },
+            latency_ms=latency_ms,
+        )
     if missing_required or (is_production and using_unsafe_defaults):
         return HealthCheckResult(
             name="environment_variables",
@@ -249,7 +288,7 @@ def check_ml_model() -> HealthCheckResult:
 
     try:
         from app.services.predict import get_current_model_info
-        from app.utils.ml_version_check import check_model_training_versions, validate_ml_versions
+        from app.utils.ml.ml_version_check import check_model_training_versions, validate_ml_versions
 
         # Check ML stack versions first
         version_results = validate_ml_versions()
@@ -293,6 +332,26 @@ def check_ml_model() -> HealthCheckResult:
         if model_info and model_info.get("metadata") and "training_versions" in model_info.get("metadata", {}):
             training_warnings = check_model_training_versions(model_info.get("metadata", {}))
 
+        # Validate model metadata quality (data provenance check)
+        metadata_warnings = []
+        if model_info and model_info.get("metadata"):
+            meta = model_info["metadata"]
+            metrics = meta.get("metrics", {})
+            version_num = meta.get("version")
+
+            # For v5+ models, check that metrics aren't suspiciously perfect
+            if version_num and isinstance(version_num, (int, float)) and version_num >= 5:
+                if metrics.get("accuracy") == 1.0 and metrics.get("f1_score") == 1.0:
+                    metadata_warnings.append(
+                        "Model reports perfect 1.0 accuracy and F1 — likely not trained on real data"
+                    )
+
+                total_records = meta.get("total_records") or meta.get("training_data", {}).get("total_records", 0)
+                if total_records < 500:
+                    metadata_warnings.append(
+                        f"Model has only {total_records} training records (expected >= 500 for v5+)"
+                    )
+
         latency_ms = (time.time() - start) * 1000
 
         # Get version from metadata
@@ -300,16 +359,17 @@ def check_ml_model() -> HealthCheckResult:
         if model_info and model_info.get("metadata"):
             version = model_info["metadata"].get("version", "unknown")
 
-        if version_issues or training_warnings:
+        if version_issues or training_warnings or metadata_warnings:
             return HealthCheckResult(
                 name="ml_model",
                 status=HealthCheckStatus.DEGRADED,
-                message=f"Model loaded with {len(version_issues)} version warnings",
+                message=f"Model loaded with {len(version_issues) + len(metadata_warnings)} warnings",
                 severity=HealthCheckSeverity.WARNING,
                 details={
                     "model_info": model_info,
                     "version_warnings": [r.message for r in version_issues],
                     "training_warnings": training_warnings,
+                    "metadata_warnings": metadata_warnings,
                 },
                 latency_ms=latency_ms,
             )
@@ -560,6 +620,7 @@ def validate_startup_health(
     Raises:
         RuntimeError: If raise_on_failure is True and critical failures found
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from datetime import datetime, timezone
 
     start_time = time.time()
@@ -567,19 +628,39 @@ def validate_startup_health(
         timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
-    # Run checks
+    # Fast sequential checks (< 10ms each)
     if check_env:
         report.checks.append(check_environment_variables())
 
     if check_model:
         report.checks.append(check_model_directory())
-        report.checks.append(check_ml_model())
 
+    # I/O-bound checks run in parallel (model load, DB, Redis)
+    parallel_checks = []
+    if check_model:
+        parallel_checks.append(check_ml_model)
     if check_database_conn:
-        report.checks.append(check_database())
-
+        parallel_checks.append(check_database)
     if check_redis_conn:
-        report.checks.append(check_redis())
+        parallel_checks.append(check_redis)
+
+    if parallel_checks:
+        with ThreadPoolExecutor(max_workers=len(parallel_checks)) as executor:
+            futures = {executor.submit(fn): getattr(fn, "__name__", str(fn)) for fn in parallel_checks}
+            for future in as_completed(futures):
+                try:
+                    report.checks.append(future.result())
+                except Exception as e:
+                    fn_name = futures[future]
+                    logger.error(f"Health check '{fn_name}' raised an exception: {e}")
+                    report.checks.append(
+                        HealthCheckResult(
+                            name=fn_name,
+                            status=HealthCheckStatus.UNHEALTHY,
+                            message=f"Check failed with exception: {e}",
+                            severity=HealthCheckSeverity.WARNING,
+                        )
+                    )
 
     report.total_latency_ms = (time.time() - start_time) * 1000
 

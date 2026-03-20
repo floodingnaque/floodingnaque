@@ -6,8 +6,11 @@ Provides API endpoints for retrieving alerts and alert history.
 
 import json
 import logging
+import math
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 
+from app.api.middleware.auth import require_auth
 from app.api.middleware.rate_limit import limiter
 from app.models.db import AlertHistory, get_db_session
 from app.services.alerts import get_alert_system
@@ -33,10 +36,11 @@ def get_alerts():
     Get list of alerts with pagination and filtering.
 
     Query Parameters:
-        limit (int): Maximum number of alerts to return (default: 50, max: 500)
-        offset (int): Number of records to skip (default: 0)
+        page (int): Page number, 1-based (default: 1)
+        limit (int): Maximum number of alerts to return (default: 20, max: 500)
         risk_level (int): Filter by risk level (0=Safe, 1=Alert, 2=Critical)
         status (str): Filter by delivery status (delivered/pending/failed)
+        acknowledged (str): Filter by acknowledgement (true/false)
         start_date (str): Filter alerts after this date (ISO format)
         end_date (str): Filter alerts before this date (ISO format)
 
@@ -47,13 +51,13 @@ def get_alerts():
       - Alerts
     parameters:
       - in: query
+        name: page
+        type: integer
+        default: 1
+      - in: query
         name: limit
         type: integer
-        default: 50
-      - in: query
-        name: offset
-        type: integer
-        default: 0
+        default: 20
       - in: query
         name: risk_level
         type: integer
@@ -62,6 +66,10 @@ def get_alerts():
         name: status
         type: string
         enum: [delivered, pending, failed]
+      - in: query
+        name: acknowledged
+        type: string
+        enum: [true, false]
     responses:
       200:
         description: List of alerts
@@ -69,16 +77,15 @@ def get_alerts():
     request_id = getattr(g, "request_id", "unknown")
 
     try:
-        # Parse query parameters
-        limit = min(request.args.get("limit", 50, type=int), 500)
-        offset = request.args.get("offset", 0, type=int)
+        # Parse query parameters — page-based pagination
+        page = max(request.args.get("page", 1, type=int), 1)
+        limit = min(max(request.args.get("limit", 20, type=int), 1), 500)
+        offset = (page - 1) * limit
         risk_level = request.args.get("risk_level", type=int)
         status = request.args.get("status", type=str)
+        acknowledged_param = request.args.get("acknowledged", type=str)
         start_date = request.args.get("start_date", type=str)
         end_date = request.args.get("end_date", type=str)
-
-        if limit < 1:
-            return api_error("ValidationError", "Limit must be at least 1", HTTP_BAD_REQUEST, request_id)
 
         with get_db_session() as session:
             query = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False))
@@ -97,6 +104,10 @@ def get_alerts():
                     )
                 query = query.filter(AlertHistory.delivery_status == status)
 
+            if acknowledged_param is not None:
+                ack_bool = acknowledged_param.lower() in ("true", "1", "yes")
+                query = query.filter(AlertHistory.acknowledged == ack_bool)
+
             if start_date:
                 try:
                     start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
@@ -111,20 +122,16 @@ def get_alerts():
                 except ValueError:
                     return api_error("ValidationError", "Invalid end_date format", HTTP_BAD_REQUEST, request_id)
 
-            # Single-pass: window function for total count + pagination
-            total_col = func.count().over().label("_total")
-            query = query.order_by(desc(AlertHistory.created_at))
-            query = query.add_columns(total_col)
-            query = query.offset(offset).limit(limit)
+            # Get total count, then paginate
+            total = query.count()
+            pages = max(math.ceil(total / limit), 1)
 
-            rows = query.all()
+            alerts = query.order_by(desc(AlertHistory.created_at)).offset(offset).limit(limit).all()
 
-            total = rows[0]._total if rows else 0
-            alerts = [row[0] for row in rows]
-
-            # Format response
+            # Format response to match PaginatedResponse<Alert>
             alerts_data = []
             for alert in alerts:
+                created_iso = alert.created_at.isoformat() if alert.created_at else None
                 alert_entry = {
                     "id": alert.id,
                     "risk_level": alert.risk_level,
@@ -134,15 +141,16 @@ def get_alerts():
                     "delivery_status": alert.delivery_status,
                     "delivery_channel": alert.delivery_channel,
                     "delivered_at": alert.delivered_at.isoformat() if alert.delivered_at else None,
-                    "created_at": alert.created_at.isoformat() if alert.created_at else None,
+                    "created_at": created_iso,
+                    "triggered_at": created_iso,
+                    "acknowledged": bool(alert.acknowledged),
+                    "acknowledged_at": alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
                     # Smart alert fields
                     "confidence_score": alert.confidence_score,
                     "rainfall_3h": alert.rainfall_3h,
                     "escalation_state": alert.escalation_state,
                     "contributing_factors": (
-                        json.loads(alert.contributing_factors)
-                        if alert.contributing_factors
-                        else []
+                        json.loads(alert.contributing_factors) if alert.contributing_factors else []
                     ),
                 }
                 alerts_data.append(alert_entry)
@@ -153,9 +161,9 @@ def get_alerts():
                     "success": True,
                     "data": alerts_data,
                     "total": total,
+                    "page": page,
                     "limit": limit,
-                    "offset": offset,
-                    "count": len(alerts_data),
+                    "pages": pages,
                     "request_id": request_id,
                 }
             ),
@@ -222,11 +230,7 @@ def get_alert_by_id(alert_id):
                 "escalation_state": alert.escalation_state,
                 "escalation_reason": alert.escalation_reason,
                 "suppressed": alert.suppressed,
-                "contributing_factors": (
-                    json.loads(alert.contributing_factors)
-                    if alert.contributing_factors
-                    else []
-                ),
+                "contributing_factors": (json.loads(alert.contributing_factors) if alert.contributing_factors else []),
             }
 
         return jsonify({"success": True, "data": alert_data, "request_id": request_id}), HTTP_OK
@@ -234,6 +238,106 @@ def get_alert_by_id(alert_id):
     except Exception as e:
         logger.error(f"Error fetching alert {alert_id} [{request_id}]: {str(e)}", exc_info=True)
         return api_error("FetchFailed", "Failed to fetch alert", HTTP_INTERNAL_ERROR, request_id)
+
+
+@alerts_bp.route("/<int:alert_id>/acknowledge", methods=["PATCH"])
+@limiter.limit("30 per minute")
+def acknowledge_alert(alert_id):
+    """
+    Acknowledge a single alert.
+
+    Returns:
+        200: Alert acknowledged successfully
+        404: Alert not found
+    ---
+    tags:
+      - Alerts
+    parameters:
+      - in: path
+        name: alert_id
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Alert acknowledged
+      404:
+        description: Not found
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        with get_db_session() as session:
+            alert = (
+                session.query(AlertHistory)
+                .filter(AlertHistory.id == alert_id, AlertHistory.is_deleted.is_(False))
+                .first()
+            )
+
+            if not alert:
+                return api_error("NotFound", f"Alert with id {alert_id} not found", HTTP_NOT_FOUND, request_id)
+
+            if alert.acknowledged:
+                return (
+                    jsonify({"success": True, "message": "Alert already acknowledged", "request_id": request_id}),
+                    HTTP_OK,
+                )
+
+            alert.acknowledged = True
+            alert.acknowledged_at = datetime.now(timezone.utc)
+
+        logger.info(f"Alert {alert_id} acknowledged [{request_id}]")
+        return jsonify({"success": True, "message": "Alert acknowledged", "request_id": request_id}), HTTP_OK
+
+    except Exception as e:
+        logger.error(f"Error acknowledging alert {alert_id} [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("AcknowledgeFailed", "Failed to acknowledge alert", HTTP_INTERNAL_ERROR, request_id)
+
+
+@alerts_bp.route("/acknowledge-all", methods=["POST"])
+@limiter.limit("10 per minute")
+def acknowledge_all_alerts():
+    """
+    Acknowledge all pending (unacknowledged) alerts.
+
+    Returns:
+        200: Count of acknowledged alerts
+    ---
+    tags:
+      - Alerts
+    responses:
+      200:
+        description: All pending alerts acknowledged
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        with get_db_session() as session:
+            now = datetime.now(timezone.utc)
+            updated = (
+                session.query(AlertHistory)
+                .filter(
+                    AlertHistory.is_deleted.is_(False),
+                    AlertHistory.acknowledged.is_(False),
+                )
+                .update({"acknowledged": True, "acknowledged_at": now}, synchronize_session="fetch")
+            )
+
+        logger.info(f"Acknowledged {updated} alerts [{request_id}]")
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": f"Acknowledged {updated} alert(s)",
+                    "acknowledged_count": updated,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(f"Error acknowledging all alerts [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("AcknowledgeFailed", "Failed to acknowledge alerts", HTTP_INTERNAL_ERROR, request_id)
 
 
 @alerts_bp.route("/history", methods=["GET"])
@@ -429,10 +533,7 @@ def simulate_sms():
         alert_system = get_alert_system()
         normalized = alert_system._normalize_ph_number(phone)
 
-        logger.info(
-            f"SMS simulation requested [{request_id}]: "
-            f"phone={normalized}, risk_level={risk_level}"
-        )
+        logger.info(f"SMS simulation requested [{request_id}]: " f"phone={normalized}, risk_level={risk_level}")
 
         return (
             jsonify(
@@ -453,9 +554,7 @@ def simulate_sms():
         )
 
     except Exception as e:
-        logger.error(
-            f"Error simulating SMS [{request_id}]: {str(e)}", exc_info=True
-        )
+        logger.error(f"Error simulating SMS [{request_id}]: {str(e)}", exc_info=True)
         return api_error(
             "SimulationFailed",
             "Failed to simulate SMS alert",
@@ -561,3 +660,98 @@ def get_alert_stats():
     except Exception as e:
         logger.error(f"Error fetching alert stats [{request_id}]: {str(e)}", exc_info=True)
         return api_error("FetchFailed", "Failed to fetch alert statistics", HTTP_INTERNAL_ERROR, request_id)
+
+
+# ── Admin helpers ───────────────────────────────────────────────────────
+
+
+def _require_admin(f):
+    """Decorator that requires admin role after authentication."""
+
+    @wraps(f)
+    @require_auth
+    def decorated(*args, **kwargs):
+        if getattr(g, "current_user_role", None) != "admin":
+            return api_error("Forbidden", "Admin access required", 403)
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+# ── POST /admin/bulk-delete — Admin bulk soft-delete alerts ─────────────
+
+
+@alerts_bp.route("/admin/bulk-delete", methods=["POST"])
+@_require_admin
+def admin_bulk_delete_alerts():
+    """
+    Admin bulk soft-delete alert history records.
+
+    Request Body:
+    {
+        "older_than_days": 30,     // Delete alerts older than N days
+        "risk_level": null,        // Optional: filter by risk level (0/1/2)
+        "delivery_status": null,   // Optional: filter by status (delivered/failed/pending)
+        "confirm": true            // Required
+    }
+
+    Maximum 5000 records per request.
+    """
+    MAX_BULK = 5000
+
+    try:
+        data = request.get_json(silent=True) or {}
+
+        if not data.get("confirm"):
+            return api_error("ConfirmRequired", "Bulk delete requires confirm=true", HTTP_BAD_REQUEST)
+
+        older_than_days = data.get("older_than_days")
+        risk_level = data.get("risk_level")
+        delivery_status = data.get("delivery_status")
+
+        if older_than_days is None and risk_level is None and delivery_status is None:
+            return api_error("ValidationError", "At least one filter is required", HTTP_BAD_REQUEST)
+
+        with get_db_session() as session:
+            query = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False))
+
+            if older_than_days is not None:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=int(older_than_days))
+                query = query.filter(AlertHistory.created_at < cutoff)
+
+            if risk_level is not None:
+                query = query.filter(AlertHistory.risk_level == int(risk_level))
+
+            if delivery_status:
+                query = query.filter(AlertHistory.delivery_status == delivery_status)
+
+            total_count = query.count()
+
+            if total_count == 0:
+                return jsonify({"success": True, "deleted_count": 0, "message": "No matching records found"}), HTTP_OK
+
+            if total_count > MAX_BULK:
+                return api_error(
+                    "TooManyRecords",
+                    f"Query matches {total_count} records, exceeds max of {MAX_BULK}. Add stricter filters.",
+                    HTTP_BAD_REQUEST,
+                )
+
+            now = datetime.now(timezone.utc)
+            deleted = query.update({"is_deleted": True, "deleted_at": now}, synchronize_session="fetch")
+
+        logger.info("Admin bulk-deleted %d alert history records", deleted)
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "deleted_count": deleted,
+                    "message": f"Successfully deleted {deleted} alert(s)",
+                }
+            ),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(f"Admin bulk delete alerts failed: {e}", exc_info=True)
+        return api_error("DeleteFailed", "Failed to bulk delete alerts", HTTP_INTERNAL_ERROR)

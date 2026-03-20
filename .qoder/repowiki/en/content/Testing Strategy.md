@@ -1,7 +1,7 @@
 # Testing Strategy
 
 <cite>
-**Referenced Files in This Document**   
+**Referenced Files in This Document**  
 - [test_models.py](file://backend/tests/test_models.py)
 - [validate_model.py](file://backend/scripts/validate_model.py)
 - [evaluate_model.py](file://backend/scripts/evaluate_model.py)

@@ -69,7 +69,7 @@ psycopg2-binary==2.9.10
 cryptography==45.0.3
 itsdangerous==2.2.0
 bcrypt==4.3.0
-PyJWT==2.9.0
+PyJWT[crypto]==2.10.1  # >=2.10.1 required by supabase-auth
 
 # ============================================================================
 # INPUT VALIDATION & SANITIZATION
@@ -105,7 +105,6 @@ PyYAML==6.0.2
 python-json-logger==3.2.1
 prometheus-flask-exporter==0.23.1
 sentry-sdk[flask]==2.18.0
-ddtrace==2.14.4 ; platform_system != "Windows"
 
 # ============================================================================
 # PROGRESS TRACKING

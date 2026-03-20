@@ -5,9 +5,9 @@
  * Supports client-side sorting and loading states.
  */
 
-import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -15,11 +15,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import type { WeatherData, WeatherSource } from '@/types';
+} from "@/components/ui/table";
+import type { WeatherData, WeatherSource } from "@/types";
+import { format } from "date-fns";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 
 interface WeatherTableProps {
   /** Weather data to display */
@@ -28,8 +28,14 @@ interface WeatherTableProps {
   isLoading?: boolean;
 }
 
-type SortField = 'recorded_at' | 'temperature' | 'humidity' | 'precipitation' | 'wind_speed' | 'pressure';
-type SortOrder = 'asc' | 'desc';
+type SortField =
+  | "recorded_at"
+  | "temperature"
+  | "humidity"
+  | "precipitation"
+  | "wind_speed"
+  | "pressure";
+type SortOrder = "asc" | "desc";
 
 interface SortState {
   field: SortField;
@@ -40,10 +46,10 @@ interface SortState {
  * Source badge color mapping
  */
 const sourceColors: Record<WeatherSource, string> = {
-  OWM: 'bg-muted text-muted-foreground hover:bg-muted',
-  Manual: 'bg-muted text-muted-foreground hover:bg-muted',
-  Meteostat: 'bg-muted text-muted-foreground hover:bg-muted',
-  Google: 'bg-muted text-muted-foreground hover:bg-muted',
+  OWM: "bg-muted text-muted-foreground hover:bg-muted",
+  Manual: "bg-muted text-muted-foreground hover:bg-muted",
+  Meteostat: "bg-muted text-muted-foreground hover:bg-muted",
+  Google: "bg-muted text-muted-foreground hover:bg-muted",
 };
 
 /**
@@ -63,14 +69,18 @@ function formatTemperature(kelvin: number): string {
 /**
  * Table column headers configuration
  */
-const columns: Array<{ key: SortField | 'source'; label: string; sortable: boolean }> = [
-  { key: 'recorded_at', label: 'Date', sortable: true },
-  { key: 'temperature', label: 'Temperature', sortable: true },
-  { key: 'humidity', label: 'Humidity', sortable: true },
-  { key: 'precipitation', label: 'Precipitation', sortable: true },
-  { key: 'wind_speed', label: 'Wind Speed', sortable: true },
-  { key: 'pressure', label: 'Pressure', sortable: true },
-  { key: 'source', label: 'Source', sortable: false },
+const columns: Array<{
+  key: SortField | "source";
+  label: string;
+  sortable: boolean;
+}> = [
+  { key: "recorded_at", label: "Date", sortable: true },
+  { key: "temperature", label: "Temperature", sortable: true },
+  { key: "humidity", label: "Humidity", sortable: true },
+  { key: "precipitation", label: "Precipitation", sortable: true },
+  { key: "wind_speed", label: "Wind Speed", sortable: true },
+  { key: "pressure", label: "Pressure", sortable: true },
+  { key: "source", label: "Source", sortable: false },
 ];
 
 /**
@@ -97,15 +107,15 @@ function TableRowSkeleton() {
 export function WeatherTable({ data, isLoading }: WeatherTableProps) {
   // Sort state
   const [sort, setSort] = useState<SortState>({
-    field: 'recorded_at',
-    order: 'desc',
+    field: "recorded_at",
+    order: "desc",
   });
 
   // Handle sort click
   const handleSort = (field: SortField) => {
     setSort((prev) => ({
       field,
-      order: prev.field === field && prev.order === 'desc' ? 'asc' : 'desc',
+      order: prev.field === field && prev.order === "desc" ? "asc" : "desc",
     }));
   };
 
@@ -114,7 +124,7 @@ export function WeatherTable({ data, isLoading }: WeatherTableProps) {
     if (sort.field !== field) {
       return <ArrowUpDown className="ml-2 h-4 w-4" />;
     }
-    return sort.order === 'asc' ? (
+    return sort.order === "asc" ? (
       <ArrowUp className="ml-2 h-4 w-4" />
     ) : (
       <ArrowDown className="ml-2 h-4 w-4" />
@@ -129,29 +139,57 @@ export function WeatherTable({ data, isLoading }: WeatherTableProps) {
       let comparison = 0;
 
       switch (sort.field) {
-        case 'recorded_at':
-          comparison = new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime();
+        case "recorded_at":
+          comparison =
+            new Date(a.recorded_at).getTime() -
+            new Date(b.recorded_at).getTime();
           break;
-        case 'temperature':
+        case "temperature":
           comparison = a.temperature - b.temperature;
           break;
-        case 'humidity':
+        case "humidity":
           comparison = a.humidity - b.humidity;
           break;
-        case 'precipitation':
+        case "precipitation":
           comparison = a.precipitation - b.precipitation;
           break;
-        case 'wind_speed':
+        case "wind_speed":
           comparison = a.wind_speed - b.wind_speed;
           break;
-        case 'pressure':
+        case "pressure":
           comparison = a.pressure - b.pressure;
           break;
       }
 
-      return sort.order === 'asc' ? comparison : -comparison;
+      return sort.order === "asc" ? comparison : -comparison;
     });
   }, [data, sort]);
+
+  // CSV export
+  const handleExportCsv = useCallback(() => {
+    if (!sortedData.length) return;
+    const header =
+      "Date,Temperature (°C),Humidity (%),Precipitation (mm),Wind Speed (m/s),Pressure (hPa),Source";
+    const rows = sortedData.map((item) =>
+      [
+        format(new Date(item.recorded_at), "yyyy-MM-dd HH:mm"),
+        kelvinToCelsius(item.temperature).toFixed(1),
+        item.humidity.toFixed(1),
+        item.precipitation.toFixed(2),
+        item.wind_speed.toFixed(1),
+        item.pressure.toFixed(0),
+        item.source,
+      ].join(","),
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `weather_data_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [sortedData]);
 
   // Loading state
   if (isLoading) {
@@ -202,48 +240,64 @@ export function WeatherTable({ data, isLoading }: WeatherTableProps) {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.key}>
-                {column.sortable ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort(column.key as SortField)}
-                    className="h-8 px-2 -ml-2 font-medium"
-                  >
-                    {column.label}
-                    {getSortIcon(column.key as SortField)}
-                  </Button>
-                ) : (
-                  column.label
-                )}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedData.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
-                {format(new Date(item.recorded_at), 'MMM dd, yyyy HH:mm')}
-              </TableCell>
-              <TableCell>{formatTemperature(item.temperature)}</TableCell>
-              <TableCell>{item.humidity.toFixed(1)}%</TableCell>
-              <TableCell>{item.precipitation.toFixed(2)} mm</TableCell>
-              <TableCell>{item.wind_speed.toFixed(1)} m/s</TableCell>
-              <TableCell>{item.pressure.toFixed(0)} hPa</TableCell>
-              <TableCell>
-                <Badge variant="secondary" className={sourceColors[item.source]}>
-                  {item.source}
-                </Badge>
-              </TableCell>
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportCsv}
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </Button>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {columns.map((column) => (
+                <TableHead key={column.key}>
+                  {column.sortable ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort(column.key as SortField)}
+                      className="h-8 px-2 -ml-2 font-medium"
+                    >
+                      {column.label}
+                      {getSortIcon(column.key as SortField)}
+                    </Button>
+                  ) : (
+                    column.label
+                  )}
+                </TableHead>
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {sortedData.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>
+                  {format(new Date(item.recorded_at), "MMM dd, yyyy HH:mm")}
+                </TableCell>
+                <TableCell>{formatTemperature(item.temperature)}</TableCell>
+                <TableCell>{item.humidity.toFixed(1)}%</TableCell>
+                <TableCell>{item.precipitation.toFixed(2)} mm</TableCell>
+                <TableCell>{item.wind_speed.toFixed(1)} m/s</TableCell>
+                <TableCell>{item.pressure.toFixed(0)} hPa</TableCell>
+                <TableCell>
+                  <Badge
+                    variant="secondary"
+                    className={sourceColors[item.source]}
+                  >
+                    {item.source}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

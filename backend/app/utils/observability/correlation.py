@@ -131,7 +131,7 @@ class CorrelationContext:
     sampled: bool = True
 
     # Timing
-    start_time: datetime = field(default_factory=datetime.utcnow)
+    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Baggage (additional context to propagate)
     baggage: Dict[str, str] = field(default_factory=dict)

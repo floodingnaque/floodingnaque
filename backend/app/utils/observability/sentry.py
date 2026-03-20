@@ -138,7 +138,7 @@ def capture_exception(error: Exception, context: Optional[dict] = None) -> Optio
         Event ID if sent successfully, None otherwise
     """
     if context:
-        with sentry_sdk.push_scope() as scope:
+        with sentry_sdk.isolation_scope() as scope:
             # Add tags
             if "tags" in context:
                 for key, value in context["tags"].items():
@@ -171,7 +171,7 @@ def capture_message(message: str, level: str = "info", context: Optional[dict] =
         Event ID if sent successfully, None otherwise
     """
     if context:
-        with sentry_sdk.push_scope() as scope:
+        with sentry_sdk.isolation_scope() as scope:
             if "tags" in context:
                 for key, value in context["tags"].items():
                     scope.set_tag(key, value)
@@ -256,4 +256,4 @@ def is_sentry_enabled() -> bool:
     Returns:
         bool: True if Sentry is active
     """
-    return sentry_sdk.Hub.current.client is not None
+    return sentry_sdk.is_initialized()

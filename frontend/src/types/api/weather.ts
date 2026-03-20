@@ -1,4 +1,4 @@
-import type { PaginationParams, DateRangeParams } from './common';
+import type { DateRangeParams, PaginationParams } from "./common";
 
 export interface WeatherData {
   id: number;
@@ -12,7 +12,7 @@ export interface WeatherData {
   created_at: string;
 }
 
-export type WeatherSource = 'OWM' | 'Manual' | 'Meteostat' | 'Google';
+export type WeatherSource = "OWM" | "Manual" | "Meteostat" | "Google";
 
 export interface WeatherDataParams extends PaginationParams, DateRangeParams {
   source?: WeatherSource;
@@ -30,4 +30,6 @@ export interface WeatherStats {
   total_precipitation: number;
   avg_wind_speed: number;
   record_count: number;
+  /** Number of records excluded from aggregation due to implausible values */
+  flagged_count?: number;
 }

@@ -50,7 +50,7 @@ describe('Navbar', () => {
   it('should render Get Started CTA pointing to /login', () => {
     render(<Navbar />);
     const ctaLinks = screen.getAllByText(/Get Started/);
-    const desktopLink = ctaLinks[0];
+    const desktopLink = ctaLinks[0]!;
     expect(desktopLink.closest('a')).toHaveAttribute('href', '/login');
   });
 

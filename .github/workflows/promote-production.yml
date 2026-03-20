@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Model version to promote'
+        description: "Model version to promote"
         required: true
       force:
-        description: 'Force promotion (skip criteria check)'
+        description: "Force promotion (skip criteria check)"
         required: false
         default: false
         type: boolean
@@ -15,7 +15,7 @@ on:
 # Restrict permissions to minimum required for security (principle of least privilege)
 permissions:
   contents: read
-  issues: write  # Required for creating tracking issues
+  issues: write # Required for creating tracking issues
   actions: read
 
 concurrency:
@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PYTHON_VERSION: '3.13'
+  PYTHON_VERSION: "3.13"
 
 jobs:
   check-staging:
@@ -41,7 +41,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -91,7 +91,7 @@ jobs:
     needs: check-staging
     if: needs.check-staging.outputs.can_promote == 'true'
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
 
     steps:
       - uses: actions/checkout@v4
@@ -102,7 +102,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -176,6 +176,6 @@ jobs:
               - [ ] Review initial prediction metrics
               - [ ] Document any issues observed
 
-              /cc @KyaRhamil`,
+              /cc @Ramil-Martizano`,
               labels: ['deployment', 'production']
             })

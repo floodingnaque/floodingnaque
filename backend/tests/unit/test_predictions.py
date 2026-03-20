@@ -34,6 +34,7 @@ def _wrap_as_rows(predictions, total=None):
     count = total if total is not None else len(predictions)
     return [_Row(p, count) for p in predictions]
 
+
 # API version prefix constant
 API_V1_PREFIX = "/api/v1"
 
@@ -260,6 +261,7 @@ class TestGetPredictionById:
 
     def test_get_prediction_by_id_success(self, client, mock_prediction, mock_weather):
         """Test successful retrieval of prediction by ID."""
+        mock_prediction.weather_data = mock_weather
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
             with patch("app.api.routes.predictions.get_db_session") as mock_session:
                 session = MagicMock()
@@ -267,8 +269,9 @@ class TestGetPredictionById:
                 mock_session.return_value.__exit__ = Mock(return_value=False)
 
                 mock_query = MagicMock()
+                mock_query.options.return_value = mock_query
                 mock_query.filter.return_value = mock_query
-                mock_query.first.side_effect = [mock_prediction, mock_weather]
+                mock_query.first.return_value = mock_prediction
                 session.query.return_value = mock_query
 
                 response = client.get(f"{API_V1_PREFIX}/predictions/1")
@@ -288,6 +291,7 @@ class TestGetPredictionById:
                 mock_session.return_value.__exit__ = Mock(return_value=False)
 
                 mock_query = MagicMock()
+                mock_query.options.return_value = mock_query
                 mock_query.filter.return_value = mock_query
                 mock_query.first.return_value = None
                 session.query.return_value = mock_query
@@ -298,6 +302,7 @@ class TestGetPredictionById:
 
     def test_get_prediction_includes_weather_data(self, client, mock_prediction, mock_weather):
         """Test prediction includes associated weather data."""
+        mock_prediction.weather_data = mock_weather
         with patch("app.api.routes.predictions.limiter.limit", lambda x: lambda f: f):
             with patch("app.api.routes.predictions.get_db_session") as mock_session:
                 session = MagicMock()
@@ -305,8 +310,9 @@ class TestGetPredictionById:
                 mock_session.return_value.__exit__ = Mock(return_value=False)
 
                 mock_query = MagicMock()
+                mock_query.options.return_value = mock_query
                 mock_query.filter.return_value = mock_query
-                mock_query.first.side_effect = [mock_prediction, mock_weather]
+                mock_query.first.return_value = mock_prediction
                 session.query.return_value = mock_query
 
                 response = client.get(f"{API_V1_PREFIX}/predictions/1")

@@ -16,8 +16,9 @@ from app.models.db import (
 )
 from app.utils.api_constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR, HTTP_OK
 from app.utils.api_responses import api_error
+from app.utils.resilience.cache import cached
 from flask import Blueprint, g, jsonify, request
-from sqlalchemy import desc, func
+from sqlalchemy import case, desc, func
 
 logger = logging.getLogger(__name__)
 
@@ -50,131 +51,14 @@ def get_dashboard_summary():
     request_id = getattr(g, "request_id", "unknown")
 
     try:
-        now = datetime.now(timezone.utc)
-        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_ago = now - timedelta(days=7)
-        month_ago = now - timedelta(days=30)
-
-        with get_db_session() as session:
-            # Weather data stats
-            total_weather_data = session.query(WeatherData).filter(WeatherData.is_deleted.is_(False)).count()
-
-            weather_today = (
-                session.query(WeatherData)
-                .filter(WeatherData.is_deleted.is_(False), WeatherData.created_at >= today)
-                .count()
-            )
-
-            # Prediction stats
-            total_predictions = session.query(Prediction).filter(Prediction.is_deleted.is_(False)).count()
-
-            predictions_today = (
-                session.query(Prediction)
-                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= today)
-                .count()
-            )
-
-            predictions_week = (
-                session.query(Prediction)
-                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= week_ago)
-                .count()
-            )
-
-            # Risk level distribution (last 30 days)
-            risk_distribution = (
-                session.query(Prediction.risk_level, func.count(Prediction.id))
-                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= month_ago)
-                .group_by(Prediction.risk_level)
-                .all()
-            )
-
-            risk_stats = {"safe": 0, "alert": 0, "critical": 0}
-            for level, count in risk_distribution:
-                if level == 0:
-                    risk_stats["safe"] = count
-                elif level == 1:
-                    risk_stats["alert"] = count
-                elif level == 2:
-                    risk_stats["critical"] = count
-
-            # Alert stats
-            total_alerts = session.query(AlertHistory).filter(AlertHistory.is_deleted.is_(False)).count()
-
-            alerts_today = (
-                session.query(AlertHistory)
-                .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= today)
-                .count()
-            )
-
-            critical_alerts_24h = (
-                session.query(AlertHistory)
-                .filter(
-                    AlertHistory.is_deleted.is_(False),
-                    AlertHistory.risk_level == 2,
-                    AlertHistory.created_at >= now - timedelta(hours=24),
-                )
-                .count()
-            )
-
-            # Latest weather data
-            latest_weather = (
-                session.query(WeatherData)
-                .filter(WeatherData.is_deleted.is_(False))
-                .order_by(desc(WeatherData.timestamp))
-                .first()
-            )
-
-            latest_weather_data = None
-            if latest_weather:
-                latest_weather_data = {
-                    "temperature": latest_weather.temperature,
-                    "humidity": latest_weather.humidity,
-                    "precipitation": latest_weather.precipitation,
-                    "timestamp": latest_weather.timestamp.isoformat() if latest_weather.timestamp else None,
-                }
-
-            # Latest prediction
-            latest_prediction = (
-                session.query(Prediction)
-                .filter(Prediction.is_deleted.is_(False))
-                .order_by(desc(Prediction.created_at))
-                .first()
-            )
-
-            latest_prediction_data = None
-            if latest_prediction:
-                latest_prediction_data = {
-                    "prediction": latest_prediction.prediction,
-                    "risk_level": latest_prediction.risk_level,
-                    "risk_label": latest_prediction.risk_label,
-                    "confidence": latest_prediction.confidence,
-                    "created_at": latest_prediction.created_at.isoformat() if latest_prediction.created_at else None,
-                }
+        summary = _fetch_dashboard_summary()
 
         return (
             jsonify(
                 {
                     "success": True,
-                    "summary": {
-                        "weather_data": {
-                            "total": total_weather_data,
-                            "today": weather_today,
-                            "latest": latest_weather_data,
-                        },
-                        "predictions": {
-                            "total": total_predictions,
-                            "today": predictions_today,
-                            "this_week": predictions_week,
-                            "latest": latest_prediction_data,
-                        },
-                        "alerts": {
-                            "total": total_alerts,
-                            "today": alerts_today,
-                            "critical_24h": critical_alerts_24h,
-                        },
-                        "risk_distribution_30d": risk_stats,
-                    },
-                    "generated_at": now.isoformat(),
+                    "summary": summary,
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                     "request_id": request_id,
                 }
             ),
@@ -184,6 +68,127 @@ def get_dashboard_summary():
     except Exception as e:
         logger.error(f"Error fetching dashboard summary [{request_id}]: {str(e)}", exc_info=True)
         return api_error("FetchFailed", "Failed to fetch dashboard summary", HTTP_INTERNAL_ERROR, request_id)
+
+
+@cached("dashboard:summary", ttl=300)
+def _fetch_dashboard_summary() -> dict:
+    """Fetch and return dashboard summary data (cached for 60s)."""
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+
+    with get_db_session() as session:
+        # --- Single aggregation query for WeatherData + Prediction counts ---
+        weather_row = (
+            session.query(
+                func.count(WeatherData.id).label("total"),
+                func.count(case((WeatherData.created_at >= today, 1))).label("today"),
+            )
+            .filter(WeatherData.is_deleted.is_(False))
+            .one()
+        )
+
+        pred_row = (
+            session.query(
+                func.count(Prediction.id).label("total"),
+                func.count(case((Prediction.created_at >= today, 1))).label("today"),
+                func.count(case((Prediction.created_at >= week_ago, 1))).label("week"),
+            )
+            .filter(Prediction.is_deleted.is_(False))
+            .one()
+        )
+
+        alert_row = (
+            session.query(
+                func.count(AlertHistory.id).label("total"),
+                func.count(case((AlertHistory.created_at >= today, 1))).label("today"),
+                func.count(
+                    case(
+                        (
+                            (AlertHistory.risk_level == 2) & (AlertHistory.created_at >= now - timedelta(hours=24)),
+                            1,
+                        )
+                    )
+                ).label("critical_24h"),
+            )
+            .filter(AlertHistory.is_deleted.is_(False))
+            .one()
+        )
+
+        # Risk level distribution (last 30 days) — kept as GROUP BY
+        risk_distribution = (
+            session.query(Prediction.risk_level, func.count(Prediction.id))
+            .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= month_ago)
+            .group_by(Prediction.risk_level)
+            .all()
+        )
+
+        risk_stats = {"safe": 0, "alert": 0, "critical": 0}
+        for level, count in risk_distribution:
+            if level == 0:
+                risk_stats["safe"] = count
+            elif level == 1:
+                risk_stats["alert"] = count
+            elif level == 2:
+                risk_stats["critical"] = count
+
+        # Latest weather data
+        latest_weather = (
+            session.query(WeatherData)
+            .filter(WeatherData.is_deleted.is_(False))
+            .order_by(desc(WeatherData.timestamp))
+            .limit(1)
+            .first()
+        )
+
+        latest_weather_data = None
+        if latest_weather:
+            latest_weather_data = {
+                "temperature": latest_weather.temperature,
+                "humidity": latest_weather.humidity,
+                "precipitation": latest_weather.precipitation,
+                "timestamp": latest_weather.timestamp.isoformat() if latest_weather.timestamp else None,
+            }
+
+        # Latest prediction
+        latest_prediction = (
+            session.query(Prediction)
+            .filter(Prediction.is_deleted.is_(False))
+            .order_by(desc(Prediction.created_at))
+            .limit(1)
+            .first()
+        )
+
+        latest_prediction_data = None
+        if latest_prediction:
+            latest_prediction_data = {
+                "prediction": latest_prediction.prediction,
+                "risk_level": latest_prediction.risk_level,
+                "risk_label": latest_prediction.risk_label,
+                "confidence": latest_prediction.confidence,
+                "created_at": latest_prediction.created_at.isoformat() if latest_prediction.created_at else None,
+            }
+
+    return {
+        "weather_data": {
+            "total": weather_row.total,
+            "today": weather_row.today,
+            "latest": latest_weather_data,
+        },
+        "predictions": {
+            "total": pred_row.total,
+            "today": pred_row.today,
+            "this_week": pred_row.week,
+            "latest": latest_prediction_data,
+        },
+        "alerts": {
+            "total": alert_row.total,
+            "today": alert_row.today,
+            "critical_24h": alert_row.critical_24h,
+        },
+        "risk_distribution_30d": risk_stats,
+    }
 
 
 @dashboard_bp.route("/statistics", methods=["GET"])
@@ -225,132 +230,7 @@ def get_statistics():
         if period not in valid_periods:
             return api_error("ValidationError", f"Period must be one of: {valid_periods}", HTTP_BAD_REQUEST, request_id)
 
-        now = datetime.now(timezone.utc)
-
-        if period == "day":
-            start_date = now - timedelta(hours=24)
-            interval = "hour"
-        elif period == "week":
-            start_date = now - timedelta(days=7)
-            interval = "day"
-        else:  # month
-            start_date = now - timedelta(days=30)
-            interval = "day"
-
-        result = {
-            "period": period,
-            "start_date": start_date.isoformat(),
-            "end_date": now.isoformat(),
-        }
-
-        with get_db_session() as session:
-            # Prediction statistics
-            if not metric or metric == "predictions":
-                predictions = (
-                    session.query(Prediction)
-                    .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= start_date)
-                    .order_by(Prediction.created_at)
-                    .all()
-                )
-
-                # Group by date
-                pred_by_date = {}
-                risk_over_time = []
-                for pred in predictions:
-                    if period == "day":
-                        key = pred.created_at.strftime("%Y-%m-%d %H:00")
-                    else:
-                        key = pred.created_at.strftime("%Y-%m-%d")
-
-                    if key not in pred_by_date:
-                        pred_by_date[key] = {"count": 0, "flood": 0, "safe": 0, "alert": 0, "critical": 0}
-                    pred_by_date[key]["count"] += 1
-                    if pred.prediction == 1:
-                        pred_by_date[key]["flood"] += 1
-                    if pred.risk_level == 0:
-                        pred_by_date[key]["safe"] += 1
-                    elif pred.risk_level == 1:
-                        pred_by_date[key]["alert"] += 1
-                    elif pred.risk_level == 2:
-                        pred_by_date[key]["critical"] += 1
-
-                    risk_over_time.append(
-                        {
-                            "timestamp": pred.created_at.isoformat(),
-                            "risk_level": pred.risk_level,
-                            "confidence": pred.confidence,
-                        }
-                    )
-
-                result["predictions"] = {
-                    "by_date": pred_by_date,
-                    "total": len(predictions),
-                    "flood_count": sum(p.prediction == 1 for p in predictions),
-                    "risk_timeline": risk_over_time[-50:] if len(risk_over_time) > 50 else risk_over_time,
-                }
-
-            # Alert statistics
-            if not metric or metric == "alerts":
-                alerts = (
-                    session.query(AlertHistory)
-                    .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= start_date)
-                    .order_by(AlertHistory.created_at)
-                    .all()
-                )
-
-                alerts_by_date = {}
-                for alert in alerts:
-                    if period == "day":
-                        key = alert.created_at.strftime("%Y-%m-%d %H:00")
-                    else:
-                        key = alert.created_at.strftime("%Y-%m-%d")
-
-                    if key not in alerts_by_date:
-                        alerts_by_date[key] = {"count": 0, "critical": 0, "delivered": 0}
-                    alerts_by_date[key]["count"] += 1
-                    if alert.risk_level == 2:
-                        alerts_by_date[key]["critical"] += 1
-                    if alert.delivery_status == "delivered":
-                        alerts_by_date[key]["delivered"] += 1
-
-                result["alerts"] = {
-                    "by_date": alerts_by_date,
-                    "total": len(alerts),
-                    "critical_count": sum(a.risk_level == 2 for a in alerts),
-                }
-
-            # Weather statistics
-            if not metric or metric == "weather":
-                weather_data = (
-                    session.query(WeatherData)
-                    .filter(WeatherData.is_deleted.is_(False), WeatherData.timestamp >= start_date)
-                    .order_by(WeatherData.timestamp)
-                    .all()
-                )
-
-                weather_timeline = []
-                for w in weather_data[-100:]:  # Last 100 data points
-                    weather_timeline.append(
-                        {
-                            "timestamp": w.timestamp.isoformat() if w.timestamp else None,
-                            "temperature": w.temperature,
-                            "humidity": w.humidity,
-                            "precipitation": w.precipitation,
-                        }
-                    )
-
-                result["weather"] = {
-                    "total_data_points": len(weather_data),
-                    "timeline": weather_timeline,
-                    "avg_temperature": (
-                        sum(w.temperature for w in weather_data) / len(weather_data) if weather_data else None
-                    ),
-                    "avg_humidity": sum(w.humidity for w in weather_data) / len(weather_data) if weather_data else None,
-                    "total_precipitation": (
-                        sum(w.precipitation for w in weather_data if w.precipitation) if weather_data else 0
-                    ),
-                }
-
+        result = _fetch_statistics(period, metric)
         result["success"] = True
         result["request_id"] = request_id
 
@@ -359,6 +239,172 @@ def get_statistics():
     except Exception as e:
         logger.error(f"Error fetching statistics [{request_id}]: {str(e)}", exc_info=True)
         return api_error("FetchFailed", "Failed to fetch statistics", HTTP_INTERNAL_ERROR, request_id)
+
+
+@cached(
+    "dashboard:statistics",
+    ttl=300,
+    key_builder=lambda period, metric: f"dashboard:statistics:{period}:{metric or 'all'}",
+)
+def _fetch_statistics(period: str, metric: str | None) -> dict:
+    """Fetch statistics using SQL aggregation (cached for 5 minutes)."""
+    now = datetime.now(timezone.utc)
+
+    if period == "day":
+        start_date = now - timedelta(hours=24)
+        date_fmt = "YYYY-MM-DD HH24:00"
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+        date_fmt = "YYYY-MM-DD"
+    else:  # month
+        start_date = now - timedelta(days=30)
+        date_fmt = "YYYY-MM-DD"
+
+    result = {
+        "period": period,
+        "start_date": start_date.isoformat(),
+        "end_date": now.isoformat(),
+    }
+
+    with get_db_session() as session:
+        # Prediction statistics — SQL GROUP BY
+        if not metric or metric == "predictions":
+            pred_groups = (
+                session.query(
+                    func.to_char(Prediction.created_at, date_fmt).label("date_key"),
+                    func.count(Prediction.id).label("count"),
+                    func.count(case((Prediction.prediction == 1, 1))).label("flood"),
+                    func.count(case((Prediction.risk_level == 0, 1))).label("safe"),
+                    func.count(case((Prediction.risk_level == 1, 1))).label("alert"),
+                    func.count(case((Prediction.risk_level == 2, 1))).label("critical"),
+                )
+                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= start_date)
+                .group_by(func.to_char(Prediction.created_at, date_fmt))
+                .order_by(func.to_char(Prediction.created_at, date_fmt))
+                .all()
+            )
+
+            pred_by_date = {}
+            total = 0
+            flood_count = 0
+            for row in pred_groups:
+                pred_by_date[row.date_key] = {
+                    "count": row.count,
+                    "flood": row.flood,
+                    "safe": row.safe,
+                    "alert": row.alert,
+                    "critical": row.critical,
+                }
+                total += row.count
+                flood_count += row.flood
+
+            # Risk timeline — last 50 data points only
+            risk_over_time_rows = (
+                session.query(
+                    Prediction.created_at,
+                    Prediction.risk_level,
+                    Prediction.confidence,
+                )
+                .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= start_date)
+                .order_by(desc(Prediction.created_at))
+                .limit(50)
+                .all()
+            )
+
+            risk_over_time = [
+                {
+                    "timestamp": row.created_at.isoformat(),
+                    "risk_level": row.risk_level,
+                    "confidence": row.confidence,
+                }
+                for row in reversed(risk_over_time_rows)
+            ]
+
+            result["predictions"] = {
+                "by_date": pred_by_date,
+                "total": total,
+                "flood_count": flood_count,
+                "risk_timeline": risk_over_time,
+            }
+
+        # Alert statistics — SQL GROUP BY
+        if not metric or metric == "alerts":
+            alert_groups = (
+                session.query(
+                    func.to_char(AlertHistory.created_at, date_fmt).label("date_key"),
+                    func.count(AlertHistory.id).label("count"),
+                    func.count(case((AlertHistory.risk_level == 2, 1))).label("critical"),
+                    func.count(case((AlertHistory.delivery_status == "delivered", 1))).label("delivered"),
+                )
+                .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= start_date)
+                .group_by(func.to_char(AlertHistory.created_at, date_fmt))
+                .order_by(func.to_char(AlertHistory.created_at, date_fmt))
+                .all()
+            )
+
+            alerts_by_date = {}
+            alert_total = 0
+            critical_count = 0
+            for row in alert_groups:
+                alerts_by_date[row.date_key] = {
+                    "count": row.count,
+                    "critical": row.critical,
+                    "delivered": row.delivered,
+                }
+                alert_total += row.count
+                critical_count += row.critical
+
+            result["alerts"] = {
+                "by_date": alerts_by_date,
+                "total": alert_total,
+                "critical_count": critical_count,
+            }
+
+        # Weather statistics — SQL aggregation + limited timeline query
+        if not metric or metric == "weather":
+            weather_agg = (
+                session.query(
+                    func.count(WeatherData.id).label("total"),
+                    func.avg(WeatherData.temperature).label("avg_temp"),
+                    func.avg(WeatherData.humidity).label("avg_humidity"),
+                    func.coalesce(func.sum(WeatherData.precipitation), 0).label("total_precip"),
+                )
+                .filter(WeatherData.is_deleted.is_(False), WeatherData.timestamp >= start_date)
+                .one()
+            )
+
+            weather_rows = (
+                session.query(
+                    WeatherData.timestamp,
+                    WeatherData.temperature,
+                    WeatherData.humidity,
+                    WeatherData.precipitation,
+                )
+                .filter(WeatherData.is_deleted.is_(False), WeatherData.timestamp >= start_date)
+                .order_by(desc(WeatherData.timestamp))
+                .limit(100)
+                .all()
+            )
+
+            weather_timeline = [
+                {
+                    "timestamp": row.timestamp.isoformat() if row.timestamp else None,
+                    "temperature": row.temperature,
+                    "humidity": row.humidity,
+                    "precipitation": row.precipitation,
+                }
+                for row in reversed(weather_rows)
+            ]
+
+            result["weather"] = {
+                "total_data_points": weather_agg.total,
+                "timeline": weather_timeline,
+                "avg_temperature": float(weather_agg.avg_temp) if weather_agg.avg_temp else None,
+                "avg_humidity": float(weather_agg.avg_humidity) if weather_agg.avg_humidity else None,
+                "total_precipitation": float(weather_agg.total_precip),
+            }
+
+    return result
 
 
 @dashboard_bp.route("/activity", methods=["GET"])

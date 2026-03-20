@@ -63,7 +63,7 @@ All responses follow a consistent JSON structure:
 ```
 """,
         "version": "2.1.0",
-        "contact": {"name": "Floodingnaque Team", "url": "https://github.com/KyaRhamil/floodingnaque"},
+        "contact": {"name": "Floodingnaque Team", "url": "https://github.com/floodingnaque/floodingnaque"},
         "license": {"name": "MIT", "identifier": "MIT", "url": "https://opensource.org/licenses/MIT"},
         "x-logo": {"url": "/static/logo.png", "altText": "Floodingnaque API"},
     },

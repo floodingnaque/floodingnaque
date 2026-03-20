@@ -76,9 +76,9 @@ class TestDatabaseHealthCheck:
 class TestExternalAPIHealthCheck:
     """Tests for external API health checking."""
 
-    @patch("app.utils.circuit_breaker.meteostat_breaker")
-    @patch("app.utils.circuit_breaker.weatherstack_breaker")
-    @patch("app.utils.circuit_breaker.openweathermap_breaker")
+    @patch("app.utils.resilience.circuit_breaker.meteostat_breaker")
+    @patch("app.utils.resilience.circuit_breaker.weatherstack_breaker")
+    @patch("app.utils.resilience.circuit_breaker.openweathermap_breaker")
     def test_check_external_api_health_success(self, mock_owm, mock_ws, mock_ms):
         """Test external API health check with all breakers available."""
         mock_owm.get_status.return_value = {"state": "closed", "failures": 0}

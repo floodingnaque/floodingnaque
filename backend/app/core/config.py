@@ -343,6 +343,19 @@ class Config:
     DEFAULT_LATITUDE: float = field(default_factory=lambda: float(os.getenv("DEFAULT_LATITUDE", "14.4793")))
     DEFAULT_LONGITUDE: float = field(default_factory=lambda: float(os.getenv("DEFAULT_LONGITUDE", "121.0198")))
 
+    # ── Community Engagement (Crowdsourced Reporting + Evacuation) ────────
+    SUPABASE_URL: str = field(default_factory=lambda: get_secret("SUPABASE_URL", default=""))
+    SUPABASE_SERVICE_KEY: str = field(default_factory=lambda: get_secret("SUPABASE_SERVICE_KEY", default=""))
+    SUPABASE_STORAGE_BUCKET: str = field(default_factory=lambda: os.getenv("SUPABASE_STORAGE_BUCKET", "report-photos"))
+    SEMAPHORE_API_KEY: str = field(default_factory=lambda: get_secret("SEMAPHORE_API_KEY", default=""))
+    VONAGE_API_KEY: str = field(default_factory=lambda: get_secret("VONAGE_API_KEY", default=""))
+    VONAGE_API_SECRET: str = field(default_factory=lambda: get_secret("VONAGE_API_SECRET", default=""))
+    OSRM_BASE_URL: str = field(default_factory=lambda: os.getenv("OSRM_BASE_URL", "http://router.project-osrm.org"))
+    SMS_COOLDOWN_MINUTES: int = field(default_factory=lambda: int(os.getenv("SMS_COOLDOWN_MINUTES", "30")))
+    CREDIBILITY_VERIFY_THRESHOLD: float = field(
+        default_factory=lambda: float(os.getenv("CREDIBILITY_VERIFY_THRESHOLD", "0.750"))
+    )
+
     def get_cors_origins_list(self) -> List[str]:
         """Get CORS origins as a list."""
         if not self.CORS_ORIGINS:

@@ -17,7 +17,7 @@ data:
   # Can be overridden via FLOODINGNAQUE_DATA_DIR environment variable
   processed_dir: "data/processed"
   raw_dir: "data"
-  
+
   # Smaller test size for faster feedback
   test_size: 0.3
   min_samples: 50  # Lower threshold for dev testing
@@ -28,19 +28,19 @@ model:
     n_estimators: 50  # Reduced for faster iteration
     max_depth: 10
     n_jobs: -1
-    
+
   optuna:
     enabled: false  # Disable hyperparameter optimization
     n_trials: 10
     timeout_minutes: 5
-    
+
   calibration:
     enabled: false  # Skip calibration in dev
 
 # Cross-Validation - Fewer Folds
 cross_validation:
   folds: 3  # Reduced from 10
-  
+
   temporal:
     enabled: false  # Disable temporal validation in dev
 
@@ -54,7 +54,7 @@ mlflow:
 # Registry - Development Stage
 registry:
   models_dir: "models"
-  
+
   # Relaxed promotion criteria for testing
   promotion_criteria:
     staging:

@@ -155,7 +155,6 @@ class UnifiedEvaluator:
         candidates = [
             PROCESSED_DIR / "cumulative_up_to_2025.csv",
             PROCESSED_DIR / "pagasa_training_dataset.csv",
-            DATA_DIR / "synthetic_dataset.csv",
         ]
 
         for path in candidates:

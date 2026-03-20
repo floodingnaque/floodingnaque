@@ -1,9 +1,42 @@
 /**
  * State Store Exports
- * 
+ *
  * Central export point for all Zustand stores.
  */
 
-export { useAuthStore, useUser, useIsAuthenticated, useCsrfToken, useAuthActions } from './authStore';
-export { useAlertStore, useLiveAlerts, useUnreadCount, useAlertConnectionStatus, useAlertActions, useAlertsByRiskLevel, useHighRiskAlertsCount } from './alertStore';
-export { useUIStore, useTheme, useSidebarOpen, useSidebarCollapsed, useNotifications, useUIActions, useSidebarState, type Theme, type NotificationPreferences } from './uiStore';
+export {
+  useAlertActions,
+  useAlertConnectionStatus,
+  useAlertStore,
+  useAlertsByRiskLevel,
+  useConnectionState,
+  useHighRiskAlertsCount,
+  useIsConnected,
+  useLiveAlerts,
+  useUnreadCount,
+  type ConnectionState,
+} from "./alertStore";
+export {
+  useAuthActions,
+  useAuthStore,
+  useCsrfToken,
+  useIsAuthenticated,
+  useUser,
+} from "./authStore";
+export {
+  useCachedCenters,
+  useEvacuationActions,
+  useEvacuationStore,
+  useIsOffline,
+} from "./evacuationStore";
+export {
+  useNotifications,
+  useSidebarCollapsed,
+  useSidebarOpen,
+  useSidebarState,
+  useTheme,
+  useUIActions,
+  useUIStore,
+  type NotificationPreferences,
+  type Theme,
+} from "./uiStore";

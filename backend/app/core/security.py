@@ -238,7 +238,7 @@ JWT_SECRET_KEY = get_secret("JWT_SECRET_KEY") or get_secret("SECRET_KEY")
 if not JWT_SECRET_KEY:
     raise RuntimeError("JWT_SECRET_KEY or SECRET_KEY must be set. " "Refusing to start with a hard-coded default.")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15"))  # 15 minutes
+JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "30"))  # 30 minutes
 JWT_REFRESH_TOKEN_EXPIRES = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES_DAYS", "7"))  # 7 days
 
 

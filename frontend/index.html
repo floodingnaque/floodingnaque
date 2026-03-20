@@ -3,13 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
+
     <!-- Title and Description -->
     <title>Floodingnaque - Flood Prediction System</title>
-    <meta name="description" content="Real-time flood prediction and monitoring system for Parañaque City. Get accurate flood risk assessments, weather alerts, and historical data analysis." />
-    <meta name="keywords" content="flood prediction, Parañaque, weather, alerts, Philippines, risk assessment" />
+    <meta
+      name="description"
+      content="Real-time flood prediction and monitoring system for Parañaque City. Get accurate flood risk assessments, weather alerts, and historical data analysis."
+    />
+    <meta
+      name="keywords"
+      content="flood prediction, Parañaque, weather, alerts, Philippines, risk assessment"
+    />
     <meta name="author" content="Floodingnaque Team" />
-    
+
     <!-- Google Fonts — Inter (professional sans-serif) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,38 +27,82 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    
+
     <!-- Theme Color (Chrome/Edge mobile - ignored by Firefox/Opera) -->
     <meta name="theme-color" content="#3B82F6" />
-    
+
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Floodingnaque - Flood Prediction System" />
-    <meta property="og:description" content="Real-time flood prediction and monitoring system for Parañaque City." />
+    <meta
+      property="og:title"
+      content="Floodingnaque - Flood Prediction System"
+    />
+    <meta
+      property="og:description"
+      content="Real-time flood prediction and monitoring system for Parañaque City."
+    />
     <meta property="og:url" content="https://floodingnaque.vercel.app" />
     <meta property="og:image" content="/og-image.png" />
-    
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Floodingnaque - Flood Prediction System" />
-    <meta name="twitter:description" content="Real-time flood prediction and monitoring for Parañaque City" />
+    <meta
+      name="twitter:title"
+      content="Floodingnaque - Flood Prediction System"
+    />
+    <meta
+      name="twitter:description"
+      content="Real-time flood prediction and monitoring for Parañaque City"
+    />
     <meta name="twitter:image" content="/og-image.png" />
-    
+
     <!-- Additional PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Floodingnaque" />
+
+    <!-- Inline theme script to prevent dark mode flash (reads Zustand persisted state) -->
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("ui-storage");
+          var parsed = raw ? JSON.parse(raw) : null;
+          var stored = parsed && parsed.state && parsed.state.theme;
+          var prefersDark = window.matchMedia(
+            "(prefers-color-scheme:dark)",
+          ).matches;
+          var theme = stored || (prefersDark ? "dark" : "light");
+          document.documentElement.classList.add(theme);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <noscript>
-      <div style="padding: 2rem; text-align: center; font-family: sans-serif;">
-        <h1>JavaScript Required</h1>
-        <p>Floodingnaque requires JavaScript to run. Please enable JavaScript in your browser settings.</p>
+      <div
+        style="
+          padding: 2rem;
+          text-align: center;
+          font-family: system-ui, sans-serif;
+          max-width: 480px;
+          margin: 0 auto;
+        "
+      >
+        <h1 style="color: #dc3545">JavaScript Required</h1>
+        <p>
+          Floodingnaque requires JavaScript to run. Please enable JavaScript in
+          your browser settings.
+        </p>
+        <hr style="margin: 1.5rem 0; border-color: #e5e7eb" />
+        <p style="font-size: 0.875rem; color: #6b7280">
+          For flood emergencies in Parañaque City, contact MDRRMO:
+          <strong>(02) 8825-8725</strong>
+        </p>
       </div>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>

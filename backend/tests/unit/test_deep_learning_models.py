@@ -4,14 +4,16 @@ Tests for Deep Learning Models - LSTM, Transformer, dataset, training.
 Tests that require PyTorch are skipped when torch is not installed.
 """
 
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta
 
 # Conditional torch import
 try:
     import torch
+
     _torch_available = True
 except ImportError:
     _torch_available = False
@@ -23,11 +25,13 @@ needs_torch = pytest.mark.skipif(not _torch_available, reason="PyTorch not insta
 # DeepLearningConfig
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestDeepLearningConfig:
     """These tests do NOT require PyTorch - config is plain Python."""
 
     def test_config_defaults(self):
         from app.services.deep_learning_models import DeepLearningConfig
+
         config = DeepLearningConfig()
         assert config.sequence_length == 14
         assert config.hidden_dim == 128
@@ -39,6 +43,7 @@ class TestDeepLearningConfig:
 
     def test_config_custom(self):
         from app.services.deep_learning_models import DeepLearningConfig
+
         config = DeepLearningConfig(
             model_type="transformer",
             hidden_dim=256,
@@ -54,6 +59,7 @@ class TestDeepLearningConfig:
 # ═════════════════════════════════════════════════════════════════════════════
 # FloodSequenceDataset (via from_dataframe factory)
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @needs_torch
 class TestFloodSequenceDataset:
@@ -71,22 +77,20 @@ class TestFloodSequenceDataset:
 
     def test_dataset_length(self):
         from app.services.deep_learning_models import FloodSequenceDataset
+
         n_samples, n_features, seq_len = 100, 5, 14
         df = self._make_df(n=n_samples, n_features=n_features)
         feature_cols = [f"feat_{i}" for i in range(n_features)]
-        ds = FloodSequenceDataset.from_dataframe(
-            df, feature_cols, target_col="flood", sequence_length=seq_len
-        )
+        ds = FloodSequenceDataset.from_dataframe(df, feature_cols, target_col="flood", sequence_length=seq_len)
         assert len(ds) == n_samples - seq_len
 
     def test_dataset_shapes(self):
         from app.services.deep_learning_models import FloodSequenceDataset
+
         n_samples, n_features, seq_len = 50, 8, 7
         df = self._make_df(n=n_samples, n_features=n_features)
         feature_cols = [f"feat_{i}" for i in range(n_features)]
-        ds = FloodSequenceDataset.from_dataframe(
-            df, feature_cols, target_col="flood", sequence_length=seq_len
-        )
+        ds = FloodSequenceDataset.from_dataframe(df, feature_cols, target_col="flood", sequence_length=seq_len)
         x_seq, y_val = ds[0]
         assert x_seq.shape == (seq_len, n_features)
         assert y_val.shape == ()
@@ -94,6 +98,7 @@ class TestFloodSequenceDataset:
     def test_raw_constructor(self):
         """Test direct constructor with pre-windowed data."""
         from app.services.deep_learning_models import FloodSequenceDataset
+
         sequences = np.random.randn(10, 7, 5).astype(np.float32)
         targets = np.random.randint(0, 2, 10).astype(np.float32)
         ds = FloodSequenceDataset(sequences, targets)
@@ -106,12 +111,14 @@ class TestFloodSequenceDataset:
 # Model Architecture
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 @needs_torch
 class TestFloodLSTM:
     """Tests for LSTM model forward pass."""
 
     def test_output_shape(self):
         from app.services.deep_learning_models import DeepLearningConfig, FloodLSTM
+
         config = DeepLearningConfig(model_type="lstm", input_dim=10, hidden_dim=64, num_layers=2)
         model = FloodLSTM(config)
         batch = torch.randn(4, 14, 10)  # (batch, seq, features)
@@ -120,6 +127,7 @@ class TestFloodLSTM:
 
     def test_deterministic_eval(self):
         from app.services.deep_learning_models import DeepLearningConfig, FloodLSTM
+
         config = DeepLearningConfig(model_type="lstm", input_dim=5, hidden_dim=32, num_layers=1, dropout=0.0)
         model = FloodLSTM(config)
         model.eval()
@@ -136,6 +144,7 @@ class TestFloodTransformer:
 
     def test_output_shape(self):
         from app.services.deep_learning_models import DeepLearningConfig, FloodTransformer
+
         config = DeepLearningConfig(model_type="transformer", input_dim=10, hidden_dim=64, num_heads=4, num_layers=2)
         model = FloodTransformer(config)
         batch = torch.randn(4, 14, 10)
@@ -144,6 +153,7 @@ class TestFloodTransformer:
 
     def test_different_sequence_lengths(self):
         from app.services.deep_learning_models import DeepLearningConfig, FloodTransformer
+
         config = DeepLearningConfig(model_type="transformer", input_dim=8, hidden_dim=32, num_heads=4, num_layers=1)
         model = FloodTransformer(config)
         model.eval()
@@ -157,6 +167,7 @@ class TestFloodTransformer:
 # ═════════════════════════════════════════════════════════════════════════════
 # Training Smoke Test (via convenience function)
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @needs_torch
 class TestDeepLearningTraining:
@@ -174,6 +185,7 @@ class TestDeepLearningTraining:
 
     def test_train_lstm_via_convenience(self):
         from app.services.deep_learning_models import train_deep_learning_model
+
         df = self._make_data(n=60, n_features=4)
         feature_cols = [c for c in df.columns if c.startswith("feat_")]
         result = train_deep_learning_model(
@@ -193,6 +205,7 @@ class TestDeepLearningTraining:
 
     def test_train_transformer_via_convenience(self):
         from app.services.deep_learning_models import train_deep_learning_model
+
         df = self._make_data(n=60, n_features=4)
         feature_cols = [c for c in df.columns if c.startswith("feat_")]
         result = train_deep_learning_model(
@@ -217,6 +230,7 @@ class TestDeepLearningTraining:
             DeepLearningTrainer,
             FloodSequenceDataset,
         )
+
         df = self._make_data(n=60, n_features=4)
         feature_cols = [c for c in df.columns if c.startswith("feat_")]
         config = DeepLearningConfig(
@@ -228,9 +242,7 @@ class TestDeepLearningTraining:
             sequence_length=7,
             batch_size=8,
         )
-        dataset = FloodSequenceDataset.from_dataframe(
-            df, feature_cols, target_col="flood", sequence_length=7
-        )
+        dataset = FloodSequenceDataset.from_dataframe(df, feature_cols, target_col="flood", sequence_length=7)
         trainer = DeepLearningTrainer(config)
         metrics = trainer.train(dataset)
         assert "loss" in metrics

@@ -7,26 +7,27 @@
  * Authorization: Bearer headers.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/state/stores/authStore';
-import { authApi } from '../services/authApi';
+import { useAuthStore } from "@/state/stores/authStore";
 import type {
-  LoginRequest,
-  RegisterRequest,
   ChangePasswordRequest,
-  UpdateProfileRequest,
-  PasswordResetRequest,
+  LoginRequest,
   PasswordResetConfirmRequest,
+  PasswordResetRequest,
+  PasswordResetResponse,
+  RegisterRequest,
+  UpdateProfileRequest,
   User,
-} from '@/types';
+} from "@/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { authApi } from "../services/authApi";
 
 /**
  * Query keys for auth-related queries
  */
 export const authQueryKeys = {
-  all: ['auth'] as const,
-  profile: () => [...authQueryKeys.all, 'profile'] as const,
+  all: ["auth"] as const,
+  profile: () => [...authQueryKeys.all, "profile"] as const,
 };
 
 /**
@@ -53,7 +54,12 @@ export function useAuth() {
     onSuccess: (data) => {
       // Store user metadata and tokens in the auth store.
       // Tokens are kept in memory and attached via Authorization header.
-      setAuth(data.user, data.csrf_token, data.access_token, data.refresh_token);
+      setAuth(
+        data.user,
+        data.csrf_token,
+        data.access_token,
+        data.refresh_token,
+      );
     },
   });
 
@@ -63,7 +69,12 @@ export function useAuth() {
   const registerMutation = useMutation({
     mutationFn: (data: RegisterRequest) => authApi.register(data),
     onSuccess: (data) => {
-      setAuth(data.user, data.csrf_token, data.access_token, data.refresh_token);
+      setAuth(
+        data.user,
+        data.csrf_token,
+        data.access_token,
+        data.refresh_token,
+      );
     },
   });
 
@@ -74,14 +85,14 @@ export function useAuth() {
     mutationFn: () => authApi.logout(),
     onSuccess: () => {
       clearAuth();
-      queryClient.invalidateQueries();
-      navigate('/login');
+      queryClient.clear();
+      navigate("/login");
     },
     onError: () => {
       // Even if logout fails on server, clear local auth state
       clearAuth();
-      queryClient.invalidateQueries();
-      navigate('/login');
+      queryClient.clear();
+      navigate("/login");
     },
   });
 
@@ -119,15 +130,21 @@ export function useAuth() {
   /**
    * Request password reset mutation
    */
-  const requestPasswordResetMutation = useMutation({
-    mutationFn: (data: PasswordResetRequest) => authApi.requestPasswordReset(data),
+  const requestPasswordResetMutation = useMutation<
+    PasswordResetResponse,
+    Error,
+    PasswordResetRequest
+  >({
+    mutationFn: (data: PasswordResetRequest) =>
+      authApi.requestPasswordReset(data),
   });
 
   /**
    * Confirm password reset mutation
    */
   const confirmPasswordResetMutation = useMutation({
-    mutationFn: (data: PasswordResetConfirmRequest) => authApi.confirmPasswordReset(data),
+    mutationFn: (data: PasswordResetConfirmRequest) =>
+      authApi.confirmPasswordReset(data),
   });
 
   return {

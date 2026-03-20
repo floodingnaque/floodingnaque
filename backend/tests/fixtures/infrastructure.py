@@ -35,7 +35,7 @@ def mock_redis():
 @pytest.fixture
 def mock_redis_client(mock_redis):
     """Patch Redis client globally for testing."""
-    with patch("app.utils.cache.redis_client", mock_redis):
+    with patch("app.utils.resilience.cache.redis_client", mock_redis):
         with patch("app.utils.rate_limit.redis_client", mock_redis):
             with patch("app.api.middleware.rate_limit.redis_client", mock_redis):
                 yield mock_redis
@@ -119,7 +119,7 @@ def mock_prometheus():
 @pytest.fixture
 def mock_metrics(mock_prometheus):
     """Patch Prometheus metrics for testing."""
-    with patch("app.utils.metrics.prometheus_client", mock_prometheus):
+    with patch("app.utils.observability.metrics.prometheus_client", mock_prometheus):
         yield mock_prometheus
 
 

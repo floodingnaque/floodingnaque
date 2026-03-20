@@ -1,0 +1,522 @@
+# =============================================================================
+# FLOODINGNAQUE — PR Manager
+# =============================================================================
+#
+# Runs on every PR open / edit / sync. Performs four jobs in parallel:
+#
+#   1. validate    — Checks title format, description, and risk-area rules
+#                    BLOCKS on critical violations, WARNS on style issues
+#
+#   2. label       — Auto-applies area/* and risk/* labels from labeler.yml
+#                    Also applies size/* label based on diff line count
+#
+#   3. size-check  — Measures diff size and posts a warning/block comment
+#
+#   4. report      — Aggregates all results into a single status comment,
+#                    replacing the previous one on each re-run
+#
+# Enforcement model:
+#   BLOCK (required status check — PR cannot merge):
+#     ✗ PR title doesn't follow Conventional Commits
+#     ✗ PR description is empty or < 30 characters
+#     ✗ ML model files changed without description acknowledging accuracy
+#     ✗ Alembic migration files changed without description mentioning schema
+#     ✗ Diff exceeds 800 lines (hard cap — split the PR)
+#
+#   WARN (comment only — PR can still merge):
+#     ⚠ No linked issue number (#123) in description
+#     ⚠ Diff is large (400–800 lines) — consider splitting
+#     ⚠ Source files changed but no test files changed
+#     ⚠ API route files changed but no schema files updated
+#
+# =============================================================================
+
+name: "🔍 PR Manager"
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================
+  # JOB 1: VALIDATE
+  # Checks all critical and style rules.
+  # Sets outputs consumed by the report job.
+  # ============================================================
+  validate:
+    name: "✅ Validate PR"
+    runs-on: ubuntu-latest
+
+    outputs:
+      # Critical (block) results
+      title_ok: ${{ steps.title.outputs.ok }}
+      title_error: ${{ steps.title.outputs.error }}
+      desc_ok: ${{ steps.desc.outputs.ok }}
+      desc_error: ${{ steps.desc.outputs.error }}
+      ml_risk_ok: ${{ steps.ml_risk.outputs.ok }}
+      ml_risk_error: ${{ steps.ml_risk.outputs.error }}
+      db_risk_ok: ${{ steps.db_risk.outputs.ok }}
+      db_risk_error: ${{ steps.db_risk.outputs.error }}
+      # Style (warn) results
+      linked_issue: ${{ steps.style.outputs.linked_issue }}
+      has_tests: ${{ steps.style.outputs.has_tests }}
+      schema_updated: ${{ steps.style.outputs.schema_updated }}
+      # Overall
+      blocking_errors: ${{ steps.summary.outputs.blocking_errors }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # ── 1a. Title format (Conventional Commits) ────────────────────────────
+      # Valid: feat(frontend): add flood map toggle
+      # Valid: fix(backend): resolve OWM timeout issue
+      # Valid: chore(deps): bump flask from 3.0.3 to 3.1.0
+      # Invalid: "Update stuff", "fixed bug", "WIP"
+      - name: "Check PR title format"
+        id: title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          PATTERN='^(feat|fix|chore|docs|refactor|test|perf|ci|style|revert)(\([a-z0-9/_-]+\))?: .{10,}'
+          if echo "$PR_TITLE" | grep -qP "$PATTERN"; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "error=" >> "$GITHUB_OUTPUT"
+            echo "✅ Title OK: $PR_TITLE"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "error=Title does not follow Conventional Commits format. Expected: \`type(scope): description\` (e.g. \`feat(frontend): add flood map toggle\`). Valid types: feat, fix, chore, docs, refactor, test, perf, ci, style, revert." >> "$GITHUB_OUTPUT"
+            echo "❌ Title INVALID: $PR_TITLE"
+          fi
+
+      # ── 1b. PR description ────────────────────────────────────────────────
+      - name: "Check PR description"
+        id: desc
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          BODY_LEN=${#PR_BODY}
+          echo "Description length: $BODY_LEN characters"
+
+          if [ -z "$PR_BODY" ] || [ "$BODY_LEN" -lt 30 ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "error=PR description is empty or too short (${BODY_LEN} chars). Please describe what this PR does, why it was needed, and how it was tested. Minimum 30 characters." >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "error=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 1c. ML model risk check ───────────────────────────────────────────
+      - name: "Check ML model change acknowledgment"
+        id: ml_risk
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Check if any ML-related files changed
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+          ML_CHANGED=$(echo "$CHANGED" | grep -E "^backend/models/|^backend/app/services/predict\.py|^backend/scripts/(train|retrain)" || true)
+
+          if [ -z "$ML_CHANGED" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "error=" >> "$GITHUB_OUTPUT"
+            echo "⏭️  No ML model files changed"
+          else
+            # ML changed — check that description contains the magic phrase
+            if echo "$PR_BODY" | grep -qi "model accuracy\|ml model\|random forest\|retrain\|model version\|v6\|accuracy:"; then
+              echo "ok=true" >> "$GITHUB_OUTPUT"
+              echo "error=" >> "$GITHUB_OUTPUT"
+              echo "✅ ML change acknowledged in description"
+            else
+              echo "ok=false" >> "$GITHUB_OUTPUT"
+              echo "error=ML model files were changed but the PR description does not mention model accuracy or validation results. Please include: (1) which model version is affected, (2) accuracy before and after, (3) that the smoke test passes. The v6 baseline is 96.75%% accuracy." >> "$GITHUB_OUTPUT"
+              echo "Changed ML files:"
+              echo "$ML_CHANGED"
+            fi
+          fi
+
+      # ── 1d. DB migration risk check ───────────────────────────────────────
+      - name: "Check DB migration description"
+        id: db_risk
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+          MIGRATION_CHANGED=$(echo "$CHANGED" | grep "^backend/alembic/versions/" || true)
+
+          if [ -z "$MIGRATION_CHANGED" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "error=" >> "$GITHUB_OUTPUT"
+            echo "⏭️  No migration files changed"
+          else
+            if echo "$PR_BODY" | grep -qi "migration\|schema\|table\|column\|index\|alembic"; then
+              echo "ok=true" >> "$GITHUB_OUTPUT"
+              echo "error=" >> "$GITHUB_OUTPUT"
+              echo "✅ DB migration acknowledged in description"
+            else
+              echo "ok=false" >> "$GITHUB_OUTPUT"
+              echo "error=A new Alembic migration was added but the PR description does not describe the schema change. Please document: (1) which table(s) are affected, (2) whether this is additive (safe) or destructive (requires data migration), (3) whether the downgrade() function is implemented." >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      # ── 1e. Style checks (warn only) ──────────────────────────────────────
+      - name: "Style checks"
+        id: style
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+
+          # Linked issue?
+          if echo "$PR_BODY" | grep -qE "#[0-9]+|closes|fixes|resolves"; then
+            echo "linked_issue=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "linked_issue=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Test files changed when source changed?
+          SRC_CHANGED=$(echo "$CHANGED" | grep -E "^backend/app/|^frontend/src/" | grep -v "test\|spec" || true)
+          TEST_CHANGED=$(echo "$CHANGED" | grep -E "test|spec" || true)
+          if [ -n "$SRC_CHANGED" ] && [ -z "$TEST_CHANGED" ]; then
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tests=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # API routes changed — schema updated?
+          ROUTES_CHANGED=$(echo "$CHANGED" | grep -E "^backend/app/api/routes/" || true)
+          SCHEMA_CHANGED=$(echo "$CHANGED" | grep -E "^backend/app/api/schemas/" || true)
+          if [ -n "$ROUTES_CHANGED" ] && [ -z "$SCHEMA_CHANGED" ]; then
+            echo "schema_updated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "schema_updated=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 1f. Aggregate blocking error count ────────────────────────────────
+      - name: "Count blocking errors"
+        id: summary
+        run: |
+          COUNT=0
+          [ "${{ steps.title.outputs.ok }}"   != "true" ] && COUNT=$((COUNT+1))
+          [ "${{ steps.desc.outputs.ok }}"    != "true" ] && COUNT=$((COUNT+1))
+          [ "${{ steps.ml_risk.outputs.ok }}" != "true" ] && COUNT=$((COUNT+1))
+          [ "${{ steps.db_risk.outputs.ok }}" != "true" ] && COUNT=$((COUNT+1))
+          echo "blocking_errors=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "Total blocking errors: $COUNT"
+          [ "$COUNT" -gt 0 ] && exit 1 || exit 0
+
+  # ============================================================
+  # JOB 2: LABEL
+  # Apply area/* and risk/* labels. Also apply size/* label.
+  # Runs in parallel with validate.
+  # ============================================================
+  label:
+    name: "🏷️ Auto-Label"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Apply area and risk labels"
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+      - name: "Apply size label"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const additions = pr.additions || 0;
+            const deletions = pr.deletions || 0;
+            const total     = additions + deletions;
+
+            let sizeLabel;
+            if      (total <= 50)  sizeLabel = 'size/XS';
+            else if (total <= 150) sizeLabel = 'size/S';
+            else if (total <= 400) sizeLabel = 'size/M';
+            else if (total <= 800) sizeLabel = 'size/L';
+            else                   sizeLabel = 'size/XL';
+
+            // Create size labels with colours if they don't exist
+            const sizeColors = {
+              'size/XS': '3cbf00', 'size/S': '5d9801',
+              'size/M':  'e4c101', 'size/L': 'e07b01', 'size/XL': 'b60205',
+            };
+
+            for (const [name, color] of Object.entries(sizeColors)) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  name, color, description: `PR diff size: ${name.split('/')[1]}`
+                });
+              } catch (e) { /* Already exists */ }
+            }
+
+            // Remove existing size labels before applying new one
+            const existing = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: pr.number,
+            });
+            for (const label of existing.data) {
+              if (label.name.startsWith('size/') && label.name !== sizeLabel) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: pr.number, name: label.name,
+                }).catch(() => {});
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: pr.number, labels: [sizeLabel],
+            });
+
+            console.log(`Applied label: ${sizeLabel} (+${additions} -${deletions} = ${total} lines)`);
+
+  # ============================================================
+  # JOB 3: SIZE CHECK
+  # Hard-blocks PRs over 800 lines. Warns between 400–800.
+  # ============================================================
+  size-check:
+    name: "📏 Size Check"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    outputs:
+      size_status: ${{ steps.check.outputs.status }}
+      total_lines: ${{ steps.check.outputs.total }}
+      additions: ${{ steps.check.outputs.additions }}
+      deletions: ${{ steps.check.outputs.deletions }}
+
+    steps:
+      - name: "Measure PR diff size"
+        id: check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            const additions = pr.data.additions;
+            const deletions = pr.data.deletions;
+            const total     = additions + deletions;
+
+            // Exclude generated / lock files from the diff count
+            const files = await github.rest.pulls.listFiles({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page:    100,
+            });
+
+            const EXCLUDED = [
+              'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
+              'poetry.lock', 'requirements.txt', '.min.js', '.min.css',
+              'dist/', 'build/', '__pycache__/', '.pyc',
+            ];
+
+            let adjustedTotal = 0;
+            for (const file of files.data) {
+              const isExcluded = EXCLUDED.some(pattern =>
+                file.filename.includes(pattern)
+              );
+              if (!isExcluded) {
+                adjustedTotal += (file.additions + file.deletions);
+              }
+            }
+
+            let status;
+            if      (adjustedTotal > 800) status = 'block';
+            else if (adjustedTotal > 400) status = 'warn';
+            else                          status = 'ok';
+
+            core.setOutput('status',    status);
+            core.setOutput('total',     adjustedTotal.toString());
+            core.setOutput('additions', additions.toString());
+            core.setOutput('deletions', deletions.toString());
+
+            console.log(`Size: +${additions} -${deletions} (adjusted: ${adjustedTotal}) → ${status}`);
+
+            if (status === 'block') {
+              core.setFailed(`PR is too large (${adjustedTotal} lines, excluding lock files). Maximum is 800. Please split into smaller, focused PRs.`);
+            }
+
+  # ============================================================
+  # JOB 4: REPORT
+  # Aggregates all results and posts/updates a single PR comment.
+  # Always runs, even when validate or size-check fails.
+  # ============================================================
+  report:
+    name: "📋 Post PR Report"
+    runs-on: ubuntu-latest
+    needs: [validate, label, size-check]
+    if: always() && github.event_name == 'pull_request'
+
+    steps:
+      - name: "Post PR health report comment"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // ── Collect all results ──────────────────────────────────────────
+            const titleOk      = '${{ needs.validate.outputs.title_ok }}'   === 'true';
+            const descOk       = '${{ needs.validate.outputs.desc_ok }}'    === 'true';
+            const mlRiskOk     = '${{ needs.validate.outputs.ml_risk_ok }}' === 'true';
+            const dbRiskOk     = '${{ needs.validate.outputs.db_risk_ok }}' === 'true';
+            const titleErr     = `${{ needs.validate.outputs.title_error }}`;
+            const descErr      = `${{ needs.validate.outputs.desc_error }}`;
+            const mlRiskErr    = `${{ needs.validate.outputs.ml_risk_error }}`;
+            const dbRiskErr    = `${{ needs.validate.outputs.db_risk_error }}`;
+
+            const linkedIssue  = '${{ needs.validate.outputs.linked_issue }}'   === 'true';
+            const hasTests     = '${{ needs.validate.outputs.has_tests }}'      === 'true';
+            const schemaOk     = '${{ needs.validate.outputs.schema_updated }}' === 'true';
+
+            const sizeStatus   = '${{ needs.size-check.outputs.size_status }}';
+            const totalLines   = '${{ needs.size-check.outputs.total_lines }}';
+            const additions    = '${{ needs.size-check.outputs.additions }}';
+            const deletions    = '${{ needs.size-check.outputs.deletions }}';
+
+            const blockingErrors = parseInt('${{ needs.validate.outputs.blocking_errors }}') || 0;
+            const sizeBlocked    = sizeStatus === 'block';
+            const totalBlocks    = blockingErrors + (sizeBlocked ? 1 : 0);
+
+            // ── Helper functions ─────────────────────────────────────────────
+            const pass  = '✅';
+            const fail  = '❌';
+            const warn  = '⚠️';
+
+            const row = (icon, check, detail) =>
+              `| ${icon} | **${check}** | ${detail} |`;
+
+            // ── Size bar ─────────────────────────────────────────────────────
+            const pct     = Math.min(Math.round((parseInt(totalLines) / 800) * 100), 100);
+            const filled  = Math.round(pct / 5);
+            const bar     = '█'.repeat(filled) + '░'.repeat(20 - filled);
+            const sizeIcon = sizeStatus === 'block' ? fail
+                           : sizeStatus === 'warn'  ? warn : pass;
+
+            // ── Overall verdict ───────────────────────────────────────────────
+            let verdict, verdictDetail;
+            if (totalBlocks > 0) {
+              verdict       = `## ❌ ${totalBlocks} Blocking Issue${totalBlocks > 1 ? 's' : ''} — Cannot Merge`;
+              verdictDetail = 'Fix all ❌ items below, then push a new commit to re-run this check.';
+            } else {
+              verdict       = '## ✅ PR Looks Good';
+              verdictDetail = 'No blocking issues found. This PR is ready for review.';
+            }
+
+            // ── Build comment body ────────────────────────────────────────────
+            const body = `## 🔍 Floodingnaque PR Health Report
+
+            ${verdict}
+            ${verdictDetail}
+
+            ---
+
+            ### 🚦 Critical Rules (blocking)
+
+            | | Check | Detail |
+            |---|---|---|
+            ${row(titleOk  ? pass : fail, 'PR Title Format',        titleOk  ? `\`${context.payload.pull_request.title}\`` : titleErr)}
+            ${row(descOk   ? pass : fail, 'PR Description',         descOk   ? 'Description present and sufficient'  : descErr)}
+            ${row(mlRiskOk ? pass : fail, 'ML Model Change',        mlRiskOk ? 'Not changed, or change acknowledged' : mlRiskErr)}
+            ${row(dbRiskOk ? pass : fail, 'DB Migration',           dbRiskOk ? 'Not changed, or change documented'   : dbRiskErr)}
+            ${row(sizeIcon,               'PR Size',                sizeStatus === 'ok'    ? `${totalLines} lines (+${additions} / -${deletions}) — within limit`
+                                                                  : sizeStatus === 'warn'  ? `${totalLines} lines — large PR, consider splitting`
+                                                                  :                          `${totalLines} lines — **exceeds 800-line limit**. Split this PR.`)}
+
+            ---
+
+            ### 💡 Style Suggestions (non-blocking)
+
+            | | Check | Suggestion |
+            |---|---|---|
+            ${row(linkedIssue ? pass : warn, 'Linked Issue',   linkedIssue ? 'Issue or PR reference found in description' : 'No linked issue (#123) found. Consider adding `Closes #<issue>` to the description.')}
+            ${row(hasTests    ? pass : warn, 'Test Coverage',  hasTests    ? 'Test files updated alongside source changes'  : 'Source files changed but no test files updated. Consider adding or updating tests.')}
+            ${row(schemaOk    ? pass : warn, 'API Schema',     schemaOk    ? 'Schema files updated (or no route changes)'   : 'API route files changed but no schema files updated. Verify the contract is consistent.')}
+
+            ---
+
+            ### 📏 Diff Size
+
+            \`${bar}\` ${pct}% of limit
+
+            | Metric | Value |
+            |---|---|
+            | Additions | +${additions} |
+            | Deletions | -${deletions} |
+            | Adjusted total (excl. lock files) | ${totalLines} lines |
+            | Limit | 800 lines (hard block) / 400 lines (warning) |
+
+            ---
+
+            ### 🏷️ Conventional Commit Types Quick Reference
+
+            | Type | Use for |
+            |---|---|
+            | \`feat\` | New feature (e.g. new API endpoint, new UI component) |
+            | \`fix\` | Bug fix |
+            | \`chore\` | Maintenance (deps, config, tooling) |
+            | \`docs\` | Documentation only |
+            | \`refactor\` | Code restructure with no behavior change |
+            | \`test\` | Adding or fixing tests |
+            | \`perf\` | Performance improvement |
+            | \`ci\` | CI/CD workflow changes |
+
+            **Example titles:**
+            \`feat(frontend): add barangay risk heatmap to flood map\`
+            \`fix(backend): resolve OWM circuit breaker false trips on slow responses\`
+            \`refactor(ml): extract feature engineering into dedicated pipeline class\`
+
+            ---
+            <sub>🤖 Floodingnaque PR Manager • Re-runs on every push to this PR • Blocking rules enforced via required status check</sub>`;
+
+            // ── Delete previous report comment ────────────────────────────────
+            const comments = await github.rest.issues.listComments({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            for (const c of comments.data) {
+              if (c.user.login === 'github-actions[bot]' &&
+                  c.body.includes('Floodingnaque PR Health Report')) {
+                await github.rest.issues.deleteComment({
+                  owner:      context.repo.owner,
+                  repo:       context.repo.repo,
+                  comment_id: c.id,
+                });
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });

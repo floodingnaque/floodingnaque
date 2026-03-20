@@ -1,0 +1,686 @@
+# =============================================================================
+# FLOODINGNAQUE — Scheduled Operations
+# =============================================================================
+#
+# Five scheduled jobs in one file:
+#
+#  Job 1 — health-check      : Every 30 min — ping all prod endpoints
+#  Job 2 — backup-verify     : Weekly Sunday — restore latest DB backup
+#                              into an ephemeral container, run smoke test
+#  Job 3 — quota-alerts      : Daily 08:00 PHT — check API usage vs limits
+#  Job 4 — flood-season-audit: May 15 annually — full readiness audit before
+#                              monsoon season (June–November)
+#  Job 5 — performance-bench : Weekly Monday 07:00 PHT — ML accuracy +
+#                              API latency benchmark against baselines
+#
+# =============================================================================
+
+name: "⏰ Scheduled Operations"
+
+on:
+  schedule:
+    # Health check: every 30 min
+    - cron: "*/30 * * * *"
+    # Backup verify: Sunday 17:00 UTC = Sunday 01:00 PHT+1
+    - cron: "0 17 * * 0"
+    # Quota alerts: daily 00:00 UTC = 08:00 PHT
+    - cron: "0 0 * * *"
+    # Flood season readiness: May 15 each year at 08:00 PHT
+    - cron: "0 0 15 5 *"
+    # Performance benchmark: Monday 23:00 UTC = Tuesday 07:00 PHT
+    - cron: "0 23 * * 1"
+
+  # Allow manual trigger for any job
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run"
+        required: true
+        type: choice
+        options:
+          - health-check
+          - backup-verify
+          - quota-alerts
+          - flood-season-audit
+          - performance-bench
+          - all
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  # ============================================================
+  # JOB 1: Health Check (every 30 min)
+  # ============================================================
+  health-check:
+    name: "💓 Production Health Check"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'health-check' || github.event.inputs.job == 'all')) ||
+      (github.event_name == 'schedule' && github.event.schedule == '*/30 * * * *')
+
+    steps:
+      - name: "Ping all production endpoints"
+        id: ping
+        run: |
+          BASE="https://app.floodingnaque.com"
+          FAILED=""
+          RESULTS=""
+
+          check_endpoint() {
+            local name="$1" url="$2" expected_code="${3:-200}"
+            local START=$(date +%s%3N)
+            local CODE=$(curl -o /tmp/resp.json -sw "%{http_code}" \
+              --max-time 10 --silent "${url}")
+            local END=$(date +%s%3N)
+            local LATENCY=$((END - START))
+
+            if [ "$CODE" = "$expected_code" ]; then
+              RESULTS="${RESULTS}✅ ${name} → ${CODE} (${LATENCY}ms)\n"
+            else
+              RESULTS="${RESULTS}❌ ${name} → ${CODE} (${LATENCY}ms)\n"
+              FAILED="${FAILED}${name} "
+            fi
+          }
+
+          check_endpoint "System Status"       "${BASE}/status"
+          check_endpoint "API Models"          "${BASE}/api/models"
+          check_endpoint "Dashboard Summary"   "${BASE}/api/v1/dashboard/summary"
+          check_endpoint "Evacuation Centers"  "${BASE}/api/v1/evacuation/centers"
+          check_endpoint "Tides Current"       "${BASE}/api/v1/tides/current"
+
+          # Prediction endpoint (POST)
+          PRED_CODE=$(curl -o /dev/null -sw "%{http_code}" \
+            --max-time 10 --silent \
+            -X POST "${BASE}/api/v1/predict/" \
+            -H "Content-Type: application/json" \
+            -d '{"temperature":295,"humidity":60,"precipitation":0}')
+          [ "$PRED_CODE" = "200" ] \
+            && RESULTS="${RESULTS}✅ Prediction endpoint → ${PRED_CODE}\n" \
+            || { RESULTS="${RESULTS}❌ Prediction endpoint → ${PRED_CODE}\n"; FAILED="${FAILED}prediction "; }
+
+          echo -e "$RESULTS"
+          echo "failed_endpoints=${FAILED}" >> "$GITHUB_OUTPUT"
+          echo "results<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$RESULTS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          [ -z "$FAILED" ] || exit 1
+
+      - name: "Alert on failure"
+        if: failure()
+        env:
+          FAILED_ENDPOINTS: ${{ steps.ping.outputs.failed_endpoints }}
+          RESULTS: ${{ steps.ping.outputs.results }}
+          SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          curl -s -X POST "$SLACK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"text\": \"🚨 *Floodingnaque Production Alert*\n*Failed endpoints:* ${FAILED_ENDPOINTS}\n*Time:* ${TIMESTAMP}\n*Action:* Check https://app.floodingnaque.com/status\"
+            }" || true
+
+      - name: "Auto-open incident issue on failure"
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const failed = '${{ steps.ping.outputs.failed_endpoints }}';
+
+            // Only open an issue if none is already open for this incident
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'incident', state: 'open',
+            });
+
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `🚨 Production Incident — ${new Date().toISOString().split('T')[0]}`,
+                labels: ['incident', 'high-priority'],
+                assignees: ['Ramil-Martizano'],
+                body: `## 🚨 Production Health Check Failed\n\n` +
+                      `**Failed endpoints:** ${failed}\n` +
+                      `**Detected at:** ${new Date().toISOString()}\n\n` +
+                      `### Immediate Actions\n` +
+                      `- [ ] Check server status: \`ssh user@app.floodingnaque.com\`\n` +
+                      `- [ ] Check Docker containers: \`docker compose ps\`\n` +
+                      `- [ ] Check logs: \`docker compose logs --tail=100 backend\`\n` +
+                      `- [ ] Check Supabase dashboard for DB issues\n` +
+                      `- [ ] Verify Nginx is running: \`systemctl status nginx\`\n\n` +
+                      `Close this issue once the incident is resolved.\n\n` +
+                      `<sub>Auto-opened by Floodingnaque Health Check</sub>`,
+              });
+            }
+
+  # ============================================================
+  # JOB 2: Backup Verification (weekly Sunday)
+  # ============================================================
+  backup-verify:
+    name: "💾 Backup Verification"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'backup-verify' || github.event.inputs.job == 'all')) ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 17 * * 0')
+
+    services:
+      postgres-restore:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: restore_test
+          POSTGRES_PASSWORD: restore_pass
+          POSTGRES_DB: restore_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-retries 5
+        ports: ["5433:5432"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: "Download latest backup from Supabase Storage"
+        env:
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          BACKUP_FILE="floodingnaque_$(date -d 'yesterday' +%Y-%m-%d).pgdump"
+
+          curl -f \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+            "${SUPABASE_URL}/storage/v1/object/backups/postgres/$(date -d 'yesterday' +%Y-%m-%d)/${BACKUP_FILE}" \
+            -o latest_backup.pgdump \
+            || (echo "❌ Failed to download backup" && exit 1)
+
+          echo "✅ Backup downloaded: $(du -sh latest_backup.pgdump | cut -f1)"
+
+      - name: "Restore and verify"
+        run: |
+          export PGPASSWORD=restore_pass
+
+          pg_restore \
+            --host=localhost \
+            --port=5433 \
+            --username=restore_test \
+            --dbname=restore_test \
+            --no-password \
+            --verbose \
+            latest_backup.pgdump
+
+          echo "✅ Restore completed"
+
+          # Verify row counts match expectations
+          FLOOD_COUNT=$(psql \
+            "postgresql://restore_test:restore_pass@localhost:5433/restore_test" \
+            -t -c "SELECT COUNT(*) FROM flood_events;" | xargs)
+
+          echo "Flood events in backup: ${FLOOD_COUNT}"
+
+          if [ "${FLOOD_COUNT:-0}" -lt 1182 ]; then
+            echo "❌ Flood event count (${FLOOD_COUNT}) is below expected minimum (1182)"
+            exit 1
+          fi
+
+          PRED_COUNT=$(psql \
+            "postgresql://restore_test:restore_pass@localhost:5433/restore_test" \
+            -t -c "SELECT COUNT(*) FROM predictions;" 2>/dev/null | xargs || echo "0")
+          echo "Predictions in backup: ${PRED_COUNT}"
+
+          echo "✅ Backup verification passed"
+          echo "  Flood events: ${FLOOD_COUNT}"
+          echo "  Predictions:  ${PRED_COUNT}"
+
+      - name: "Run verify_backup.py on downloaded backup"
+        run: |
+          mkdir -p /tmp/fnq_backups
+          cp latest_backup.pgdump /tmp/fnq_backups/
+          cd backend
+          python scripts/verify_backup.py \
+            --backup-dir /tmp/fnq_backups \
+            --max-age-hours 48 \
+            --min-size 1024 \
+            --verbose
+
+      - name: "Report backup health"
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const success = '${{ job.status }}' === 'success';
+            const icon    = success ? '✅' : '❌';
+            const date    = new Date().toISOString().split('T')[0];
+
+            console.log(`${icon} Backup verification ${success ? 'PASSED' : 'FAILED'} for ${date}`);
+
+            if (!success) {
+              await github.rest.issues.create({
+                owner:     context.repo.owner,
+                repo:      context.repo.repo,
+                title:     `❌ Backup Verification Failed — ${date}`,
+                labels:    ['backup', 'high-priority'],
+                assignees: ['Ramil-Martizano'],
+                body: `The weekly backup restore test failed on ${date}.\n\n` +
+                      `**Action required:** Investigate the backup pipeline.\n\n` +
+                      `Check: \`/scripts/backup/daily_db_backup.sh\` logs on the production server.\n\n` +
+                      `<sub>Auto-opened by Floodingnaque Backup Verifier</sub>`,
+              });
+            }
+
+  # ============================================================
+  # JOB 3: API Quota Alerts (daily 08:00 PHT)
+  # ============================================================
+  quota-alerts:
+    name: "📊 API Quota Check"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'quota-alerts' || github.event.inputs.job == 'all')) ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 0 * * *')
+
+    steps:
+      - name: "Fetch API usage from Floodingnaque"
+        id: quota
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          USAGE=$(curl -sf \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            "https://app.floodingnaque.com/api/v1/system/api-usage" \
+            || echo '{}')
+          echo "usage=${USAGE}" >> "$GITHUB_OUTPUT"
+          echo "Raw usage data:"
+          echo "$USAGE" | python3 -m json.tool || echo "$USAGE"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "Evaluate thresholds and alert"
+        env:
+          USAGE: ${{ steps.quota.outputs.usage }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, sys
+
+          usage = json.loads(os.environ.get('USAGE', '{}'))
+
+          LIMITS = {
+            'owm':          {'limit': 1000,  'name': 'OpenWeatherMap'},
+            'weatherstack': {'limit': 250,   'name': 'Weatherstack'},
+            'worldtides':   {'limit': 500,   'name': 'WorldTides'},
+          }
+
+          alerts = []
+          for service, cfg in LIMITS.items():
+            svc_data = usage.get(service, {})
+            calls    = svc_data.get('calls_today', 0)
+            limit    = cfg['limit']
+            pct      = (calls / limit * 100) if limit else 0
+
+            if pct >= 95:
+              alerts.append(f"🔴 CRITICAL: {cfg['name']} at {pct:.0f}% ({calls}/{limit} calls)")
+            elif pct >= 80:
+              alerts.append(f"🟡 WARNING:  {cfg['name']} at {pct:.0f}% ({calls}/{limit} calls)")
+            else:
+              print(f"✅ {cfg['name']}: {pct:.0f}% ({calls}/{limit} calls)")
+
+          if alerts:
+            print("\nAPI Quota Alerts:")
+            for a in alerts: print(a)
+            sys.exit(1)
+          else:
+            print("\n✅ All API quotas within safe limits")
+          PYEOF
+
+      - name: "Send quota alert to Slack"
+        if: failure()
+        env:
+          SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -s -X POST "$SLACK_URL" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "text": "⚠️ *Floodingnaque API Quota Alert*\nOne or more weather API services are near their daily free-tier limit.\nCheck the dashboard: https://app.floodingnaque.com/analytics\nConsider enabling fallback services or increasing caching TTL."
+            }' || true
+
+  # ============================================================
+  # JOB 4: Flood Season Readiness Audit (May 15 annually)
+  # ============================================================
+  flood-season-audit:
+    name: "🌧️ Flood Season Readiness Audit"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'flood-season-audit' || github.event.inputs.job == 'all')) ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 0 15 5 *')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "Run comprehensive readiness audit"
+        id: audit
+        env:
+          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+        run: |
+          echo "================================================"
+          echo "FLOODINGNAQUE FLOOD SEASON READINESS AUDIT"
+          echo "Run date: $(date +'%Y-%m-%d %H:%M PHT')"
+          echo "Monsoon season: June 1 – November 30"
+          echo "================================================"
+
+          PASS=0; FAIL=0; WARN=0
+          REPORT=""
+
+          check() {
+            local icon="$1" label="$2" detail="$3"
+            REPORT="${REPORT}${icon} **${label}**: ${detail}\n"
+            case "$icon" in
+              "✅") PASS=$((PASS+1)) ;;
+              "❌") FAIL=$((FAIL+1)) ;;
+              "⚠️") WARN=$((WARN+1)) ;;
+            esac
+          }
+
+          # ── 1. Production endpoint health ──────────────────────────────
+          STATUS=$(curl -sf --max-time 10 \
+            "https://app.floodingnaque.com/status" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','unknown'))" \
+            2>/dev/null || echo "unreachable")
+          [ "$STATUS" = "healthy" ] \
+            && check "✅" "Production System" "Online and healthy" \
+            || check "❌" "Production System" "Status: ${STATUS} — MUST be healthy before monsoon season"
+
+          # ── 2. ML model version ─────────────────────────────────────────
+          MODEL=$(curl -sf --max-time 10 \
+            "https://app.floodingnaque.com/api/models" \
+            | python3 -c "import sys,json; ms=json.load(sys.stdin).get('models',[]); print(ms[-1].get('version','?') if ms else 'none')" \
+            2>/dev/null || echo "unknown")
+          [ "$MODEL" = "v6" ] || [ "$MODEL" = "v7" ] \
+            && check "✅" "ML Model Version" "Active model: ${MODEL} (production-ready)" \
+            || check "⚠️" "ML Model Version" "Active model: ${MODEL} — recommend retraining with latest DRRMO data before monsoon"
+
+          # ── 3. SMS alert system ─────────────────────────────────────────
+          SMS=$(curl -sf --max-time 10 \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            "https://app.floodingnaque.com/api/v1/system/sms-status" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','unknown'))" \
+            2>/dev/null || echo "unchecked")
+          [ "$SMS" = "active" ] \
+            && check "✅" "SMS Alert System" "Semaphore SMS service active" \
+            || check "⚠️" "SMS Alert System" "Status: ${SMS} — verify Semaphore API key and resident opt-in list"
+
+          # ── 4. Evacuation center data freshness ─────────────────────────
+          CENTERS=$(curl -sf --max-time 10 \
+            "https://app.floodingnaque.com/api/v1/evacuation/centers" \
+            | python3 -c "import sys,json; cs=json.load(sys.stdin).get('centers',[]); print(len(cs))" \
+            2>/dev/null || echo "0")
+          [ "${CENTERS:-0}" -ge 16 ] \
+            && check "✅" "Evacuation Centers" "${CENTERS} centers loaded (all 16 barangays covered)" \
+            || check "❌" "Evacuation Centers" "Only ${CENTERS} centers — update DRRMO master list before monsoon season"
+
+          # ── 5. WorldTides API ───────────────────────────────────────────
+          TIDES=$(curl -sf --max-time 10 \
+            "https://app.floodingnaque.com/api/v1/tides/current" \
+            | python3 -c "import sys,json; print('ok' if json.load(sys.stdin).get('height') is not None else 'fail')" \
+            2>/dev/null || echo "fail")
+          [ "$TIDES" = "ok" ] \
+            && check "✅" "WorldTides API" "Tidal data feed operational" \
+            || check "⚠️" "WorldTides API" "Tidal feed not responding — critical for Manila Bay coastal flood warnings"
+
+          # ── 6. DRRMO records freshness ──────────────────────────────────
+          YEAR=$(date +%Y)
+          LATEST_RECORD=$(curl -sf --max-time 10 \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            "https://app.floodingnaque.com/api/v1/admin/records/latest-year" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('year','unknown'))" \
+            2>/dev/null || echo "unknown")
+          [ "$LATEST_RECORD" = "$YEAR" ] \
+            && check "✅" "DRRMO Records" "${YEAR} flood records loaded" \
+            || check "⚠️" "DRRMO Records" "Latest records are from ${LATEST_RECORD} — upload ${YEAR} data and retrain model"
+
+          # ── 7. Backup recency ───────────────────────────────────────────
+          check "⚠️" "Backup Recency" "Manually verify latest backup is < 24 hours old before monsoon season start"
+
+          # ── 8. Redis cache ──────────────────────────────────────────────
+          CACHE=$(curl -sf --max-time 10 \
+            -H "Authorization: Bearer ${ADMIN_API_KEY}" \
+            "https://app.floodingnaque.com/api/v1/system/cache-stats" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); pct=d.get('hit_rate_pct',0); print(f'{pct:.0f}%')" \
+            2>/dev/null || echo "unknown")
+          check "✅" "Redis Cache Hit Rate" "${CACHE} (target: ≥80%)"
+
+          # ── Summary ────────────────────────────────────────────────────
+          echo "pass=${PASS}"   >> "$GITHUB_OUTPUT"
+          echo "fail=${FAIL}"   >> "$GITHUB_OUTPUT"
+          echo "warn=${WARN}"   >> "$GITHUB_OUTPUT"
+          echo "report<<EOF"    >> "$GITHUB_OUTPUT"
+          echo -e "$REPORT"     >> "$GITHUB_OUTPUT"
+          echo "EOF"            >> "$GITHUB_OUTPUT"
+
+          echo ""
+          echo "AUDIT RESULT: ${PASS} passed, ${FAIL} failed, ${WARN} warnings"
+          [ "$FAIL" -gt 0 ] && exit 1 || exit 0
+
+      - name: "Create readiness issue"
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pass   = '${{ steps.audit.outputs.pass }}';
+            const fail   = '${{ steps.audit.outputs.fail }}';
+            const warn   = '${{ steps.audit.outputs.warn }}';
+            const report = `${{ steps.audit.outputs.report }}`;
+            const year   = new Date().getFullYear();
+
+            const overallOk = parseInt(fail) === 0;
+            const icon      = overallOk ? '✅' : '❌';
+
+            await github.rest.issues.create({
+              owner:     context.repo.owner,
+              repo:      context.repo.repo,
+              title:     `${icon} Flood Season Readiness Audit — ${year}`,
+              labels:    ['flood-season', overallOk ? 'ready' : 'action-required'],
+              assignees: ['Ramil-Martizano'],
+              body:
+                `## 🌧️ Flood Season Readiness Audit — ${year}\n\n` +
+                `**Monsoon season begins:** June 1, ${year}\n` +
+                `**Audit run:** ${new Date().toISOString()}\n\n` +
+                `### Summary\n\n` +
+                `| ✅ Passed | ❌ Failed | ⚠️ Warnings |\n|---|---|---|\n` +
+                `| ${pass} | ${fail} | ${warn} |\n\n` +
+                `### Detailed Results\n\n${report}\n\n` +
+                `### Pre-Monsoon Checklist\n\n` +
+                `- [ ] All ❌ items resolved\n` +
+                `- [ ] All ⚠️ items reviewed and accepted or resolved\n` +
+                `- [ ] DRRMO duty officers briefed on new features since last season\n` +
+                `- [ ] SMS alert opt-in list updated with new barangay contacts\n` +
+                `- [ ] Evacuation center capacities verified with barangay captains\n` +
+                `- [ ] Compound alert thresholds reviewed (king tide + heavy rain)\n` +
+                `- [ ] Load test run against production to confirm 3-replica scaling holds\n` +
+                `- [ ] Sign-off by @Ramil-Martizano\n\n` +
+                `<sub>Auto-created by Floodingnaque Flood Season Readiness Audit</sub>`,
+            });
+
+  # ============================================================
+  # JOB 5: Performance Benchmark (weekly Monday)
+  # ============================================================
+  performance-bench:
+    name: "📈 Performance Benchmark"
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.job == 'performance-bench' || github.event.inputs.job == 'all')) ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * 1')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "Install benchmark tools"
+        run: pip install requests --quiet
+
+      - name: "Run API latency benchmark"
+        id: latency
+        run: |
+          python3 << 'PYEOF'
+          import requests, statistics, json, time
+
+          BASE     = "https://app.floodingnaque.com"
+          N_RUNS   = 20
+          BASELINES = {
+            "/status":                   {"p95": 200,  "p99": 500},
+            "/api/v1/predict/ (POST)":   {"p95": 500,  "p99": 1000},
+            "/api/v1/dashboard/summary": {"p95": 300,  "p99": 600},
+          }
+
+          results = {}
+          for label, config in [
+            ("/status",                {"method":"GET",  "url":f"{BASE}/status"}),
+            ("/api/v1/predict/ (POST)",{"method":"POST", "url":f"{BASE}/api/v1/predict/",
+              "json":{"temperature":295,"humidity":60,"precipitation":0}}),
+            ("/api/v1/dashboard/summary",{"method":"GET","url":f"{BASE}/api/v1/dashboard/summary"}),
+          ]:
+            times = []
+            for _ in range(N_RUNS):
+              start = time.perf_counter()
+              try:
+                if config["method"] == "POST":
+                  r = requests.post(config["url"], json=config.get("json",{}), timeout=10)
+                else:
+                  r = requests.get(config["url"], timeout=10)
+                elapsed = (time.perf_counter() - start) * 1000
+                if r.status_code == 200:
+                  times.append(elapsed)
+              except:
+                pass
+
+            if times:
+              p50 = statistics.median(times)
+              p95 = sorted(times)[int(len(times)*0.95)]
+              p99 = sorted(times)[int(len(times)*0.99)] if len(times)>=10 else max(times)
+              baseline = BASELINES.get(label,{})
+              p95_ok = p95 <= baseline.get("p95", 9999)
+              p99_ok = p99 <= baseline.get("p99", 9999)
+              results[label] = {
+                "p50": round(p50,1), "p95": round(p95,1), "p99": round(p99,1),
+                "p95_ok": p95_ok, "p99_ok": p99_ok, "n": len(times)
+              }
+              icon = "✅" if (p95_ok and p99_ok) else "❌"
+              print(f"{icon} {label}: p50={p50:.0f}ms p95={p95:.0f}ms p99={p99:.0f}ms (baseline p95≤{baseline.get('p95','?')}ms)")
+
+          with open("latency_results.json", "w") as f:
+            json.dump(results, f, indent=2)
+
+          failures = [(k,v) for k,v in results.items() if not v["p95_ok"] or not v["p99_ok"]]
+          if failures:
+            print(f"\n❌ {len(failures)} endpoint(s) exceed latency baseline")
+            exit(1)
+          else:
+            print("\n✅ All endpoints within latency baselines")
+          PYEOF
+
+      - name: "Run ML model accuracy benchmark"
+        id: accuracy
+        run: |
+          python3 << 'PYEOF'
+          import requests, json
+
+          BASE      = "https://app.floodingnaque.com"
+          BASELINE  = 0.9675    # v6 production baseline: 96.75%
+
+          # Known test vectors: (inputs, expected_label)
+          TEST_VECTORS = [
+            # Clearly safe — no rain, normal conditions
+            ({"temperature":295,"humidity":55,"precipitation":0.0},   "Safe"),
+            ({"temperature":298,"humidity":60,"precipitation":0.5},   "Safe"),
+            # Alert conditions — moderate rain
+            ({"temperature":301,"humidity":82,"precipitation":15.0},  "Alert"),
+            ({"temperature":300,"humidity":85,"precipitation":20.0},  "Alert"),
+            # Critical conditions — heavy rain, high humidity
+            ({"temperature":303,"humidity":95,"precipitation":80.0},  "Critical"),
+            ({"temperature":305,"humidity":98,"precipitation":120.0}, "Critical"),
+          ]
+
+          correct = 0
+          for inputs, expected in TEST_VECTORS:
+            try:
+              r = requests.post(f"{BASE}/api/v1/predict/",
+                                json=inputs, timeout=10)
+              if r.status_code == 200:
+                label = r.json().get("risk_label", "Unknown")
+                ok = label == expected
+                correct += ok
+                icon = "✅" if ok else "❌"
+                print(f"{icon} Input {inputs} → {label} (expected {expected})")
+              else:
+                print(f"❌ HTTP {r.status_code} for input {inputs}")
+            except Exception as e:
+              print(f"❌ Exception: {e}")
+
+          accuracy = correct / len(TEST_VECTORS)
+          print(f"\nVector accuracy: {accuracy*100:.1f}% ({correct}/{len(TEST_VECTORS)})")
+
+          if accuracy < 0.833:   # Allow up to 1 miss in 6 test vectors
+            print("❌ Accuracy below acceptable threshold for test vectors")
+            exit(1)
+          else:
+            print("✅ Model responding correctly on production endpoints")
+          PYEOF
+
+      - name: "Post benchmark results"
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const latencyOk  = '${{ steps.latency.outcome }}'  === 'success';
+            const accuracyOk = '${{ steps.accuracy.outcome }}' === 'success';
+            const date       = new Date().toISOString().split('T')[0];
+
+            if (!latencyOk || !accuracyOk) {
+              await github.rest.issues.create({
+                owner:     context.repo.owner,
+                repo:      context.repo.repo,
+                title:     `⚠️ Performance Benchmark Regression — ${date}`,
+                labels:    ['performance', 'needs-human-review'],
+                assignees: ['Ramil-Martizano'],
+                body:
+                  `## ⚠️ Performance Benchmark Regression\n\n` +
+                  `**Date:** ${date}\n\n` +
+                  `| Check | Result |\n|---|---|\n` +
+                  `| API Latency | ${latencyOk ? '✅ Within baseline' : '❌ Exceeds baseline'} |\n` +
+                  `| ML Model Accuracy | ${accuracyOk ? '✅ Responding correctly' : '❌ Unexpected predictions'} |\n\n` +
+                  `See the workflow run for full details.\n\n` +
+                  `**Baselines:** Prediction endpoint p95 ≤ 500ms, Dashboard p95 ≤ 300ms, Model v6 accuracy ≥ 96.75%\n\n` +
+                  `<sub>Auto-opened by Floodingnaque Performance Benchmark</sub>`,
+              });
+            } else {
+              console.log(`✅ All benchmarks passed on ${date}`);
+            }

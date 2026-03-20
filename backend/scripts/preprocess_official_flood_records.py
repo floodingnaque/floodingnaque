@@ -71,8 +71,8 @@ def preprocess_flood_record(df: pd.DataFrame, year: int) -> pd.DataFrame:
     Preprocess a single year's flood records.
 
     Standardizes columns, handles missing values, and adds derived features.
+    This function mutates and returns the provided DataFrame.
     """
-    df = df.copy()
 
     # Standardize column names (lowercase, underscore)
     df.columns = [col.lower().strip().replace(" ", "_") for col in df.columns]
@@ -123,15 +123,9 @@ def preprocess_flood_record(df: pd.DataFrame, year: int) -> pd.DataFrame:
         else:
             df["precipitation"] = 40  # Default moderate flood precipitation
 
-    # Add weather estimates for flood events (typical flood conditions)
-    if "temperature" not in df.columns:
-        # Typical temperature during monsoon flooding
-        df["temperature"] = np.random.normal(28, 2, len(df))
-
-    if "humidity" not in df.columns:
-        # High humidity during floods
-        df["humidity"] = np.random.normal(85, 5, len(df))
-        df["humidity"] = df["humidity"].clip(70, 100)
+    # NOTE: Weather data (temperature, humidity) is NOT generated here.
+    # Use preprocess_official_flood_records_v2.py which assigns real PAGASA
+    # station data via IDW spatial interpolation.
 
     # Add monsoon season indicator
     if "month" in df.columns:
@@ -140,54 +134,11 @@ def preprocess_flood_record(df: pd.DataFrame, year: int) -> pd.DataFrame:
     return df
 
 
-def create_synthetic_non_flood_records(flood_df: pd.DataFrame, ratio: float = 2.0) -> pd.DataFrame:
-    """
-    Create synthetic non-flood records to balance the dataset.
-
-    For each flood record, creates `ratio` non-flood records with
-    lower precipitation values.
-    """
-    n_non_flood = int(len(flood_df) * ratio)
-
-    non_flood_records = []
-
-    for year in flood_df["year"].unique():
-        year_floods = flood_df[flood_df["year"] == year]
-        n_year = int(len(year_floods) * ratio)
-
-        # Generate non-flood days spread throughout the year
-        months = np.random.choice(range(1, 13), n_year)
-        days = np.random.choice(range(1, 29), n_year)
-
-        for i in range(n_year):
-            month = months[i]
-            is_monsoon = month in [6, 7, 8, 9, 10, 11]
-
-            record = {
-                "year": year,
-                "month": month,
-                "day": days[i],
-                "flood": 0,
-                "risk_level": 0,
-                "precipitation": np.random.exponential(5) if not is_monsoon else np.random.exponential(8),
-                "temperature": np.random.normal(30 if not is_monsoon else 28, 2),
-                "humidity": np.random.normal(70 if not is_monsoon else 80, 10),
-                "is_monsoon_season": int(is_monsoon),
-            }
-
-            # Clip values to realistic ranges
-            record["precipitation"] = min(record["precipitation"], 18)  # Below flood threshold
-            record["temperature"] = max(25, min(record["temperature"], 38))
-            record["humidity"] = max(40, min(record["humidity"], 95))
-
-            non_flood_records.append(record)
-
-    return pd.DataFrame(non_flood_records)
-
-
 def add_derived_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add derived features for model training."""
-    df = df.copy()
+    """Add derived features for model training.
+
+    This function mutates and returns the provided DataFrame.
+    """
 
     # Ensure numeric columns
     numeric_cols = ["precipitation", "temperature", "humidity"]
@@ -237,15 +188,9 @@ def create_cumulative_datasets() -> Dict[int, pd.DataFrame]:
         if flood_df is None:
             continue
 
-        # Preprocess flood records
+        # Preprocess flood records (flood events only — no synthetic generation)
         processed = preprocess_flood_record(flood_df, year)
-
-        # Create synthetic non-flood records
-        non_flood = create_synthetic_non_flood_records(processed)
-
-        # Combine
-        year_data = pd.concat([processed, non_flood], ignore_index=True)
-        year_data = add_derived_features(year_data)
+        year_data = add_derived_features(processed)
 
         all_records.append(year_data)
 
@@ -273,9 +218,7 @@ def process_single_year(year: int) -> pd.DataFrame:
         raise FileNotFoundError(f"No flood records found for {year}")
 
     processed = preprocess_flood_record(flood_df, year)
-    non_flood = create_synthetic_non_flood_records(processed)
-    combined = pd.concat([processed, non_flood], ignore_index=True)
-    combined = add_derived_features(combined)
+    combined = add_derived_features(processed)
 
     output_path = PROCESSED_DIR / f"processed_flood_records_{year}.csv"
     combined.to_csv(output_path, index=False)

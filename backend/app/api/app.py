@@ -11,17 +11,28 @@ import os
 import uuid
 from datetime import datetime, timezone
 
-from app.api.middleware import get_cors_origins, init_rate_limiter, setup_cors, setup_request_logging, setup_security_headers
+from app.api.middleware import (
+    get_cors_origins,
+    init_rate_limiter,
+    setup_cors,
+    setup_security_headers,
+)
 from app.api.middleware.request_logger import setup_request_logging_middleware
 from app.api.routes.admin_logs import admin_logs_bp
 from app.api.routes.admin_models import admin_models_bp
+from app.api.routes.admin_monitoring import admin_monitoring_bp
+from app.api.routes.admin_security import admin_security_bp
 from app.api.routes.admin_users import admin_users_bp
+from app.api.routes.aggregation import aggregation_bp
 from app.api.routes.alerts import alerts_bp
+from app.api.routes.api_keys import api_keys_bp
 from app.api.routes.batch import batch_bp
 from app.api.routes.celery import celery_bp
+from app.api.routes.community_reports import community_reports_bp
 from app.api.routes.csp_report import csp_report_bp
 from app.api.routes.dashboard import dashboard_bp
 from app.api.routes.data import data_bp
+from app.api.routes.evacuation import evacuation_bp
 from app.api.routes.export import export_bp
 from app.api.routes.feature_flags import feature_flags_bp
 from app.api.routes.gis import gis_bp
@@ -29,8 +40,8 @@ from app.api.routes.graphql import graphql_bp, init_graphql_route
 from app.api.routes.health import health_bp
 from app.api.routes.health_k8s import health_k8s_bp
 from app.api.routes.ingest import ingest_bp
+from app.api.routes.lgu_workflow import lgu_workflow_bp
 from app.api.routes.models import models_bp
-from app.api.routes.aggregation import aggregation_bp
 from app.api.routes.pagasa import pagasa_bp
 from app.api.routes.performance import performance_bp, setup_response_time_tracking
 from app.api.routes.predict import predict_bp
@@ -49,17 +60,18 @@ from app.core.config import get_config, load_env
 from app.core.exceptions import AppException
 from app.models.db import init_db
 from app.services import scheduler as scheduler_module
-from app.utils.correlation import (
+from app.utils.observability.correlation import (
     CorrelationContext,
     clear_correlation_context,
     set_correlation_context,
 )
-from app.utils.logging import clear_request_context, set_request_context
-from app.utils.metrics import init_prometheus_metrics
-from app.utils.sentry import init_sentry
+from app.utils.observability.logging import clear_request_context, set_request_context
+from app.utils.observability.metrics import init_prometheus_metrics
+from app.utils.observability.sentry import init_sentry
+from app.utils.observability.tracing import TraceContext, clear_current_trace, get_current_trace, set_current_trace
+from app.utils.resilience.cache import init_redis
 from app.utils.session_config import init_session
 from app.utils.startup_health import validate_startup_health
-from app.utils.tracing import TraceContext, clear_current_trace, get_current_trace, set_current_trace
 from app.utils.utils import setup_logging
 from flask import Flask, g, jsonify, request
 from flask_compress import Compress
@@ -73,7 +85,7 @@ compress = Compress()
 cors = CORS()
 
 
-def create_app(config_override: dict = None) -> Flask:
+def create_app(config_override: dict = None) -> Flask:  # noqa: C901
     """
     Flask application factory.
 
@@ -94,6 +106,7 @@ def create_app(config_override: dict = None) -> Flask:
 
     # Create Flask app
     app = Flask(__name__)
+    app.url_map.strict_slashes = False
 
     # Get configuration
     config = get_config()
@@ -163,7 +176,7 @@ def create_app(config_override: dict = None) -> Flask:
 
     @app.after_request
     def add_tracing_headers(response):
-        """Add tracing and correlation headers to response."""
+        """Add tracing, correlation, and API versioning headers to response."""
         # Add correlation headers for client-side tracing
         if hasattr(g, "correlation_id"):
             response.headers["X-Correlation-ID"] = g.correlation_id
@@ -174,6 +187,16 @@ def create_app(config_override: dict = None) -> Flask:
         if hasattr(g, "span_id"):
             response.headers["X-Span-ID"] = g.span_id
 
+        # API versioning headers — add to all /api/v1/ responses
+        if request.path.startswith("/api/v1/"):
+            response.headers["API-Version"] = "v1"
+            # Sunset header signals eventual deprecation (no date set yet — informational)
+            response.headers["Deprecation"] = "false"
+            # When v2 is released, set:
+            #   response.headers["Deprecation"] = "true"
+            #   response.headers["Sunset"] = "Sat, 01 Jan 2028 00:00:00 GMT"
+            #   response.headers["Link"] = '</api/v2/>; rel="successor-version"'
+
         # Finish root span and log trace if errors
         if hasattr(g, "root_span"):
             import time
@@ -182,6 +205,19 @@ def create_app(config_override: dict = None) -> Flask:
             if hasattr(g, "request_start_time"):
                 duration_ms = (time.perf_counter() - g.request_start_time) * 1000
                 g.root_span.set_tag("http.duration_ms", round(duration_ms, 2))
+
+                # Feed monitoring service for API response tracking
+                try:
+                    from app.services.monitoring import record_api_response
+
+                    record_api_response(
+                        endpoint=request.path,
+                        method=request.method,
+                        status_code=response.status_code,
+                        response_ms=round(duration_ms, 2),
+                    )
+                except Exception:  # nosec B110
+                    pass  # Non-critical - don't break requests
 
             trace_ctx = get_current_trace()
             if trace_ctx:
@@ -232,6 +268,9 @@ def create_app(config_override: dict = None) -> Flask:
     else:
         logger.warning("Using default Flask sessions (not recommended for production)")
 
+    # Pre-warm Redis connection (avoids lazy-init race + first-request latency)
+    init_redis()
+
     # ==========================================
     # Initialize Security
     # ==========================================
@@ -239,8 +278,9 @@ def create_app(config_override: dict = None) -> Flask:
     # Add security headers
     setup_security_headers(app)
 
-    # Request logging middleware
-    setup_request_logging(app)
+    # Request logging middleware (DB persistence for analytics)
+    # Note: setup_request_logging() removed — it duplicated request ID
+    # generation and timing already handled by setup_request_tracing().
     setup_request_logging_middleware(app)
 
     # Initialize Sentry for error tracking (if configured)
@@ -265,6 +305,7 @@ def create_app(config_override: dict = None) -> Flask:
 
     # Core routes (no prefix - infrastructure endpoints)
     app.register_blueprint(health_bp)
+    app.register_blueprint(health_bp, url_prefix="/api/v1", name="health_v1_compat")
     app.register_blueprint(health_k8s_bp)
     app.register_blueprint(security_txt_bp)
     app.register_blueprint(csp_report_bp)
@@ -297,9 +338,15 @@ def create_app(config_override: dict = None) -> Flask:
     app.register_blueprint(admin_users_bp, url_prefix=f"{API_V1_PREFIX}/admin/users")
     app.register_blueprint(admin_logs_bp, url_prefix=f"{API_V1_PREFIX}/admin/logs")
     app.register_blueprint(admin_models_bp, url_prefix=f"{API_V1_PREFIX}/admin/models")
+    app.register_blueprint(admin_security_bp, url_prefix=f"{API_V1_PREFIX}/admin/security")
+    app.register_blueprint(admin_monitoring_bp, url_prefix=f"{API_V1_PREFIX}/admin/monitoring")
+    app.register_blueprint(api_keys_bp, url_prefix=f"{API_V1_PREFIX}/api-keys")
     app.register_blueprint(pagasa_bp, url_prefix=f"{API_V1_PREFIX}/pagasa")
     app.register_blueprint(aggregation_bp, url_prefix=f"{API_V1_PREFIX}/aggregation")
     app.register_blueprint(gis_bp, url_prefix=f"{API_V1_PREFIX}/gis")
+    app.register_blueprint(lgu_workflow_bp, url_prefix=f"{API_V1_PREFIX}/lgu")
+    app.register_blueprint(community_reports_bp, url_prefix=f"{API_V1_PREFIX}/reports")
+    app.register_blueprint(evacuation_bp, url_prefix=f"{API_V1_PREFIX}/evacuation")
 
     # Backward-compatible routes (shorter URL prefixes for legacy/test compatibility)
     # These register the same blueprints with different names and prefixes
@@ -312,6 +359,34 @@ def create_app(config_override: dict = None) -> Flask:
     app.register_blueprint(v1_bp, url_prefix="/api/v1", name="v1_api")
 
     logger.info("All blueprints registered")
+
+    # ==========================================
+    # API Versions Discovery Endpoint
+    # ==========================================
+
+    @app.route("/api/versions", methods=["GET"])
+    def api_versions():
+        """Return supported API versions and deprecation status."""
+        return (
+            jsonify(
+                {
+                    "versions": [
+                        {
+                            "version": "v1",
+                            "status": "current",
+                            "base_url": "/api/v1",
+                            "deprecated": False,
+                            "sunset": None,
+                        },
+                    ],
+                    "current": "v1",
+                    "docs_url": (
+                        "/apidocs" if os.getenv("FEATURE_API_DOCS_ENABLED", "False").lower() == "true" else None
+                    ),
+                }
+            ),
+            200,
+        )
 
     # ==========================================
     # Response Time Tracking
@@ -578,6 +653,26 @@ def create_app(config_override: dict = None) -> Flask:
                 # Non-critical health check failure - log and continue
                 logger.warning(f"Startup health check encountered an error: {e}")
 
+        # ==========================================
+        # Pre-warm ML model (background thread)
+        # ==========================================
+        # Load the model eagerly so the first prediction request is fast.
+        # Runs in a daemon thread to avoid blocking startup.
+        model_prewarm_enabled = os.getenv("MODEL_PREWARM", "True").lower() == "true"
+        if model_prewarm_enabled:
+            import threading
+
+            def _prewarm_model():
+                try:
+                    from app.services.predict import _load_model
+
+                    _load_model()
+                    logger.info("ML model pre-warmed successfully")
+                except Exception as exc:
+                    logger.warning(f"ML model pre-warm failed (will lazy-load on first request): {exc}")
+
+            threading.Thread(target=_prewarm_model, daemon=True, name="model-prewarm").start()
+
         # Log startup info
         logger.info(f"Floodingnaque API initialized - Environment: {env}")
         logger.info(f"Debug mode: {config.DEBUG}")
@@ -590,6 +685,15 @@ def create_app(config_override: dict = None) -> Flask:
                 logger.info("Background scheduler started")
             except Exception as e:
                 logger.error(f"Failed to start scheduler: {e}")
+
+        # Start monitoring health checker (daemon thread probes services every 30s)
+        try:
+            from app.services.monitoring import start_health_checker
+
+            start_health_checker()
+            logger.info("Monitoring health checker started")
+        except Exception as e:
+            logger.warning(f"Failed to start monitoring health checker: {e}")
 
     return app
 

@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-    
+
 <head>
     <title>Parañaque City Flood Risk Map - Figure 10</title>
     <meta charset="UTF-8" />
-    
+
         <script>
             L_NO_TOUCH = false;
             L_DISABLE_3D = false;
         </script>
-    
+
     <style>
         html, body {width: 100%;height: 100%;margin: 0;padding: 0;}
         #map {position:absolute;top:0;bottom:0;right:0;left:0;}
@@ -50,26 +50,26 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
-    
+
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        
+
 </head>
 <body>
-    
-    
+
+
     <div class="flood-legend">
         <b>Flood Risk Level</b><br>
         <i class="legend-color legend-color-high"></i> High Risk<br>
         <i class="legend-color legend-color-moderate"></i> Moderate Risk
     </div>
-    
-    
+
+
             <div class="folium-map" id="map_da4f98c887bb5ca4dceb5e5d4a62a222" ></div>
-        
+
 </body>
 <script>
-    
-    
+
+
             var map_da4f98c887bb5ca4dceb5e5d4a62a222 = L.map(
                 "map_da4f98c887bb5ca4dceb5e5d4a62a222",
                 {
@@ -81,269 +81,269 @@
                 }
             );
 
-            
 
-        
-    
+
+
+
             var tile_layer_73e856dce0e69beb63c149fb99296de8 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detectRetina": false, "maxNativeZoom": 19, "maxZoom": 19, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
             );
-        
-    
+
+
             tile_layer_73e856dce0e69beb63c149fb99296de8.addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
             var circle_marker_1f62bf7d47ba7115d9c5c02c05e93fff = L.circleMarker(
                 [14.4856, 121.0089],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 15.6, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_439c7e458ee243eec5446d1b55755e5e = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_faa049aba71f83f90c28a480d89aa3e1 = $(`<div id="html_faa049aba71f83f90c28a480d89aa3e1" style="width: 100.0%; height: 100.0%;"><b>San Dionisio</b><br>Risk: High<br>Events: 156</div>`)[0];
                 popup_439c7e458ee243eec5446d1b55755e5e.setContent(html_faa049aba71f83f90c28a480d89aa3e1);
-            
-        
+
+
 
         circle_marker_1f62bf7d47ba7115d9c5c02c05e93fff.bindPopup(popup_439c7e458ee243eec5446d1b55755e5e)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_e9b545d4e30401d267eba3ccb1f3ed4c = L.circleMarker(
                 [14.4923, 121.0156],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 14.2, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_3b57200be4de4f1c1bdeb7736e25a4d5 = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_0db7054706f15c214540405ff72b3ab5 = $(`<div id="html_0db7054706f15c214540405ff72b3ab5" style="width: 100.0%; height: 100.0%;"><b>San Isidro</b><br>Risk: High<br>Events: 142</div>`)[0];
                 popup_3b57200be4de4f1c1bdeb7736e25a4d5.setContent(html_0db7054706f15c214540405ff72b3ab5);
-            
-        
+
+
 
         circle_marker_e9b545d4e30401d267eba3ccb1f3ed4c.bindPopup(popup_3b57200be4de4f1c1bdeb7736e25a4d5)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_753bfdcae01de24bf53bb1d69594525b = L.circleMarker(
                 [14.4678, 121.0234],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 12.8, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_1b54c1ed8e747ef971da94504870161b = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_d2eca97257d8cd5887e67f0b205936fc = $(`<div id="html_d2eca97257d8cd5887e67f0b205936fc" style="width: 100.0%; height: 100.0%;"><b>Moonwalk</b><br>Risk: High<br>Events: 128</div>`)[0];
                 popup_1b54c1ed8e747ef971da94504870161b.setContent(html_d2eca97257d8cd5887e67f0b205936fc);
-            
-        
+
+
 
         circle_marker_753bfdcae01de24bf53bb1d69594525b.bindPopup(popup_1b54c1ed8e747ef971da94504870161b)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_39682617400009258c69e3d0bb105fc9 = L.circleMarker(
                 [14.4712, 121.0312],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 11.5, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_ade20eb9dcddc6488088f44a19d9b585 = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_b3cd7c2a3aff96423a4e780179f04813 = $(`<div id="html_b3cd7c2a3aff96423a4e780179f04813" style="width: 100.0%; height: 100.0%;"><b>San Antonio</b><br>Risk: High<br>Events: 115</div>`)[0];
                 popup_ade20eb9dcddc6488088f44a19d9b585.setContent(html_b3cd7c2a3aff96423a4e780179f04813);
-            
-        
+
+
 
         circle_marker_39682617400009258c69e3d0bb105fc9.bindPopup(popup_ade20eb9dcddc6488088f44a19d9b585)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_4c5060f110d83051352fc4935fa87891 = L.circleMarker(
                 [14.4789, 121.0278],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 9.8, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_ed6e0bd437247a11a6941a94e1444b6f = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_5ee30e2f03d3f152ba8a9f20bf18b927 = $(`<div id="html_5ee30e2f03d3f152ba8a9f20bf18b927" style="width: 100.0%; height: 100.0%;"><b>Sun Valley</b><br>Risk: High<br>Events: 98</div>`)[0];
                 popup_ed6e0bd437247a11a6941a94e1444b6f.setContent(html_5ee30e2f03d3f152ba8a9f20bf18b927);
-            
-        
+
+
 
         circle_marker_4c5060f110d83051352fc4935fa87891.bindPopup(popup_ed6e0bd437247a11a6941a94e1444b6f)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_b2512a46a6ab48eee857c30b418c1174 = L.circleMarker(
                 [14.4834, 121.0345],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8.7, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_07d076b17dc3006e8c9ae61ce3e815e6 = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_bb7ad58aa63e4c6838df8356257303ec = $(`<div id="html_bb7ad58aa63e4c6838df8356257303ec" style="width: 100.0%; height: 100.0%;"><b>Marcelo Green</b><br>Risk: High<br>Events: 87</div>`)[0];
                 popup_07d076b17dc3006e8c9ae61ce3e815e6.setContent(html_bb7ad58aa63e4c6838df8356257303ec);
-            
-        
+
+
 
         circle_marker_b2512a46a6ab48eee857c30b418c1174.bindPopup(popup_07d076b17dc3006e8c9ae61ce3e815e6)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_d132fea77de6f2eb1bac86248001e8bb = L.circleMarker(
                 [14.4801, 121.0423],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8.2, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_9a118efa64be591c6ec410bad7fee52d = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_cbfe081603aa55ff4d4c8389bc340c02 = $(`<div id="html_cbfe081603aa55ff4d4c8389bc340c02" style="width: 100.0%; height: 100.0%;"><b>Vitalez</b><br>Risk: High<br>Events: 82</div>`)[0];
                 popup_9a118efa64be591c6ec410bad7fee52d.setContent(html_cbfe081603aa55ff4d4c8389bc340c02);
-            
-        
+
+
 
         circle_marker_d132fea77de6f2eb1bac86248001e8bb.bindPopup(popup_9a118efa64be591c6ec410bad7fee52d)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_b0af65a4ce4e3fa120ea4bb428a2236c = L.circleMarker(
                 [14.5123, 120.9978],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7.5, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_3fa01cb456c9a1daaaa623a3c369cf8d = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_1e6694db2159de1db881cd4cbb428484 = $(`<div id="html_1e6694db2159de1db881cd4cbb428484" style="width: 100.0%; height: 100.0%;"><b>Tambo</b><br>Risk: High<br>Events: 75</div>`)[0];
                 popup_3fa01cb456c9a1daaaa623a3c369cf8d.setContent(html_1e6694db2159de1db881cd4cbb428484);
-            
-        
+
+
 
         circle_marker_b0af65a4ce4e3fa120ea4bb428a2236c.bindPopup(popup_3fa01cb456c9a1daaaa623a3c369cf8d)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_fe57c6a642c57ee71a5e1ef603ecdf38 = L.circleMarker(
                 [14.5234, 120.9934],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 5.5, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_b43602dd0ee0302ed1d41e2d83f5ce1b = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_1310721974b072d8ae91a8c8ea2e4679 = $(`<div id="html_1310721974b072d8ae91a8c8ea2e4679" style="width: 100.0%; height: 100.0%;"><b>Baclaran</b><br>Risk: High<br>Events: 55</div>`)[0];
                 popup_b43602dd0ee0302ed1d41e2d83f5ce1b.setContent(html_1310721974b072d8ae91a8c8ea2e4679);
-            
-        
+
+
 
         circle_marker_fe57c6a642c57ee71a5e1ef603ecdf38.bindPopup(popup_b43602dd0ee0302ed1d41e2d83f5ce1b)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_3c411e21fae792ac5253e775cd2214e4 = L.circleMarker(
                 [14.4523, 121.0178],
                 {"bubblingMouseEvents": true, "color": "orange", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "orange", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 4.2, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_964d42ca28caf9428d08731d621e95d1 = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_935163f27748a66c94a359edcff04602 = $(`<div id="html_935163f27748a66c94a359edcff04602" style="width: 100.0%; height: 100.0%;"><b>BF Homes</b><br>Risk: Moderate<br>Events: 42</div>`)[0];
                 popup_964d42ca28caf9428d08731d621e95d1.setContent(html_935163f27748a66c94a359edcff04602);
-            
-        
+
+
 
         circle_marker_3c411e21fae792ac5253e775cd2214e4.bindPopup(popup_964d42ca28caf9428d08731d621e95d1)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_4a875c9eca54c1ca0789030f5070af7c = L.circleMarker(
                 [14.4612, 121.0456],
                 {"bubblingMouseEvents": true, "color": "orange", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "orange", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3.8, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_4afa9963cb3fe57507df37a6c4cbdd2c = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_8629332f06ec8fbf4cf68f796d2434b5 = $(`<div id="html_8629332f06ec8fbf4cf68f796d2434b5" style="width: 100.0%; height: 100.0%;"><b>Merville</b><br>Risk: Moderate<br>Events: 38</div>`)[0];
                 popup_4afa9963cb3fe57507df37a6c4cbdd2c.setContent(html_8629332f06ec8fbf4cf68f796d2434b5);
-            
-        
+
+
 
         circle_marker_4a875c9eca54c1ca0789030f5070af7c.bindPopup(popup_4afa9963cb3fe57507df37a6c4cbdd2c)
         ;
 
-        
-    
-    
+
+
+
             var circle_marker_9d66d271047d60475992a3282ce67683 = L.circleMarker(
                 [14.5045, 120.9889],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.6, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 6.2, "stroke": true, "weight": 3}
             ).addTo(map_da4f98c887bb5ca4dceb5e5d4a62a222);
-        
-    
+
+
         var popup_1cf31b21fb5b7d1c12e8583316059aee = L.popup({"maxWidth": "100%"});
 
-        
-            
+
+
                 var html_026f8018d09f6200290ada98219a5c23 = $(`<div id="html_026f8018d09f6200290ada98219a5c23" style="width: 100.0%; height: 100.0%;"><b>Don Galo</b><br>Risk: High<br>Events: 62</div>`)[0];
                 popup_1cf31b21fb5b7d1c12e8583316059aee.setContent(html_026f8018d09f6200290ada98219a5c23);
-            
-        
+
+
 
         circle_marker_9d66d271047d60475992a3282ce67683.bindPopup(popup_1cf31b21fb5b7d1c12e8583316059aee)
         ;
 
-        
-    
+
+
 </script>
 </html>

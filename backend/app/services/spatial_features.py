@@ -46,6 +46,10 @@ logger = logging.getLogger(__name__)
 # ═════════════════════════════════════════════════════════════════════════════
 
 # Simplified CLUP-based land-use classification for Parañaque barangays.
+# Source: Parañaque City Comprehensive Land Use Plan (CLUP).
+# Runoff coefficients: ASCE Manual of Practice No. 77 standard values
+#   for urban land use types (commercial 0.80-0.95, residential 0.50-0.70).
+# Green cover: estimated from Landsat/Sentinel NDVI analysis.
 # Categories: residential, commercial, mixed, industrial, institutional, open_space
 # Values represent dominant land-use type and a runoff coefficient (0–1)
 # that estimates the fraction of rainfall becoming surface runoff.
@@ -172,6 +176,7 @@ BUILDING_DENSITY_ENCODING: Dict[str, int] = {
 # Composite Spatial Features
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 def _get_gis_data():
     """Lazily import GIS data dictionaries from gis_service."""
     from app.services.gis_service import (
@@ -179,6 +184,7 @@ def _get_gis_data():
         BARANGAY_ELEVATION,
         BARANGAY_META,
     )
+
     return BARANGAY_ELEVATION, BARANGAY_DRAINAGE, BARANGAY_META
 
 
@@ -312,10 +318,7 @@ def add_spatial_features(
         if default_barangay:
             df[barangay_col] = default_barangay
         else:
-            logger.warning(
-                f"Column '{barangay_col}' not found and no default. "
-                "Using city-wide averages."
-            )
+            logger.warning(f"Column '{barangay_col}' not found and no default. " "Using city-wide averages.")
             # Use city-wide average spatial features
             avg_features = get_all_barangay_features().mean()
             for col, val in avg_features.items():
@@ -344,8 +347,7 @@ def add_spatial_features(
 
     n_matched = df[SPATIAL_FEATURE_NAMES[0]].notna().sum()
     logger.info(
-        f"Added {len(SPATIAL_FEATURE_NAMES)} spatial features "
-        f"({n_matched}/{len(df)} rows matched barangays)"
+        f"Added {len(SPATIAL_FEATURE_NAMES)} spatial features " f"({n_matched}/{len(df)} rows matched barangays)"
     )
     return df
 
@@ -353,6 +355,7 @@ def add_spatial_features(
 # ═════════════════════════════════════════════════════════════════════════════
 # Flood Depth Estimation
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 def estimate_flood_depth(
     barangay: str,

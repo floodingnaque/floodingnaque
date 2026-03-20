@@ -14,7 +14,7 @@ from pathlib import Path
 
 from app.models.db import get_db_session
 from app.services.celery_app import celery_app
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 from app.utils.secrets import get_secret
 from sqlalchemy import text
 
@@ -424,7 +424,47 @@ def database_backup(self):
     except Exception as e:
         logger.error(f"Database backup failed: {str(e)}")
         # Retry with exponential backoff (60s, then 120s)
-        raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+
+# ── Community Engagement tasks ────────────────────────────────────────────
+
+
+@celery_app.task(name="app.services.tasks.score_community_report")
+def score_community_report(report_id):
+    """Score a community report's credibility and check auto-verify."""
+    logger.info(f"Scoring community report {report_id}")
+    try:
+        from app.services.credibility_service import check_auto_verify, score_report
+
+        score = score_report(report_id)
+        auto_verified = check_auto_verify(report_id)
+        return {
+            "report_id": report_id,
+            "credibility_score": score,
+            "auto_verified": auto_verified,
+        }
+    except Exception as e:
+        logger.error(f"Failed to score report {report_id}: {e}")
+        raise
+
+
+@celery_app.task(name="app.services.tasks.dispatch_sms_alert")
+def dispatch_sms_alert(barangay, risk_label):
+    """Dispatch evacuation SMS alerts for a barangay."""
+    logger.info(f"Dispatching SMS alert for {barangay} ({risk_label})")
+    try:
+        from app.services.sms_service import dispatch_evacuation_sms
+
+        dispatched = dispatch_evacuation_sms(barangay, risk_label)
+        return {
+            "barangay": barangay,
+            "risk_label": risk_label,
+            "dispatched_count": dispatched,
+        }
+    except Exception as e:
+        logger.error(f"Failed to dispatch SMS alert: {e}")
+        raise
 
 
 # Example usage functions
@@ -440,7 +480,12 @@ def trigger_model_retraining(model_id=None):
     except Exception as e:
         logger.warning(f"Celery broker unavailable, executing model_retraining synchronously: {e}")
         result = model_retraining(model_id)
-        return {"task_id": None, "status": "completed_sync", "message": "Model retraining executed synchronously", "result": result}
+        return {
+            "task_id": None,
+            "status": "completed_sync",
+            "message": "Model retraining executed synchronously",
+            "result": result,
+        }
 
 
 def trigger_auto_retrain(force=False, include_deep_learning=False):
@@ -470,7 +515,12 @@ def trigger_data_processing(data_batch):
     except Exception as e:
         logger.warning(f"Celery broker unavailable, executing process_weather_data synchronously: {e}")
         result = process_weather_data(data_batch)
-        return {"task_id": None, "status": "completed_sync", "message": "Data processing executed synchronously", "result": result}
+        return {
+            "task_id": None,
+            "status": "completed_sync",
+            "message": "Data processing executed synchronously",
+            "result": result,
+        }
 
 
 def get_task_status(task_id):

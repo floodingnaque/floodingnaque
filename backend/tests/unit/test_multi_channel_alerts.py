@@ -14,14 +14,12 @@ import os
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 from app.services.channels.base import NotificationChannel
 from app.services.channels.email_alerts import EmailAlertChannel
 from app.services.channels.firebase_push import FirebasePushChannel
 from app.services.channels.messenger_bot import MessengerBotChannel
 from app.services.channels.siren_trigger import SirenTriggerChannel
 from app.services.channels.telegram_bot import TelegramBotChannel
-
 
 # ---------------------------------------------------------------------------
 # Common fixtures
@@ -37,6 +35,7 @@ SAMPLE_ALERT = {
 # ===========================================================================
 # Base Channel
 # ===========================================================================
+
 
 class TestNotificationChannelBase:
     """Tests for the abstract NotificationChannel base class."""
@@ -110,6 +109,7 @@ class TestNotificationChannelBase:
 # ===========================================================================
 # Firebase Push
 # ===========================================================================
+
 
 class TestFirebasePushChannel:
     """Tests for FirebasePushChannel."""
@@ -197,6 +197,7 @@ class TestFirebasePushChannel:
 # Email Alert
 # ===========================================================================
 
+
 class TestEmailAlertChannel:
     """Tests for EmailAlertChannel."""
 
@@ -248,6 +249,7 @@ class TestEmailAlertChannel:
 # Messenger Bot
 # ===========================================================================
 
+
 class TestMessengerBotChannel:
     """Tests for MessengerBotChannel."""
 
@@ -283,8 +285,11 @@ class TestMessengerBotChannel:
     def test_send_partial(self, mock_post, monkeypatch):
         monkeypatch.setenv("MESSENGER_PAGE_ACCESS_TOKEN", "test-token")
 
-        ok = Mock(); ok.status_code = 200
-        fail = Mock(); fail.status_code = 400; fail.text = "Error"
+        ok = Mock()
+        ok.status_code = 200
+        fail = Mock()
+        fail.status_code = 400
+        fail.text = "Error"
         mock_post.side_effect = [ok, fail]
 
         ch = MessengerBotChannel(sandbox=False)
@@ -314,6 +319,7 @@ class TestMessengerBotChannel:
 # ===========================================================================
 # Telegram Bot
 # ===========================================================================
+
 
 class TestTelegramBotChannel:
     """Tests for TelegramBotChannel."""
@@ -394,6 +400,7 @@ class TestTelegramBotChannel:
 # Siren Trigger
 # ===========================================================================
 
+
 class TestSirenTriggerChannel:
     """Tests for SirenTriggerChannel."""
 
@@ -415,7 +422,9 @@ class TestSirenTriggerChannel:
         monkeypatch.setenv("SIREN_CRITICAL_ONLY", "True")
         ch = SirenTriggerChannel(sandbox=False)
         result = ch.send(
-            message="Test", risk_label="Alert", location="Parañaque City",
+            message="Test",
+            risk_label="Alert",
+            location="Parañaque City",
         )
         assert result == "skipped"
 
@@ -485,20 +494,24 @@ class TestSirenTriggerChannel:
 # AlertSystem multi-channel integration
 # ===========================================================================
 
+
 class TestAlertSystemMultiChannel:
     """Test that AlertSystem dispatches to new channels."""
 
     def setup_method(self):
         from app.services.alerts import AlertSystem
+
         AlertSystem.reset_instance()
 
     def teardown_method(self):
         from app.services.alerts import AlertSystem
+
         AlertSystem.reset_instance()
 
     @patch("app.services.alerts.get_db_session")
     def test_supported_channels_list(self, _mock_db):
         from app.services.alerts import AlertSystem
+
         assert "firebase_push" in AlertSystem.SUPPORTED_CHANNELS
         assert "messenger" in AlertSystem.SUPPORTED_CHANNELS
         assert "telegram" in AlertSystem.SUPPORTED_CHANNELS
@@ -507,6 +520,7 @@ class TestAlertSystemMultiChannel:
     @patch("app.services.alerts.get_db_session")
     def test_channels_instantiated(self, _mock_db):
         from app.services.alerts import AlertSystem
+
         system = AlertSystem(firebase_push_enabled=True, telegram_enabled=True)
         assert system._firebase_channel is not None
         assert system._telegram_channel is not None
@@ -517,6 +531,7 @@ class TestAlertSystemMultiChannel:
     @patch("app.services.alerts.get_db_session")
     def test_send_alert_firebase(self, _mock_db):
         from app.services.alerts import AlertSystem
+
         system = AlertSystem(firebase_push_enabled=True)
         system._firebase_channel = MagicMock()
         system._firebase_channel.dispatch.return_value = "delivered"
@@ -530,6 +545,7 @@ class TestAlertSystemMultiChannel:
     @patch("app.services.alerts.get_db_session")
     def test_send_alert_telegram(self, _mock_db):
         from app.services.alerts import AlertSystem
+
         system = AlertSystem(telegram_enabled=True)
         system._telegram_channel = MagicMock()
         system._telegram_channel.dispatch.return_value = "delivered"
@@ -543,6 +559,7 @@ class TestAlertSystemMultiChannel:
     @patch("app.services.alerts.get_db_session")
     def test_send_alert_messenger(self, _mock_db):
         from app.services.alerts import AlertSystem
+
         system = AlertSystem(messenger_enabled=True)
         system._messenger_channel = MagicMock()
         system._messenger_channel.dispatch.return_value = "delivered"
@@ -556,6 +573,7 @@ class TestAlertSystemMultiChannel:
     @patch("app.services.alerts.get_db_session")
     def test_send_alert_siren(self, _mock_db):
         from app.services.alerts import AlertSystem
+
         system = AlertSystem(siren_enabled=True)
         system._siren_channel = MagicMock()
         system._siren_channel.dispatch.return_value = "delivered"
@@ -569,6 +587,7 @@ class TestAlertSystemMultiChannel:
     @patch("app.services.alerts.get_db_session")
     def test_all_channels_dispatched(self, _mock_db):
         from app.services.alerts import AlertSystem
+
         system = AlertSystem(
             sms_enabled=False,
             email_enabled=False,
@@ -599,6 +618,7 @@ class TestAlertSystemMultiChannel:
     def test_critical_auto_trigger(self, _mock_db):
         """Critical risk should auto-trigger firebase, telegram, siren even if alert_type is 'web'."""
         from app.services.alerts import AlertSystem
+
         system = AlertSystem(
             firebase_push_enabled=True,
             telegram_enabled=True,

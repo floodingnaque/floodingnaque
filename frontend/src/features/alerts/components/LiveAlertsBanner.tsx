@@ -5,14 +5,18 @@
  * Displays count, latest alert preview, and provides quick actions.
  */
 
-import { useState } from 'react';
-import { X, Bell, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Bell, ChevronDown, ChevronUp, X } from "lucide-react";
+import { useState } from "react";
 
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useLiveAlerts, useUnreadCount, useAlertActions } from '@/state/stores/alertStore';
-import { AlertBadge } from './AlertBadge';
-import { RISK_CONFIGS, type RiskLevel } from '@/types';
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  useAlertActions,
+  useLiveAlerts,
+  useUnreadCount,
+} from "@/state/stores/alertStore";
+import { RISK_CONFIGS, type RiskLevel } from "@/types";
+import { AlertBadge } from "./AlertBadge";
 
 /**
  * LiveAlertsBanner component props
@@ -32,7 +36,7 @@ interface LiveAlertsBannerProps {
 function getHighestRiskLevel(alerts: { risk_level: RiskLevel }[]): RiskLevel {
   return alerts.reduce(
     (max, alert) => (alert.risk_level > max ? alert.risk_level : max),
-    0 as RiskLevel
+    0 as RiskLevel,
   );
 }
 
@@ -40,9 +44,9 @@ function getHighestRiskLevel(alerts: { risk_level: RiskLevel }[]): RiskLevel {
  * Banner background color based on highest risk
  */
 const BANNER_STYLES: Record<RiskLevel, string> = {
-  0: 'bg-green-50 border-green-200',
-  1: 'bg-amber-50 border-amber-200',
-  2: 'bg-red-50 border-red-200',
+  0: "bg-risk-safe/10 border-risk-safe/30",
+  1: "bg-risk-alert/10 border-risk-alert/30",
+  2: "bg-risk-critical/10 border-risk-critical/30",
 };
 
 /**
@@ -88,10 +92,10 @@ export function LiveAlertsBanner({
   return (
     <div
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 border-b shadow-md',
-        'animate-in slide-in-from-top duration-300',
+        "fixed top-0 left-0 right-0 z-50 border-b shadow-md",
+        "animate-in slide-in-from-top duration-300",
         BANNER_STYLES[highestRisk],
-        className
+        className,
       )}
       role="alert"
       aria-live="polite"
@@ -102,18 +106,18 @@ export function LiveAlertsBanner({
           {/* Icon */}
           <div
             className={cn(
-              'flex-shrink-0 flex items-center justify-center rounded-full h-10 w-10',
+              "shrink-0 flex items-center justify-center rounded-full h-10 w-10",
               highestRisk === 2
-                ? 'bg-red-100'
+                ? "bg-risk-critical/15"
                 : highestRisk === 1
-                  ? 'bg-amber-100'
-                  : 'bg-green-100'
+                  ? "bg-risk-alert/15"
+                  : "bg-risk-safe/15",
             )}
           >
             {highestRisk === 2 ? (
-              <AlertTriangle className={cn('h-5 w-5', riskConfig.color)} />
+              <AlertTriangle className={cn("h-5 w-5", riskConfig.color)} />
             ) : (
-              <Bell className={cn('h-5 w-5', riskConfig.color)} />
+              <Bell className={cn("h-5 w-5", riskConfig.color)} />
             )}
           </div>
 
@@ -121,7 +125,7 @@ export function LiveAlertsBanner({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground">
-                {unreadCount} New Alert{unreadCount > 1 ? 's' : ''}
+                {unreadCount} New Alert{unreadCount > 1 ? "s" : ""}
               </span>
               <AlertBadge riskLevel={highestRisk} size="sm" />
             </div>
@@ -133,7 +137,7 @@ export function LiveAlertsBanner({
           </div>
 
           {/* Actions */}
-          <div className="flex-shrink-0 flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-2">
             {/* Expand/Collapse */}
             {liveAlerts.length > 1 && (
               <Button

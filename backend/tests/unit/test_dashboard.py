@@ -45,15 +45,32 @@ class TestDashboardSummary:
 
     def test_get_dashboard_summary_success(self, client, mock_db_session):
         """Test successful dashboard summary retrieval."""
-        # Setup mock queries with proper return values
+        # Mock the aggregation row objects returned by .one()
+        mock_weather_row = MagicMock()
+        mock_weather_row.total = 100
+        mock_weather_row.today = 5
+
+        mock_pred_row = MagicMock()
+        mock_pred_row.total = 200
+        mock_pred_row.today = 10
+        mock_pred_row.week = 50
+
+        mock_alert_row = MagicMock()
+        mock_alert_row.total = 30
+        mock_alert_row.today = 2
+        mock_alert_row.critical_24h = 1
+
+        # Build a query mock that handles both .one() and .first()/.all() chains
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
-        mock_query.count.return_value = 100
         mock_query.group_by.return_value = mock_query
-        mock_query.all.return_value = [(0, 80), (1, 15), (2, 5)]
         mock_query.order_by.return_value = mock_query
-        # Return None for first() to avoid MagicMock serialization issues
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = [(0, 80), (1, 15), (2, 5)]
         mock_query.first.return_value = None
+        # Successive .one() calls return weather, prediction, alert rows
+        mock_query.one.side_effect = [mock_weather_row, mock_pred_row, mock_alert_row]
+
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -69,13 +86,20 @@ class TestDashboardSummary:
 
     def test_get_dashboard_summary_structure(self, client, mock_db_session):
         """Test dashboard summary response structure."""
+        zero_row = MagicMock()
+        zero_row.total = 0
+        zero_row.today = 0
+        zero_row.week = 0
+        zero_row.critical_24h = 0
+
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
-        mock_query.count.return_value = 0
         mock_query.group_by.return_value = mock_query
         mock_query.all.return_value = []
         mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.first.return_value = None
+        mock_query.one.side_effect = [zero_row, zero_row, zero_row]
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -104,13 +128,20 @@ class TestDashboardSummary:
 
     def test_get_dashboard_summary_with_request_id(self, client, mock_db_session):
         """Test dashboard summary includes request ID."""
+        zero_row = MagicMock()
+        zero_row.total = 0
+        zero_row.today = 0
+        zero_row.week = 0
+        zero_row.critical_24h = 0
+
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
-        mock_query.count.return_value = 0
         mock_query.group_by.return_value = mock_query
         mock_query.all.return_value = []
         mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.first.return_value = None
+        mock_query.one.side_effect = [zero_row, zero_row, zero_row]
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -139,7 +170,12 @@ class TestDashboardStatistics:
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.group_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
+        # Weather aggregation .one() returns a row with aggregation fields
+        mock_agg = MagicMock(total=0, avg_temp=None, avg_humidity=None, total_precip=0)
+        mock_query.one.return_value = mock_agg
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -155,7 +191,11 @@ class TestDashboardStatistics:
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.group_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
+        mock_agg = MagicMock(total=0, avg_temp=None, avg_humidity=None, total_precip=0)
+        mock_query.one.return_value = mock_agg
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -170,7 +210,11 @@ class TestDashboardStatistics:
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.group_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
+        mock_agg = MagicMock(total=0, avg_temp=None, avg_humidity=None, total_precip=0)
+        mock_query.one.return_value = mock_agg
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -189,16 +233,17 @@ class TestDashboardStatistics:
 
     def test_get_statistics_predictions_metric(self, client, mock_db_session):
         """Test statistics with predictions metric filter."""
-        mock_prediction = MagicMock()
-        mock_prediction.created_at = datetime.now(timezone.utc)
-        mock_prediction.prediction = 0
-        mock_prediction.risk_level = 0
-        mock_prediction.confidence = 0.85
+        mock_pred_row = MagicMock(date_key="2026-03-12", count=1, flood=0, safe=1, alert=0, critical=0)
 
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [mock_prediction]
+        mock_query.group_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.side_effect = [
+            [mock_pred_row],  # pred_groups
+            [],  # risk_over_time_rows
+        ]
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -213,6 +258,8 @@ class TestDashboardStatistics:
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.group_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
         mock_db_session.query.return_value = mock_query
 
@@ -228,7 +275,11 @@ class TestDashboardStatistics:
         mock_query = MagicMock()
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
+        mock_query.group_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
         mock_query.all.return_value = []
+        mock_agg = MagicMock(total=0, avg_temp=None, avg_humidity=None, total_precip=0)
+        mock_query.one.return_value = mock_agg
         mock_db_session.query.return_value = mock_query
 
         with patch("app.api.routes.dashboard.limiter.limit", lambda x: lambda f: f):
@@ -403,7 +454,11 @@ class TestDashboardRiskDistribution:
                 mock_query.group_by.return_value = mock_query
                 mock_query.all.return_value = [(0, 60), (1, 30), (2, 10)]
                 mock_query.order_by.return_value = mock_query
+                mock_query.limit.return_value = mock_query
                 mock_query.first.return_value = None
+                # Successive .one() calls return weather_row, pred_row, alert_row
+                zero_row = MagicMock(total=0, today=0, week=0, critical_24h=0)
+                mock_query.one.side_effect = [zero_row, zero_row, zero_row]
                 session.query.return_value = mock_query
 
                 response = client.get("/api/dashboard/summary")

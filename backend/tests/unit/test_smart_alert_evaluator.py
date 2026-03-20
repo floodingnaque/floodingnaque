@@ -17,7 +17,6 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from app.services.smart_alert_evaluator import (
     ALERT_COOLDOWN_SECONDS,
     CONFIDENCE_THRESHOLD,
@@ -32,10 +31,10 @@ from app.services.smart_alert_evaluator import (
     get_smart_evaluator,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def reset_singleton():
@@ -67,6 +66,7 @@ def _make_risk(level=0, label="Safe", confidence=0.8):
 # Test: Singleton
 # ---------------------------------------------------------------------------
 
+
 class TestSingleton:
     def test_get_instance_returns_same_object(self):
         a = SmartAlertEvaluator.get_instance()
@@ -86,6 +86,7 @@ class TestSingleton:
 # ---------------------------------------------------------------------------
 # Test: SmartAlertDecision
 # ---------------------------------------------------------------------------
+
 
 class TestSmartAlertDecision:
     def test_to_dict(self):
@@ -111,6 +112,7 @@ class TestSmartAlertDecision:
 # Test: Composite Confidence Scoring
 # ---------------------------------------------------------------------------
 
+
 class TestCompositeConfidence:
     def test_with_data_quality(self, evaluator):
         # model=0.8, quality=0.6 → 0.8*0.7 + 0.6*0.3 = 0.56 + 0.18 = 0.74
@@ -130,6 +132,7 @@ class TestCompositeConfidence:
 # ---------------------------------------------------------------------------
 # Test: 3-Hour Rainfall Accumulation
 # ---------------------------------------------------------------------------
+
 
 class TestRainfallAccumulation:
     def test_uses_precipitation_3h_from_weather_data(self, evaluator):
@@ -166,19 +169,16 @@ class TestRainfallAccumulation:
 # Test: Rainfall Threshold Overrides
 # ---------------------------------------------------------------------------
 
+
 class TestRainfallThresholds:
     def test_critical_threshold(self, evaluator):
-        level, label, reason = evaluator._apply_rainfall_thresholds(
-            risk_level=0, risk_label="Safe", rainfall_3h=85.0
-        )
+        level, label, reason = evaluator._apply_rainfall_thresholds(risk_level=0, risk_label="Safe", rainfall_3h=85.0)
         assert level == 2
         assert label == "Critical"
         assert "Critical" in reason
 
     def test_alert_threshold(self, evaluator):
-        level, label, reason = evaluator._apply_rainfall_thresholds(
-            risk_level=0, risk_label="Safe", rainfall_3h=55.0
-        )
+        level, label, reason = evaluator._apply_rainfall_thresholds(risk_level=0, risk_label="Safe", rainfall_3h=55.0)
         assert level == 1
         assert label == "Alert"
         assert "Alert" in reason
@@ -191,9 +191,7 @@ class TestRainfallThresholds:
         assert reason is None
 
     def test_no_override_below_threshold(self, evaluator):
-        level, label, reason = evaluator._apply_rainfall_thresholds(
-            risk_level=0, risk_label="Safe", rainfall_3h=30.0
-        )
+        level, label, reason = evaluator._apply_rainfall_thresholds(risk_level=0, risk_label="Safe", rainfall_3h=30.0)
         assert level == 0
         assert reason is None
 
@@ -202,47 +200,34 @@ class TestRainfallThresholds:
 # Test: Contributing Factors Detection
 # ---------------------------------------------------------------------------
 
+
 class TestContributingFactors:
     def test_heavy_rainfall(self, evaluator):
-        factors = evaluator._detect_contributing_factors(
-            {"precipitation": 35.0}, risk_level=2, rainfall_3h=0.0
-        )
+        factors = evaluator._detect_contributing_factors({"precipitation": 35.0}, risk_level=2, rainfall_3h=0.0)
         assert any("Heavy rainfall" in f for f in factors)
 
     def test_moderate_rainfall(self, evaluator):
-        factors = evaluator._detect_contributing_factors(
-            {"precipitation": 15.0}, risk_level=1, rainfall_3h=0.0
-        )
+        factors = evaluator._detect_contributing_factors({"precipitation": 15.0}, risk_level=1, rainfall_3h=0.0)
         assert any("Moderate rainfall" in f for f in factors)
 
     def test_high_humidity(self, evaluator):
-        factors = evaluator._detect_contributing_factors(
-            {"humidity": 92.0}, risk_level=1, rainfall_3h=0.0
-        )
+        factors = evaluator._detect_contributing_factors({"humidity": 92.0}, risk_level=1, rainfall_3h=0.0)
         assert any("humidity" in f.lower() for f in factors)
 
     def test_high_tide(self, evaluator):
-        factors = evaluator._detect_contributing_factors(
-            {"tide_height": 2.0}, risk_level=1, rainfall_3h=0.0
-        )
+        factors = evaluator._detect_contributing_factors({"tide_height": 2.0}, risk_level=1, rainfall_3h=0.0)
         assert any("tide" in f.lower() for f in factors)
 
     def test_elevated_tide_risk(self, evaluator):
-        factors = evaluator._detect_contributing_factors(
-            {"tide_risk_factor": 0.75}, risk_level=1, rainfall_3h=0.0
-        )
+        factors = evaluator._detect_contributing_factors({"tide_risk_factor": 0.75}, risk_level=1, rainfall_3h=0.0)
         assert any("tide risk" in f.lower() for f in factors)
 
     def test_strong_winds(self, evaluator):
-        factors = evaluator._detect_contributing_factors(
-            {"wind_speed": 25.0}, risk_level=1, rainfall_3h=0.0
-        )
+        factors = evaluator._detect_contributing_factors({"wind_speed": 25.0}, risk_level=1, rainfall_3h=0.0)
         assert any("wind" in f.lower() for f in factors)
 
     def test_high_accumulation(self, evaluator):
-        factors = evaluator._detect_contributing_factors(
-            {}, risk_level=1, rainfall_3h=55.0
-        )
+        factors = evaluator._detect_contributing_factors({}, risk_level=1, rainfall_3h=55.0)
         assert any("3h accumulation" in f for f in factors)
 
     def test_no_factors_for_calm_conditions(self, evaluator):
@@ -257,6 +242,7 @@ class TestContributingFactors:
 # ---------------------------------------------------------------------------
 # Test: False Alarm Reduction
 # ---------------------------------------------------------------------------
+
 
 class TestFalseAlarmReduction:
     @patch.object(SmartAlertEvaluator, "_compute_rainfall_3h", return_value=5.0)
@@ -298,6 +284,7 @@ class TestFalseAlarmReduction:
 # ---------------------------------------------------------------------------
 # Test: Escalation State Machine
 # ---------------------------------------------------------------------------
+
 
 class TestEscalation:
     def test_safe_stays_none(self, evaluator):
@@ -369,6 +356,7 @@ class TestEscalation:
 # Test: Cooldown
 # ---------------------------------------------------------------------------
 
+
 class TestCooldown:
     def test_no_cooldown_initially(self, evaluator):
         assert evaluator._is_in_cooldown("loc", datetime.now(timezone.utc)) is False
@@ -390,6 +378,7 @@ class TestCooldown:
 # ---------------------------------------------------------------------------
 # Test: Full Pipeline (evaluate)
 # ---------------------------------------------------------------------------
+
 
 class TestFullPipeline:
     @patch.object(SmartAlertEvaluator, "_compute_rainfall_3h", return_value=10.0)
@@ -475,6 +464,7 @@ class TestFullPipeline:
 # Test: Enhanced Risk Classifier (precipitation_3h / tide_risk_factor)
 # ---------------------------------------------------------------------------
 
+
 class TestEnhancedRiskClassifier:
     def test_precipitation_3h_forces_critical(self):
         from app.services.risk_classifier import classify_risk_level
@@ -541,6 +531,7 @@ class TestEnhancedRiskClassifier:
 # ---------------------------------------------------------------------------
 # Test: AlertHistory Model Fields
 # ---------------------------------------------------------------------------
+
 
 class TestAlertHistoryModel:
     def test_new_columns_exist(self):

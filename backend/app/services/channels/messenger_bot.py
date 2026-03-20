@@ -19,7 +19,6 @@ import os
 from typing import Any, Dict, List, Optional
 
 import requests
-
 from app.services.channels.base import NotificationChannel
 
 logger = logging.getLogger(__name__)
@@ -45,14 +44,10 @@ class MessengerBotChannel(NotificationChannel):
 
     _COLOR_EMOJI = {"Safe": "🟢", "Alert": "🟡", "Critical": "🔴"}
 
-    def _build_generic_template(
-        self, risk_label: str, location: str, message: str
-    ) -> Dict[str, Any]:
+    def _build_generic_template(self, risk_label: str, location: str, message: str) -> Dict[str, Any]:
         """Build a Messenger Generic Template for rich alert cards."""
         emoji = self._COLOR_EMOJI.get(risk_label, "⚠️")
-        dashboard_url = os.getenv(
-            "FRONTEND_URL", "https://floodingnaque.com"
-        )
+        dashboard_url = os.getenv("FRONTEND_URL", "https://floodingnaque.com")
 
         return {
             "attachment": {
@@ -81,16 +76,12 @@ class MessengerBotChannel(NotificationChannel):
             }
         }
 
-    def _build_text_message(
-        self, risk_label: str, location: str, message: str
-    ) -> Dict[str, str]:
+    def _build_text_message(self, risk_label: str, location: str, message: str) -> Dict[str, str]:
         """Fallback plain-text message."""
         emoji = self._COLOR_EMOJI.get(risk_label, "⚠️")
         return {
             "text": (
-                f"{emoji} *Flood {risk_label}* - {location}\n\n"
-                f"{message[:2000]}\n\n"
-                "Reply STOP to unsubscribe."
+                f"{emoji} *Flood {risk_label}* - {location}\n\n" f"{message[:2000]}\n\n" "Reply STOP to unsubscribe."
             )
         }
 
@@ -116,10 +107,7 @@ class MessengerBotChannel(NotificationChannel):
             logger.warning("MessengerBotChannel.send called with no PSIDs")
             return "failed"
 
-        url = (
-            f"https://graph.facebook.com/{self._api_version}/me/messages"
-            f"?access_token={self._page_token}"
-        )
+        url = f"https://graph.facebook.com/{self._api_version}/me/messages" f"?access_token={self._page_token}"
 
         use_template = (extra or {}).get("use_template", True)
         msg_payload = (
@@ -143,9 +131,7 @@ class MessengerBotChannel(NotificationChannel):
                 resp = requests.post(url, json=body, timeout=15)
                 if resp.status_code == 200:
                     success += 1
-                    logger.info(
-                        "Messenger alert sent to PSID %s", psid
-                    )
+                    logger.info("Messenger alert sent to PSID %s", psid)
                 else:
                     fail += 1
                     logger.error(

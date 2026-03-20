@@ -13,22 +13,31 @@ from flask import Flask, request
 
 logger = logging.getLogger(__name__)
 
+# Pre-computed static headers (identical for every response)
+_STATIC_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": (
+        "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), "
+        "cross-origin-isolated=(), display-capture=(), document-domain=(), encrypted-media=(), "
+        "execution-while-not-rendered=(), execution-while-out-of-viewport=(), fullscreen=(), "
+        "geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), "
+        "navigation-override=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), "
+        "screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=()"
+    ),
+}
+
 
 def add_security_headers(response):
     """
     Add comprehensive security headers to response.
 
-    Headers added (OWASP recommended):
-    - X-Content-Type-Options: Prevents MIME type sniffing
-    - X-Frame-Options: Prevents clickjacking
-    - X-XSS-Protection: Enables browser XSS filter (legacy browsers)
-    - Strict-Transport-Security: Enforces HTTPS
-    - Content-Security-Policy: Restricts resource loading
-    - Referrer-Policy: Controls referrer information
-    - Permissions-Policy: Controls browser features
-    - Cross-Origin-Embedder-Policy: Protects against Spectre-like attacks
-    - Cross-Origin-Opener-Policy: Isolates browsing context
-    - Cross-Origin-Resource-Policy: Controls cross-origin resource sharing
+    Static headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection,
+    Referrer-Policy, Permissions-Policy) are pre-computed at module level.
+    Dynamic headers (HSTS, CSP, COEP/COOP/CORP, Cache-Control) are computed
+    per response.
 
     Args:
         response: Flask response object
@@ -36,31 +45,10 @@ def add_security_headers(response):
     Returns:
         Modified response with security headers
     """
-    is_production = not is_debug_mode()  # Use centralized check
+    is_production = not is_debug_mode()
 
-    # === Core Security Headers ===
-
-    # Prevent MIME type sniffing
-    response.headers["X-Content-Type-Options"] = "nosniff"
-
-    # Prevent clickjacking - deny all framing
-    response.headers["X-Frame-Options"] = "DENY"
-
-    # Enable browser XSS filter (for legacy browsers)
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-
-    # Referrer Policy - send referrer only for same-origin requests
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
-    # Permissions Policy - disable unnecessary browser features
-    response.headers["Permissions-Policy"] = (
-        "accelerometer=(), ambient-light-sensor=(), autoplay=(), battery=(), camera=(), "
-        "cross-origin-isolated=(), display-capture=(), document-domain=(), encrypted-media=(), "
-        "execution-while-not-rendered=(), execution-while-out-of-viewport=(), fullscreen=(), "
-        "geolocation=(), gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), midi=(), "
-        "navigation-override=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), "
-        "screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=()"
-    )
+    # Apply pre-computed static headers in bulk
+    response.headers.update(_STATIC_HEADERS)
 
     # === Cross-Origin Isolation Headers ===
 

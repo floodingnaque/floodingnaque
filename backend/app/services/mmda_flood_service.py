@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from xml.etree import ElementTree
+from xml.etree import ElementTree  # nosec B405 - parsing MMDA public RSS feeds
 
 import requests
 from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
@@ -110,16 +110,18 @@ PARANAQUE_FLOOD_STATIONS: Dict[str, Dict[str, Any]] = {
 
 class FloodAlarmLevel(str, Enum):
     """MMDA flood alarm levels."""
+
     NORMAL = "normal"
-    ALERT = "alert"           # Water rising above normal
-    CRITICAL = "critical"     # Water near overflow / minor flooding
-    OVERFLOW = "overflow"     # Spillover / major flooding
+    ALERT = "alert"  # Water rising above normal
+    CRITICAL = "critical"  # Water near overflow / minor flooding
+    OVERFLOW = "overflow"  # Spillover / major flooding
     UNKNOWN = "unknown"
 
 
 @dataclass
 class FloodAdvisory:
     """Parsed MMDA flood advisory."""
+
     advisory_id: str
     area: str
     alarm_level: FloodAlarmLevel
@@ -141,6 +143,7 @@ class FloodAdvisory:
 @dataclass
 class FloodStationReading:
     """Real-time water-level reading from an MMDA monitoring station."""
+
     station_id: str
     station_name: str
     lat: float
@@ -256,9 +259,7 @@ class MMDAFloodService:
     def is_enabled(self) -> bool:
         return self._enabled
 
-    def get_active_advisories(
-        self, paranaque_only: bool = True
-    ) -> Dict[str, Any]:
+    def get_active_advisories(self, paranaque_only: bool = True) -> Dict[str, Any]:
         """
         Fetch active MMDA flood advisories.
 
@@ -403,17 +404,19 @@ class MMDAFloodService:
             except ValueError:
                 alarm = FloodAlarmLevel.UNKNOWN
 
-            advisories.append(FloodAdvisory(
-                advisory_id=str(item.get("id", f"mmda-{time.time():.0f}")),
-                area=area,
-                alarm_level=alarm,
-                water_level_m=item.get("water_level"),
-                issued_at=self._parse_datetime(item.get("timestamp", item.get("issued_at", ""))),
-                description=description[:500],
-                station_id=item.get("station_id"),
-                affects_paranaque=_advisory_affects_paranaque(combined),
-                confidence=0.8,
-            ))
+            advisories.append(
+                FloodAdvisory(
+                    advisory_id=str(item.get("id", f"mmda-{time.time():.0f}")),
+                    area=area,
+                    alarm_level=alarm,
+                    water_level_m=item.get("water_level"),
+                    issued_at=self._parse_datetime(item.get("timestamp", item.get("issued_at", ""))),
+                    description=description[:500],
+                    station_id=item.get("station_id"),
+                    affects_paranaque=_advisory_affects_paranaque(combined),
+                    confidence=0.8,
+                )
+            )
 
         return advisories
 
@@ -429,7 +432,7 @@ class MMDAFloodService:
 
         advisories: List[FloodAdvisory] = []
         try:
-            root = ElementTree.fromstring(response.content)
+            root = ElementTree.fromstring(response.content)  # nosec B314
             for item in root.findall(".//item"):
                 title = (item.findtext("title") or "").strip()
                 desc = (item.findtext("description") or "").strip()
@@ -439,16 +442,18 @@ class MMDAFloodService:
                 level = self._infer_alarm_level(combined)
                 water = self._extract_water_level(combined)
 
-                advisories.append(FloodAdvisory(
-                    advisory_id=item.findtext("link") or f"mmda-rss-{len(advisories)}",
-                    area=title,
-                    alarm_level=level,
-                    water_level_m=water,
-                    issued_at=self._parse_datetime(pub_date),
-                    description=desc[:500],
-                    affects_paranaque=_advisory_affects_paranaque(combined),
-                    confidence=0.5,  # RSS = lower confidence than structured API
-                ))
+                advisories.append(
+                    FloodAdvisory(
+                        advisory_id=item.findtext("link") or f"mmda-rss-{len(advisories)}",
+                        area=title,
+                        alarm_level=level,
+                        water_level_m=water,
+                        issued_at=self._parse_datetime(pub_date),
+                        description=desc[:500],
+                        affects_paranaque=_advisory_affects_paranaque(combined),
+                        confidence=0.5,  # RSS = lower confidence than structured API
+                    )
+                )
         except ElementTree.ParseError:
             logger.error("Failed to parse MMDA RSS XML")
 
@@ -468,22 +473,22 @@ class MMDAFloodService:
             except Exception as exc:
                 logger.warning(f"Failed to fetch station {station_id}: {exc}")
                 # Generate a synthetic "unknown" reading so the station still appears
-                readings.append(FloodStationReading(
-                    station_id=station_id,
-                    station_name=station_info["name"],
-                    lat=station_info["lat"],
-                    lon=station_info["lon"],
-                    water_level_m=0.0,
-                    alarm_level=FloodAlarmLevel.UNKNOWN,
-                    timestamp=datetime.now(timezone.utc),
-                    confidence=0.0,
-                ))
+                readings.append(
+                    FloodStationReading(
+                        station_id=station_id,
+                        station_name=station_info["name"],
+                        lat=station_info["lat"],
+                        lon=station_info["lon"],
+                        water_level_m=0.0,
+                        alarm_level=FloodAlarmLevel.UNKNOWN,
+                        timestamp=datetime.now(timezone.utc),
+                        confidence=0.0,
+                    )
+                )
 
         return readings
 
-    def _fetch_single_station(
-        self, station_id: str, station_info: Dict[str, Any]
-    ) -> Optional[FloodStationReading]:
+    def _fetch_single_station(self, station_id: str, station_info: Dict[str, Any]) -> Optional[FloodStationReading]:
         """Fetch a single station reading from MMDA API."""
         try:
             response = mmda_flood_breaker.call(

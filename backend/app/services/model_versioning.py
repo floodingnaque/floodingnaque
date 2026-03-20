@@ -517,9 +517,7 @@ class ModelVersionManager:
 
             with get_db_session() as session:
                 records = (
-                    session.query(ABTestRecord)
-                    .filter(ABTestRecord.status.in_(["created", "running", "paused"]))
-                    .all()
+                    session.query(ABTestRecord).filter(ABTestRecord.status.in_(["created", "running", "paused"])).all()
                 )
 
                 for rec in records:
@@ -544,7 +542,7 @@ class ModelVersionManager:
         from collections import defaultdict
 
         variants = []
-        for vd in (rec.variants_json or []):
+        for vd in rec.variants_json or []:
             variants.append(
                 ModelVariant(
                     name=vd["name"],

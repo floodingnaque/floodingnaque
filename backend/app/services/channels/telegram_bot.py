@@ -18,7 +18,6 @@ import os
 from typing import Any, Dict, List, Optional
 
 import requests
-
 from app.services.channels.base import NotificationChannel
 
 logger = logging.getLogger(__name__)
@@ -201,8 +200,6 @@ class TelegramBotChannel(NotificationChannel):
             return "You have unsubscribed from flood alerts. Send /start to re-subscribe."
         elif text == "/status":
             return (
-                "📊 Current Status: Monitoring\n"
-                "Location: Parañaque City\n\n"
-                "No active flood alerts at this time."
+                "📊 Current Status: Monitoring\n" "Location: Parañaque City\n\n" "No active flood alerts at this time."
             )
         return None

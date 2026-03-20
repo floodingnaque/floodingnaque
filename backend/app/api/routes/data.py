@@ -21,12 +21,12 @@ from app.utils.api_constants import (
     HTTP_SERVICE_UNAVAILABLE,
 )
 from app.utils.api_responses import api_error
-from app.utils.cache import cached
 from app.utils.query_optimizer import (
     _make_query_cache_key,
     query_cache_get,
     query_cache_set,
 )
+from app.utils.resilience.cache import cached
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy import asc, desc
 

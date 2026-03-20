@@ -8,7 +8,7 @@ from app.api.graphql.schema import GRAPHQL_ENABLED, get_graphql_schema
 from app.api.middleware.rate_limit import limiter
 from app.utils.api_constants import HTTP_BAD_REQUEST, HTTP_SERVICE_UNAVAILABLE
 from app.utils.api_responses import api_error
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 from flask import Blueprint, g, jsonify, request
 from graphql import graphql_sync
 

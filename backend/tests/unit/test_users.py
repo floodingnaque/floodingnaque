@@ -42,14 +42,24 @@ class TestUserRegistration:
                                 session.query.return_value = mock_query
 
                                 mock_user = MagicMock()
+                                mock_user.id = 1
+                                mock_user.email = valid_registration_data["email"]
+                                mock_user.role = "user"
                                 mock_user.to_dict.return_value = {"id": 1, "email": valid_registration_data["email"]}
 
                                 with patch("app.api.routes.users.User", return_value=mock_user):
-                                    response = client.post(
-                                        "/api/v1/auth/register",
-                                        data=json.dumps(valid_registration_data),
-                                        content_type="application/json",
-                                    )
+                                    with patch(
+                                        "app.api.routes.users.create_access_token", return_value="mock_access_token"
+                                    ):
+                                        with patch(
+                                            "app.api.routes.users.create_refresh_token",
+                                            return_value=("mock_refresh_token", "mock_hash"),
+                                        ):
+                                            response = client.post(
+                                                "/api/v1/auth/register",
+                                                data=json.dumps(valid_registration_data),
+                                                content_type="application/json",
+                                            )
 
         assert response.status_code == 201
         data = response.get_json()

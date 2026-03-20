@@ -14,13 +14,7 @@ from datetime import datetime, timezone
 from app.api.middleware.auth import require_api_key
 from app.api.middleware.rate_limit import limiter
 from app.models.db import get_db_session, get_pool_status
-from app.utils.cache import (
-    get_cache_stats,
-    get_cache_warm_stats,
-    is_cache_enabled,
-    warm_cache,
-)
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 from app.utils.query_optimizer import (
     clear_slow_query_log,
     get_database_health,
@@ -31,6 +25,12 @@ from app.utils.query_optimizer import (
     get_table_statistics,
     get_unused_indexes,
     run_maintenance_recommendations,
+)
+from app.utils.resilience.cache import (
+    get_cache_stats,
+    get_cache_warm_stats,
+    is_cache_enabled,
+    warm_cache,
 )
 from flask import Blueprint, g, jsonify, request
 

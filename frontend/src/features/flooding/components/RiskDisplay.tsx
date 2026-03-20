@@ -5,9 +5,14 @@
  * Color-coded background and icon based on risk level.
  */
 
-import { CheckCircle, AlertTriangle, XCircle, type LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { RISK_CONFIGS, type RiskLevel } from '@/types';
+import { cn } from "@/lib/utils";
+import { RISK_CONFIGS, type RiskLevel } from "@/types";
+import {
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
 
 /**
  * RiskDisplay component props
@@ -17,6 +22,8 @@ interface RiskDisplayProps {
   riskLevel: RiskLevel;
   /** Probability of flooding (0-1) */
   probability: number;
+  /** Model confidence score (0-1). When omitted, derived from probability. */
+  confidence?: number;
   /** Additional CSS classes */
   className?: string;
 }
@@ -34,11 +41,11 @@ const RISK_ICONS: Record<RiskLevel, LucideIcon> = {
  * Get confidence level text based on probability
  */
 function getConfidenceLevel(probability: number): string {
-  if (probability >= 0.9) return 'Very High Confidence';
-  if (probability >= 0.75) return 'High Confidence';
-  if (probability >= 0.5) return 'Moderate Confidence';
-  if (probability >= 0.25) return 'Low Confidence';
-  return 'Very Low Confidence';
+  if (probability >= 0.9) return "Very High Confidence";
+  if (probability >= 0.75) return "High Confidence";
+  if (probability >= 0.5) return "Moderate Confidence";
+  if (probability >= 0.25) return "Low Confidence";
+  return "Very Low Confidence";
 }
 
 /**
@@ -47,28 +54,32 @@ function getConfidenceLevel(probability: number): string {
 export function RiskDisplay({
   riskLevel,
   probability,
+  confidence,
   className,
 }: RiskDisplayProps) {
   const config = RISK_CONFIGS[riskLevel];
   const Icon = RISK_ICONS[riskLevel];
   const percentProbability = Math.round(probability * 100);
-  const confidenceLevel = getConfidenceLevel(probability);
+  // Use actual model confidence when available; fall back to probability
+  const effectiveConfidence = confidence ?? probability;
+  const percentConfidence = Math.round(effectiveConfidence * 100);
+  const confidenceLevel = getConfidenceLevel(effectiveConfidence);
 
   return (
     <div
       className={cn(
-        'rounded-xl p-8 text-center animate-in fade-in duration-500',
+        "rounded-xl p-8 text-center animate-in fade-in duration-500",
         config.bgColor,
-        className
+        className,
       )}
     >
       {/* Icon */}
       <div className="flex justify-center mb-4">
-        <Icon className={cn('h-20 w-20', config.color)} strokeWidth={1.5} />
+        <Icon className={cn("h-20 w-20", config.color)} strokeWidth={1.5} />
       </div>
 
       {/* Risk Label */}
-      <h2 className={cn('text-4xl font-bold mb-2', config.color)}>
+      <h2 className={cn("text-4xl font-bold mb-2", config.color)}>
         {config.label}
       </h2>
 
@@ -79,12 +90,10 @@ export function RiskDisplay({
 
       {/* Probability */}
       <div className="mb-4">
-        <p className={cn('text-5xl font-bold', config.color)}>
+        <p className={cn("text-5xl font-bold", config.color)}>
           {percentProbability}%
         </p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Flood Probability
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">Flood Probability</p>
       </div>
 
       {/* Confidence Indicator */}
@@ -95,28 +104,24 @@ export function RiskDisplay({
         <div
           className="mt-2 h-5 bg-white/50 rounded-full overflow-hidden relative"
           role="progressbar"
-          aria-valuenow={percentProbability}
+          aria-valuenow={percentConfidence}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Confidence: ${percentProbability}%`}
+          aria-label={`Confidence: ${percentConfidence}%`}
         >
           <div
             className={cn(
-              'h-full rounded-full transition-all duration-500 absolute inset-y-0 left-0',
-              probability >= 0.9 ? 'w-[90%]' :
-              probability >= 0.75 ? 'w-3/4' :
-              probability >= 0.5 ? 'w-1/2' :
-              probability >= 0.25 ? 'w-1/4' :
-              probability >= 0.1 ? 'w-[10%]' : 'w-[5%]',
+              "h-full rounded-full transition-all duration-500 absolute inset-y-0 left-0",
               {
-                'bg-green-600': riskLevel === 0,
-                'bg-amber-600': riskLevel === 1,
-                'bg-red-600': riskLevel === 2,
-              }
+                "bg-risk-safe": riskLevel === 0,
+                "bg-risk-alert": riskLevel === 1,
+                "bg-risk-critical": riskLevel === 2,
+              },
             )}
+            style={{ width: `${Math.max(5, percentConfidence)}%` }}
           />
           <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-foreground">
-            {percentProbability}%
+            {percentConfidence}%
           </span>
         </div>
       </div>

@@ -5,7 +5,6 @@ Tests for ENSO Service - climate index fetching and feature engineering.
 import numpy as np
 import pandas as pd
 import pytest
-
 from app.services.enso_service import (
     ENSO_FEATURE_NAMES,
     add_enso_features,
@@ -16,10 +15,10 @@ from app.services.enso_service import (
     get_enso_feature_names,
 )
 
-
 # ═════════════════════════════════════════════════════════════════════════════
 # ENSO Phase Classification
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestClassifyEnsoPhase:
     """Tests for ENSO phase classification from ONI values."""
@@ -65,9 +64,13 @@ class TestEncodeEnsoPhase:
 
     def test_monotonic_ordering(self):
         phases = [
-            "strong_la_nina", "moderate_la_nina", "weak_la_nina",
+            "strong_la_nina",
+            "moderate_la_nina",
+            "weak_la_nina",
             "neutral",
-            "weak_el_nino", "moderate_el_nino", "strong_el_nino",
+            "weak_el_nino",
+            "moderate_el_nino",
+            "strong_el_nino",
         ]
         values = [encode_enso_phase(p) for p in phases]
         assert values == sorted(values)
@@ -77,15 +80,18 @@ class TestEncodeEnsoPhase:
 # Lag Features
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestComputeEnsoLagFeatures:
     """Tests for lagged ONI feature computation."""
 
     def test_lag_columns_created(self):
-        df = pd.DataFrame({
-            "year": range(2020, 2024),
-            "month": [1, 2, 3, 4],
-            "oni": [0.5, 0.8, 1.0, 0.3],
-        })
+        df = pd.DataFrame(
+            {
+                "year": range(2020, 2024),
+                "month": [1, 2, 3, 4],
+                "oni": [0.5, 0.8, 1.0, 0.3],
+            }
+        )
         result = compute_enso_lag_features(df)
         assert "oni_lag1" in result.columns
         assert "oni_lag2" in result.columns
@@ -95,11 +101,13 @@ class TestComputeEnsoLagFeatures:
         assert "oni_3m_avg" in result.columns
 
     def test_lag_values(self):
-        df = pd.DataFrame({
-            "year": [2020] * 4,
-            "month": [1, 2, 3, 4],
-            "oni": [0.5, 0.8, 1.0, 0.3],
-        })
+        df = pd.DataFrame(
+            {
+                "year": [2020] * 4,
+                "month": [1, 2, 3, 4],
+                "oni": [0.5, 0.8, 1.0, 0.3],
+            }
+        )
         result = compute_enso_lag_features(df, lags=(1,))
         assert result["oni_lag1"].iloc[1] == 0.5
         assert result["oni_lag1"].iloc[2] == 0.8
@@ -109,40 +117,43 @@ class TestComputeEnsoLagFeatures:
 # Feature Merging
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestAddEnsoFeatures:
     """Tests for merging ENSO features into a DataFrame."""
 
     def _make_oni_data(self):
-        return pd.DataFrame({
-            "year": [2023, 2023, 2023],
-            "month": [6, 7, 8],
-            "oni": [0.5, 0.8, 1.2],
-        })
+        return pd.DataFrame(
+            {
+                "year": [2023, 2023, 2023],
+                "month": [6, 7, 8],
+                "oni": [0.5, 0.8, 1.2],
+            }
+        )
 
     def test_adds_columns(self):
-        df = pd.DataFrame({
-            "year": [2023, 2023],
-            "month": [6, 7],
-            "temperature": [30, 31],
-            "flood": [0, 1],
-        })
-        result = add_enso_features(
-            df, oni_data=self._make_oni_data(), include_lags=False
+        df = pd.DataFrame(
+            {
+                "year": [2023, 2023],
+                "month": [6, 7],
+                "temperature": [30, 31],
+                "flood": [0, 1],
+            }
         )
+        result = add_enso_features(df, oni_data=self._make_oni_data(), include_lags=False)
         assert "oni" in result.columns
         assert "enso_phase" in result.columns
         assert "enso_phase_encoded" in result.columns
         assert "enso_rainfall_modifier" in result.columns
 
     def test_from_date_column(self):
-        df = pd.DataFrame({
-            "date": pd.to_datetime(["2023-06-15", "2023-07-20"]),
-            "temperature": [30, 31],
-            "flood": [0, 1],
-        })
-        result = add_enso_features(
-            df, oni_data=self._make_oni_data(), include_lags=False
+        df = pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2023-06-15", "2023-07-20"]),
+                "temperature": [30, 31],
+                "flood": [0, 1],
+            }
         )
+        result = add_enso_features(df, oni_data=self._make_oni_data(), include_lags=False)
         assert "oni" in result.columns
 
     def test_missing_columns_unchanged(self):

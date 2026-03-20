@@ -6,28 +6,35 @@
  * Predictions tab: paginated list of past flood predictions.
  */
 
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { format } from "date-fns";
+import { motion, useInView } from "framer-motion";
 import {
-  BarChart3,
-  Table2,
-  RefreshCw,
-  CloudSun,
   Activity,
   AlertTriangle,
-} from 'lucide-react';
+  BarChart3,
+  CloudSun,
+  Download,
+  RefreshCw,
+  Table2,
+} from "lucide-react";
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from "@/components/layout/PageHeader";
+import { SectionHeading } from "@/components/layout/SectionHeading";
+import { fadeUp, staggerContainer } from "@/lib/motion";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/ui/glass-card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -35,32 +42,46 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { useWeatherData, useWeatherStats } from '@/features/weather/hooks/useWeather';
-import { WeatherStatsCards } from '@/features/weather/components/WeatherStatsCards';
-import { DateRangeFilter, type DateRange } from '@/features/weather/components/DateRangeFilter';
-import { usePredictionHistory, useOfflinePredictions } from '@/features/predictions/hooks/usePredictionHistory';
-import { StaleDataBanner } from '@/components/feedback/StaleDataBanner';
-import type { WeatherDataParams, WeatherSource } from '@/types';
-import { cn } from '@/lib/utils';
+import { StaleDataBanner } from "@/components/feedback/StaleDataBanner";
+import {
+  useOfflinePredictions,
+  usePredictionHistory,
+} from "@/features/predictions/hooks/usePredictionHistory";
+import {
+  DateRangeFilter,
+  type DateRange,
+} from "@/features/weather/components/DateRangeFilter";
+import { WeatherStatsCards } from "@/features/weather/components/WeatherStatsCards";
+import {
+  useWeatherData,
+  useWeatherStats,
+} from "@/features/weather/hooks/useWeather";
+import { cn } from "@/lib/utils";
+import type { WeatherDataParams, WeatherSource } from "@/types";
 
 // Lazy-load heavy chart/table components
 const WeatherChart = lazy(() =>
-  import('@/features/weather/components/WeatherChart').then((m) => ({ default: m.WeatherChart }))
+  import("@/features/weather/components/WeatherChart").then((m) => ({
+    default: m.WeatherChart,
+  })),
 );
 const WeatherTable = lazy(() =>
-  import('@/features/weather/components/WeatherTable').then((m) => ({ default: m.WeatherTable }))
+  import("@/features/weather/components/WeatherTable").then((m) => ({
+    default: m.WeatherTable,
+  })),
 );
 
 /** Fallback skeleton while chart/table loads */
 function DataViewSkeleton() {
   return (
-    <Card>
-      <CardContent className="pt-6">
+    <GlassCard className="overflow-hidden">
+      <div className="pt-6 px-6 pb-6">
         <Skeleton className="h-100 w-full rounded-md" />
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -72,12 +93,12 @@ const DEFAULT_LIMIT = 100;
 /**
  * View mode options
  */
-type ViewMode = 'chart' | 'table';
+type ViewMode = "chart" | "table";
 
 /**
  * Data category tabs
  */
-type DataTab = 'weather' | 'predictions';
+type DataTab = "weather" | "predictions";
 
 /**
  * Get risk label and color from numeric level
@@ -85,19 +106,19 @@ type DataTab = 'weather' | 'predictions';
 function getRiskLabel(level: number): { label: string; className: string } {
   if (level === 0 || level <= 25) {
     return {
-      label: 'Low',
-      className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      label: "Low",
+      className: "bg-risk-safe/15 text-risk-safe",
     };
   }
   if (level === 1 || level <= 50) {
     return {
-      label: 'Moderate',
-      className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      label: "Moderate",
+      className: "bg-risk-alert/15 text-risk-alert",
     };
   }
   return {
-    label: 'High',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    label: "High",
+    className: "bg-risk-critical/15 text-risk-critical",
   };
 }
 
@@ -105,30 +126,38 @@ function getRiskLabel(level: number): { label: string; className: string } {
  * HistoryPage component – Weather & Prediction history interface
  */
 export default function HistoryPage() {
-  // Top-level tab
-  const [dataTab, setDataTab] = useState<DataTab>('weather');
+  const [searchParams] = useSearchParams();
+  const initialTab =
+    searchParams.get("tab") === "predictions" ? "predictions" : "weather";
 
-  // Weather filter state
+  // Top-level tab
+  const [dataTab, setDataTab] = useState<DataTab>(initialTab);
+
+  // Weather filter state (persisted across tab switches)
   const [page, setPage] = useState(1);
   const [dateRange, setDateRange] = useState<DateRange>({});
-  const [source, setSource] = useState<WeatherSource | 'all'>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('chart');
+  const [source, setSource] = useState<WeatherSource | "all">("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("chart");
 
-  // Prediction filter state
+  // Prediction filter state (persisted across tab switches)
   const [predPage, setPredPage] = useState(1);
+  const [predDateRange, setPredDateRange] = useState<DateRange>({});
+
+  // Last updated
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Build weather query params
   const queryParams: WeatherDataParams = useMemo(
     () => ({
       page,
       limit: DEFAULT_LIMIT,
-      source: source !== 'all' ? source : undefined,
+      source: source !== "all" ? source : undefined,
       start_date: dateRange.start_date,
       end_date: dateRange.end_date,
-      sort_by: 'recorded_at',
-      order: 'desc',
+      sort_by: "recorded_at",
+      order: "desc",
     }),
-    [page, source, dateRange]
+    [page, source, dateRange],
   );
 
   // Fetch weather data
@@ -142,15 +171,12 @@ export default function HistoryPage() {
   } = useWeatherData(queryParams);
 
   // Fetch weather stats
-  const {
-    data: stats,
-    isLoading: isLoadingStats,
-  } = useWeatherStats({
+  const { data: stats, isLoading: isLoadingStats } = useWeatherStats({
     start_date: dateRange.start_date,
     end_date: dateRange.end_date,
   });
 
-  // Fetch prediction history
+  // Fetch prediction history (with date range filters)
   const {
     data: predData,
     isLoading: predLoading,
@@ -159,8 +185,10 @@ export default function HistoryPage() {
   } = usePredictionHistory({
     page: predPage,
     limit: 50,
-    sort_by: 'created_at',
-    order: 'desc',
+    sort_by: "created_at",
+    order: "desc",
+    start_date: predDateRange.start_date,
+    end_date: predDateRange.end_date,
   });
 
   // Offline fallback for predictions
@@ -175,7 +203,7 @@ export default function HistoryPage() {
 
   // Handlers
   const handleSourceChange = useCallback((value: string) => {
-    setSource(value as WeatherSource | 'all');
+    setSource(value as WeatherSource | "all");
     setPage(1);
   }, []);
 
@@ -184,13 +212,55 @@ export default function HistoryPage() {
     setPage(1);
   }, []);
 
+  const handlePredDateRangeChange = useCallback((range: DateRange) => {
+    setPredDateRange(range);
+    setPredPage(1);
+  }, []);
+
   const handleRefresh = useCallback(() => {
-    if (dataTab === 'weather') {
-      refetch();
+    if (dataTab === "weather") {
+      refetch().then(() => setLastUpdated(new Date()));
     } else {
-      predRefetch();
+      predRefetch().then(() => setLastUpdated(new Date()));
     }
   }, [dataTab, refetch, predRefetch]);
+
+  // Prediction CSV export
+  const handleExportPredictionsCsv = useCallback(() => {
+    const rows = effectivePredData?.data;
+    if (!rows?.length) return;
+    const header =
+      "Date,Risk Level,Risk Label,Flood Probability (%),Confidence (%),Model Version,Model,Temperature (°C),Humidity (%),Precipitation (mm)";
+    const csvRows = rows.map((pred) => {
+      const inputs = pred.input_data as
+        | Record<string, number | undefined>
+        | undefined;
+      return [
+        format(new Date(pred.created_at), "yyyy-MM-dd HH:mm"),
+        pred.risk_level,
+        pred.risk_label ?? getRiskLabel(pred.risk_level).label,
+        (pred.flood_probability * 100).toFixed(1),
+        (pred.flood_probability * 100).toFixed(1),
+        pred.model_version ?? "",
+        pred.model_name ?? "",
+        inputs?.temperature != null
+          ? (Number(inputs.temperature) - 273.15).toFixed(1)
+          : "",
+        inputs?.humidity != null ? Number(inputs.humidity).toFixed(1) : "",
+        inputs?.precipitation != null
+          ? Number(inputs.precipitation).toFixed(2)
+          : "",
+      ].join(",");
+    });
+    const csv = [header, ...csvRows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `predictions_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [effectivePredData]);
 
   // Pagination
   const totalPages = weatherData?.pages || 1;
@@ -198,263 +268,396 @@ export default function HistoryPage() {
   const predTotalPages = predData?.pages || 1;
   const predCurrentPage = predData?.page || 1;
 
-  const isRefreshing = dataTab === 'weather' ? isFetching : predFetching;
+  const isRefreshing = dataTab === "weather" ? isFetching : predFetching;
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const contentInView = useInView(contentRef, { once: true, amount: 0.05 });
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <CloudSun className="h-8 w-8" />
-            History
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            View and analyze historical weather and prediction data
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="w-full px-6 pt-6">
+        <PageHeader
+          icon={CloudSun}
+          title="History"
+          subtitle="View and analyze historical weather and prediction data"
+          actions={
+            <div className="flex items-center gap-3">
+              {lastUpdated && (
+                <span className="text-xs text-white/60">
+                  Updated {format(lastUpdated, "h:mm:ss a")}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="border border-white/20 text-white hover:bg-white/10 hover:text-white"
+              >
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </Button>
+            </div>
+          }
+        />
       </div>
 
-      {/* Data Category Tabs */}
-      <Tabs value={dataTab} onValueChange={(v) => setDataTab(v as DataTab)}>
-        <TabsList>
-          <TabsTrigger value="weather" className="gap-2">
-            <CloudSun className="h-4 w-4" />
-            Weather Data
-          </TabsTrigger>
-          <TabsTrigger value="predictions" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Predictions
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabbed Content */}
+      <section className="py-10 bg-muted/30">
+        <div className="w-full px-6" ref={contentRef}>
+          <SectionHeading
+            label="Data Explorer"
+            title="Weather & Predictions"
+            subtitle="Switch between weather observations and historical predictions to analyze past data"
+          />
 
-        {/* ======== Weather Tab ======== */}
-        <TabsContent value="weather" className="space-y-6 mt-6">
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Filters</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
-              <div className="flex flex-wrap gap-4 items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Source:</span>
-                  <Select value={source} onValueChange={handleSourceChange}>
-                    <SelectTrigger className="w-37.5">
-                      <SelectValue placeholder="All Sources" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sources</SelectItem>
-                      <SelectItem value="OWM">OpenWeatherMap</SelectItem>
-                      <SelectItem value="Meteostat">Meteostat</SelectItem>
-                      <SelectItem value="Google">Google</SelectItem>
-                      <SelectItem value="Manual">Manual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Tabs
-                  value={viewMode}
-                  onValueChange={(v) => setViewMode(v as ViewMode)}
-                >
-                  <TabsList>
-                    <TabsTrigger value="chart" className="gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      Chart
-                    </TabsTrigger>
-                    <TabsTrigger value="table" className="gap-2">
-                      <Table2 className="h-4 w-4" />
-                      Table
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate={contentInView ? "show" : undefined}
+          >
+            <motion.div variants={fadeUp}>
+              <Tabs
+                value={dataTab}
+                onValueChange={(v) => setDataTab(v as DataTab)}
+              >
+                <TabsList>
+                  <TabsTrigger value="weather" className="gap-2">
+                    <CloudSun className="h-4 w-4" />
+                    Weather Data
+                  </TabsTrigger>
+                  <TabsTrigger value="predictions" className="gap-2">
+                    <Activity className="h-4 w-4" />
+                    Predictions
+                  </TabsTrigger>
+                </TabsList>
 
-          {/* Stats */}
-          <WeatherStatsCards stats={stats} isLoading={isLoadingStats} />
-
-          {/* Error */}
-          {isError && (
-            <Card className="border-destructive">
-              <CardContent className="pt-6">
-                <div className="text-center text-destructive">
-                  <p className="font-medium">Error loading weather data</p>
-                  <p className="text-sm mt-1">
-                    {error?.message || 'An unexpected error occurred'}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => refetch()}
-                    className="mt-4"
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Chart / Table */}
-          <Suspense fallback={<DataViewSkeleton />}>
-            {!isError && viewMode === 'chart' && (
-              <WeatherChart
-                data={weatherData?.data || []}
-                isLoading={isLoadingData}
-                title="Weather Trends Over Time"
-              />
-            )}
-
-            {!isError && viewMode === 'table' && (
-              <>
-                <WeatherTable
-                  data={weatherData?.data || []}
-                  isLoading={isLoadingData}
-                />
-                {weatherData && totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {weatherData.data.length} of {weatherData.total} records
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage <= 1}
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-sm">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage >= totalPages}
-                      >
-                        Next
-                      </Button>
+                {/* ======== Weather Tab ======== */}
+                <TabsContent value="weather" className="space-y-6 mt-6">
+                  {/* Filters */}
+                  <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
+                    <div className="p-6 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                          <BarChart3 className="h-5 w-5 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold">Filters</h3>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
-          </Suspense>
-        </TabsContent>
+                    <div className="px-6 pb-6 space-y-4">
+                      <DateRangeFilter
+                        value={dateRange}
+                        onChange={handleDateRangeChange}
+                      />
+                      <div className="flex flex-wrap gap-4 items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Source:</span>
+                          <Select
+                            value={source}
+                            onValueChange={handleSourceChange}
+                          >
+                            <SelectTrigger className="w-37.5">
+                              <SelectValue placeholder="All Sources" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Sources</SelectItem>
+                              <SelectItem value="OWM">
+                                OpenWeatherMap
+                              </SelectItem>
+                              <SelectItem value="Meteostat">
+                                Meteostat
+                              </SelectItem>
+                              <SelectItem value="Google">Google</SelectItem>
+                              <SelectItem value="Manual">Manual</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Tabs
+                          value={viewMode}
+                          onValueChange={(v) => setViewMode(v as ViewMode)}
+                        >
+                          <TabsList>
+                            <TabsTrigger value="chart" className="gap-2">
+                              <BarChart3 className="h-4 w-4" />
+                              Chart
+                            </TabsTrigger>
+                            <TabsTrigger value="table" className="gap-2">
+                              <Table2 className="h-4 w-4" />
+                              Table
+                            </TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
+                    </div>
+                  </GlassCard>
 
-        {/* ======== Predictions Tab ======== */}
-        <TabsContent value="predictions" className="space-y-6 mt-6">
-          {/* Offline banner */}
-          {isOffline && effectivePredData && (
-            <StaleDataBanner cachedAt={cachedAt ?? undefined} />
-          )}
+                  {/* Stats */}
+                  <WeatherStatsCards stats={stats} isLoading={isLoadingStats} />
 
-          {/* Predictions Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Prediction History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {predLoading && !isOffline ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-                </div>
-              ) : !effectivePredData?.data?.length ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No predictions found</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Risk Level</TableHead>
-                      <TableHead>Flood Probability</TableHead>
-                      <TableHead>Location</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {effectivePredData.data.map((pred) => {
-                      const risk = getRiskLabel(pred.risk_level);
-                      return (
-                        <TableRow key={pred.id}>
-                          <TableCell className="text-sm">
-                            {new Date(pred.created_at).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className={cn('text-xs', risk.className)}
-                            >
-                              {risk.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {typeof pred.flood_probability === 'number'
-                              ? `${(pred.flood_probability * 100).toFixed(1)}%`
-                              : '-'}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {pred.location || '-'}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                  {/* Error */}
+                  {isError && (
+                    <GlassCard className="border-destructive/40 overflow-hidden">
+                      <div className="h-1 w-full bg-linear-to-r from-destructive/60 via-destructive to-destructive/60" />
+                      <div className="pt-6 px-6 pb-6">
+                        <div className="text-center text-destructive">
+                          <p className="font-medium">
+                            Error loading weather data
+                          </p>
+                          <p className="text-sm mt-1">
+                            {error?.message || "An unexpected error occurred"}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => refetch()}
+                            className="mt-4"
+                          >
+                            Try Again
+                          </Button>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  )}
 
-          {/* Prediction Pagination */}
-          {predData && predTotalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Showing {predData.data.length} of {predData.total} predictions
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPredPage((p) => Math.max(1, p - 1))}
-                  disabled={predCurrentPage <= 1}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm">
-                  Page {predCurrentPage} of {predTotalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPredPage((p) => Math.min(predTotalPages, p + 1))}
-                  disabled={predCurrentPage >= predTotalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                  {/* Chart / Table */}
+                  <Suspense fallback={<DataViewSkeleton />}>
+                    {!isError && viewMode === "chart" && (
+                      <WeatherChart
+                        data={weatherData?.data || []}
+                        isLoading={isLoadingData}
+                        title="Weather Trends Over Time"
+                      />
+                    )}
+
+                    {!isError && viewMode === "table" && (
+                      <>
+                        <WeatherTable
+                          data={weatherData?.data || []}
+                          isLoading={isLoadingData}
+                        />
+                        {weatherData && totalPages > 1 && (
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">
+                              Showing {weatherData.data.length} of{" "}
+                              {weatherData.total} records
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setPage((p) => Math.max(1, p - 1))
+                                }
+                                disabled={currentPage <= 1}
+                              >
+                                Previous
+                              </Button>
+                              <span className="text-sm">
+                                Page {currentPage} of {totalPages}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setPage((p) => Math.min(totalPages, p + 1))
+                                }
+                                disabled={currentPage >= totalPages}
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </Suspense>
+                </TabsContent>
+
+                {/* ======== Predictions Tab ======== */}
+                <TabsContent value="predictions" className="space-y-6 mt-6">
+                  {/* Offline banner */}
+                  {isOffline && effectivePredData && (
+                    <StaleDataBanner cachedAt={cachedAt ?? undefined} />
+                  )}
+
+                  {/* Prediction Filters */}
+                  <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
+                    <div className="p-6 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                          <BarChart3 className="h-5 w-5 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold">Filters</h3>
+                      </div>
+                    </div>
+                    <div className="px-6 pb-6">
+                      <DateRangeFilter
+                        value={predDateRange}
+                        onChange={handlePredDateRangeChange}
+                      />
+                    </div>
+                  </GlassCard>
+
+                  {/* Predictions Table */}
+                  <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
+                    <div className="p-6 pb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                          <Activity className="h-5 w-5 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold">
+                          Prediction History
+                        </h3>
+                      </div>
+                      {effectivePredData?.data?.length ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleExportPredictionsCsv}
+                          className="gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          Export CSV
+                        </Button>
+                      ) : null}
+                    </div>
+                    <div className="px-6 pb-6">
+                      {predLoading && !isOffline ? (
+                        <div className="space-y-3">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Skeleton key={i} className="h-12 w-full" />
+                          ))}
+                        </div>
+                      ) : !effectivePredData?.data?.length ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>No predictions found</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Risk Level</TableHead>
+                                <TableHead>Flood Probability</TableHead>
+                                <TableHead>Confidence</TableHead>
+                                <TableHead>Model</TableHead>
+                                <TableHead>Inputs</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {effectivePredData.data.map((pred) => {
+                                const risk = getRiskLabel(pred.risk_level);
+                                const inputs = pred.input_data as
+                                  | Record<string, number | undefined>
+                                  | undefined;
+                                return (
+                                  <TableRow key={pred.id}>
+                                    <TableCell className="text-sm whitespace-nowrap">
+                                      {format(
+                                        new Date(pred.created_at),
+                                        "MMM dd, yyyy HH:mm",
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant="secondary"
+                                        className={cn(
+                                          "text-xs",
+                                          risk.className,
+                                        )}
+                                      >
+                                        {pred.risk_label ?? risk.label}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="font-medium">
+                                      {typeof pred.flood_probability ===
+                                      "number"
+                                        ? `${(pred.flood_probability * 100).toFixed(1)}%`
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                      {typeof pred.flood_probability ===
+                                      "number"
+                                        ? `${(pred.flood_probability * 100).toFixed(1)}%`
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                      {pred.model_version
+                                        ? `v${pred.model_version}`
+                                        : "-"}
+                                      {pred.model_name
+                                        ? ` (${pred.model_name})`
+                                        : ""}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                      {inputs
+                                        ? [
+                                            inputs.temperature != null &&
+                                              `${Math.round(Number(inputs.temperature) - 273.15)}°C`,
+                                            inputs.humidity != null &&
+                                              `${Number(inputs.humidity).toFixed(0)}% RH`,
+                                            inputs.precipitation != null &&
+                                              `${Number(inputs.precipitation).toFixed(1)} mm`,
+                                          ]
+                                            .filter(Boolean)
+                                            .join(" · ") || "-"
+                                        : "-"}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  </GlassCard>
+
+                  {/* Prediction Pagination */}
+                  {predData && predTotalPages > 1 && (
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {predData.data.length} of {predData.total}{" "}
+                        predictions
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPredPage((p) => Math.max(1, p - 1))}
+                          disabled={predCurrentPage <= 1}
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm">
+                          Page {predCurrentPage} of {predTotalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setPredPage((p) => Math.min(predTotalPages, p + 1))
+                          }
+                          disabled={predCurrentPage >= predTotalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,128 +1,406 @@
 /**
  * Terms of Service Page
  *
- * Themed with a primary header banner to match the system design language.
+ * Professional Terms of Service aligned with Philippine law and the
+ * Floodingnaque Flood Prediction & Early Warning System for Parañaque City.
  */
 
-import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { FloodIcon } from '@/components/icons/FloodIcon';
-import { RainEffect } from '@/components/effects/RainEffect';
+import { RainEffect } from "@/components/effects/RainEffect";
+import { FloodIcon } from "@/components/icons/FloodIcon";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero header bar */}
-      <div className="relative bg-primary overflow-hidden">
+      <div className="relative bg-linear-to-br from-primary via-primary/95 to-primary/80 overflow-hidden ring-1 ring-white/10 shadow-2xl">
         <RainEffect density={20} opacity={0.08} />
         <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-linear-to-r from-primary/60 via-primary to-primary/60" />
         <div className="relative z-10 container mx-auto px-6 py-12 md:py-16">
           <Link
             to="/login"
-            className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors mb-6 rounded-full bg-white/5 backdrop-blur-sm px-3 py-1.5 border border-white/10 hover:border-white/20"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Login
           </Link>
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-lg bg-white/15 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
               <FloodIcon className="h-5 w-5 text-white" />
             </div>
-            <span className="text-lg font-bold text-white tracking-tight">Floodingnaque</span>
+            <span className="text-lg font-bold text-white tracking-tight">
+              Floodingnaque
+            </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Terms of Service</h1>
-          <p className="text-sm text-white/50 mt-2">Last updated: March 1, 2026</p>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+            Terms of Service
+          </h1>
+          <p className="text-sm text-white/50 mt-2">
+            Effective date: March 1, 2026 &middot; Last updated: March 3, 2026
+          </p>
         </div>
       </div>
 
       <div className="container mx-auto px-6 py-10 md:py-14">
-      <div className="mx-auto max-w-3xl space-y-8">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-border/30 bg-card/50 backdrop-blur-sm p-8 md:p-10 shadow-lg ring-1 ring-white/5 space-y-8 text-sm leading-relaxed text-muted-foreground [&_h2]:text-foreground [&_strong]:text-foreground">
+          {/* ---- 1 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">1. Acceptance of Terms</h2>
+            <p>
+              By accessing or using the Floodingnaque Flood Prediction &amp;
+              Early Warning System (&ldquo;Service&rdquo;), operated for the
+              City of Para&ntilde;aque Disaster Risk Reduction and Management
+              Office (DRRMO), you acknowledge that you have read, understood,
+              and agree to be bound by these Terms of Service
+              (&ldquo;Terms&rdquo;). If you do not agree, you must discontinue
+              use of the Service immediately.
+            </p>
+            <p>
+              These Terms constitute a legally binding agreement between you
+              (&ldquo;User&rdquo;) and the Service operators. Use of the Service
+              is also subject to our{" "}
+              <Link
+                to="/privacy"
+                className="text-primary underline underline-offset-2"
+              >
+                Privacy Policy
+              </Link>
+              , which is incorporated herein by reference.
+            </p>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">1. Acceptance of Terms</h2>
-          <p>
-            By accessing or using the Floodingnaque Flood Prediction &amp; Monitoring
-            System (&quot;Service&quot;), you agree to be bound by these Terms of Service.
-            If you do not agree, do not use the Service.
-          </p>
-        </section>
+          {/* ---- 2 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">2. Description of Service</h2>
+            <p>
+              Floodingnaque is an AI-powered flood prediction and early warning
+              system developed as an academic thesis project. The Service
+              provides:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Flood risk classification</strong> &mdash; three-level
+                risk assessment (Safe, Alert, Critical) generated by a Random
+                Forest machine-learning model trained on 3,700+ official DRRMO
+                flood records from 2022&ndash;2025.
+              </li>
+              <li>
+                <strong>Real-time weather monitoring</strong> &mdash;
+                temperature, humidity, precipitation, wind speed, and
+                atmospheric pressure data sourced from third-party
+                meteorological APIs and PAGASA weather stations.
+              </li>
+              <li>
+                <strong>Early warning alerts</strong> &mdash; automated
+                notifications when predicted flood risk escalates, delivered via
+                the web dashboard and optional push channels.
+              </li>
+              <li>
+                <strong>Historical analytics</strong> &mdash; interactive
+                dashboards, charts, and exportable datasets for decision-support
+                and post-incident review.
+              </li>
+            </ul>
+            <p>
+              The Service is tailored to the geographic and environmental
+              conditions of Para&ntilde;aque City, Metro Manila, Philippines.
+            </p>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">2. Description of Service</h2>
-          <p>
-            Floodingnaque provides flood risk predictions, weather monitoring, and
-            alerting capabilities for Naga City, Camarines Sur. The Service is
-            developed as part of an academic thesis and is provided on an
-            &quot;as-is&quot; basis for research and informational purposes.
-          </p>
-        </section>
+          {/* ---- 3 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">
+              3. User Registration &amp; Accounts
+            </h2>
+            <p>
+              Certain features of the Service require a registered account. When
+              creating an account you agree to:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                Provide accurate, current, and complete information including
+                your full name and a valid email address.
+              </li>
+              <li>
+                Maintain the security and confidentiality of your login
+                credentials. You are solely responsible for all activities
+                conducted under your account.
+              </li>
+              <li>
+                Notify us immediately of any unauthorized use of your account or
+                suspected security breach.
+              </li>
+              <li>
+                Refrain from sharing, transferring, or selling your account to
+                any third party.
+              </li>
+            </ul>
+            <p>
+              We reserve the right to suspend or terminate accounts that are
+              inactive for an extended period, used in violation of these Terms,
+              or created with false information.
+            </p>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">3. User Accounts</h2>
-          <p>
-            You are responsible for maintaining the confidentiality of your account
-            credentials. You agree to provide accurate information when registering
-            and to keep your account information up to date.
-          </p>
-        </section>
+          {/* ---- 4 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">4. Acceptable Use Policy</h2>
+            <p>
+              You agree to use the Service only for lawful purposes. You shall
+              not:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                Use the Service for any purpose that is unlawful or prohibited
+                by these Terms, including the dissemination of false flood
+                warnings.
+              </li>
+              <li>
+                Attempt to gain unauthorized access to any portion of the
+                Service, related systems, networks, or databases.
+              </li>
+              <li>
+                Reverse-engineer, decompile, or disassemble any part of the
+                Service&apos;s software, models, or algorithms.
+              </li>
+              <li>
+                Introduce malicious code, viruses, or any technology designed to
+                impair the Service&apos;s functionality.
+              </li>
+              <li>
+                Use automated scripts, bots, or crawlers to access or scrape
+                content from the Service beyond the scope of the documented API.
+              </li>
+              <li>
+                Impersonate any person or entity, or falsely state or
+                misrepresent your affiliation with a person or entity.
+              </li>
+              <li>
+                Reproduce, redistribute, or publicly display predictions or
+                alert data in a manner that implies official government
+                endorsement unless authorized by the Para&ntilde;aque City
+                DRRMO.
+              </li>
+            </ul>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">4. Acceptable Use</h2>
-          <p>You agree not to:</p>
-          <ul className="list-disc pl-6 space-y-1">
-            <li>Use the Service for any unlawful purpose.</li>
-            <li>Attempt to gain unauthorized access to the system.</li>
-            <li>Interfere with or disrupt the Service.</li>
-            <li>Scrape, crawl, or use automated tools to extract data beyond the provided API.</li>
-          </ul>
-        </section>
+          {/* ---- 5 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">
+              5. Disclaimer of Warranties &amp; Prediction Accuracy
+            </h2>
+            <p>
+              <strong>
+                THE SERVICE IS PROVIDED &ldquo;AS IS&rdquo; AND &ldquo;AS
+                AVAILABLE&rdquo; WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS
+                OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+                MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR
+                NON-INFRINGEMENT.
+              </strong>
+            </p>
+            <p>
+              Flood predictions are generated by machine-learning models using
+              historical flood records and meteorological data. They represent
+              statistical estimates and are <strong>not</strong> a substitute
+              for official government weather bulletins, PAGASA storm
+              advisories, or NDRRMC directives. Actual flood conditions may
+              differ from predictions due to factors beyond the model&apos;s
+              scope, including sudden infrastructure changes, drainage
+              blockages, or extreme weather events outside the training
+              distribution.
+            </p>
+            <p>
+              <strong>
+                Do not rely solely on this Service for life-safety decisions.
+              </strong>{" "}
+              Always heed official evacuation orders and emergency instructions
+              from authorized government agencies.
+            </p>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">5. Disclaimer of Warranties</h2>
-          <p>
-            Flood predictions are based on machine-learning models and publicly
-            available meteorological data. They are approximations and must
-            <strong> not</strong> be used as the sole basis for emergency
-            decision-making. Always follow official government advisories.
-          </p>
-        </section>
+          {/* ---- 6 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">
+              6. Limitation of Liability
+            </h2>
+            <p>
+              To the fullest extent permitted by applicable Philippine law,
+              including Republic Act No.&nbsp;386 (Civil Code of the
+              Philippines), in no event shall the developers, researchers,
+              thesis advisers, academic institution, or any contributor to the
+              Service be liable for:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                Any direct, indirect, incidental, special, consequential, or
+                punitive damages arising out of or in connection with your use
+                of, or inability to use, the Service.
+              </li>
+              <li>
+                Loss of data, profits, goodwill, or other intangible losses
+                resulting from the Service.
+              </li>
+              <li>
+                Any damage to property, personal injury, or loss of life caused
+                by reliance on predictions or alerts provided by the Service.
+              </li>
+              <li>
+                Interruptions, delays, or failures in the Service caused by
+                infrastructure outages, third-party API unavailability, or force
+                majeure events.
+              </li>
+            </ul>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">6. Limitation of Liability</h2>
-          <p>
-            To the maximum extent permitted by law, the developers of
-            Floodingnaque shall not be liable for any indirect, incidental, or
-            consequential damages arising from the use of the Service.
-          </p>
-        </section>
+          {/* ---- 7 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">7. Intellectual Property</h2>
+            <p>
+              All content, design, software, algorithms, machine-learning
+              models, documentation, and visual assets associated with the
+              Service are the intellectual property of the thesis researchers
+              and are protected under Philippine intellectual property laws
+              (Republic Act No.&nbsp;8293). Unauthorized reproduction,
+              distribution, or creation of derivative works is strictly
+              prohibited without prior written consent.
+            </p>
+            <p>
+              The DRRMO flood records used for model training remain the
+              property of the Para&ntilde;aque City DRRMO. Weather data sourced
+              from third-party APIs is subject to the respective provider&apos;s
+              terms of use.
+            </p>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">7. Data &amp; Privacy</h2>
-          <p>
-            Your use of the Service is also governed by our{' '}
-            <Link to="/privacy" className="text-primary underline">
-              Privacy Policy
-            </Link>
-            .
-          </p>
-        </section>
+          {/* ---- 8 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">
+              8. Third-Party Services &amp; Data Sources
+            </h2>
+            <p>
+              The Service integrates with third-party providers including, but
+              not limited to, OpenWeatherMap, Meteostat, PAGASA, and Google
+              Earth Engine for meteorological data. These integrations are
+              governed by their respective terms of service. We do not guarantee
+              the continuous availability, accuracy, or reliability of
+              third-party data feeds.
+            </p>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">8. Changes to Terms</h2>
-          <p>
-            We reserve the right to modify these Terms at any time. Continued use
-            of the Service after changes constitutes acceptance of the updated Terms.
-          </p>
-        </section>
+          {/* ---- 9 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">9. Service Availability</h2>
+            <p>
+              We strive to maintain the Service&apos;s availability but do not
+              guarantee uninterrupted or error-free operation. Scheduled
+              maintenance, system upgrades, model retraining, or circumstances
+              beyond our reasonable control may result in temporary downtime. We
+              will make reasonable efforts to provide advance notice of planned
+              outages.
+            </p>
+          </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">9. Contact</h2>
-          <p>
-            For questions about these Terms, contact the project maintainers via
-            the repository listed in the project README.
-          </p>
-        </section>
-      </div>
+          {/* ---- 10 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">10. Data &amp; Privacy</h2>
+            <p>
+              Your use of the Service is governed by our{" "}
+              <Link
+                to="/privacy"
+                className="text-primary underline underline-offset-2"
+              >
+                Privacy Policy
+              </Link>
+              , which details how we collect, process, store, and protect your
+              personal information in compliance with the Philippine Data
+              Privacy Act of 2012 (Republic Act No.&nbsp;10173) and its
+              Implementing Rules and Regulations.
+            </p>
+          </section>
+
+          {/* ---- 11 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">11. Termination</h2>
+            <p>
+              We may suspend or terminate your access to the Service at any
+              time, with or without cause and with or without notice, including
+              for violation of these Terms. Upon termination, your right to use
+              the Service ceases immediately. Provisions of these Terms that by
+              their nature should survive termination shall remain in effect,
+              including but not limited to intellectual property rights,
+              disclaimers, limitation of liability, and governing law.
+            </p>
+          </section>
+
+          {/* ---- 12 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">
+              12. Modifications to Terms
+            </h2>
+            <p>
+              We reserve the right to modify these Terms at any time. Material
+              changes will be communicated through a prominent notice on the
+              Service or via email to registered users at least seven (7) days
+              before taking effect. Your continued use of the Service after the
+              effective date constitutes acceptance of the revised Terms. If you
+              do not agree with the changes, you must stop using the Service and
+              deactivate your account.
+            </p>
+          </section>
+
+          {/* ---- 13 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">
+              13. Governing Law &amp; Jurisdiction
+            </h2>
+            <p>
+              These Terms shall be governed by and construed in accordance with
+              the laws of the Republic of the Philippines. Any disputes arising
+              under or in connection with these Terms shall be subject to the
+              exclusive jurisdiction of the courts of Para&ntilde;aque City,
+              Metro Manila, Philippines.
+            </p>
+          </section>
+
+          {/* ---- 14 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">14. Severability</h2>
+            <p>
+              If any provision of these Terms is found to be unenforceable or
+              invalid by a court of competent jurisdiction, the remaining
+              provisions shall continue in full force and effect.
+            </p>
+          </section>
+
+          <Separator />
+
+          {/* ---- 15 ---- */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">15. Contact Information</h2>
+            <p>
+              For questions, concerns, or notices relating to these Terms,
+              please contact:
+            </p>
+            <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+              <p className="font-medium text-foreground">
+                Floodingnaque Project Team
+              </p>
+              <p>
+                Email:{" "}
+                <a
+                  href="mailto:floodingnaque@gmail.com"
+                  className="text-primary underline underline-offset-2"
+                >
+                  floodingnaque@gmail.com
+                </a>
+              </p>
+              <p>Para&ntilde;aque City, Metro Manila, Philippines</p>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

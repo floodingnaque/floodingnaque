@@ -6,6 +6,26 @@ from pathlib import Path
 # Add parent directory to path BEFORE importing app modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Load .env BEFORE any app imports — app.core.security reads JWT_SECRET_KEY
+# at module level (same pattern as main.py).
+from dotenv import load_dotenv
+
+_backend_dir = Path(__file__).resolve().parent.parent
+_app_env = os.getenv("APP_ENV", "development").lower()
+_env_map = {
+    "development": ".env.development",
+    "dev": ".env.development",
+    "staging": ".env.staging",
+    "stage": ".env.staging",
+    "production": ".env.production",
+    "prod": ".env.production",
+}
+_env_file = _backend_dir / _env_map.get(_app_env, ".env.development")
+if _env_file.exists():
+    load_dotenv(_env_file, override=False)
+else:
+    load_dotenv(_backend_dir / ".env", override=False)
+
 from alembic import context
 from app.core.config import load_env
 from app.models.db import Base

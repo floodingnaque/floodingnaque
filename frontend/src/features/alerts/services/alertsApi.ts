@@ -5,21 +5,22 @@
  * acknowledging, and managing flood alerts.
  */
 
-import { api } from '@/lib/api-client';
-import { API_ENDPOINTS } from '@/config/api.config';
+import { API_ENDPOINTS } from "@/config/api.config";
+import { api } from "@/lib/api-client";
 import type {
   Alert,
-  AlertParams,
   AlertHistory,
-  PaginatedResponse,
+  AlertParams,
   ApiResponse,
-} from '@/types';
+  PaginatedResponse,
+} from "@/types";
+import type { AxiosRequestConfig } from "axios";
 
 /**
  * Response from the SMS simulation endpoint
  */
 export interface SmsSimulationResponse {
-  status: 'sandbox';
+  status: "sandbox";
   phone: string;
   message: string;
   risk_level: number;
@@ -40,26 +41,29 @@ export const alertsApi = {
    * @example
    * const alerts = await alertsApi.getAlerts({ page: 1, limit: 10, risk_level: 2 });
    */
-  getAlerts: async (params?: AlertParams): Promise<PaginatedResponse<Alert>> => {
+  getAlerts: async (
+    params?: AlertParams,
+    config?: AxiosRequestConfig,
+  ): Promise<PaginatedResponse<Alert>> => {
     const queryParams = new URLSearchParams();
 
-    if (params?.page) queryParams.set('page', params.page.toString());
-    if (params?.limit) queryParams.set('limit', params.limit.toString());
-    if (params?.sort_by) queryParams.set('sort_by', params.sort_by);
-    if (params?.order) queryParams.set('order', params.order);
+    if (params?.page) queryParams.set("page", params.page.toString());
+    if (params?.limit) queryParams.set("limit", params.limit.toString());
+    if (params?.sort_by) queryParams.set("sort_by", params.sort_by);
+    if (params?.order) queryParams.set("order", params.order);
     if (params?.risk_level !== undefined)
-      queryParams.set('risk_level', params.risk_level.toString());
+      queryParams.set("risk_level", params.risk_level.toString());
     if (params?.acknowledged !== undefined)
-      queryParams.set('acknowledged', params.acknowledged.toString());
-    if (params?.start_date) queryParams.set('start_date', params.start_date);
-    if (params?.end_date) queryParams.set('end_date', params.end_date);
+      queryParams.set("acknowledged", params.acknowledged.toString());
+    if (params?.start_date) queryParams.set("start_date", params.start_date);
+    if (params?.end_date) queryParams.set("end_date", params.end_date);
 
     const queryString = queryParams.toString();
     const url = queryString
       ? `${API_ENDPOINTS.alerts.list}?${queryString}`
       : API_ENDPOINTS.alerts.list;
 
-    return api.get<PaginatedResponse<Alert>>(url);
+    return api.get<PaginatedResponse<Alert>>(url, config);
   },
 
   /**
@@ -71,9 +75,13 @@ export const alertsApi = {
    * @example
    * const recentAlerts = await alertsApi.getRecentAlerts(5);
    */
-  getRecentAlerts: async (limit: number = 10): Promise<Alert[]> => {
+  getRecentAlerts: async (
+    limit: number = 10,
+    config?: AxiosRequestConfig,
+  ): Promise<Alert[]> => {
     const response = await api.get<ApiResponse<Alert[]>>(
-      `${API_ENDPOINTS.alerts.recent}?limit=${limit}`
+      `${API_ENDPOINTS.alerts.recent}?limit=${limit}`,
+      config,
     );
     return response.data;
   },
@@ -87,8 +95,13 @@ export const alertsApi = {
    * const history = await alertsApi.getAlertHistory();
    * console.log(history.summary.total);
    */
-  getAlertHistory: async (): Promise<AlertHistory> => {
-    return api.get<AlertHistory>(`${API_ENDPOINTS.alerts.list}/history`);
+  getAlertHistory: async (
+    config?: AxiosRequestConfig,
+  ): Promise<AlertHistory> => {
+    return api.get<AlertHistory>(
+      `${API_ENDPOINTS.alerts.list}/history`,
+      config,
+    );
   },
 
   /**
@@ -100,7 +113,9 @@ export const alertsApi = {
    * await alertsApi.acknowledgeAlert(123);
    */
   acknowledgeAlert: async (id: number): Promise<void> => {
-    await api.patch<ApiResponse<void>>(`${API_ENDPOINTS.alerts.list}/${id}/acknowledge`);
+    await api.patch<ApiResponse<void>>(
+      `${API_ENDPOINTS.alerts.list}/${id}/acknowledge`,
+    );
   },
 
   /**
@@ -110,7 +125,9 @@ export const alertsApi = {
    * await alertsApi.acknowledgeAll();
    */
   acknowledgeAll: async (): Promise<void> => {
-    await api.post<ApiResponse<void>>(`${API_ENDPOINTS.alerts.list}/acknowledge-all`);
+    await api.post<ApiResponse<void>>(
+      `${API_ENDPOINTS.alerts.list}/acknowledge-all`,
+    );
   },
 
   /**

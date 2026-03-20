@@ -5,10 +5,7 @@
  * child component tree and renders a fallback UI instead of crashing.
  */
 
-import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { captureException } from '@/lib/sentry';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,7 +13,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from "@/components/ui/card";
+import { captureException } from "@/lib/sentry";
+import { AlertTriangle, Home, RefreshCw } from "lucide-react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,7 +52,10 @@ interface ErrorBoundaryState {
  * </ErrorBoundary>
  * ```
  */
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -64,10 +67,31 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     // Log to console in development
-    console.error('[ErrorBoundary] Caught error:', error, info);
+    console.error("[ErrorBoundary] Caught error:", error, info);
 
     // Report to Sentry in production (no-op when DSN is empty)
-    captureException(error, { componentStack: info.componentStack ?? undefined });
+    captureException(error, {
+      componentStack: info.componentStack ?? undefined,
+      boundary: "ErrorBoundary",
+    });
+
+    // Clear auth state on authentication-related render crashes
+    // so the user is redirected to login instead of a broken page.
+    if (
+      error.message?.includes("401") ||
+      error.message?.includes("Unauthorized") ||
+      error.message?.includes("token")
+    ) {
+      try {
+        // Dynamic require in error boundary — can't use static import in class lifecycle
+        // @ts-expect-error -- require is provided by bundler at runtime
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mod = require("@/state/stores/authStore");
+        mod.useAuthStore.getState().logout?.();
+      } catch {
+        // Auth store may not be available — safe to ignore
+      }
+    }
 
     // Notify parent if callback provided
     this.props.onError?.(error, info);
@@ -79,7 +103,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   private handleGoHome = (): void => {
     this.setState({ hasError: false, error: null });
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   render(): ReactNode {
@@ -92,8 +116,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return this.props.fallback;
     }
 
-    const isDev =
-      this.props.showDetails ?? import.meta.env.DEV;
+    const isDev = this.props.showDetails ?? import.meta.env.DEV;
 
     return (
       <div
@@ -126,7 +149,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   {this.state.error.message}
                   {this.state.error.stack && (
                     <>
-                      {'\n\n'}
+                      {"\n\n"}
                       {this.state.error.stack}
                     </>
                   )}

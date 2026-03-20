@@ -207,7 +207,7 @@ def record_external_api_call(api: str, status: str, duration: float):
         status: Call status (success/error/timeout)
         duration: Call duration in seconds
     """
-    if _metrics:
+    if _metrics and hasattr(_metrics, "external_api_calls_total"):
         _metrics.external_api_calls_total.labels(api=api, status=status).inc()
         _metrics.external_api_duration.labels(api=api).observe(duration)
 
@@ -220,7 +220,7 @@ def record_circuit_breaker_state(api: str, state: str):
         api: API name
         state: State (closed/open/half-open)
     """
-    if _metrics:
+    if _metrics and hasattr(_metrics, "circuit_breaker_state"):
         state_value = {"closed": 0, "open": 1, "half-open": 2}.get(state, -1)
         _metrics.circuit_breaker_state.labels(api=api).set(state_value)
 

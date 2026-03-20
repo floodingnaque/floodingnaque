@@ -19,11 +19,11 @@ import os
 import re
 import threading
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
-from xml.etree import ElementTree
+from xml.etree import ElementTree  # nosec B405 - parsing PAGASA public RSS feeds
 
 import requests
 from app.core.constants import (
@@ -57,7 +57,9 @@ PAGASA_SEVERE_WEATHER_URL = os.getenv(
 )
 
 BULLETIN_CACHE_TTL = int(os.getenv("PAGASA_BULLETIN_CACHE_TTL", "600"))  # 10 min
-BULLETIN_TIMEOUT = int(os.getenv("PAGASA_BULLETIN_TIMEOUT", "20"))
+BULLETIN_CONNECT_TIMEOUT = int(os.getenv("PAGASA_BULLETIN_CONNECT_TIMEOUT", "5"))
+BULLETIN_READ_TIMEOUT = int(os.getenv("PAGASA_BULLETIN_READ_TIMEOUT", "15"))
+BULLETIN_TIMEOUT = (BULLETIN_CONNECT_TIMEOUT, BULLETIN_READ_TIMEOUT)
 
 # Circuit breaker for PAGASA bulletin endpoint
 pagasa_bulletin_breaker = CircuitBreaker(
@@ -74,15 +76,17 @@ pagasa_bulletin_breaker = CircuitBreaker(
 
 class RainfallAdvisoryLevel(str, Enum):
     """PAGASA rainfall advisory colour codes."""
-    YELLOW = "yellow"       # 7.5–15 mm in 1 hr  or  light–moderate rain
-    ORANGE = "orange"       # 15–30 mm in 1 hr   or  heavy rain
-    RED = "red"             # >30 mm in 1 hr     or  intense–torrential rain
+
+    YELLOW = "yellow"  # 7.5–15 mm in 1 hr  or  light–moderate rain
+    ORANGE = "orange"  # 15–30 mm in 1 hr   or  heavy rain
+    RED = "red"  # >30 mm in 1 hr     or  intense–torrential rain
     UNKNOWN = "unknown"
 
 
 @dataclass
 class RainfallBulletin:
     """Single parsed PAGASA rainfall bulletin."""
+
     bulletin_id: str
     title: str
     advisory_level: RainfallAdvisoryLevel
@@ -107,6 +111,7 @@ class RainfallBulletin:
 @dataclass
 class SevereWeatherBulletin:
     """Parsed severe-weather/typhoon bulletin from PAGASA."""
+
     bulletin_no: str
     storm_name: Optional[str]
     signal_no: Optional[int]
@@ -222,9 +227,7 @@ class PAGASARainfallBulletinService:
     def is_enabled(self) -> bool:
         return self._enabled
 
-    def get_active_advisories(
-        self, paranaque_only: bool = True
-    ) -> Dict[str, Any]:
+    def get_active_advisories(self, paranaque_only: bool = True) -> Dict[str, Any]:
         """
         Fetch current active rainfall advisories.
 
@@ -264,9 +267,7 @@ class PAGASARainfallBulletinService:
             logger.error(f"Failed to fetch PAGASA bulletins: {exc}", exc_info=True)
             return {"status": "error", "bulletins": [], "message": str(exc)}
 
-    def get_severe_weather_bulletins(
-        self, paranaque_only: bool = True
-    ) -> Dict[str, Any]:
+    def get_severe_weather_bulletins(self, paranaque_only: bool = True) -> Dict[str, Any]:
         """Fetch current severe weather bulletins (e.g. typhoon signals)."""
         if not self._enabled:
             return {"status": "disabled", "bulletins": []}
@@ -315,10 +316,7 @@ class PAGASARainfallBulletinService:
         else:
             overall = "none"
 
-        has_typhoon = any(
-            b.get("signal_no") and b["signal_no"] > 0
-            for b in severe.get("bulletins", [])
-        )
+        has_typhoon = any(b.get("signal_no") and b["signal_no"] > 0 for b in severe.get("bulletins", []))
 
         return {
             "overall_advisory_level": overall,
@@ -343,7 +341,7 @@ class PAGASARainfallBulletinService:
 
         bulletins: List[RainfallBulletin] = []
         try:
-            root = ElementTree.fromstring(response.content)
+            root = ElementTree.fromstring(response.content)  # nosec B314
             items = root.findall(".//item") or root.findall(".//{http://www.w3.org/2005/Atom}entry")
 
             for item in items:
@@ -370,7 +368,7 @@ class PAGASARainfallBulletinService:
 
         bulletins: List[SevereWeatherBulletin] = []
         try:
-            root = ElementTree.fromstring(response.content)
+            root = ElementTree.fromstring(response.content)  # nosec B314
             items = root.findall(".//item") or root.findall(".//{http://www.w3.org/2005/Atom}entry")
 
             for item in items:
@@ -478,11 +476,11 @@ class PAGASARainfallBulletinService:
         if not date_str:
             return None
         for fmt in (
-            "%a, %d %b %Y %H:%M:%S %z",   # RFC 822
-            "%Y-%m-%dT%H:%M:%S%z",         # ISO 8601
-            "%Y-%m-%d %H:%M:%S",            # Simple
-            "%d %B %Y %I:%M %p",            # e.g. "02 March 2026 10:00 AM"
-            "%B %d, %Y %I:%M %p",           # e.g. "March 02, 2026 10:00 AM"
+            "%a, %d %b %Y %H:%M:%S %z",  # RFC 822
+            "%Y-%m-%dT%H:%M:%S%z",  # ISO 8601
+            "%Y-%m-%d %H:%M:%S",  # Simple
+            "%d %B %Y %I:%M %p",  # e.g. "02 March 2026 10:00 AM"
+            "%B %d, %Y %I:%M %p",  # e.g. "March 02, 2026 10:00 AM"
         ):
             try:
                 dt = datetime.strptime(date_str.strip(), fmt)

@@ -1,0 +1,382 @@
+# =============================================================================
+# FLOODINGNAQUE — Dependabot Manual Override Handler
+# =============================================================================
+#
+# Handles slash commands posted as PR comments by authorized maintainers:
+#
+#   /skip-test-check    — Bypass failing tests for a pre-existing issue
+#                         unrelated to the dependency bump. Still requires
+#                         explicit approval from Ramil-Martizano.
+#
+#   /force-merge        — Emergency merge (e.g., critical security fix).
+#                         Only works on non-major, non-blocked PRs.
+#                         Requires comment from Ramil-Martizano only.
+#
+#   /close-and-ticket   — Close this Dependabot PR and auto-open a GitHub
+#                         Issue with a migration checklist for major upgrades.
+#
+#   /recheck            — Re-run the full classifier + test suite via
+#                         workflow_dispatch on dependabot-automerge.yml.
+#
+# All commands are ignored unless the commenter is Ramil-Martizano.
+# All command executions are logged as a PR comment for audit trail.
+# =============================================================================
+
+name: "🛠️ Dependabot Override Handler"
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write # Required for /recheck to trigger workflow_dispatch
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.issue.number }}"
+  cancel-in-progress: false # Don't cancel in-progress overrides
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Gate: only act on PR comments from the authorized maintainer
+  # containing a recognized slash command, on a Dependabot PR.
+  # ──────────────────────────────────────────────────────────────────────────
+  gate:
+    name: "🚦 Authorize Command"
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == 'Ramil-Martizano' &&
+      (contains(github.event.comment.body, '/skip-test-check') ||
+       contains(github.event.comment.body, '/force-merge')     ||
+       contains(github.event.comment.body, '/close-and-ticket') ||
+       contains(github.event.comment.body, '/recheck'))
+    outputs:
+      command: ${{ steps.parse.outputs.command }}
+      pr_number: ${{ github.event.issue.number }}
+
+    steps:
+      - name: "Parse command"
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          # Use env var instead of direct interpolation to prevent script injection
+          if echo "$COMMENT_BODY" | grep -q "/skip-test-check";   then echo "command=skip-test-check"   >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -q "/force-merge";     then echo "command=force-merge"       >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -q "/close-and-ticket"; then echo "command=close-and-ticket" >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -q "/recheck";         then echo "command=recheck"           >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Acknowledge command"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const command = '${{ steps.parse.outputs.command }}';
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              body: `> 🤖 Override command \`/${command}\` received from @Ramil-Martizano. Processing...`,
+            });
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # /skip-test-check
+  # Marks tests as bypassed and requests manual approval to proceed.
+  # Does NOT merge — still requires explicit review approval.
+  # ──────────────────────────────────────────────────────────────────────────
+  skip-test-check:
+    name: "⏭️ Skip Test Check"
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.command == 'skip-test-check'
+
+    steps:
+      - name: "Add skip label and notify"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Ensure label exists
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                name:  'test-check-skipped',
+                color: 'f9d0c4',
+                description: 'Test check manually bypassed by maintainer'
+              });
+            } catch (e) { /* Label already exists */ }
+
+            await github.rest.issues.addLabels({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              labels:       ['test-check-skipped'],
+            });
+
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              body: `## ⏭️ Test Check Bypassed
+
+            **Authorized by:** @Ramil-Martizano
+            **Timestamp:** ${new Date().toISOString()}
+
+            Test failure check has been manually bypassed for this PR.
+
+            > ⚠️ **This PR will NOT auto-merge.** You must still:
+            > 1. Verify the test failure is pre-existing and unrelated to this dependency bump
+            > 2. Confirm the package update is safe by reviewing the changelog
+            > 3. Explicitly **approve** this PR via GitHub's review interface
+
+            Upon your approval, the auto-resolver will complete the merge.
+
+            <sub>🤖 Floodingnaque Override Handler — Audit log entry created</sub>`,
+            });
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # /force-merge
+  # Emergency bypass for critical security fixes. Merges immediately
+  # without waiting for test re-run. Blocked on major updates.
+  # ──────────────────────────────────────────────────────────────────────────
+  force-merge:
+    name: "⚡ Force Merge (Emergency)"
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.command == 'force-merge'
+
+    steps:
+      - name: "Fetch PR labels to check for block"
+        id: check_labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: ${{ github.event.issue.number }},
+            });
+            const labels = pr.data.labels.map(l => l.name);
+            const isBlocked = labels.includes('automerge-blocked');
+            core.setOutput('is_blocked', isBlocked.toString());
+            return isBlocked;
+
+      - name: "Refuse force-merge on blocked PRs"
+        if: steps.check_labels.outputs.is_blocked == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              body: `## 🚫 Force-Merge Refused
+
+            This PR carries the \`automerge-blocked\` label, indicating a **major update to a stability-critical package**.
+
+            \`/force-merge\` is not permitted on blocked PRs to protect the Floodingnaque codebase.
+
+            If this is a genuine emergency, please merge manually via the GitHub UI after completing the migration checklist outlined in the block comment above.
+
+            <sub>🤖 Floodingnaque Override Handler</sub>`,
+            });
+
+      - name: "Execute force merge"
+        if: steps.check_labels.outputs.is_blocked == 'false'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: ${{ github.event.issue.number }},
+            });
+
+            await github.rest.pulls.merge({
+              owner:         context.repo.owner,
+              repo:          context.repo.repo,
+              pull_number:   ${{ github.event.issue.number }},
+              merge_method:  'squash',
+              commit_title:  `${pr.data.title} [FORCE-MERGED by @Ramil-Martizano]`,
+              commit_message: [
+                '⚡ EMERGENCY FORCE-MERGE authorized by @Ramil-Martizano.',
+                'Normal test gate bypassed. Reason must be documented in PR comments.',
+                '',
+                `Timestamp: ${new Date().toISOString()}`,
+                'Review the PR comment thread for justification.',
+              ].join('\n'),
+            });
+
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              body: `## ⚡ Force-Merge Executed
+
+            This PR was force-merged by @Ramil-Martizano at ${new Date().toISOString()}.
+
+            > ⚠️ **Action required:** Please open a follow-up ticket to verify the test suite passes on \`main\` after this merge. If tests are now failing, revert via \`git revert\` and resolve the underlying issue in a dedicated branch.
+
+            <sub>🤖 Floodingnaque Override Handler — Audit log entry created</sub>`,
+            });
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # /close-and-ticket
+  # Closes a blocked/complex Dependabot PR and opens a structured
+  # GitHub Issue with a full migration checklist.
+  # ──────────────────────────────────────────────────────────────────────────
+  close-and-ticket:
+    name: "🎫 Close PR & Open Migration Ticket"
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.command == 'close-and-ticket'
+
+    steps:
+      - name: "Close PR and create issue"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: ${{ github.event.issue.number }},
+            });
+
+            const packageName = pr.data.title.replace('chore(deps): bump ', '').split(' ')[0];
+            const prUrl       = pr.data.html_url;
+
+            // Create migration issue
+            const issue = await github.rest.issues.create({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              title:  `chore: Manual migration — ${pr.data.title}`,
+              labels: ['dependencies', 'technical-debt', 'needs-human-review'],
+              body: `## 📦 Dependency Migration Ticket
+
+            **Source PR:** ${prUrl} (closed — use this ticket instead)
+            **Package:** \`${packageName}\`
+            **Created by:** @Ramil-Martizano via \`/close-and-ticket\` command
+            **Created at:** ${new Date().toISOString()}
+
+            ---
+
+            ### Migration Checklist
+
+            #### 1. Pre-Migration Research
+            - [ ] Read the full CHANGELOG / release notes for \`${packageName}\`
+            - [ ] Identify all breaking changes that affect Floodingnaque
+            - [ ] Check if scikit-learn model v6 API is affected (if ML package)
+            - [ ] Check if Flask route decorators / SQLAlchemy models are affected
+
+            #### 2. Upgrade Branch
+            - [ ] Create branch: \`chore/upgrade-${packageName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}\`
+            - [ ] Update \`requirements.txt\` or \`package.json\` version pin
+            - [ ] Update any affected code for API compatibility
+
+            #### 3. Testing
+            - [ ] Run \`pytest tests/ --cov=app\` — must pass at ≥ 96.75% model accuracy
+            - [ ] Run ML model smoke test: load v6 model, predict Safe inputs, check output
+            - [ ] Run \`npm run typecheck && npm test\` (frontend)
+            - [ ] Run \`docker compose -f compose.production.yaml up --build\` (full stack)
+            - [ ] Test \`GET /status\` returns healthy on the upgraded stack
+
+            #### 4. Review
+            - [ ] Self-review all changed files
+            - [ ] Request review from a second team member if major ML or DB changes
+            - [ ] Ensure Alembic migration is included if SQLAlchemy schema changed
+
+            #### 5. Merge
+            - [ ] Squash-merge into \`main\`
+            - [ ] Verify GitHub Actions CI passes on \`main\` post-merge
+            - [ ] Delete upgrade branch
+
+            ---
+            > 🤖 Auto-generated by Floodingnaque Dependabot Override Handler`,
+            });
+
+            // Close the original PR
+            await github.rest.pulls.update({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: ${{ github.event.issue.number }},
+              state:       'closed',
+            });
+
+            // Comment on PR pointing to the new issue
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: ${{ github.event.issue.number }},
+              body: `## 🎫 PR Closed — Migration Ticket Created
+
+            This Dependabot PR has been closed by @Ramil-Martizano.
+
+            A migration ticket with a full checklist has been created: **#${issue.data.number}**
+            ${issue.data.html_url}
+
+            Please complete the migration manually via a dedicated branch as described in the ticket.
+
+            <sub>🤖 Floodingnaque Override Handler</sub>`,
+            });
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # /recheck
+  # Re-triggers the auto-resolver workflow via workflow_dispatch.
+  # This ensures the full classifier + test suite actually re-runs.
+  # ──────────────────────────────────────────────────────────────────────────
+  recheck:
+    name: "🔄 Recheck"
+    runs-on: ubuntu-latest
+    needs: gate
+    if: needs.gate.outputs.command == 'recheck'
+
+    steps:
+      - name: "Trigger auto-resolver re-run"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = ${{ github.event.issue.number }};
+
+            // Fetch the PR to get the head ref (branch name)
+            const pr = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const headRef = pr.data.head.ref;
+
+            // Dispatch the auto-resolver workflow on the PR's head branch
+            await github.rest.actions.createWorkflowDispatch({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              workflow_id: 'dependabot-automerge.yml',
+              ref:         headRef,
+              inputs: {
+                pr_number: prNumber.toString(),
+              },
+            });
+
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: prNumber,
+              body: `## 🔄 Recheck Triggered
+
+            The auto-resolver workflow (\`dependabot-automerge.yml\`) has been dispatched on branch \`${headRef}\`.
+            It will re-run the full classification and test suite shortly.
+
+            > If you pushed new commits since the last run, the recheck will evaluate the latest state of the PR.
+
+            <sub>🤖 Floodingnaque Override Handler</sub>`,
+            });

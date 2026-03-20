@@ -17,7 +17,7 @@ pytest-mock==3.14.0  # Mock objects for pytest
 pytest-xdist==3.5.0  # Parallel test execution
 faker==21.0.0  # Generate test data
 responses==0.24.1  # Mock requests library
-httpx==0.25.2  # Async HTTP client for testing
+httpx[http2]==0.28.1  # Async HTTP client for testing (>=0.26 required by supabase-auth/functions)
 
 # Load Testing
 locust==2.20.1  # Load/performance testing
@@ -56,3 +56,6 @@ syrupy==4.6.1  # Snapshot testing framework
 # Google Cloud Development Tools
 google-cloud-bigquery-storage==2.27.0  # Fast BigQuery reads for testing
 # Note: Use unittest.mock or pytest-mock for mocking Google Cloud services
+
+# ML Experiment Tracking
+mlflow>=2.15.0  # Training experiment tracking (optional at runtime, used by training scripts)

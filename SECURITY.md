@@ -17,20 +17,24 @@ We release patches for security vulnerabilities. Currently supported versions:
 Instead, please report them via one of the following methods:
 
 ### 1. Private Security Advisory (Preferred)
-- Go to the [Security tab](https://github.com/KyaRhamil/floodingnaque/security/advisories)
+
+- Go to the [Security tab](https://github.com/floodingnaque/floodingnaque/security/advisories)
 - Click "Report a vulnerability"
 - Fill out the form with details
 
 ### 2. Email
+
 Send details to: **iamdefinitely.ramil@gmail.com**
 
 ### What to Include
+
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
 - Suggested fix (if any)
 
 ### Response Timeline
+
 - **Initial Response**: Within 48 hours
 - **Status Update**: Every 5-7 days
 - **Resolution**: Depends on severity
@@ -41,13 +45,16 @@ Send details to: **iamdefinitely.ramil@gmail.com**
 ## Security Best Practices for Contributors
 
 ### API Keys and Secrets
+
 - **NEVER** commit API keys, tokens, or secrets to the repository
 - Use `.env.development` files for local development (already in `.gitignore`)
 - Use `.env.example` with **placeholder values only**
 - Rotate any accidentally exposed credentials immediately
 
 ### Environment Variables
+
 Required secrets (store in `.env.development`, never commit):
+
 - `WORLDTIDES_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_KEY`
@@ -55,6 +62,7 @@ Required secrets (store in `.env.development`, never commit):
 - `SECRET_KEY` (Flask/API secret)
 
 ### Dependencies
+
 - Keep dependencies updated
 - Run `pip audit` regularly to check for vulnerabilities
 - Review security advisories from Dependabot
@@ -62,6 +70,7 @@ Required secrets (store in `.env.development`, never commit):
 ## Disclosure Policy
 
 When we receive a security report:
+
 1. We confirm the vulnerability
 2. We develop and test a fix
 3. We release the patch
@@ -70,6 +79,7 @@ When we receive a security report:
 ## Security Features
 
 This project implements:
+
 - Rate limiting on API endpoints
 - CORS protection
 - Input validation and sanitization

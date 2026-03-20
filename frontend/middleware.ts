@@ -37,10 +37,13 @@
 
 export const config = {
   // Match all routes except static assets (immutable-cached via vercel.json)
-  matcher: ["/((?!assets/|favicon\\.ico|manifest\\.json|robots\\.txt|og-image\\.png).*)"],
+  matcher: [
+    "/((?!assets/|favicon\\.ico|manifest\\.json|robots\\.txt|og-image\\.png).*)",
+  ],
 };
 
 export default function middleware(_request: Request): Response {
+  // eslint-disable-line @typescript-eslint/no-unused-vars
   const nonce = crypto.randomUUID();
 
   const csp = [

@@ -9,7 +9,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
-from app.utils.tracing import (
+from app.utils.observability.tracing import (
     Span,
     TraceContext,
     current_trace,
@@ -274,7 +274,7 @@ class TestSpanExport:
 
     def test_export_spans_json(self):
         """Test exporting spans to JSON format."""
-        from app.utils.tracing import TraceContext
+        from app.utils.observability.tracing import TraceContext
 
         ctx = TraceContext.new()
         span = ctx.start_span("test_operation")
@@ -293,7 +293,7 @@ class TestBaggagePropagation:
 
     def test_baggage_set_get(self):
         """Test setting and getting baggage items."""
-        from app.utils.tracing import TraceContext
+        from app.utils.observability.tracing import TraceContext
 
         ctx = TraceContext.new()
         ctx.baggage["user_id"] = "user123"
@@ -302,7 +302,7 @@ class TestBaggagePropagation:
 
     def test_baggage_propagated_to_headers(self):
         """Test baggage is included in propagated headers."""
-        from app.utils.tracing import TraceContext
+        from app.utils.observability.tracing import TraceContext
 
         ctx = TraceContext.new()
         ctx.baggage["user_id"] = "user123"

@@ -23,9 +23,8 @@
 # NOTE: This configuration uses:
 #   - Supabase PostgreSQL for database
 #   - Redis Cloud (Azure West US) for caching, rate limiting, and Celery
-#   - Datadog Agent for APM and infrastructure monitoring
 #   - Nginx reverse proxy with Let's Encrypt (optional, use --profile nginx)
-#   Ensure .env.production is properly configured with DD_API_KEY.
+#   - Prometheus + Grafana + Jaeger for observability (compose.observability.yaml)
 #
 # This file inherits shared anchors from compose.yaml via include directive.
 # Requires Docker Compose v2.20+
@@ -71,18 +70,18 @@ x-logging-production: &logging-production
 
 x-resources-small: &resources-small
   limits:
-    cpus: '0.5'
+    cpus: "0.5"
     memory: 512M
   reservations:
-    cpus: '0.1'
+    cpus: "0.1"
     memory: 128M
 
 x-resources-large: &resources-large
   limits:
-    cpus: '2'
+    cpus: "2"
     memory: 2G
   reservations:
-    cpus: '0.5'
+    cpus: "0.5"
     memory: 512M
 
 x-security-opts: &security-opts
@@ -104,8 +103,6 @@ secrets:
     file: ./secrets/database_url.txt
   redis_url:
     file: ./secrets/redis_url.txt
-  dd_api_key:
-    file: ./secrets/dd_api_key.txt
   owm_api_key:
     file: ./secrets/owm_api_key.txt
   pgbouncer_db_password:
@@ -185,6 +182,11 @@ services:
       - GRAPHQL_PLAYGROUND_ENABLED=False
       - GRAPHQL_INTROSPECTION_ENABLED=False
 
+      # Data provenance enforcement
+      - DATA_PROVENANCE_ENABLED=true
+      - SYNTHETIC_DATA_ALLOWED=false
+      - MODEL_METADATA_VALIDATION=strict
+
       # Scheduler
       - SCHEDULER_ENABLED=True
       - SCHEDULER_TIMEZONE=Asia/Manila
@@ -194,20 +196,13 @@ services:
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
       - GUNICORN_TIMEOUT=120
       - GUNICORN_WORKER_CLASS=sync
-      - GUNICORN_MAX_REQUESTS=1000
-      - GUNICORN_MAX_REQUESTS_JITTER=50
+      - GUNICORN_MAX_REQUESTS=5000
+      - GUNICORN_MAX_REQUESTS_JITTER=200
 
       # Performance
       - DB_POOL_SIZE=20
       - DB_MAX_OVERFLOW=10
       - CACHE_DEFAULT_TIMEOUT=300
-
-      # Datadog APM
-      - DD_ENV=production
-      - DD_SERVICE=floodingnaque-api
-      - DD_VERSION=2.0.0
-      - DD_TRACE_AGENT_URL=unix:///var/run/datadog/apm.socket
-      - DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket
 
       # Docker Secrets _FILE references (when using --profile secrets)
       # These override the env_file values with file-based secrets
@@ -215,7 +210,6 @@ services:
       - JWT_SECRET_KEY_FILE=/run/secrets/jwt_secret_key
       - DATABASE_URL_FILE=/run/secrets/database_url
       - REDIS_URL_FILE=/run/secrets/redis_url
-      - DD_API_KEY_FILE=/run/secrets/dd_api_key
       - OWM_API_KEY_FILE=/run/secrets/owm_api_key
       - MODEL_SIGNING_KEY_FILE=/run/secrets/model_signing_key
 
@@ -224,7 +218,6 @@ services:
       - jwt_secret_key
       - database_url
       - redis_url
-      - dd_api_key
       - owm_api_key
       - model_signing_key
     env_file:
@@ -232,16 +225,11 @@ services:
     volumes:
       - floodingnaque_models_prod:/app/models
       - floodingnaque_logs_prod:/app/logs
-      - floodingnaque_data_prod:/app/data
+      - floodingnaque_data_prod:/app/data:ro
       - floodingnaque_uploads_prod:/app/uploads
       - floodingnaque_backups_prod:/app/backups
-      - /var/run/datadog:/var/run/datadog
       # SSL certificate for database connection (mount at runtime for security)
       - ./backend/certs/prod-ca-2021.crt:/app/certs/prod-ca-2021.crt:ro
-    depends_on:
-      datadog-agent:
-        condition: service_started
-        required: false
     networks:
       - floodingnaque-backend
       - floodingnaque-monitoring
@@ -267,6 +255,81 @@ services:
     tmpfs:
       - /tmp:size=200M,mode=1777
       - /app/.cache:size=100M,mode=1777
+
+  # ===================
+  # Backend Canary Service
+  # ===================
+  # Deploy with: --profile canary
+  # Receives a % of traffic (configured in nginx split_clients).
+  # Shares volumes/secrets with production but runs a different image tag.
+  backend-canary:
+    extends:
+      file: compose.yaml
+      service: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        PYTHON_VERSION: "3.13"
+    image: floodingnaque-api:canary
+    container_name: floodingnaque-api-canary
+    restart: always
+    labels:
+      com.floodingnaque.service: "api-canary"
+      com.floodingnaque.description: "Flood Prediction API (Canary)"
+    ports: []
+    environment:
+      - APP_ENV=production
+      - FLASK_DEBUG=False
+      - PORT=5000
+      - HOST=0.0.0.0
+      - PYTHONPATH=/app
+      - AUTH_BYPASS_ENABLED=False
+      - ENABLE_HTTPS=True
+      - VERIFY_MODEL_INTEGRITY=True
+      - RATE_LIMIT_ENABLED=True
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://floodingnaque.vercel.app,https://www.floodingnaque.com}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=json
+      - FEATURE_SCHEDULER_ENABLED=False
+      - FEATURE_METRICS_ENABLED=True
+      - SCHEDULER_ENABLED=False
+      - GUNICORN_WORKERS=2
+      - GUNICORN_THREADS=2
+      - GUNICORN_TIMEOUT=120
+      - DB_POOL_SIZE=5
+      - DB_MAX_OVERFLOW=3
+      - DATABASE_URL_FILE=/run/secrets/database_url
+      - REDIS_URL_FILE=/run/secrets/redis_url
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+      - JWT_SECRET_KEY_FILE=/run/secrets/jwt_secret_key
+      - MODEL_SIGNING_KEY_FILE=/run/secrets/model_signing_key
+    secrets:
+      - secret_key
+      - jwt_secret_key
+      - database_url
+      - redis_url
+      - model_signing_key
+    env_file:
+      - ./backend/.env.production
+    volumes:
+      - floodingnaque_models_prod:/app/models:ro
+      - floodingnaque_logs_prod:/app/logs
+      - floodingnaque_data_prod:/app/data:ro
+    networks:
+      - floodingnaque-backend
+      - floodingnaque-monitoring
+    healthcheck:
+      <<: *backend-healthcheck
+    deploy:
+      resources:
+        <<: *resources-small
+    logging:
+      <<: *logging-production
+    <<: *security-opts
+    profiles:
+      - canary
 
   # ===================
   # Celery Worker
@@ -299,12 +362,6 @@ services:
       - CELERY_TIMEZONE=Asia/Manila
       - CELERY_ENABLE_UTC=True
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      # Datadog APM
-      - DD_ENV=production
-      - DD_SERVICE=floodingnaque-celery-worker
-      - DD_VERSION=2.0.0
-      - DD_TRACE_AGENT_URL=unix:///var/run/datadog/apm.socket
-      - DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket
       # Docker Secrets _FILE references
       - DATABASE_URL_FILE=/run/secrets/database_url
       - REDIS_URL_FILE=/run/secrets/redis_url
@@ -319,18 +376,15 @@ services:
       - floodingnaque_models_prod:/app/models:ro
       - floodingnaque_data_prod:/app/data
       - floodingnaque_logs_prod:/app/logs
-      - /var/run/datadog:/var/run/datadog
     depends_on:
       backend:
         condition: service_healthy
-      datadog-agent:
-        condition: service_healthy
-        required: false
     networks:
       - floodingnaque-backend
       - floodingnaque-monitoring
     healthcheck:
-      test: ["CMD", "celery", "-A", "app.services.celery_app", "inspect", "ping"]
+      test:
+        ["CMD", "celery", "-A", "app.services.celery_app", "inspect", "ping"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -338,10 +392,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
+          cpus: "1.5"
           memory: 1.5G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
       restart_policy:
         condition: on-failure
@@ -377,12 +431,6 @@ services:
       - CELERY_TIMEZONE=Asia/Manila
       - CELERY_BEAT_RUNNING=true
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      # Datadog APM
-      - DD_ENV=production
-      - DD_SERVICE=floodingnaque-celery-beat
-      - DD_VERSION=2.0.0
-      - DD_TRACE_AGENT_URL=unix:///var/run/datadog/apm.socket
-      - DD_DOGSTATSD_URL=unix:///var/run/datadog/dsd.socket
       # Docker Secrets _FILE references
       - DATABASE_URL_FILE=/run/secrets/database_url
       - REDIS_URL_FILE=/run/secrets/redis_url
@@ -393,17 +441,17 @@ services:
       - ./backend/.env.production
     volumes:
       - floodingnaque_logs_prod:/app/logs
-      - /var/run/datadog:/var/run/datadog
     depends_on:
       backend:
         condition: service_healthy
-      datadog-agent:
-        condition: service_healthy
-        required: false
     networks:
       - floodingnaque-backend
     healthcheck:
-      test: ["CMD-SHELL", "test -f /tmp/celerybeat.pid && ps -p $(cat /tmp/celerybeat.pid) > /dev/null"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /tmp/celerybeat.pid && ps -p $(cat /tmp/celerybeat.pid) > /dev/null",
+        ]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -420,6 +468,50 @@ services:
     <<: *security-opts
     tmpfs:
       - /tmp:size=50M,mode=1777
+
+  # ===================
+  # Frontend (React SPA)
+  # ===================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.floodingnaque.com}
+        VITE_APP_NAME: Floodingnaque
+        VITE_ENABLE_SSE: "true"
+    image: floodingnaque-frontend:production-v2.0.0
+    container_name: floodingnaque-frontend-prod
+    restart: always
+    labels:
+      com.floodingnaque.project: "floodingnaque"
+      com.floodingnaque.maintainer: "Floodingnaque Team"
+      com.floodingnaque.service: "frontend"
+      com.floodingnaque.description: "Flood Prediction Frontend"
+      com.floodingnaque.version: "2.0.0"
+    networks:
+      - floodingnaque-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+    logging:
+      <<: *logging-default
+    <<: *security-opts
 
   # ===================
   # Offsite Backup Sync (W6)
@@ -473,7 +565,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 256M
     logging:
       <<: *logging-default
@@ -481,8 +573,8 @@ services:
   # ===================
   # PgBouncer Connection Pooler
   # ===================
-  # Use with: --profile pgbouncer
-  # Provides connection pooling for PostgreSQL
+  # Always-on connection pooler — critical for Supabase ~60 connection limit.
+  # Without PgBouncer, 4 workers × 20 pool = 80 connections would exhaust Supabase.
   pgbouncer:
     build:
       context: ./pgbouncer
@@ -531,8 +623,6 @@ services:
       - pgbouncer_stats_password
     networks:
       - floodingnaque-backend
-    profiles:
-      - pgbouncer
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -p 6432"]
       interval: 30s
@@ -542,68 +632,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 64M
-    logging:
-      <<: *logging-default
-    <<: *security-opts
-
-  # ===================
-  # Datadog Agent
-  # ===================
-  datadog-agent:
-    image: gcr.io/datadoghq/agent:7
-    container_name: floodingnaque-datadog-agent
-    restart: always
-    labels:
-      com.floodingnaque.project: "floodingnaque"
-      com.floodingnaque.maintainer: "Floodingnaque Team"
-      com.floodingnaque.service: "datadog-agent"
-      com.floodingnaque.description: "APM and Monitoring Agent"
-    environment:
-      - DD_API_KEY=${DD_API_KEY}
-      - DD_SITE=us5.datadoghq.com
-      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
-      - DD_APM_ENABLED=true
-      - DD_APM_NON_LOCAL_TRAFFIC=true
-      - DD_APM_RECEIVER_SOCKET=/var/run/datadog/apm.socket
-      - DD_DOGSTATSD_SOCKET=/var/run/datadog/dsd.socket
-      - DD_LOGS_ENABLED=true
-      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-      - DD_CONTAINER_EXCLUDE="name:datadog-agent"
-      - DD_PROCESS_AGENT_ENABLED=true
-      - DD_ENV=production
-      - DD_TAGS=project:floodingnaque,team:backend
-      # Docker Secrets _FILE reference
-      - DD_API_KEY_FILE=/run/secrets/dd_api_key
-    secrets:
-      - dd_api_key
-    volumes:
-      - /var/run/datadog:/var/run/datadog
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc/:/host/proc/:ro
-      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    networks:
-      - floodingnaque-backend
-      - floodingnaque-monitoring
-    healthcheck:
-      test: ["CMD", "agent", "health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
     logging:
       <<: *logging-default
     <<: *security-opts
@@ -640,7 +673,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
     logging:
       <<: *logging-default
@@ -673,7 +706,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
     logging:
       <<: *logging-default
@@ -702,7 +735,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
     logging:
       <<: *logging-default
@@ -717,7 +750,7 @@ services:
     labels:
       com.floodingnaque.service: "celery-exporter"
     command:
-      - '--broker-url=${CELERY_BROKER_URL:-redis://redis:6379/1}'
+      - "--broker-url=${CELERY_BROKER_URL:-redis://redis:6379/1}"
     ports:
       - "127.0.0.1:9808:9808"
     networks:
@@ -737,7 +770,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
     logging:
       <<: *logging-default
@@ -751,7 +784,7 @@ services:
     labels:
       com.floodingnaque.service: "nginx-exporter"
     command:
-      - '--nginx.scrape-uri=http://nginx:8080/stub_status'
+      - "--nginx.scrape-uri=http://nginx:8080/stub_status"
     networks:
       - floodingnaque-frontend
       - floodingnaque-monitoring
@@ -768,7 +801,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
     logging:
       <<: *logging-default
@@ -787,12 +820,12 @@ services:
       com.floodingnaque.service: "prometheus"
       com.floodingnaque.description: "Metrics Collection"
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
@@ -807,7 +840,15 @@ services:
     profiles:
       - monitoring
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:9090/-/healthy",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -824,7 +865,9 @@ services:
   # ===================
   # Use with: --profile nginx
   nginx:
-    image: nginx:1.25-alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: floodingnaque-nginx-prod
     restart: always
     labels:
@@ -842,13 +885,19 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks:
       - floodingnaque-frontend
       - floodingnaque-backend
     profiles:
       - nginx
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost/health || wget -q --spider http://localhost/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf http://localhost/health || wget -q --spider http://localhost/health || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -856,10 +905,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
         reservations:
-          cpus: '0.1'
+          cpus: "0.1"
           memory: 64M
     logging:
       <<: *logging-default
@@ -884,14 +933,62 @@ services:
       - floodingnaque-frontend
     profiles:
       - nginx
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    entrypoint: '/bin/sh -c ''trap exit TERM; while :; do certbot renew --deploy-hook "echo Certificate renewed at $(date)" 2>&1; sleep 12h & wait $${!}; done;'''
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
     logging:
       <<: *logging-default
+
+  # ===================
+  # ML Training Service (one-shot retraining)
+  # ===================
+  # Usage: docker compose -f compose.production.yaml run --rm ml-training
+  ml-training:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    image: floodingnaque-api:production-v2.0.0
+    container_name: floodingnaque-ml-training
+    restart: "no"
+    <<: *security-opts
+    environment:
+      - PYTHONPATH=/app
+      - DATA_PROVENANCE_ENABLED=true
+      - SYNTHETIC_DATA_ALLOWED=false
+      - MODEL_SIGNING_KEY_FILE=/run/secrets/model_signing_key
+    secrets:
+      - model_signing_key
+    volumes:
+      - floodingnaque_models_prod:/app/models
+      - floodingnaque_data_prod:/app/data:ro
+      - ./backend/reports:/app/reports
+      - ./backend/config:/app/config:ro
+    networks:
+      - floodingnaque-backend
+    entrypoint:
+      [
+        "python",
+        "scripts/train_progressive_v6.py",
+        "--grid-search",
+        "--cv-folds",
+        "10",
+      ]
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+        reservations:
+          cpus: "1"
+          memory: 2G
+    logging:
+      <<: *logging-default
+    profiles:
+      - ml-training
 
 # ===================
 # Networks (Segmented for Security)
@@ -910,17 +1007,17 @@ networks:
   floodingnaque-backend:
     driver: bridge
     name: floodingnaque-backend-production
-    internal: true  # Backend services accessed only via Nginx
+    internal: true # Backend services accessed only via Nginx
     driver_opts:
       com.docker.network.bridge.enable_icc: "true"
       com.docker.network.bridge.enable_ip_masquerade: "true"
       com.docker.network.driver.mtu: "1500"
 
-  # Monitoring network - Prometheus, Datadog, and observability tools
+  # Monitoring network - Prometheus and observability tools
   floodingnaque-monitoring:
     driver: bridge
     name: floodingnaque-monitoring-production
-    internal: true  # No external access for monitoring network
+    internal: true # No external access for monitoring network
     driver_opts:
       com.docker.network.bridge.enable_icc: "true"
       com.docker.network.driver.mtu: "1500"

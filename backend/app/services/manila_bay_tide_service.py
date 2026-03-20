@@ -71,12 +71,12 @@ MSL_MANILA_BAY = 0.65
 # Source: Published tidal harmonics for Manila South Harbour
 _HARMONICS = [
     # (name, amplitude_m, period_hours, phase_deg)
-    ("M2", 0.35, 12.4206, 120.0),   # Principal lunar semidiurnal
-    ("S2", 0.14, 12.0000, 145.0),   # Principal solar semidiurnal
-    ("K1", 0.22, 23.9345, 210.0),   # Luni-solar diurnal
-    ("O1", 0.18, 25.8193, 190.0),   # Lunar diurnal
-    ("N2", 0.07, 12.6584, 100.0),   # Larger lunar elliptic
-    ("P1", 0.07, 24.0659, 205.0),   # Solar diurnal
+    ("M2", 0.35, 12.4206, 120.0),  # Principal lunar semidiurnal
+    ("S2", 0.14, 12.0000, 145.0),  # Principal solar semidiurnal
+    ("K1", 0.22, 23.9345, 210.0),  # Luni-solar diurnal
+    ("O1", 0.18, 25.8193, 190.0),  # Lunar diurnal
+    ("N2", 0.07, 12.6584, 100.0),  # Larger lunar elliptic
+    ("P1", 0.07, 24.0659, 205.0),  # Solar diurnal
 ]
 
 # Reference epoch for phase calculation (2026-01-01T00:00 UTC)
@@ -91,11 +91,12 @@ _EPOCH = datetime(2026, 1, 1, tzinfo=timezone.utc)
 @dataclass
 class ManilaBayTide:
     """Tide data point for Manila Bay."""
-    height_m: float                 # Height above chart datum
-    height_above_msl_m: float      # Height above MSL
+
+    height_m: float  # Height above chart datum
+    height_above_msl_m: float  # Height above MSL
     timestamp: datetime
     datum: str = "MSL"
-    tide_phase: str = "unknown"     # rising, falling, high, low
+    tide_phase: str = "unknown"  # rising, falling, high, low
     source: str = "manila_bay_tide"
     is_spring_tide: bool = False
     storm_surge_m: float = 0.0
@@ -110,10 +111,11 @@ class ManilaBayTide:
 @dataclass
 class TideInfluence:
     """Computed tidal influence on Parañaque flood risk."""
+
     current_height_m: float
     tide_phase: str
-    drainage_reduction_pct: float   # 0-100% how much tide reduces drainage
-    flood_risk_multiplier: float    # 1.0 = no effect, >1 = increased risk
+    drainage_reduction_pct: float  # 0-100% how much tide reduces drainage
+    flood_risk_multiplier: float  # 1.0 = no effect, >1 = increased risk
     next_high_tide: Optional[datetime]
     next_low_tide: Optional[datetime]
     is_king_tide: bool
@@ -150,9 +152,7 @@ def _compute_astronomical_tide(dt: datetime) -> float:
     return round(height, 4)
 
 
-def _compute_tide_series(
-    start: datetime, hours: int = 24, step_minutes: int = 15
-) -> List[Dict[str, Any]]:
+def _compute_tide_series(start: datetime, hours: int = 24, step_minutes: int = 15) -> List[Dict[str, Any]]:
     """Compute a series of tide heights."""
     series = []
     for i in range(0, hours * 60, step_minutes):
@@ -162,9 +162,7 @@ def _compute_tide_series(
     return series
 
 
-def _find_extremes(
-    start: datetime, hours: int = 48, step_minutes: int = 10
-) -> Dict[str, List[Dict[str, Any]]]:
+def _find_extremes(start: datetime, hours: int = 48, step_minutes: int = 10) -> Dict[str, List[Dict[str, Any]]]:
     """Find high and low tides in a time window."""
     highs: List[Dict[str, Any]] = []
     lows: List[Dict[str, Any]] = []
@@ -179,17 +177,21 @@ def _find_extremes(
 
         new_dir = "rising" if h > prev_h else "falling"
         if direction == "rising" and new_dir == "falling":
-            highs.append({
-                "timestamp": (dt - timedelta(minutes=step_minutes)).isoformat(),
-                "height_m": prev_h,
-                "type": "high",
-            })
+            highs.append(
+                {
+                    "timestamp": (dt - timedelta(minutes=step_minutes)).isoformat(),
+                    "height_m": prev_h,
+                    "type": "high",
+                }
+            )
         elif direction == "falling" and new_dir == "rising":
-            lows.append({
-                "timestamp": (dt - timedelta(minutes=step_minutes)).isoformat(),
-                "height_m": prev_h,
-                "type": "low",
-            })
+            lows.append(
+                {
+                    "timestamp": (dt - timedelta(minutes=step_minutes)).isoformat(),
+                    "height_m": prev_h,
+                    "type": "low",
+                }
+            )
 
         direction = new_dir
         prev_h = h
@@ -225,6 +227,7 @@ class ManilaBayTideService:
         # Try loading WorldTides service
         try:
             from app.services.worldtides_service import WorldTidesService
+
             wt = WorldTidesService.get_instance()
             self._worldtides_available = wt.enabled
         except Exception:

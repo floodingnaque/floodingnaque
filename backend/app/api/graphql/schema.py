@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import graphene
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 from dotenv import load_dotenv
 from graphene import Boolean, DateTime, Field, Float, Int, List, ObjectType, Schema, String
 from graphene.types.scalars import Scalar
@@ -197,7 +197,7 @@ class Query(ObjectType):
     def resolve_health(self, info):
         """Get system health status."""
         try:
-            from app.utils.cache import get_cache_stats
+            from app.utils.resilience.cache import get_cache_stats
 
             db_status = check_database_health()
             model_status = check_model_health()

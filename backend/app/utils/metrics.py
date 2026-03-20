@@ -8,8 +8,7 @@ _warnings.warn(
     stacklevel=2,
 )
 
-from app.utils.observability.metrics import *  # noqa: F401, F403, E402
-
 # Private names are skipped by `import *` - re-export explicitly so
 # existing tests / call-sites that reference them keep working.
+from app.utils.observability.metrics import *  # noqa: F401, F403, E402
 from app.utils.observability.metrics import _metrics  # noqa: F401, E402

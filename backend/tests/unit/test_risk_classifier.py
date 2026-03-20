@@ -113,7 +113,7 @@ class TestClassifyRiskLevel:
     def test_safe_low_humidity_low_precipitation(self):
         """Test Safe classification with low humidity and precipitation."""
         result = classify_risk_level(
-            prediction=0, probability={"no_flood": 0.90, "flood": 0.10}, precipitation=2.0, humidity=50.0
+            prediction=0, probability={"no_flood": 0.95, "flood": 0.05}, precipitation=2.0, humidity=50.0
         )
 
         assert result["risk_level"] == 0
@@ -177,18 +177,18 @@ class TestGetRiskThresholds:
         safe = thresholds["Safe"]
 
         assert "flood_probability_max" in safe
-        assert safe["flood_probability_max"] == 0.30
+        assert safe["flood_probability_max"] == 0.10
         assert "precipitation_max" in safe
-        assert safe["precipitation_max"] == 10.0
+        assert safe["precipitation_max"] == 7.5
 
     def test_alert_thresholds(self):
         """Test Alert level thresholds."""
         thresholds = get_risk_thresholds()
         alert = thresholds["Alert"]
 
-        assert alert["flood_probability_min"] == 0.30
+        assert alert["flood_probability_min"] == 0.10
         assert alert["flood_probability_max"] == 0.75
-        assert alert["precipitation_min"] == 10.0
+        assert alert["precipitation_min"] == 7.5
         assert alert["precipitation_max"] == 30.0
 
     def test_critical_thresholds(self):
@@ -254,11 +254,11 @@ class TestFormatAlertMessage:
 class TestRiskClassificationEdgeCases:
     """Test edge cases in risk classification."""
 
-    def test_boundary_probability_030(self):
-        """Test classification at probability boundary 0.30."""
-        result = classify_risk_level(prediction=0, probability={"no_flood": 0.70, "flood": 0.30})
+    def test_boundary_probability_010(self):
+        """Test classification at probability boundary 0.10 (safe_max)."""
+        result = classify_risk_level(prediction=0, probability={"no_flood": 0.90, "flood": 0.10})
 
-        # 0.30 should trigger Alert
+        # 0.10 at safe_max boundary should trigger Alert
         assert result["risk_level"] == 1
         assert result["risk_label"] == "Alert"
 
@@ -280,7 +280,7 @@ class TestRiskClassificationEdgeCases:
     def test_low_precipitation_no_alert(self):
         """Test that low precipitation doesn't trigger Alert."""
         result = classify_risk_level(
-            prediction=0, probability={"no_flood": 0.85, "flood": 0.15}, precipitation=9.9  # Just below threshold
+            prediction=0, probability={"no_flood": 0.95, "flood": 0.05}, precipitation=7.4  # Just below 7.5mm threshold
         )
 
         assert result["risk_level"] == 0
@@ -290,8 +290,8 @@ class TestRiskClassificationEdgeCases:
         """Test that high humidity alone doesn't trigger Alert without precipitation."""
         result = classify_risk_level(
             prediction=0,
-            probability={"no_flood": 0.85, "flood": 0.15},
-            precipitation=3.0,  # Low precipitation
+            probability={"no_flood": 0.95, "flood": 0.05},
+            precipitation=3.0,  # Low precipitation (below humidity_precip_min=5.0)
             humidity=95.0,  # High humidity
         )
 
@@ -305,17 +305,17 @@ class TestRiskClassificationParameterized:
     @pytest.mark.parametrize(
         "prediction,flood_prob,expected_level,expected_label",
         [
-            # Safe cases
+            # Safe cases (below safe_max=0.10)
             (0, 0.05, 0, "Safe"),
-            (0, 0.10, 0, "Safe"),
-            (0, 0.20, 0, "Safe"),
-            (0, 0.29, 0, "Safe"),
-            # Alert cases
+            (0, 0.09, 0, "Safe"),
+            # Alert cases (above safe_max=0.10 or flood predicted with moderate prob)
+            (0, 0.10, 1, "Alert"),
+            (0, 0.20, 1, "Alert"),
             (0, 0.30, 1, "Alert"),
             (0, 0.50, 1, "Alert"),
             (1, 0.55, 1, "Alert"),
             (1, 0.74, 1, "Alert"),
-            # Critical cases
+            # Critical cases (flood predicted with prob >= 0.75)
             (1, 0.75, 2, "Critical"),
             (1, 0.85, 2, "Critical"),
             (1, 0.95, 2, "Critical"),

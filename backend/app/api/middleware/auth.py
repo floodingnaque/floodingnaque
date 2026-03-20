@@ -518,6 +518,50 @@ def validate_api_key_simple(api_key: str) -> bool:
     return is_valid
 
 
+def _validate_db_api_key(raw_key: str) -> Optional[Dict]:
+    """
+    Validate an API key against the database (user-managed keys).
+
+    Uses SHA-256 hash lookup for constant-time comparison.
+
+    Returns:
+        Dict with user_id, key_id, role, scopes if valid, else None.
+    """
+    try:
+        from app.models.api_key import APIKey
+        from app.models.db import get_db_session
+        from app.models.user import User
+
+        key_hash = APIKey.hash_key(raw_key)
+
+        with get_db_session() as session:
+            api_key = session.query(APIKey).filter(APIKey.key_hash == key_hash).first()
+            if api_key is None:
+                return None
+
+            if not api_key.is_active:
+                return None
+
+            # Fetch user role
+            user = session.query(User).filter(User.id == api_key.user_id).first()
+            if user is None or not user.is_active:
+                return None
+
+            # Record usage
+            api_key.record_usage(ip=request.remote_addr)
+            session.commit()
+
+            return {
+                "user_id": api_key.user_id,
+                "key_id": api_key.id,
+                "role": user.role,
+                "scopes": api_key.scopes,
+            }
+    except Exception as exc:
+        logger.debug("DB API key lookup failed (non-critical): %s", exc)
+        return None
+
+
 def require_auth(f):
     """
     Decorator that requires a valid JWT Bearer token.
@@ -600,9 +644,21 @@ def require_auth_or_api_key(f):
                 g.current_user_role = payload.get("role")
                 return f(*args, **kwargs)
 
-        # Fall back to API key
+        # Fall back to API key (check DB-managed keys first, then static env keys)
         api_key = request.headers.get("X-API-Key")
         if api_key:
+            # Try database-managed user API keys first
+            db_result = _validate_db_api_key(api_key)
+            if db_result is not None:
+                _clear_failed_attempts(ip_address)
+                g.authenticated = True
+                g.current_user_id = db_result["user_id"]
+                g.current_user_role = db_result.get("role", "user")
+                g.api_key_id = db_result["key_id"]
+                g.api_key_scopes = db_result.get("scopes", "")
+                return f(*args, **kwargs)
+
+            # Fall back to static env var API keys
             is_valid, _ = validate_api_key(api_key)
             if is_valid:
                 _clear_failed_attempts(ip_address)
@@ -620,6 +676,64 @@ def require_auth_or_api_key(f):
         )
 
     return decorated
+
+
+def require_scope(*required_scopes: str):
+    """
+    Decorator that enforces API key scopes on endpoints.
+
+    Must be placed **after** require_auth_or_api_key in the decorator chain.
+    JWT-authenticated users (browser sessions) bypass scope checks since they
+    are already authorized by role. Scope enforcement only applies to
+    DB-managed API keys.
+
+    Usage:
+        @bp.route("/predict", methods=["POST"])
+        @require_auth_or_api_key
+        @require_scope("predict")
+        def predict():
+            ...
+    """
+
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            # JWT-authenticated users bypass scope checks
+            api_key_scopes = getattr(g, "api_key_scopes", None)
+            if api_key_scopes is None:
+                # Authenticated via JWT or static env key — no scope restriction
+                return f(*args, **kwargs)
+
+            # Parse CSV scopes from the DB key
+            granted = {s.strip() for s in api_key_scopes.split(",") if s.strip()}
+
+            # "admin" scope grants access to everything
+            if "admin" in granted:
+                return f(*args, **kwargs)
+
+            if not granted.intersection(required_scopes):
+                logger.warning(
+                    "Scope denied: key %s requires %s, has %s",
+                    getattr(g, "api_key_id", "?"),
+                    required_scopes,
+                    granted,
+                )
+                return (
+                    jsonify(
+                        {
+                            "error": "Insufficient scope",
+                            "message": f"This endpoint requires one of: {', '.join(required_scopes)}",
+                            "required_scopes": list(required_scopes),
+                        }
+                    ),
+                    403,
+                )
+
+            return f(*args, **kwargs)
+
+        return decorated
+
+    return decorator
 
 
 def require_api_key(f):

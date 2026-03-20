@@ -112,6 +112,50 @@ groups:
           summary: "Model accuracy degraded"
           description: "The flood prediction model accuracy has dropped below 70%. Current accuracy: {{ $value | humanizePercentage }}."
 
+      # High rate of features using default values (rolling features unavailable)
+      - alert: ModelFeatureDefaultRate
+        expr: |
+          (
+            sum(rate(floodingnaque_prediction_features_defaulted_total[15m]))
+            /
+            sum(rate(floodingnaque_predictions_total[15m]))
+          ) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+          service: prediction
+        annotations:
+          summary: "High feature default rate in predictions"
+          description: "More than 50% of predictions are using default values for rolling features (precip_3day_sum, rain_streak, etc.). This degrades prediction quality. Current rate: {{ $value | humanizePercentage }}."
+
+      # Prediction confidence has dropped significantly
+      - alert: PredictionConfidenceDropped
+        expr: |
+          avg(floodingnaque_prediction_confidence) < 0.6
+        for: 30m
+        labels:
+          severity: warning
+          service: prediction
+        annotations:
+          summary: "Average prediction confidence has dropped"
+          description: "The average prediction confidence has been below 60% for 30 minutes. This may indicate model drift or degraded input data quality. Current average: {{ $value | humanize }}."
+
+      # Weather API failure rate too high (affects prediction input quality)
+      - alert: WeatherAPIFailureRate
+        expr: |
+          (
+            sum(rate(floodingnaque_weather_api_errors_total[15m]))
+            /
+            sum(rate(floodingnaque_weather_api_requests_total[15m]))
+          ) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+          service: external-api
+        annotations:
+          summary: "High weather API failure rate"
+          description: "More than 30% of weather API requests are failing. Predictions may be using stale or default weather data. Current failure rate: {{ $value | humanizePercentage }}."
+
   # ==========================================================================
   # Circuit Breaker Alerts
   # ==========================================================================
@@ -292,6 +336,17 @@ groups:
           summary: "No Celery tasks processed"
           description: "No background tasks have completed in the last hour while the API is receiving traffic. Workers may be stuck."
 
+      # Dead Letter Queue growing — permanently failed tasks accumulating
+      - alert: CeleryDeadLetterQueueGrowing
+        expr: floodingnaque_celery_dlq_size > 10
+        for: 30m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "Celery Dead Letter Queue growing"
+          description: "The Celery DLQ has more than 10 permanently failed tasks for over 30 minutes. Review and replay or clear failed entries via /api/v1/admin/monitoring/celery/dlq."
+
   # ==========================================================================
   # Infrastructure Alerts
   # ==========================================================================
@@ -410,6 +465,44 @@ groups:
         annotations:
           summary: "Prometheus rule evaluation failures"
           description: "Prometheus has had rule evaluation failures in the last 5 minutes."
+
+  # ==========================================================================
+  # Model Drift Detection Alerts
+  # ==========================================================================
+  - name: floodingnaque-drift
+    rules:
+      # Any feature PSI exceeds critical threshold
+      - alert: ModelDriftCritical
+        expr: floodingnaque_drift_psi > 0.20
+        for: 2h
+        labels:
+          severity: warning
+          service: prediction
+        annotations:
+          summary: "Model drift detected for feature {{ $labels.feature }}"
+          description: 'PSI for ''{{ $labels.feature }}'' is {{ $value | printf "%.4f" }} (threshold 0.20). The model may need retraining.'
+
+      # Overall drift status is critical
+      - alert: ModelDriftStatusCritical
+        expr: floodingnaque_drift_status == 2
+        for: 6h
+        labels:
+          severity: critical
+          service: prediction
+        annotations:
+          summary: "Model drift status is critical"
+          description: "One or more monitored features show significant distribution shift. Automated retraining may be required."
+
+      # Drift check has not run (stale)
+      - alert: DriftCheckStale
+        expr: (time() - floodingnaque_drift_last_check_timestamp) > 86400
+        for: 1h
+        labels:
+          severity: warning
+          service: prediction
+        annotations:
+          summary: "Drift check has not run in over 24 hours"
+          description: "The scheduled drift monitoring job may be failing or disabled."
 
   # ==========================================================================
   # Watchdog (Deadman Switch)

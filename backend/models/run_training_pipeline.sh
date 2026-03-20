@@ -189,17 +189,17 @@ run_step() {
     # Run in background and show progress
     local temp_output
     temp_output=$(mktemp)
-    
+
     eval "$command" > "$temp_output" 2>&1 &
     local pid=$!
-    
+
     while kill -0 "$pid" 2>/dev/null; do
         progress_tick
     done
-    
+
     wait "$pid"
     local exit_code=$?
-    
+
     if [[ "$JSON_LOGS" != true ]]; then
         echo ""  # New line after progress dots
     fi
@@ -411,10 +411,10 @@ setup_directories() {
     # Determine script directory
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
+
     # Backend directory (parent of models/)
     BACKEND_DIR="$(dirname "$script_dir")"
-    
+
     SCRIPTS_PATH="$BACKEND_DIR/scripts"
     DATA_PATH="$BACKEND_DIR/$DATA_DIR"
     MODEL_PATH="$BACKEND_DIR/$MODEL_DIR"
@@ -460,7 +460,7 @@ run_ingestion() {
 
     # Build ingestion arguments
     local ingest_args=()
-    
+
     if [[ -n "$INGEST_FILE" ]]; then
         ingest_args+=("--file" "$INGEST_FILE")
     elif [[ -n "$INGEST_DIR" ]]; then
@@ -556,7 +556,7 @@ write_summary() {
     [[ ${#WARNINGS[@]} -gt 0 ]] && success="false"
 
     local summary_file="$REPORT_PATH/pipeline_summary.json"
-    
+
     # Determine mode string
     local mode_str="FULL"
     [[ "$MODE_QUICK" == true ]] && mode_str="QUICK"
@@ -591,7 +591,7 @@ main() {
     validate_args
 
     emit_log "INFO" "PIPELINE START"
-    
+
     if [[ "$INGEST_ONLY" == true ]]; then
         emit_log "INFO" "MODE: INGEST-ONLY"
     elif [[ "$MODE_QUICK" == true ]]; then

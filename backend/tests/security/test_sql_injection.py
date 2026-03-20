@@ -28,8 +28,10 @@ def _mock_data_db():
     def _fake_session():
         yield mock_session
 
-    with patch("app.models.db.get_db_session", _fake_session), \
-         patch("app.api.routes.data.get_db_session", _fake_session):
+    with (
+        patch("app.models.db.get_db_session", _fake_session),
+        patch("app.api.routes.data.get_db_session", _fake_session),
+    ):
         yield
 
 

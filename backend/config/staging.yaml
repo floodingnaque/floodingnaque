@@ -30,12 +30,12 @@ model:
     class_weight: "balanced_subsample"
     max_features: "sqrt"
     n_jobs: -1
-    
+
   optuna:
     enabled: true
     n_trials: 30  # Reduced from production's 50
     timeout_minutes: 20
-    
+
   calibration:
     enabled: true
     method: "isotonic"
@@ -44,7 +44,7 @@ model:
 # Cross-Validation - Standard
 cross_validation:
   folds: 5  # Balanced between speed and validation
-  
+
   temporal:
     enabled: true
     n_splits: 3
@@ -55,7 +55,7 @@ mlflow:
   experiment_name: "floodingnaque_staging"
   auto_log: true
   log_models: true
-  
+
   tags:
     environment: "staging"
     project: "floodingnaque"
@@ -63,7 +63,7 @@ mlflow:
 # Registry - Staging Stage
 registry:
   models_dir: "${FLOODINGNAQUE_MODELS_DIR:-models}"
-  
+
   promotion_criteria:
     staging:
       min_f2_score: 0.82

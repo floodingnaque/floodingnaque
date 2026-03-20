@@ -3,28 +3,28 @@
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # Default owner for everything in the repo
-* @KyaRhamil
+* @Ramil-Martizano
 
 # Backend code requires review
-/backend/ @KyaRhamil
+/backend/ @Ramil-Martizano
 
 # API routes and core logic
-/backend/app/api/ @KyaRhamil
-/backend/app/core/ @KyaRhamil
-/backend/app/services/ @KyaRhamil
+/backend/app/api/ @Ramil-Martizano
+/backend/app/core/ @Ramil-Martizano
+/backend/app/services/ @Ramil-Martizano
 
 # Database migrations require careful review
-/backend/alembic/ @KyaRhamil
+/backend/alembic/ @Ramil-Martizano
 
 # CI/CD and DevOps configuration
-/.github/workflows/ @KyaRhamil
-/compose*.yaml @KyaRhamil
-/nginx/ @KyaRhamil
-/monitoring/ @KyaRhamil
+/.github/workflows/ @Ramil-Martizano
+/compose*.yaml @Ramil-Martizano
+/nginx/ @Ramil-Martizano
+/monitoring/ @Ramil-Martizano
 
 # Security-sensitive configuration
-/backend/config/ @KyaRhamil
-/.pre-commit-config.yaml @KyaRhamil
+/backend/config/ @Ramil-Martizano
+/.pre-commit-config.yaml @Ramil-Martizano
 
 # Documentation
-/docs/ @KyaRhamil
+/docs/ @Ramil-Martizano

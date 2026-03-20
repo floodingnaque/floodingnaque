@@ -7,8 +7,8 @@ Tests for app/utils/metrics.py
 from unittest.mock import MagicMock, patch
 
 import pytest
-from app.utils import metrics
-from app.utils.metrics import (
+from app.utils.observability import metrics
+from app.utils.observability.metrics import (
     init_prometheus_metrics,
     record_cache_operation,
     record_circuit_breaker_state,
@@ -77,7 +77,7 @@ class TestCustomMetrics:
 class TestMetricRecording:
     """Tests for metric recording functions."""
 
-    @patch("app.utils.metrics._metrics")
+    @patch("app.utils.observability.metrics._metrics")
     def test_record_prediction_metric(self, mock_metrics):
         """Test recording a prediction metric."""
         mock_metrics.predictions_total = MagicMock()
@@ -88,7 +88,7 @@ class TestMetricRecording:
         except (AttributeError, TypeError):
             pass  # Function may not exist or metrics not initialized
 
-    @patch("app.utils.metrics._metrics")
+    @patch("app.utils.observability.metrics._metrics")
     def test_record_external_api_call(self, mock_metrics):
         """Test recording external API call metric."""
         mock_metrics.external_api_calls_total = MagicMock()
@@ -98,7 +98,7 @@ class TestMetricRecording:
         except (AttributeError, TypeError):
             pass
 
-    @patch("app.utils.metrics._metrics")
+    @patch("app.utils.observability.metrics._metrics")
     def test_record_db_pool_status(self, mock_metrics):
         """Test recording database pool status metric."""
         mock_metrics.db_pool_connections = MagicMock()
@@ -132,7 +132,7 @@ class TestMetricLabels:
 class TestCircuitBreakerMetrics:
     """Tests for circuit breaker state metrics."""
 
-    @patch("app.utils.metrics._metrics")
+    @patch("app.utils.observability.metrics._metrics")
     def test_record_circuit_breaker_state(self, mock_metrics):
         """Test recording circuit breaker state metric."""
         mock_metrics.circuit_breaker_state = MagicMock()
@@ -157,7 +157,7 @@ class TestCircuitBreakerMetrics:
 class TestConnectionPoolMetrics:
     """Tests for connection pool metrics."""
 
-    @patch("app.utils.metrics._metrics")
+    @patch("app.utils.observability.metrics._metrics")
     def test_record_db_pool_status_metrics(self, mock_metrics):
         """Test recording connection pool metrics."""
         mock_metrics.db_pool_connections = MagicMock()
@@ -174,7 +174,7 @@ class TestConnectionPoolMetrics:
 class TestCacheMetrics:
     """Tests for cache metrics."""
 
-    @patch("app.utils.metrics._metrics")
+    @patch("app.utils.observability.metrics._metrics")
     def test_record_cache_hit(self, mock_metrics):
         """Test recording cache hit."""
         mock_metrics.cache_operations = MagicMock()
@@ -187,7 +187,7 @@ class TestCacheMetrics:
             # Function may not exist or metrics not initialized - acceptable
             assert True
 
-    @patch("app.utils.metrics._metrics")
+    @patch("app.utils.observability.metrics._metrics")
     def test_record_cache_miss(self, mock_metrics):
         """Test recording cache miss."""
         mock_metrics.cache_operations = MagicMock()

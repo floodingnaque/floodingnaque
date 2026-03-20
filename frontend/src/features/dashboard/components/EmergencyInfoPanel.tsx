@@ -9,45 +9,65 @@
  * advisory messages based on the current flood risk.
  */
 
-import { memo } from 'react';
-import { Phone, MapPin, ShieldCheck, ExternalLink, AlertTriangle, ShieldAlert, Info } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { EMERGENCY_CONTACTS, BARANGAYS } from '@/config/paranaque';
-import { cn } from '@/lib/utils';
-import type { RiskLevel } from '@/types';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_ENDPOINTS } from "@/config/api.config";
+import { BARANGAYS, EMERGENCY_CONTACTS } from "@/config/paranaque";
+import api from "@/lib/api-client";
+import { cn } from "@/lib/utils";
+import type { RiskLevel } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  ExternalLink,
+  Info,
+  MapPin,
+  Phone,
+  Radio,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
+import { memo } from "react";
 
 // ---------------------------------------------------------------------------
 // Risk-based advisory messages
 // ---------------------------------------------------------------------------
 
-const RISK_ADVISORIES: Record<RiskLevel, { icon: React.ElementType; title: string; items: string[]; variant: 'default' | 'destructive' }> = {
+const RISK_ADVISORIES: Record<
+  RiskLevel,
+  {
+    icon: React.ElementType;
+    title: string;
+    items: string[];
+    variant: "default" | "destructive";
+  }
+> = {
   2: {
     icon: ShieldAlert,
-    title: 'High Risk Advisory',
+    title: "High Risk Advisory",
     items: [
-      'Prepare go-bag with essentials',
-      'Monitor official DRRMO announcements',
-      'Possible evacuation activation - stay alert',
-      'Avoid low-lying areas and waterways',
+      "Prepare go-bag with essentials",
+      "Monitor official DRRMO announcements",
+      "Possible evacuation activation - stay alert",
+      "Avoid low-lying areas and waterways",
     ],
-    variant: 'destructive',
+    variant: "destructive",
   },
   1: {
     icon: AlertTriangle,
-    title: 'Moderate Risk Advisory',
+    title: "Moderate Risk Advisory",
     items: [
-      'Stay alert and monitor updates',
-      'Track rainfall trend closely',
-      'Review evacuation routes as precaution',
+      "Stay alert and monitor updates",
+      "Track rainfall trend closely",
+      "Review evacuation routes as precaution",
     ],
-    variant: 'default',
+    variant: "default",
   },
   0: {
     icon: Info,
-    title: 'Current Advisory',
-    items: ['No immediate flooding risk detected'],
-    variant: 'default',
+    title: "Current Advisory",
+    items: ["No immediate flooding risk detected"],
+    variant: "default",
   },
 };
 
@@ -66,24 +86,42 @@ function ContactRow({
 }) {
   return (
     <a
-      href={`tel:${phone.replace(/[^+\d]/g, '')}`}
+      href={`tel:${phone.replace(/[^+\d]/g, "")}`}
       className={cn(
-        'flex items-center justify-between px-3 py-2 rounded-lg transition-colors',
+        "flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
         highlight
-          ? 'bg-risk-critical/10 hover:bg-risk-critical/20'
-          : 'hover:bg-muted',
+          ? "bg-risk-critical/10 hover:bg-risk-critical/20"
+          : "hover:bg-muted",
       )}
     >
       <div className="flex items-center gap-2">
-        <Phone className={cn('h-4 w-4 shrink-0', highlight ? 'text-risk-critical' : 'text-muted-foreground')} />
-        <span className={cn('text-sm font-medium', highlight && 'text-risk-critical')}>{name}</span>
+        <Phone
+          className={cn(
+            "h-4 w-4 shrink-0",
+            highlight ? "text-risk-critical" : "text-muted-foreground",
+          )}
+        />
+        <span
+          className={cn(
+            "text-sm font-medium",
+            highlight && "text-risk-critical",
+          )}
+        >
+          {name}
+        </span>
       </div>
       <span className="text-sm font-mono text-muted-foreground">{phone}</span>
     </a>
   );
 }
 
-function EvacuationCenterRow({ name, barangay }: { name: string; barangay: string }) {
+function EvacuationCenterRow({
+  name,
+  barangay,
+}: {
+  name: string;
+  barangay: string;
+}) {
   return (
     <div className="flex items-start gap-2 px-3 py-1.5">
       <MapPin className="h-3.5 w-3.5 mt-0.5 text-risk-safe shrink-0" />
@@ -113,14 +151,26 @@ export const EmergencyInfoPanel = memo(function EmergencyInfoPanel({
   riskLevel,
 }: EmergencyInfoPanelProps) {
   const evacBarangays = filterHighRisk
-    ? BARANGAYS.filter((b) => b.floodRisk === 'high')
+    ? BARANGAYS.filter((b) => b.floodRisk === "high")
     : BARANGAYS;
 
   const advisory = riskLevel != null ? RISK_ADVISORIES[riskLevel] : null;
   const AdvisoryIcon = advisory?.icon ?? Info;
 
+  // Fetch live PAGASA advisory
+  const { data: pagasaAdvisory } = useQuery<{
+    advisory?: string;
+    updated_at?: string;
+  }>({
+    queryKey: ["pagasa", "advisory"],
+    queryFn: () => api.get(API_ENDPOINTS.pagasa.advisory),
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
+    retry: 1,
+  });
+
   return (
-    <Card className={cn('', className)}>
+    <Card className={cn("", className)}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldCheck className="h-5 w-5 text-risk-safe" />
@@ -145,6 +195,27 @@ export const EmergencyInfoPanel = memo(function EmergencyInfoPanel({
             </AlertDescription>
           </Alert>
         )}
+
+        {/* Live PAGASA Advisory */}
+        {pagasaAdvisory?.advisory && (
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Radio className="h-4 w-4 text-blue-500" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-blue-500">
+                PAGASA Advisory
+              </span>
+            </div>
+            <p className="text-sm text-foreground/90 leading-relaxed">
+              {pagasaAdvisory.advisory}
+            </p>
+            {pagasaAdvisory.updated_at && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Updated:{" "}
+                {new Date(pagasaAdvisory.updated_at).toLocaleString("en-PH")}
+              </p>
+            )}
+          </div>
+        )}
         {/* Hotlines */}
         <div>
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -156,7 +227,7 @@ export const EmergencyInfoPanel = memo(function EmergencyInfoPanel({
                 key={c.name}
                 name={c.name}
                 phone={c.phone}
-                highlight={c.name.includes('MDRRMO')}
+                highlight={c.name.includes("MDRRMO")}
               />
             ))}
           </div>
@@ -165,7 +236,7 @@ export const EmergencyInfoPanel = memo(function EmergencyInfoPanel({
         {/* Evacuation Centers */}
         <div>
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Evacuation Centers {filterHighRisk && '(High-Risk Areas)'}
+            Evacuation Centers {filterHighRisk && "(High-Risk Areas)"}
           </h4>
           <div className="space-y-0.5 max-h-48 overflow-y-auto">
             {evacBarangays.map((b) => (

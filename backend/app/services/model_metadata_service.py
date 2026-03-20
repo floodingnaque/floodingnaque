@@ -215,12 +215,16 @@ def promote_version(version: int, promoted_by: str = "system") -> Dict[str, Any]
 
             # Retire current active models
             now = datetime.now(timezone.utc)
-            retired = session.query(ModelRegistry).filter(
-                ModelRegistry.is_active.is_(True),
-                ModelRegistry.version != version,
-            ).update(
-                {"is_active": False, "retired_at": now},
-                synchronize_session="fetch",
+            retired = (
+                session.query(ModelRegistry)
+                .filter(
+                    ModelRegistry.is_active.is_(True),
+                    ModelRegistry.version != version,
+                )
+                .update(
+                    {"is_active": False, "retired_at": now},
+                    synchronize_session="fetch",
+                )
             )
 
             record.is_active = True
@@ -387,11 +391,7 @@ def get_algorithm_summary() -> Dict[str, Any]:
 
             summary = {}
             for algo, count, best_f1, latest in rows:
-                active = (
-                    session.query(ModelRegistry.version)
-                    .filter_by(algorithm=algo, is_active=True)
-                    .first()
-                )
+                active = session.query(ModelRegistry.version).filter_by(algorithm=algo, is_active=True).first()
                 summary[algo] = {
                     "count": count,
                     "best_f1": float(best_f1) if best_f1 else None,

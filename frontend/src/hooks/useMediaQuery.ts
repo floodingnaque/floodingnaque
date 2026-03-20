@@ -1,6 +1,6 @@
 /**
  * useMediaQuery Hook
- * 
+ *
  * Custom React hook for responsive design that tracks
  * whether a CSS media query matches.
  */
@@ -9,18 +9,18 @@ import { useState, useEffect, useCallback } from 'react';
 
 /**
  * Hook to track whether a media query matches.
- * 
+ *
  * @param query - CSS media query string (e.g., '(min-width: 768px)')
  * @returns boolean indicating if the media query currently matches
- * 
+ *
  * @example
  * // Check if screen is at least tablet size
  * const isTablet = useMediaQuery('(min-width: 768px)');
- * 
+ *
  * @example
  * // Check for dark mode preference
  * const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
- * 
+ *
  * @example
  * // Check for reduced motion preference
  * const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');

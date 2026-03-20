@@ -98,7 +98,7 @@ export function BarangayMapSection() {
               </thead>
               <tbody className="divide-y divide-border/30">
                 {BARANGAYS.map((b) => {
-                  const risk = RISK_LABEL[b.floodRisk] ?? RISK_LABEL.low;
+                  const risk = (RISK_LABEL[b.floodRisk] ?? RISK_LABEL.low)!;
                   return (
                     <tr key={b.key} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-2 font-medium text-foreground">{b.name}</td>

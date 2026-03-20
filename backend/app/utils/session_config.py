@@ -70,11 +70,11 @@ def _get_filesystem_config() -> Dict[str, Any]:
 
     logger.info(f"Session storage configured: Filesystem ({session_dir})")
 
+    from cachelib import FileSystemCache
+
     return {
-        "SESSION_TYPE": "filesystem",
-        "SESSION_FILE_DIR": session_dir,
-        "SESSION_FILE_THRESHOLD": 500,  # Max sessions before cleanup
-        "SESSION_FILE_MODE": 0o600,  # Secure file permissions
+        "SESSION_TYPE": "cachelib",
+        "SESSION_CACHELIB": FileSystemCache(session_dir, threshold=500, mode=0o600),
         "SESSION_PERMANENT": False,
     }
 

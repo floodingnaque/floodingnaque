@@ -5,6 +5,7 @@ Provides live streaming of flood alerts to connected clients.
 Uses SSE protocol for efficient one-way real-time communication.
 """
 
+import collections
 import html
 import json
 import logging
@@ -12,7 +13,7 @@ import queue
 import threading
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Generator
+from typing import Any, Dict, Generator, List, Optional
 
 from app.api.middleware.rate_limit import limiter
 from app.models.db import AlertHistory, get_db_session
@@ -58,12 +59,25 @@ class SSEManager:
     Manages Server-Sent Events connections and message broadcasting.
 
     Thread-safe implementation for handling multiple concurrent SSE clients.
+    Maintains monotonically increasing event IDs and a replay buffer so
+    reconnecting clients can request missed events via Last-Event-ID.
     """
+
+    REPLAY_BUFFER_SIZE = 1000
 
     def __init__(self):
         self._clients: Dict[str, queue.Queue] = {}
         self._lock = threading.Lock()
         self._running = True
+        self._event_id_counter = 0
+        self._event_id_lock = threading.Lock()
+        self._replay_buffer: collections.deque = collections.deque(maxlen=self.REPLAY_BUFFER_SIZE)
+
+    def _next_event_id(self) -> int:
+        """Return the next monotonically increasing event ID."""
+        with self._event_id_lock:
+            self._event_id_counter += 1
+            return self._event_id_counter
 
     def add_client(self, client_id: str) -> queue.Queue:
         """Register a new SSE client and return their message queue."""
@@ -84,6 +98,9 @@ class SSEManager:
         """
         Broadcast a message to all connected SSE clients.
 
+        Assigns a monotonically increasing event ID and stores the event
+        in the replay buffer for reconnecting clients.
+
         Args:
             event_type: The event type (e.g., 'alert', 'heartbeat')
             data: The data to send as JSON
@@ -91,7 +108,13 @@ class SSEManager:
         Returns:
             Number of clients that received the message
         """
-        message = self._format_sse(event_type, data)
+        event_id = self._next_event_id()
+        message = self._format_sse(event_type, data, event_id=event_id)
+
+        # Store in replay buffer (skip heartbeats to save space)
+        if event_type != "heartbeat":
+            self._replay_buffer.append((event_id, message))
+
         sent_count = 0
 
         with self._lock:
@@ -114,7 +137,8 @@ class SSEManager:
 
     def send_to_client(self, client_id: str, event_type: str, data: Dict[str, Any]) -> bool:
         """Send a message to a specific client."""
-        message = self._format_sse(event_type, data)
+        event_id = self._next_event_id()
+        message = self._format_sse(event_type, data, event_id=event_id)
 
         with self._lock:
             if client_id in self._clients:
@@ -131,10 +155,19 @@ class SSEManager:
             return len(self._clients)
 
     @staticmethod
-    def _format_sse(event_type: str, data: Dict[str, Any]) -> str:
-        """Format data as SSE message."""
+    def _format_sse(event_type: str, data: Dict[str, Any], event_id: Optional[int] = None) -> str:
+        """Format data as SSE message with optional event ID."""
         json_data = json.dumps(data, default=str)
-        return f"event: {event_type}\ndata: {json_data}\n\n"
+        parts = []
+        if event_id is not None:
+            parts.append(f"id: {event_id}")
+        parts.append(f"event: {event_type}")
+        parts.append(f"data: {json_data}")
+        return "\n".join(parts) + "\n\n"
+
+    def get_events_since(self, last_event_id: int) -> List[str]:
+        """Return buffered SSE messages with IDs greater than last_event_id."""
+        return [msg for eid, msg in self._replay_buffer if eid > last_event_id]
 
 
 # Global SSE manager instance
@@ -172,18 +205,27 @@ def broadcast_alert(alert_data: Dict[str, Any]) -> int:
 
 
 def _generate_sse_stream(
-    client_id: str, client_queue: queue.Queue, client_ip: str = "unknown"
+    client_id: str, client_queue: queue.Queue, client_ip: str = "unknown", last_event_id: Optional[int] = None
 ) -> Generator[str, None, None]:
     """
     Generator function for SSE stream.
 
     Yields SSE formatted messages from the client's queue.
     Includes periodic heartbeats to keep the connection alive.
+    If last_event_id is provided, replays missed events from the buffer first.
     """
     last_heartbeat = time.time()
     heartbeat_interval = 30  # seconds
 
     try:
+        # Replay missed events on reconnection
+        if last_event_id is not None:
+            missed = sse_manager.get_events_since(last_event_id)
+            if missed:
+                logger.info(f"Replaying {len(missed)} missed events for {client_id} since id={last_event_id}")
+                for msg in missed:
+                    yield msg
+
         while True:
             try:
                 # Wait for message with timeout for heartbeat
@@ -194,8 +236,11 @@ def _generate_sse_stream(
                 # No message, check if we need to send heartbeat
                 current_time = time.time()
                 if current_time - last_heartbeat >= heartbeat_interval:
+                    hb_id = sse_manager._next_event_id()
                     yield sse_manager._format_sse(
-                        "heartbeat", {"timestamp": datetime.now(timezone.utc).isoformat(), "status": "connected"}
+                        "heartbeat",
+                        {"timestamp": datetime.now(timezone.utc).isoformat(), "status": "connected"},
+                        event_id=hb_id,
                     )
                     last_heartbeat = current_time
     except GeneratorExit:
@@ -274,21 +319,31 @@ def stream_alerts():
 
     logger.info(f"SSE connection request from {client_id} [{request_id}]")
 
+    # Parse Last-Event-ID for reconnection replay
+    last_event_id: Optional[int] = None
+    raw_last_id = request.headers.get("Last-Event-ID") or request.args.get("lastEventId")
+    if raw_last_id is not None:
+        try:
+            last_event_id = int(raw_last_id)
+        except (ValueError, TypeError):
+            pass
+
     # Create client queue and register
     client_queue = sse_manager.add_client(client_id)
 
     # Send initial connection confirmation
+    conn_event_id = sse_manager._next_event_id()
     initial_data = {
         "client_id": client_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "message": "Connected to flood alert stream",
         "request_id": request_id,
     }
-    client_queue.put(sse_manager._format_sse("connected", initial_data))
+    client_queue.put(sse_manager._format_sse("connected", initial_data, event_id=conn_event_id))
 
     # Create the SSE response
     response = Response(
-        stream_with_context(_generate_sse_stream(client_id, client_queue, client_ip)),
+        stream_with_context(_generate_sse_stream(client_id, client_queue, client_ip, last_event_id)),
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

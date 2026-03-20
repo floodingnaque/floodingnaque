@@ -1,70 +1,117 @@
-name: Security Scan
+name: "🔐 Security Scan"
 
 on:
   # Called by CI workflow
   workflow_call:
-    # Allow this workflow to be called by other workflows
     inputs:
       scan_type:
-        description: 'Scan type to run (all, pip-audit, bandit, safety)'
+        description: "Scan type to run (all, pip-audit, bandit, safety)"
         required: false
         type: string
-        default: 'all'
+        default: "all"
       fail_on:
-        description: 'Fail on severity level (critical, high, medium, low)'
+        description: "Fail on severity level (critical, high, medium, low)"
         required: false
         type: string
-        default: 'critical'
-  # Scheduled weekly security scan
+        default: "critical"
+  # Run on every push and PR to main/develop
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+  # Scheduled weekly security scans
   schedule:
-    # Run weekly security scans on Monday at 6:00 AM UTC
-    - cron: '0 6 * * 1'
+    # Monday at 06:00 UTC (existing)
+    - cron: "0 6 * * 1"
+    # Sunday 00:00 PHT = Saturday 16:00 UTC (catch newly disclosed CVEs)
+    - cron: "0 16 * * 6"
   # Manual trigger
   workflow_dispatch:
     inputs:
       scan_type:
-        description: 'Scan type to run (all, pip-audit, bandit, safety)'
+        description: "Scan type to run (all, pip-audit, bandit, safety)"
         required: false
-        default: 'all'
+        default: "all"
       fail_on:
-        description: 'Fail on severity level (critical, high, medium, low)'
+        description: "Fail on severity level (critical, high, medium, low)"
         required: false
-        default: 'critical'
+        default: "critical"
 
 permissions:
   contents: read
   security-events: write
+  pull-requests: write
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.13'
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "22"
 
 jobs:
   # ===========================================================================
   # GitGuardian Secret Scanning
   # ===========================================================================
   ggshield-scan:
-    name: GitGuardian Secret Scan
+    name: "🔒 GitGuardian Secret Scan"
     runs-on: ubuntu-latest
-    # Run on pushes, PRs, and scheduled scans (skip workflow_call/dispatch if no API key)
-    if: ${{ secrets.GITGUARDIAN_API_KEY != '' }}
-    
+    if: github.event_name != 'workflow_call'
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for scanning commit history
+          fetch-depth: 0
           persist-credentials: false
-      
+
       - name: Run ggshield secret scan
         uses: GitGuardian/ggshield-action@v1
         with:
           args: secret scan ci
         env:
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+
+  # ===========================================================================
+  # Gitleaks Secret Scanning (complements ggshield)
+  # ===========================================================================
+  gitleaks-scan:
+    name: "🔑 Gitleaks Secret Scan"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Check for Floodingnaque-specific secrets
+        run: |
+          # Check for hardcoded OWM keys (format: 32 hex chars)
+          if grep -rn "['\"][a-f0-9]\{32\}['\"]" \
+              --include="*.py" --include="*.ts" --include="*.tsx" \
+              --exclude-dir=".git" --exclude-dir="node_modules" .; then
+            echo "❌ Possible hardcoded API key (32-char hex) found"
+            exit 1
+          fi
+
+          # Check for hardcoded Supabase keys (eyJ prefix = JWT)
+          if grep -rn "eyJ[A-Za-z0-9_-]\{50,\}" \
+              --include="*.py" --include="*.ts" --include="*.tsx" \
+              --exclude-dir=".git" --exclude-dir="node_modules" \
+              --exclude="*.test.*" --exclude="*.spec.*" .; then
+            echo "❌ Possible hardcoded JWT/Supabase key found"
+            exit 1
+          fi
+
+          echo "✅ No Floodingnaque-specific secrets found"
 
   # ===========================================================================
   # Comprehensive Security Scan using security_scan.py
@@ -84,7 +131,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
           cache-dependency-path: backend/requirements*.txt
 
       - name: Install dependencies
@@ -160,7 +207,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install pip-audit
         run: pip install pip-audit
@@ -291,13 +338,157 @@ jobs:
           fi
           echo "✓ No high-severity issues found"
 
+  # ===========================================================================  # npm audit — Frontend Dependency Vulnerabilities
   # ===========================================================================
-  # Aggregate Security Report
+  npm-audit:
+    name: "📦 npm Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    outputs:
+      high_count: ${{ steps.audit.outputs.high }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --silent
+
+      - name: Run npm audit
+        id: audit
+        working-directory: frontend
+        run: |
+          npm audit --audit-level=high --json > npm_audit.json 2>&1 || true
+
+          HIGH=$(node -e "
+          try {
+            const d = require('./npm_audit.json');
+            const vulns = d.metadata?.vulnerabilities || {};
+            console.log((vulns.critical || 0) + (vulns.high || 0));
+          } catch(e) { console.log(0); }
+          ")
+          echo "high=${HIGH}" >> "\$GITHUB_OUTPUT"
+
+          node -e "
+          try {
+            const d = require('./npm_audit.json');
+            const vulns = d.metadata?.vulnerabilities || {};
+            console.log('npm audit summary:');
+            console.log(\`  Critical: \${vulns.critical || 0}\`);
+            console.log(\`  High:     \${vulns.high || 0}\`);
+            console.log(\`  Moderate: \${vulns.moderate || 0}\`);
+          } catch(e) {}
+          "
+
+          [ "$HIGH" -gt 0 ] && exit 1 || echo "✅ No critical/high npm CVEs"
+
+      - name: Upload npm audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-results-${{ github.sha }}
+          path: frontend/npm_audit.json
+          retention-days: 30
+
+  # ===========================================================================
+  # Semgrep — JavaScript/TypeScript SAST
+  # ===========================================================================
+  sast-frontend:
+    name: "🔬 Semgrep JS/TS SAST"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Semgrep
+        uses: docker://semgrep/semgrep:latest
+        with:
+          args: >-
+            semgrep scan
+            --config p/javascript
+            --config p/typescript
+            --config p/react
+            --sarif --output semgrep-results.sarif
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+        continue-on-error: true
+
+  # ===========================================================================
+  # Docker Image Vulnerability Scan (Trivy)
+  # Runs on main/develop push only (image must be built first)
+  # ===========================================================================
+  docker-scan:
+    name: "🐳 Docker Image Scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build image for scanning
+        run: |
+          docker build \
+            --target production \
+            -t floodingnaque-scan:latest \
+            -f backend/Dockerfile \
+            ./backend
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "floodingnaque-scan:latest"
+          format: "sarif"
+          output: "trivy.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+        continue-on-error: true
+
+  # ===========================================================================  # Aggregate Security Report
   # ===========================================================================
   security-report:
-    name: Generate Security Report
+    name: "📋 Security Report"
     runs-on: ubuntu-latest
-    needs: [security-scan, pip-audit, bandit]
+    needs:
+      [
+        security-scan,
+        ggshield-scan,
+        gitleaks-scan,
+        pip-audit,
+        npm-audit,
+        bandit,
+        sast-frontend,
+        docker-scan,
+      ]
     if: always()
 
     steps:
@@ -313,7 +504,7 @@ jobs:
 
       - name: Generate aggregated report
         run: |
-          echo "# Floodingnaque Security Scan Report" > SECURITY_REPORT.md
+          echo "# 🔐 Floodingnaque Security Scan Report" > SECURITY_REPORT.md
           echo "" >> SECURITY_REPORT.md
           echo "**Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> SECURITY_REPORT.md
           echo "**Commit:** ${{ github.sha }}" >> SECURITY_REPORT.md
@@ -321,11 +512,16 @@ jobs:
           echo "" >> SECURITY_REPORT.md
           echo "## Scan Results Summary" >> SECURITY_REPORT.md
           echo "" >> SECURITY_REPORT.md
-          echo "| Scanner | Status |" >> SECURITY_REPORT.md
-          echo "|---------|--------|" >> SECURITY_REPORT.md
-          echo "| Comprehensive Scan | ${{ needs.security-scan.result }} |" >> SECURITY_REPORT.md
-          echo "| pip-audit | ${{ needs.pip-audit.result }} |" >> SECURITY_REPORT.md
-          echo "| Bandit | ${{ needs.bandit.result }} |" >> SECURITY_REPORT.md
+          echo "| Scanner | Category | Status |" >> SECURITY_REPORT.md
+          echo "|---------|----------|--------|" >> SECURITY_REPORT.md
+          echo "| GitGuardian | Secrets | ${{ needs.ggshield-scan.result }} |" >> SECURITY_REPORT.md
+          echo "| Gitleaks | Secrets | ${{ needs.gitleaks-scan.result }} |" >> SECURITY_REPORT.md
+          echo "| Comprehensive Scan | SAST (Python) | ${{ needs.security-scan.result }} |" >> SECURITY_REPORT.md
+          echo "| Bandit | SAST (Python) | ${{ needs.bandit.result }} |" >> SECURITY_REPORT.md
+          echo "| Semgrep | SAST (JS/TS) | ${{ needs.sast-frontend.result }} |" >> SECURITY_REPORT.md
+          echo "| pip-audit | Dependencies (Python) | ${{ needs.pip-audit.result }} |" >> SECURITY_REPORT.md
+          echo "| npm audit | Dependencies (Frontend) | ${{ needs.npm-audit.result }} |" >> SECURITY_REPORT.md
+          echo "| Trivy | Docker Image | ${{ needs.docker-scan.result }} |" >> SECURITY_REPORT.md
           echo "" >> SECURITY_REPORT.md
           echo "## Artifacts" >> SECURITY_REPORT.md
           echo "" >> SECURITY_REPORT.md
@@ -344,12 +540,29 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const report = fs.readFileSync('SECURITY_REPORT.md', 'utf8');
-            github.rest.issues.createComment({
+
+            // Delete previous security report comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            for (const c of comments.data) {
+              if (c.user.login === 'github-actions[bot]' &&
+                  c.body.includes('Floodingnaque Security Scan Report')) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  comment_id: c.id,
+                });
+              }
+            }
+
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: report
+              body: report,
             });

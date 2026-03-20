@@ -94,6 +94,8 @@ class TestIngestCoverage:
             patch("app.services.ingest.openweathermap_breaker.call", return_value=owm_data),
             patch.dict(os.environ, {"WEATHERSTACK_API_KEY": "key"}),
             patch("app.services.ingest.weatherstack_breaker.call", side_effect=requests.exceptions.RequestException),
+            patch("app.services.ingest._get_meteostat_service", return_value=None),
+            patch.dict(os.environ, {"PAGASA_RADAR_ENABLED": "false"}, clear=False),
             patch("app.services.ingest.get_db_session"),
         ):
 

@@ -14,6 +14,7 @@ waitress==3.0.2  # Windows alternative (updated: fixes DoS CVE-2024-49768, race 
 # ============================================================================
 requests==2.32.4  # Updated: fixes GHSA-9hjg-9r4m-mvj7
 urllib3==2.6.3  # Updated: fixes GHSA-48p4-8xcf-vxj5, GHSA-pq67-6m6q-mj2v, GHSA-gm62-xv2j-4w53, GHSA-2xpw-w6gg-jr37, GHSA-38jv-5279-wg99
+charset-normalizer>=3.4,<4  # Pin to suppress RequestsDependencyWarning
 aiohttp==3.13.3  # Updated: fixes GHSA-9548-qrrj-x5pj, GHSA-6mq8-rvhq-8wgg, GHSA-69f9-5gxw-wvc2 and more
 aiohttp[speedups]==3.13.3  # Optional C extensions for better performance
 tenacity==9.1.2  # Retry logic with exponential backoff (>=9.1.2 required by schemathesis)
@@ -30,6 +31,11 @@ pandas==2.2.3  # DataFrame structure in preprocessing
 scikit-learn==1.8.0  # Model pickle format changes between versions
 joblib==1.4.2  # Serialization format for .joblib files
 scipy==1.14.1  # Used internally by scikit-learn
+
+# Deep Learning (CPU-only for inference and lightweight training)
+# Install with: pip install torch --index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0  # LSTM & Transformer flood prediction models (see app/services/deep_learning_models.py)
 
 # Gradient Boosting Frameworks (XGBoost & LightGBM)
 xgboost==2.1.3  # Extreme Gradient Boosting - optimised trees, GPU support
@@ -67,7 +73,7 @@ seaborn==0.13.2
 cryptography==45.0.3  # Latest security patches, pinned
 itsdangerous==2.2.0
 bcrypt==4.3.0
-PyJWT==2.9.0  # For JWT token-based authentication
+PyJWT[crypto]==2.10.1  # For JWT token-based authentication (>=2.10.1 required by supabase-auth)
 
 # ============================================================================
 # INPUT VALIDATION & SANITIZATION
@@ -106,9 +112,7 @@ prometheus-flask-exporter==0.23.1  # Prometheus metrics, pinned
 sentry-sdk[flask]==2.18.0  # Error tracking & performance monitoring
                            # Configured in app.utils.observability.sentry
                            # Activated when SENTRY_DSN env var is set
-ddtrace==2.14.4 ; platform_system != "Windows"  # Datadog APM tracing
-                 # Auto-instrumentation: ddtrace-run python main.py
-                 # See: https://docs.datadoghq.com/tracing/trace_collection/dd_libraries/python/
+
 
 # ============================================================================
 # PROGRESS TRACKING
@@ -158,6 +162,12 @@ shap==0.50.0  # Requires C++ build tools on Windows (Visual Studio Build Tools w
 geopandas==1.1.2  # Security fix: CVE SQL injection in to_postgis()
 folium==0.18.0  # Interactive maps
 shapely==2.0.6  # Geometric operations
+
+# Image Processing (for community report photo uploads)
+Pillow>=10.0  # EXIF stripping, image manipulation
+
+# Supabase Storage (for cloud photo uploads)
+supabase>=2.0  # Supabase client for file storage
 
 # Time Series Analysis (for temporal pattern analysis)
 statsmodels==0.14.4

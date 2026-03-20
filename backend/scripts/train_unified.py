@@ -350,9 +350,7 @@ class TrainingStrategy(ABC):
             try:
                 from app.services.spatial_features import add_spatial_features, get_spatial_feature_names
 
-                df = add_spatial_features(
-                    df, default_barangay=self.config.default_barangay
-                )
+                df = add_spatial_features(df, default_barangay=self.config.default_barangay)
                 spatial_feats = get_spatial_feature_names()
                 features = features + [f for f in spatial_feats if f not in features]
                 logger.info(f"Spatial features added: {spatial_feats}")
@@ -882,14 +880,19 @@ class XGBoostTrainingStrategy(TrainingStrategy):
             from app.services.advanced_models import XGBClassifier as _XGB
 
             base = _XGB(
-                objective="binary:logistic", eval_metric="logloss",
-                random_state=self.config.random_state, n_jobs=-1,
+                objective="binary:logistic",
+                eval_metric="logloss",
+                random_state=self.config.random_state,
+                n_jobs=-1,
             )
             grid = XGBOOST_PARAM_GRID_FAST if self.config.quick else XGBOOST_PARAM_GRID
             search = GridSearchCV(
-                base, grid,
+                base,
+                grid,
                 cv=StratifiedKFold(self.config.cv_folds, shuffle=True, random_state=self.config.random_state),
-                scoring="f1_weighted", n_jobs=-1, verbose=1,
+                scoring="f1_weighted",
+                n_jobs=-1,
+                verbose=1,
             )
             search.fit(X_train, y_train)
             model = search.best_estimator_
@@ -949,13 +952,18 @@ class LightGBMTrainingStrategy(TrainingStrategy):
             from lightgbm import LGBMClassifier as _LGBM
 
             base = _LGBM(
-                verbose=-1, random_state=self.config.random_state, n_jobs=-1,
+                verbose=-1,
+                random_state=self.config.random_state,
+                n_jobs=-1,
             )
             grid = LIGHTGBM_PARAM_GRID_FAST if self.config.quick else LIGHTGBM_PARAM_GRID
             search = GridSearchCV(
-                base, grid,
+                base,
+                grid,
                 cv=StratifiedKFold(self.config.cv_folds, shuffle=True, random_state=self.config.random_state),
-                scoring="f1_weighted", n_jobs=-1, verbose=1,
+                scoring="f1_weighted",
+                n_jobs=-1,
+                verbose=1,
             )
             search.fit(X_train, y_train)
             model = search.best_estimator_
@@ -1050,8 +1058,10 @@ class ComparisonTrainingStrategy(TrainingStrategy):
         logger.info(f"Train: {len(X_train)}, Test: {len(X_test)}")
 
         result = compare_models(
-            X_train=X_train, y_train=y_train,
-            X_test=X_test, y_test=y_test,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
             feature_names=self.feature_names,
             cv_folds=self.config.cv_folds,
             random_state=self.config.random_state,
@@ -1103,8 +1113,7 @@ class DeepLearningTrainingStrategy(TrainingStrategy):
         except ImportError as e:
             logger.error(f"Deep learning dependencies not available: {e}")
             raise ImportError(
-                "PyTorch is required for deep learning training. "
-                "Install with: pip install torch"
+                "PyTorch is required for deep learning training. " "Install with: pip install torch"
             ) from e
 
         # Load data
@@ -1117,6 +1126,7 @@ class DeepLearningTrainingStrategy(TrainingStrategy):
         if self.config.include_enso:
             try:
                 from app.services.enso_service import add_enso_features, get_enso_feature_names
+
                 df = add_enso_features(df, include_lags=True)
                 features = features + [f for f in get_enso_feature_names() if f not in features]
             except Exception as e:
@@ -1125,6 +1135,7 @@ class DeepLearningTrainingStrategy(TrainingStrategy):
         if self.config.include_spatial:
             try:
                 from app.services.spatial_features import add_spatial_features, get_spatial_feature_names
+
                 df = add_spatial_features(df, default_barangay=self.config.default_barangay)
                 features = features + [f for f in get_spatial_feature_names() if f not in features]
             except Exception as e:
@@ -1235,11 +1246,14 @@ def main():
     parser.add_argument("--include-enso", action="store_true", help="Include ENSO climate indices")
     parser.add_argument("--include-spatial", action="store_true", help="Include barangay spatial features")
     parser.add_argument("--barangay", type=str, help="Default barangay for spatial features")
-    parser.add_argument("--dl-model-type", choices=["lstm", "transformer"], default="lstm",
-                        help="Deep learning model type (for --mode deep_learning)")
+    parser.add_argument(
+        "--dl-model-type",
+        choices=["lstm", "transformer"],
+        default="lstm",
+        help="Deep learning model type (for --mode deep_learning)",
+    )
     parser.add_argument("--dl-epochs", type=int, default=100, help="Deep learning training epochs")
-    parser.add_argument("--dl-sequence-length", type=int, default=14,
-                        help="Look-back window in days for DL models")
+    parser.add_argument("--dl-sequence-length", type=int, default=14, help="Look-back window in days for DL models")
 
     args = parser.parse_args()
 

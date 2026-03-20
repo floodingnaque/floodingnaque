@@ -27,9 +27,7 @@ class NotificationChannel(ABC):
     display_name: str = "Base Channel"
 
     def __init__(self, sandbox: bool = False):
-        self.sandbox = sandbox or os.getenv(
-            f"{self.channel_id.upper()}_SANDBOX_MODE", "False"
-        ).lower() == "true"
+        self.sandbox = sandbox or os.getenv(f"{self.channel_id.upper()}_SANDBOX_MODE", "False").lower() == "true"
 
     # ------------------------------------------------------------------
     # Public API
@@ -68,9 +66,7 @@ class NotificationChannel(ABC):
             return "sandbox"
 
         if not self.is_configured():
-            logger.warning(
-                "%s channel not configured - skipping dispatch", self.display_name
-            )
+            logger.warning("%s channel not configured - skipping dispatch", self.display_name)
             return "not_configured"
 
         try:
@@ -82,9 +78,7 @@ class NotificationChannel(ABC):
                 extra=extra,
             )
         except Exception as exc:
-            logger.error(
-                "%s dispatch failed: %s", self.display_name, exc, exc_info=True
-            )
+            logger.error("%s dispatch failed: %s", self.display_name, exc, exc_info=True)
             return "failed"
 
     # ------------------------------------------------------------------

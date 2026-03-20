@@ -1,7 +1,7 @@
 # Developer Setup Guide
 
 <cite>
-**Referenced Files in This Document**   
+**Referenced Files in This Document**  
 - [main.py](file://backend/main.py)
 - [requirements.txt](file://backend/requirements.txt)
 - [.env.example](file://backend/.env.example)

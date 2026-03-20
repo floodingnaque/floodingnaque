@@ -6,31 +6,31 @@
  * as well as mutations for acknowledging alerts.
  */
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  type UseQueryOptions,
-} from '@tanstack/react-query';
-import { alertsApi } from '../services/alertsApi';
-import type { SmsSimulationResponse } from '../services/alertsApi';
 import type {
   Alert,
-  AlertParams,
   AlertHistory,
-  PaginatedResponse,
+  AlertParams,
   ApiError,
-} from '@/types';
+  PaginatedResponse,
+} from "@/types";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryOptions,
+} from "@tanstack/react-query";
+import type { SmsSimulationResponse } from "../services/alertsApi";
+import { alertsApi } from "../services/alertsApi";
 
 /**
  * Query keys for alerts
  */
 export const alertKeys = {
-  all: ['alerts'] as const,
-  lists: () => [...alertKeys.all, 'list'] as const,
+  all: ["alerts"] as const,
+  lists: () => [...alertKeys.all, "list"] as const,
   list: (params?: AlertParams) => [...alertKeys.lists(), params] as const,
-  recent: (limit?: number) => [...alertKeys.all, 'recent', limit] as const,
-  history: () => [...alertKeys.all, 'history'] as const,
+  recent: (limit?: number) => [...alertKeys.all, "recent", limit] as const,
+  history: () => [...alertKeys.all, "history"] as const,
 };
 
 /**
@@ -47,12 +47,12 @@ export function useAlerts(
   params?: AlertParams,
   options?: Omit<
     UseQueryOptions<PaginatedResponse<Alert>, ApiError>,
-    'queryKey' | 'queryFn'
-  >
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: alertKeys.list(params),
-    queryFn: () => alertsApi.getAlerts(params),
+    queryFn: ({ signal }) => alertsApi.getAlerts(params, { signal }),
     ...options,
   });
 }
@@ -69,11 +69,11 @@ export function useAlerts(
  */
 export function useRecentAlerts(
   limit: number = 10,
-  options?: Omit<UseQueryOptions<Alert[], ApiError>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<Alert[], ApiError>, "queryKey" | "queryFn">,
 ) {
   return useQuery({
     queryKey: alertKeys.recent(limit),
-    queryFn: () => alertsApi.getRecentAlerts(limit),
+    queryFn: ({ signal }) => alertsApi.getRecentAlerts(limit, { signal }),
     ...options,
   });
 }
@@ -89,11 +89,14 @@ export function useRecentAlerts(
  * console.log(history?.summary.total);
  */
 export function useAlertHistory(
-  options?: Omit<UseQueryOptions<AlertHistory, ApiError>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<AlertHistory, ApiError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: alertKeys.history(),
-    queryFn: () => alertsApi.getAlertHistory(),
+    queryFn: ({ signal }) => alertsApi.getAlertHistory({ signal }),
     ...options,
   });
 }
@@ -123,12 +126,56 @@ export function useAcknowledgeAlert(options?: AcknowledgeMutationOptions) {
 
   return useMutation({
     mutationFn: (alertId: number) => alertsApi.acknowledgeAlert(alertId),
-    onSuccess: () => {
-      // Invalidate alerts queries to refetch fresh data
+    // Optimistic update: mark alert as acknowledged immediately in cache
+    onMutate: async (alertId: number) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: alertKeys.all });
+
+      // Snapshot all alert queries so we can rollback on error
+      const previousQueries = queryClient.getQueriesData<
+        PaginatedResponse<Alert> | Alert[]
+      >({ queryKey: alertKeys.all });
+
+      // Optimistically update any cached alert data
+      queryClient.setQueriesData<PaginatedResponse<Alert>>(
+        { queryKey: alertKeys.lists() },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.map((a) =>
+              a.id === alertId ? { ...a, acknowledged: true } : a,
+            ),
+          };
+        },
+      );
+
+      queryClient.setQueriesData<Alert[]>(
+        { queryKey: alertKeys.recent() },
+        (old) =>
+          old?.map((a) =>
+            a.id === alertId ? { ...a, acknowledged: true } : a,
+          ),
+      );
+
+      return { previousQueries };
+    },
+    onError: (_error, _alertId, context) => {
+      // Rollback to the previous cache state on failure
+      if (context?.previousQueries) {
+        for (const [queryKey, data] of context.previousQueries) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+      options?.onError?.(_error as unknown as ApiError);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure server truth
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
+    },
+    onSuccess: () => {
       options?.onSuccess?.();
     },
-    onError: options?.onError,
   });
 }
 
@@ -147,12 +194,46 @@ export function useAcknowledgeAll(options?: AcknowledgeMutationOptions) {
 
   return useMutation({
     mutationFn: () => alertsApi.acknowledgeAll(),
-    onSuccess: () => {
-      // Invalidate alerts queries to refetch fresh data
+    // Optimistic update: mark ALL alerts as acknowledged immediately
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: alertKeys.all });
+
+      const previousQueries = queryClient.getQueriesData<
+        PaginatedResponse<Alert> | Alert[]
+      >({ queryKey: alertKeys.all });
+
+      queryClient.setQueriesData<PaginatedResponse<Alert>>(
+        { queryKey: alertKeys.lists() },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            data: old.data.map((a) => ({ ...a, acknowledged: true })),
+          };
+        },
+      );
+
+      queryClient.setQueriesData<Alert[]>(
+        { queryKey: alertKeys.recent() },
+        (old) => old?.map((a) => ({ ...a, acknowledged: true })),
+      );
+
+      return { previousQueries };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previousQueries) {
+        for (const [queryKey, data] of context.previousQueries) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+      options?.onError?.(_error as unknown as ApiError);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
+    },
+    onSuccess: () => {
       options?.onSuccess?.();
     },
-    onError: options?.onError,
   });
 }
 

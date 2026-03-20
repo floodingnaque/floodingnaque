@@ -50,8 +50,10 @@ ALERT_COOLDOWN_SECONDS = int(os.getenv("ALERT_COOLDOWN_SECONDS", "600"))
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 class EscalationState(str, Enum):
     """Alert lifecycle states."""
+
     NONE = "none"
     WATCH = "watch"
     ALERT = "alert"
@@ -95,6 +97,7 @@ class _LocationAlertState:
 # ---------------------------------------------------------------------------
 # SmartAlertEvaluator singleton
 # ---------------------------------------------------------------------------
+
 
 class SmartAlertEvaluator:
     """
@@ -163,19 +166,13 @@ class SmartAlertEvaluator:
         rainfall_3h = self._compute_rainfall_3h(weather_data, location)
 
         # --- Step 2: Compute composite confidence -------------------------
-        composite_confidence = self._compute_composite_confidence(
-            model_confidence, data_quality
-        )
+        composite_confidence = self._compute_composite_confidence(model_confidence, data_quality)
 
         # --- Step 3: Detect contributing factors --------------------------
-        factors = self._detect_contributing_factors(
-            weather_data, risk_level, rainfall_3h
-        )
+        factors = self._detect_contributing_factors(weather_data, risk_level, rainfall_3h)
 
         # --- Step 4: Apply rainfall accumulation thresholds ---------------
-        risk_level, risk_label, rainfall_reason = self._apply_rainfall_thresholds(
-            risk_level, risk_label, rainfall_3h
-        )
+        risk_level, risk_label, rainfall_reason = self._apply_rainfall_thresholds(risk_level, risk_label, rainfall_3h)
         if rainfall_reason:
             factors.append(rainfall_reason)
 
@@ -184,25 +181,20 @@ class SmartAlertEvaluator:
         if risk_level == 1 and composite_confidence < CONFIDENCE_THRESHOLD:
             was_suppressed = True
             factors.append(
-                f"Suppressed: confidence {composite_confidence:.0%} < "
-                f"threshold {CONFIDENCE_THRESHOLD:.0%}"
+                f"Suppressed: confidence {composite_confidence:.0%} < " f"threshold {CONFIDENCE_THRESHOLD:.0%}"
             )
             logger.info(
                 "Smart alert SUPPRESSED for %s: confidence %.3f < %.3f",
-                location, composite_confidence, CONFIDENCE_THRESHOLD,
+                location,
+                composite_confidence,
+                CONFIDENCE_THRESHOLD,
             )
 
         # --- Step 6: Escalation / de-escalation state machine -------------
-        escalation_state, escalation_reason = self._update_escalation(
-            location, risk_level, now
-        )
+        escalation_state, escalation_reason = self._update_escalation(location, risk_level, now)
 
         # Apply escalation override
-        if (
-            escalation_state == EscalationState.CRITICAL
-            and risk_level < 2
-            and escalation_reason == "persisted_30min"
-        ):
+        if escalation_state == EscalationState.CRITICAL and risk_level < 2 and escalation_reason == "persisted_30min":
             risk_level = 2
             risk_label = "Critical"
             factors.append(f"Auto-escalated: Alert persisted ≥{ESCALATION_MINUTES} min")
@@ -211,9 +203,7 @@ class SmartAlertEvaluator:
         if risk_level == 2 and not was_suppressed:
             if self._is_in_cooldown(location, now):
                 was_suppressed = True
-                factors.append(
-                    f"Cooldown: duplicate Critical within {ALERT_COOLDOWN_SECONDS}s"
-                )
+                factors.append(f"Cooldown: duplicate Critical within {ALERT_COOLDOWN_SECONDS}s")
                 logger.info(
                     "Smart alert COOLDOWN for %s: duplicate Critical suppressed",
                     location,
@@ -242,12 +232,8 @@ class SmartAlertEvaluator:
             return {
                 "current_level": state.current_level,
                 "escalation_state": state.escalation_state.value,
-                "alert_started_at": (
-                    state.alert_started_at.isoformat() if state.alert_started_at else None
-                ),
-                "last_evaluated_at": (
-                    state.last_evaluated_at.isoformat() if state.last_evaluated_at else None
-                ),
+                "alert_started_at": (state.alert_started_at.isoformat() if state.alert_started_at else None),
+                "last_evaluated_at": (state.last_evaluated_at.isoformat() if state.last_evaluated_at else None),
                 "consecutive_alert_count": state.consecutive_alert_count,
                 "rolling_rainfall_3h": state.rolling_rainfall_3h,
             }
@@ -262,9 +248,7 @@ class SmartAlertEvaluator:
                 self._location_states[location] = _LocationAlertState()
             return self._location_states[location]
 
-    def _compute_rainfall_3h(
-        self, weather_data: Dict[str, Any], location: str
-    ) -> float:
+    def _compute_rainfall_3h(self, weather_data: Dict[str, Any], location: str) -> float:
         """
         Compute 3-hour rolling rainfall accumulation.
 
@@ -353,9 +337,7 @@ class SmartAlertEvaluator:
 
         return factors
 
-    def _apply_rainfall_thresholds(
-        self, risk_level: int, risk_label: str, rainfall_3h: float
-    ) -> tuple:
+    def _apply_rainfall_thresholds(self, risk_level: int, risk_label: str, rainfall_3h: float) -> tuple:
         """
         Force-upgrade risk level based on 3-hour rainfall accumulation
         thresholds, independent of ML model output.
@@ -373,9 +355,7 @@ class SmartAlertEvaluator:
             reason = f"Rainfall ≥{RAINFALL_3H_ALERT_THRESHOLD:.0f} mm/3h → Alert"
         return risk_level, risk_label, reason
 
-    def _update_escalation(
-        self, location: str, risk_level: int, now: datetime
-    ) -> tuple:
+    def _update_escalation(self, location: str, risk_level: int, now: datetime) -> tuple:
         """
         Update the escalation state machine for a location.
 
@@ -420,9 +400,10 @@ class SmartAlertEvaluator:
                         state.current_level = 2
                         reason = "persisted_30min"
                         logger.warning(
-                            "Alert ESCALATED to Critical for %s: "
-                            "persisted %.0f min (threshold=%d min)",
-                            location, elapsed, ESCALATION_MINUTES,
+                            "Alert ESCALATED to Critical for %s: " "persisted %.0f min (threshold=%d min)",
+                            location,
+                            elapsed,
+                            ESCALATION_MINUTES,
                         )
                         return state.escalation_state, reason
                 return state.escalation_state, None
@@ -449,9 +430,7 @@ class SmartAlertEvaluator:
 
             if state.escalation_state == EscalationState.WATCH:
                 if state.consecutive_safe_since:
-                    safe_minutes = (
-                        now - state.consecutive_safe_since
-                    ).total_seconds() / 60.0
+                    safe_minutes = (now - state.consecutive_safe_since).total_seconds() / 60.0
                     if safe_minutes >= DEESCALATION_MINUTES:
                         state.escalation_state = EscalationState.RESOLVED
                         state.current_level = 0
@@ -460,7 +439,8 @@ class SmartAlertEvaluator:
                         reason = "de-escalated"
                         logger.info(
                             "Alert RESOLVED for %s after %.0f min of safe conditions",
-                            location, safe_minutes,
+                            location,
+                            safe_minutes,
                         )
                         return state.escalation_state, reason
                 return state.escalation_state, "watching"
@@ -489,6 +469,7 @@ class SmartAlertEvaluator:
 # ---------------------------------------------------------------------------
 # Module-level convenience functions
 # ---------------------------------------------------------------------------
+
 
 def get_smart_evaluator() -> SmartAlertEvaluator:
     """Get the singleton SmartAlertEvaluator instance."""

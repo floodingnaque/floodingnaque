@@ -1,0 +1,775 @@
+# =============================================================================
+# FLOODINGNAQUE — Dependabot Supervised Auto-Resolver
+# =============================================================================
+#
+# PHILOSOPHY: "Trust but verify, then escalate clearly."
+#
+# Decision matrix:
+#  ┌─────────────────┬──────────┬──────────┬──────────────┐
+#  │ Update Type     │  Patch   │  Minor   │    Major     │
+#  ├─────────────────┼──────────┼──────────┼──────────────┤
+#  │ Safe package    │ AUTO ✅  │ AUTO ✅  │ HOLD 🔒     │
+#  │ Stability-crit  │ REVIEW ⚠ │ REVIEW ⚠ │ BLOCK 🚫    │
+#  │ Tests fail      │ BLOCK 🚫 │ BLOCK 🚫 │ BLOCK 🚫    │
+#  │ Security alert  │ AUTO ✅  │ AUTO ✅  │ REVIEW ⚠    │
+#  └─────────────────┴──────────┴──────────┴──────────────┘
+#
+# Stability-critical packages (never auto-merged):
+#   Backend:  flask, sqlalchemy, alembic, scikit-learn, pandas, gunicorn
+#   Frontend: react, react-dom, vite, typescript, tailwindcss
+#   Docker:   python base image, nginx base image
+# =============================================================================
+
+name: "🤖 Dependabot Supervised Auto-Resolver"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+  # Re-evaluate when a review is dismissed
+  pull_request_review:
+    types: [dismissed]
+
+  # Allow /recheck command to re-trigger via workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to re-check (set by /recheck command)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "22"
+
+jobs:
+  # ============================================================
+  # JOB 1: CLASSIFY
+  # Determine update type, ecosystem, and package risk level.
+  # All subsequent jobs depend on this classification.
+  # ============================================================
+  classify:
+    name: "🔍 Classify Update"
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    outputs:
+      update_type: ${{ steps.meta.outputs.update_type }}
+      ecosystem: ${{ steps.meta.outputs.ecosystem }}
+      package_name: ${{ steps.meta.outputs.package_name }}
+      is_stability_crit: ${{ steps.classify.outputs.is_stability_crit }}
+      is_security_fix: ${{ steps.classify.outputs.is_security_fix }}
+      decision: ${{ steps.classify.outputs.decision }}
+      decision_reason: ${{ steps.classify.outputs.decision_reason }}
+
+    steps:
+      - name: "Fetch Dependabot metadata"
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Classify risk level and set decision"
+        id: classify
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          PACKAGE_NAME: ${{ steps.meta.outputs.dependency-names }}
+          ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          IS_SECURITY: ${{ steps.meta.outputs.ghsa-id != '' }}
+        run: |
+          # ──────────────────────────────────────────────
+          # Stability-critical package list
+          # ──────────────────────────────────────────────
+          STABILITY_CRITICAL_BACKEND="flask sqlalchemy alembic scikit-learn \
+            sklearn pandas gunicorn celery redis psycopg2 psycopg2-binary \
+            weasyprint openpyxl joblib"
+
+          STABILITY_CRITICAL_FRONTEND="react react-dom vite typescript \
+            tailwindcss @types/react @types/react-dom \
+            tanstack/react-query zustand leaflet recharts"
+
+          ALL_CRITICAL="${STABILITY_CRITICAL_BACKEND} ${STABILITY_CRITICAL_FRONTEND}"
+
+          # Normalize: dependabot may list multiple packages separated by ", "
+          # We check if ANY listed package is in the critical list
+          IS_STABILITY_CRIT="false"
+          for pkg in $(echo "$PACKAGE_NAME" | tr ',' '\n' | tr -d ' ' | tr '[:upper:]' '[:lower:]'); do
+            for critical in $ALL_CRITICAL; do
+              if [[ "$pkg" == "$critical" ]]; then
+                IS_STABILITY_CRIT="true"
+                break 2
+              fi
+            done
+          done
+
+          # Docker base images are always stability-critical
+          if [[ "$ECOSYSTEM" == "docker" ]]; then
+            IS_STABILITY_CRIT="true"
+          fi
+
+          echo "is_stability_crit=${IS_STABILITY_CRIT}" >> "$GITHUB_OUTPUT"
+          echo "is_security_fix=${IS_SECURITY}"         >> "$GITHUB_OUTPUT"
+
+          # ──────────────────────────────────────────────
+          # Decision logic
+          # ──────────────────────────────────────────────
+          DECISION=""
+          REASON=""
+
+          if [[ "$UPDATE_TYPE" == "version-update:semver-major" ]]; then
+            if [[ "$IS_STABILITY_CRIT" == "true" ]]; then
+              DECISION="block"
+              REASON="Major update to a stability-critical package. Requires senior review, thorough testing, and explicit approval from @Ramil-Martizano before merge."
+            else
+              DECISION="hold_for_review"
+              REASON="Major version update. Auto-merge is disabled for all major bumps. Needs manual review to check for breaking changes in the changelog."
+            fi
+
+          elif [[ "$IS_STABILITY_CRIT" == "true" ]]; then
+            DECISION="hold_for_review"
+            REASON="Stability-critical package update. Tests must pass AND @Ramil-Martizano must explicitly approve before merge."
+
+          elif [[ "$IS_SECURITY" == "true" ]]; then
+            DECISION="auto_merge_security"
+            REASON="Security advisory fix (non-major, non-critical package). Auto-merging after tests pass."
+
+          elif [[ "$UPDATE_TYPE" == "version-update:semver-patch" || \
+                  "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
+            DECISION="auto_merge"
+            REASON="Safe minor/patch update for a non-critical package. Auto-merging after tests pass."
+
+          else
+            DECISION="hold_for_review"
+            REASON="Unknown update type '${UPDATE_TYPE}'. Defaulting to manual review for safety."
+          fi
+
+          echo "decision=${DECISION}"         >> "$GITHUB_OUTPUT"
+          echo "decision_reason=${REASON}"    >> "$GITHUB_OUTPUT"
+
+          echo "=== Classification Result ==="
+          echo "Package:         $PACKAGE_NAME"
+          echo "Ecosystem:       $ECOSYSTEM"
+          echo "Update type:     $UPDATE_TYPE"
+          echo "Is crit:         $IS_STABILITY_CRIT"
+          echo "Is security:     $IS_SECURITY"
+          echo "Decision:        $DECISION"
+          echo "Reason:          $REASON"
+
+  # ============================================================
+  # JOB 2: TEST — BACKEND (Python / pip)
+  # Mirrors the test job in ci.yml (SQLite fixtures, no services).
+  # ============================================================
+  test-backend:
+    name: "🐍 Backend Tests"
+    runs-on: ubuntu-latest
+    needs: classify
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      (needs.classify.outputs.ecosystem == 'pip' ||
+       needs.classify.outputs.ecosystem == 'docker')
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: "Install dependencies"
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: "Validate Alembic migrations"
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///test_migrations.db
+          SECRET_KEY: ci-migration-test-key
+        run: |
+          python -m alembic upgrade head
+          python -m alembic downgrade base
+          python -m alembic upgrade head
+
+      - name: "Run backend test suite"
+        id: pytest
+        working-directory: backend
+        env:
+          SECRET_KEY: ci-dependabot-test-key
+          APP_ENV: development
+          STARTUP_HEALTH_CHECK: "false"
+          SCHEDULER_ENABLED: "false"
+          ENV_VALIDATION_ENABLED: "false"
+          RATE_LIMIT_ENABLED: "false"
+          TESTING: "true"
+        run: |
+          python -m pytest tests/ \
+            -v \
+            -m "not model and not slow" \
+            --cov=app \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-report=json:coverage.json \
+            --tb=short \
+            --junitxml=test-results.xml \
+            -o "addopts=" 2>&1 | tee pytest_output.txt
+
+      - name: "Extract coverage percentage"
+        if: always()
+        id: coverage
+        working-directory: backend
+        run: |
+          if [ -f coverage.json ]; then
+            COVERAGE=$(python -c "import json; d=json.load(open('coverage.json')); print(round(d['totals']['percent_covered'], 1))")
+            echo "percent=${COVERAGE}" >> "$GITHUB_OUTPUT"
+          else
+            echo "percent=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Upload test results"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            backend/test-results.xml
+            backend/coverage.json
+            backend/coverage.xml
+            backend/pytest_output.txt
+          retention-days: 7
+
+      - name: "Check model loading (smoke test)"
+        working-directory: backend
+        env:
+          SECRET_KEY: ci-dependabot-test-key
+          APP_ENV: development
+          STARTUP_HEALTH_CHECK: "false"
+          SCHEDULER_ENABLED: "false"
+          ENV_VALIDATION_ENABLED: "false"
+        run: |
+          python -c "
+          import sys, os
+          sys.path.insert(0, '.')
+
+          from app.services.predict import ModelLoader
+
+          loader = ModelLoader.get_instance()
+          model = loader.model
+
+          if model is None:
+              print('⚠️  No model file found — skipping smoke test (expected on fresh CI)')
+              sys.exit(0)
+
+          print(f'✅ ML model loaded from: {loader.model_path}')
+
+          # Smoke test: predict with known safe inputs using the model's expected features
+          import pandas as pd
+          import numpy as np
+
+          feature_names = list(getattr(model, 'feature_names_in_', [
+              'temperature', 'humidity', 'precipitation', 'is_monsoon_season', 'month',
+              'temp_humidity_interaction', 'humidity_precip_interaction',
+              'monsoon_precip_interaction', 'saturation_risk',
+              'precip_3day_sum', 'precip_7day_sum', 'rain_streak', 'tide_height',
+          ]))
+
+          # Safe-weather input: moderate temp, low humidity, no rain
+          safe_input = {
+              'temperature': 29.0,
+              'humidity': 55.0,
+              'precipitation': 0.0,
+              'is_monsoon_season': 0,
+              'month': 3,
+              'temp_humidity_interaction': 29.0 * 55.0,
+              'humidity_precip_interaction': 55.0 * 0.0,
+              'monsoon_precip_interaction': 0 * 0.0,
+              'saturation_risk': 55.0 * 0.0 * 0,
+              'precip_3day_sum': 0.0,
+              'precip_7day_sum': 0.0,
+              'rain_streak': 0.0,
+              'tide_height': 0.5,
+          }
+
+          df = pd.DataFrame([{f: safe_input.get(f, 0.0) for f in feature_names}])
+          pred = model.predict(df)
+          proba = model.predict_proba(df)
+
+          print(f'✅ Smoke test passed — prediction: {pred[0]}, flood_prob: {proba[0][1]:.4f}')
+          assert proba[0][1] < 0.5, f'Expected low flood probability for safe input, got {proba[0][1]:.4f}'
+          print('✅ All model checks passed')
+
+          ModelLoader.reset_instance()
+          "
+
+  # ============================================================
+  # JOB 3: TEST — FRONTEND (npm)
+  # Mirrors the quality + test jobs in frontend-ci.yml.
+  # ============================================================
+  test-frontend:
+    name: "⚛️ Frontend Tests"
+    runs-on: ubuntu-latest
+    needs: classify
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      needs.classify.outputs.ecosystem == 'npm'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: "Install dependencies"
+        working-directory: frontend
+        run: npm ci
+
+      - name: "TypeScript type check"
+        id: typecheck
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: "ESLint"
+        id: lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: "Run Vitest unit tests"
+        id: vitest
+        working-directory: frontend
+        run: npx vitest run --coverage
+
+      - name: "Build check (Vite production build)"
+        id: build
+        working-directory: frontend
+        run: |
+          npx vite build 2>&1 | tee build_output.txt
+          if [ -d "dist" ]; then
+            BUILD_SIZE=$(du -sh dist | cut -f1)
+            echo "bundle_size=${BUILD_SIZE}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Upload frontend artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: |
+            frontend/build_output.txt
+            frontend/coverage/
+          retention-days: 7
+
+  # ============================================================
+  # JOB 4: TEST — GITHUB ACTIONS (lint workflow files)
+  # ============================================================
+  test-actions:
+    name: "⚙️ Actions Lint"
+    runs-on: ubuntu-latest
+    needs: classify
+    if: |
+      github.actor == 'dependabot[bot]' &&
+      needs.classify.outputs.ecosystem == 'github-actions'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: false
+
+      - name: "Validate workflow YAML syntax"
+        run: |
+          pip install yamllint
+          yamllint .github/workflows/ -d relaxed
+          echo "✅ All workflow YAML files are valid"
+
+      - name: "Check for deprecated action versions"
+        run: |
+          echo "Checking for deprecated patterns in workflow files..."
+          if grep -r "actions/checkout@v[23]" .github/workflows/; then
+            echo "⚠️  Deprecated checkout action version found — please update to v4"
+            exit 1
+          fi
+          echo "✅ No deprecated action versions found"
+
+  # ============================================================
+  # JOB 5: REPORT
+  # Posts a detailed decision comment on the PR.
+  # Runs after all tests, always (even on failure).
+  # ============================================================
+  report:
+    name: "📋 Post Decision Report"
+    runs-on: ubuntu-latest
+    needs: [classify, test-backend, test-frontend, test-actions]
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]'
+
+    steps:
+      - name: "Determine overall test result"
+        id: test_result
+        run: |
+          BACKEND_RESULT="${{ needs.test-backend.result }}"
+          FRONTEND_RESULT="${{ needs.test-frontend.result }}"
+          ACTIONS_RESULT="${{ needs.test-actions.result }}"
+
+          # A skipped job means it was not applicable — treat as pass
+          FAILED="false"
+          for result in "$BACKEND_RESULT" "$FRONTEND_RESULT" "$ACTIONS_RESULT"; do
+            if [[ "$result" == "failure" ]]; then
+              FAILED="true"
+              break
+            fi
+          done
+
+          echo "tests_failed=${FAILED}" >> "$GITHUB_OUTPUT"
+
+          if [[ "$FAILED" == "true" ]]; then
+            echo "overall=❌ FAILED" >> "$GITHUB_OUTPUT"
+          else
+            echo "overall=✅ PASSED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Post decision comment"
+        uses: actions/github-script@v7
+        env:
+          DECISION: ${{ needs.classify.outputs.decision }}
+          DECISION_REASON: ${{ needs.classify.outputs.decision_reason }}
+          UPDATE_TYPE: ${{ needs.classify.outputs.update_type }}
+          ECOSYSTEM: ${{ needs.classify.outputs.ecosystem }}
+          PACKAGE_NAME: ${{ needs.classify.outputs.package_name }}
+          IS_CRIT: ${{ needs.classify.outputs.is_stability_crit }}
+          IS_SECURITY: ${{ needs.classify.outputs.is_security_fix }}
+          TESTS_FAILED: ${{ steps.test_result.outputs.tests_failed }}
+          OVERALL: ${{ steps.test_result.outputs.overall }}
+          BACKEND_RESULT: ${{ needs.test-backend.result }}
+          FRONTEND_RESULT: ${{ needs.test-frontend.result }}
+          ACTIONS_RESULT: ${{ needs.test-actions.result }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const decision     = process.env.DECISION;
+            const reason       = process.env.DECISION_REASON;
+            const updateType   = process.env.UPDATE_TYPE.replace('version-update:semver-', '');
+            const ecosystem    = process.env.ECOSYSTEM;
+            const packageName  = process.env.PACKAGE_NAME;
+            const isCrit       = process.env.IS_CRIT === 'true';
+            const isSecurity   = process.env.IS_SECURITY === 'true';
+            const testsFailed  = process.env.TESTS_FAILED === 'true';
+            const overall      = process.env.OVERALL;
+
+            const backendResult  = process.env.BACKEND_RESULT;
+            const frontendResult = process.env.FRONTEND_RESULT;
+            const actionsResult  = process.env.ACTIONS_RESULT;
+
+            // ── Emoji helpers ──
+            const statusEmoji = (r) => ({
+              success: '✅', failure: '❌', skipped: '⏭️', cancelled: '⛔'
+            }[r] || '⏭️');
+
+            const decisionBadge = {
+              auto_merge:          '🟢 AUTO-MERGE',
+              auto_merge_security: '🔵 AUTO-MERGE (Security Fix)',
+              hold_for_review:     '🟡 HOLD — Manual Review Required',
+              block:               '🔴 BLOCKED — Do Not Merge',
+            }[decision] || '⚪ UNKNOWN';
+
+            const critBadge    = isCrit     ? '⚠️ YES — Stability-Critical'  : '✅ No';
+            const securityBadge = isSecurity ? '🔒 YES — Security Advisory'   : '✅ No';
+
+            // ── Final decision accounting for test failure ──
+            let finalDecision = decision;
+            let finalBadge    = decisionBadge;
+            if (testsFailed && (decision === 'auto_merge' || decision === 'auto_merge_security')) {
+              finalDecision = 'block';
+              finalBadge    = '🔴 BLOCKED — Tests Failed (was auto-merge candidate)';
+            }
+
+            const body = `## 🤖 Dependabot Auto-Resolver Report
+
+            | Field | Value |
+            |---|---|
+            | **Package** | \`${packageName}\` |
+            | **Ecosystem** | \`${ecosystem}\` |
+            | **Update type** | \`${updateType}\` |
+            | **Stability-critical?** | ${critBadge} |
+            | **Security advisory?** | ${securityBadge} |
+
+            ---
+
+            ### 🧪 Test Results — ${overall}
+
+            | Suite | Result |
+            |---|---|
+            | 🐍 Backend (pytest + model smoke test) | ${statusEmoji(backendResult)} ${backendResult} |
+            | ⚛️ Frontend (TypeScript + ESLint + Vitest + build) | ${statusEmoji(frontendResult)} ${frontendResult} |
+            | ⚙️ GitHub Actions (YAML lint) | ${statusEmoji(actionsResult)} ${actionsResult} |
+
+            > Download detailed logs from the **Actions → Artifacts** section of this PR.
+
+            ---
+
+            ### 📣 Decision: ${finalBadge}
+
+            **Reason:** ${testsFailed && decision.startsWith('auto_merge') ? `Tests failed — blocking auto-merge. Original decision was \`${decision}\`. Fix the failing tests, then push a new commit to re-trigger evaluation.\n\n> ⚠️ Original reason: ${reason}` : reason}
+
+            ---
+
+            ${finalDecision === 'auto_merge' || finalDecision === 'auto_merge_security' ? `
+            ### ✅ Next Step: Auto-merging
+
+            This PR will be automatically merged via squash commit.
+            The commit message will follow the \`chore(deps)\` convention from \`dependabot.yml\`.
+            ` : ''}
+
+            ${finalDecision === 'hold_for_review' ? `
+            ### 👀 Next Step: Manual Review Required
+
+            **@Ramil-Martizano** — please review this PR.
+
+            Checklist before approving:
+            - [ ] Read the package's CHANGELOG or release notes for breaking changes
+            - [ ] Confirm test suite passes locally with \`pytest tests/\` (backend) or \`npm test\` (frontend)
+            - [ ] Check that the ML model still loads and predicts correctly
+            - [ ] Verify the Flask \`/status\` endpoint returns healthy after the update
+            - [ ] Approve this PR to trigger auto-merge
+
+            Once approved, the auto-resolver will merge automatically.
+            ` : ''}
+
+            ${finalDecision === 'block' && !testsFailed ? `
+            ### 🚫 Next Step: Blocked — Do Not Merge
+
+            This PR is **blocked** from auto-merge. Reason: major update to a stability-critical package.
+
+            Required actions:
+            1. **@Ramil-Martizano** reads the full migration guide for \`${packageName}\`
+            2. Create a dedicated feature branch for this upgrade
+            3. Update all affected code (models, migrations, API endpoints) for compatibility
+            4. Run the full test suite and achieve ≥ 96.75% model accuracy (v6 baseline)
+            5. Get explicit approval from at least one additional reviewer
+            6. Merge manually — **never** via this auto-resolver
+
+            This PR can be closed and the upgrade handled in a dedicated ticket.
+            ` : ''}
+
+            ${finalDecision === 'block' && testsFailed ? `
+            ### 🚫 Next Step: Fix Failing Tests
+
+            1. Click **Details** next to the failing check above to see the error
+            2. Fix the root cause in the affected service
+            3. Push a new commit — this evaluator will re-run automatically
+            4. If the test failure is a pre-existing issue unrelated to this dependency bump,
+               comment \`/skip-test-check\` and @Ramil-Martizano will review manually
+            ` : ''}
+
+            ---
+            <sub>🤖 Floodingnaque Dependabot Auto-Resolver • Supervised mode • Never merges major updates or stability-critical packages without human approval</sub>`;
+
+            // Delete any previous bot comment to keep the PR clean
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            for (const comment of comments.data) {
+              if (comment.user.login === 'github-actions[bot]' &&
+                  comment.body.includes('Dependabot Auto-Resolver Report')) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo:  context.repo.repo,
+                  comment_id: comment.id,
+                });
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+  # ============================================================
+  # JOB 6: AUTO-MERGE
+  # Only runs when decision is auto_merge / auto_merge_security
+  # AND all tests passed.
+  # ============================================================
+  auto-merge:
+    name: "🚀 Auto-Merge"
+    runs-on: ubuntu-latest
+    needs: [classify, test-backend, test-frontend, test-actions, report]
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]' &&
+      (needs.classify.outputs.decision == 'auto_merge' ||
+       needs.classify.outputs.decision == 'auto_merge_security') &&
+      needs.test-backend.result  != 'failure' &&
+      needs.test-frontend.result != 'failure' &&
+      needs.test-actions.result  != 'failure'
+
+    steps:
+      - name: "Enable auto-merge (squash)"
+        uses: actions/github-script@v7
+        env:
+          DECISION: ${{ needs.classify.outputs.decision }}
+          ECOSYSTEM: ${{ needs.classify.outputs.ecosystem }}
+          UPDATE_TYPE: ${{ needs.classify.outputs.update_type }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            await github.rest.pulls.merge({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              pull_number:  context.issue.number,
+              merge_method: 'squash',
+              commit_title: `${pr.data.title} [auto-merged]`,
+              commit_message: [
+                'Automatically merged by Floodingnaque Dependabot Auto-Resolver.',
+                '',
+                `Decision: ${process.env.DECISION}`,
+                `Ecosystem: ${process.env.ECOSYSTEM}`,
+                `Update type: ${process.env.UPDATE_TYPE}`,
+                '',
+                'All tests passed. No stability-critical packages affected.',
+                'No breaking changes expected.',
+              ].join('\n'),
+            });
+
+  # ============================================================
+  # JOB 7: REQUEST REVIEW
+  # For hold_for_review decisions: adds a label and requests
+  # a formal review from Ramil-Martizano.
+  # ============================================================
+  request-review:
+    name: "👀 Request Human Review"
+    runs-on: ubuntu-latest
+    needs: [classify, report]
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]' &&
+      (needs.classify.outputs.decision == 'hold_for_review' ||
+       needs.classify.outputs.decision == 'block')
+
+    steps:
+      - name: "Apply appropriate label"
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const decision = '${{ needs.classify.outputs.decision }}';
+            const label    = decision === 'block'
+              ? 'automerge-blocked'
+              : 'needs-human-review';
+
+            // Ensure label exists
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                name:  label,
+                color: decision === 'block' ? 'b60205' : 'e4e669',
+              });
+            } catch (e) { /* Label already exists — ignore */ }
+
+            await github.rest.issues.addLabels({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.issue.number,
+              labels:       [label],
+            });
+
+      - name: "Request review from maintainer"
+        if: needs.classify.outputs.decision == 'hold_for_review'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                pull_number:  context.issue.number,
+                reviewers:    ['Ramil-Martizano'],
+              });
+            } catch (e) {
+              console.log('Could not request reviewer (may already be requested):', e.message);
+            }
+
+  # ============================================================
+  # JOB 8: APPROVE-THEN-MERGE
+  # Triggered when Ramil-Martizano approves a hold_for_review PR.
+  # Tests re-run; if they pass, the PR is merged automatically.
+  # ============================================================
+  approved-merge:
+    name: "✅ Approved — Merge After Re-Test"
+    runs-on: ubuntu-latest
+    needs: [classify, test-backend, test-frontend, test-actions]
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]' &&
+      needs.classify.outputs.decision == 'hold_for_review' &&
+      github.event_name == 'pull_request_review' &&
+      github.event.review.state == 'approved' &&
+      github.event.review.user.login == 'Ramil-Martizano' &&
+      needs.test-backend.result  != 'failure' &&
+      needs.test-frontend.result != 'failure' &&
+      needs.test-actions.result  != 'failure'
+
+    steps:
+      - name: "Merge approved PR (squash)"
+        uses: actions/github-script@v7
+        env:
+          PACKAGE_NAME: ${{ needs.classify.outputs.package_name }}
+          ECOSYSTEM: ${{ needs.classify.outputs.ecosystem }}
+          UPDATE_TYPE: ${{ needs.classify.outputs.update_type }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            await github.rest.pulls.merge({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              pull_number:  context.issue.number,
+              merge_method: 'squash',
+              commit_title: `${pr.data.title} [approved-merge]`,
+              commit_message: [
+                'Manually approved and merged by @Ramil-Martizano.',
+                'Auto-Resolver completed post-approval re-test before merge.',
+                '',
+                `Package:     ${process.env.PACKAGE_NAME}`,
+                `Ecosystem:   ${process.env.ECOSYSTEM}`,
+                `Update type: ${process.env.UPDATE_TYPE}`,
+              ].join('\n'),
+            });

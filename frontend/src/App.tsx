@@ -5,43 +5,119 @@
  * Integrates protected routes, layout, and toast notifications.
  */
 
-import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 
-import { Toaster } from '@/components/ui/sonner';
-import { PageLoader } from '@/components/feedback/PageLoader';
-import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
-import { RouteErrorBoundary, NotFoundFallback } from '@/components/feedback/RouteErrorBoundary';
-import { CookieConsent } from '@/components/feedback/CookieConsent';
+import { CookieConsent } from "@/components/feedback/CookieConsent";
+import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
+import { OfflineBanner } from "@/components/feedback/OfflineBanner";
+import { PageLoader } from "@/components/feedback/PageLoader";
+import {
+  NotFoundFallback,
+  RouteErrorBoundary,
+} from "@/components/feedback/RouteErrorBoundary";
+import { Toaster } from "@/components/ui/sonner";
 
 // Layout & Auth (loaded eagerly - always needed)
-import { Layout } from '@/app/layout';
-import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
-import { RequireRole } from '@/features/auth/components/RequireRole';
+import { Layout } from "@/app/layout";
+import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
+import { RequireRole } from "@/features/auth/components/RequireRole";
 
 // Lazy-loaded page components (code-split per route)
-const LoginPage    = lazy(() => import('@/app/login/page'));
-const ForgotPasswordPage = lazy(() => import('@/app/forgot-password/page'));
+const LoginPage = lazy(() => import("@/app/login/page"));
+const ForgotPasswordPage = lazy(() => import("@/app/forgot-password/page"));
+const RegisterPage = lazy(() => import("@/app/register/page"));
 const DashboardPage = lazy(() =>
-  import('@/app/page').then((m) => ({ default: m.DashboardPage }))
+  import("@/app/page").then((m) => ({ default: m.DashboardPage })),
 );
-const PredictPage  = lazy(() => import('@/app/predict/page'));
-const AlertsPage   = lazy(() => import('@/app/alerts/page'));
-const HistoryPage  = lazy(() => import('@/app/history/page'));
-const ReportsPage  = lazy(() => import('@/app/reports/page'));
-const SettingsPage = lazy(() => import('@/app/settings/page'));
-const AdminPage    = lazy(() => import('@/app/admin/page'));
-const MapPage      = lazy(() => import('@/app/map/page'));
-const AnalyticsPage = lazy(() => import('@/app/analytics/page'));
-const AdminUsersPage = lazy(() => import('@/app/admin/users/page'));
-const AdminLogsPage  = lazy(() => import('@/app/admin/logs/page'));
-const AdminBarangaysPage = lazy(() => import('@/app/admin/barangays/page'));
-const AdminDataPage  = lazy(() => import('@/app/admin/data/page'));
-const AdminModelsPage = lazy(() => import('@/app/admin/models/page'));
-const AdminConfigPage = lazy(() => import('@/app/admin/config/page'));
-const LandingPage  = lazy(() => import('@/app/landing/page'));
-const TermsPage    = lazy(() => import('@/app/terms/page'));
-const PrivacyPage  = lazy(() => import('@/app/privacy/page'));
+const PredictPage = lazy(() => import("@/app/predict/page"));
+const AlertsPage = lazy(() => import("@/app/alerts/page"));
+const HistoryPage = lazy(() => import("@/app/history/page"));
+const ReportsPage = lazy(() => import("@/app/reports/page"));
+const SettingsPage = lazy(() => import("@/app/settings/page"));
+const AdminPage = lazy(() => import("@/app/admin/page"));
+const MapPage = lazy(() => import("@/app/map/page"));
+const AnalyticsPage = lazy(() => import("@/app/analytics/page"));
+const AdminUsersPage = lazy(() => import("@/app/admin/users/page"));
+const AdminLogsPage = lazy(() => import("@/app/admin/logs/page"));
+const AdminBarangaysPage = lazy(() => import("@/app/admin/barangays/page"));
+const AdminDataPage = lazy(() => import("@/app/admin/data/page"));
+const AdminModelsPage = lazy(() => import("@/app/admin/models/page"));
+const AdminConfigPage = lazy(() => import("@/app/admin/config/page"));
+const AdminSecurityPage = lazy(() => import("@/app/admin/security/page"));
+const AdminMonitoringPage = lazy(() => import("@/app/admin/monitoring/page"));
+const CompliancePage = lazy(() => import("@/app/compliance/page"));
+const IncidentsPage = lazy(() => import("@/app/incidents/page"));
+const AdminStoragePage = lazy(() => import("@/app/admin/storage/page"));
+const AdminWorkflowPage = lazy(() => import("@/app/admin/workflow/page"));
+const AdminSensorPage = lazy(() => import("@/app/admin/sensor/page"));
+const LandingPage = lazy(() => import("@/app/landing/page"));
+const TermsPage = lazy(() => import("@/app/terms/page"));
+const PrivacyPage = lazy(() => import("@/app/privacy/page"));
+const CommunityPage = lazy(() => import("@/app/community/page"));
+const EvacuationPage = lazy(() => import("@/app/evacuation/page"));
+
+// Operator Dashboard
+const OperatorLayout = lazy(() => import("@/app/operator/layout"));
+const OperatorOverviewPage = lazy(() => import("@/app/operator/page"));
+const OperatorMapPage = lazy(() => import("@/app/operator/map/page"));
+const OperatorWeatherPage = lazy(() => import("@/app/operator/weather/page"));
+const OperatorTidesPage = lazy(() => import("@/app/operator/tides/page"));
+const OperatorIncidentsPage = lazy(
+  () => import("@/app/operator/incidents/page"),
+);
+const OperatorAlertsPage = lazy(() => import("@/app/operator/alerts/page"));
+const OperatorBroadcastPage = lazy(
+  () => import("@/app/operator/broadcast/page"),
+);
+const OperatorReportsPage = lazy(() => import("@/app/operator/reports/page"));
+const OperatorEvacuationPage = lazy(
+  () => import("@/app/operator/evacuation/page"),
+);
+const OperatorResidentsPage = lazy(
+  () => import("@/app/operator/residents/page"),
+);
+const OperatorPredictPage = lazy(() => import("@/app/operator/predict/page"));
+const OperatorAnalyticsPage = lazy(
+  () => import("@/app/operator/analytics/page"),
+);
+const OperatorAARPage = lazy(() => import("@/app/operator/aar/page"));
+const OperatorSettingsPage = lazy(() => import("@/app/operator/settings/page"));
+
+// Resident Dashboard
+const ResidentLayout = lazy(() => import("@/app/resident/layout"));
+const ResidentOverviewPage = lazy(() => import("@/app/resident/page"));
+const ResidentRiskPage = lazy(() => import("@/app/resident/risk/page"));
+const ResidentMapPage = lazy(() => import("@/app/resident/map/page"));
+const ResidentAlertsPage = lazy(() => import("@/app/resident/alerts/page"));
+const ResidentEmergencyPage = lazy(
+  () => import("@/app/resident/emergency/page"),
+);
+const ResidentEvacuationPage = lazy(
+  () => import("@/app/resident/evacuation/page"),
+);
+const ResidentReportPage = lazy(() => import("@/app/resident/report/page"));
+const ResidentCommunityPage = lazy(
+  () => import("@/app/resident/community/page"),
+);
+const ResidentMyReportsPage = lazy(
+  () => import("@/app/resident/my-reports/page"),
+);
+const ResidentGuidePage = lazy(() => import("@/app/resident/guide/page"));
+const ResidentPlanPage = lazy(() => import("@/app/resident/plan/page"));
+const ResidentHouseholdPage = lazy(
+  () => import("@/app/resident/profile/household/page"),
+);
+const ResidentSettingsPage = lazy(() => import("@/app/resident/settings/page"));
+
+/** Scrolls to top on pathname change (works with BrowserRouter) */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 /**
  * Main App component with route configuration
@@ -55,6 +131,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
 
@@ -62,53 +139,466 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               {/* Dashboard */}
-              <Route path="/dashboard" element={<RouteErrorBoundary><DashboardPage /></RouteErrorBoundary>} />
+              <Route
+                path="/dashboard"
+                element={
+                  <RouteErrorBoundary>
+                    <DashboardPage />
+                  </RouteErrorBoundary>
+                }
+              />
 
               {/* Main Application Routes */}
-              <Route path="/predict" element={<RouteErrorBoundary><PredictPage /></RouteErrorBoundary>} />
-              <Route path="/map" element={<RouteErrorBoundary><MapPage /></RouteErrorBoundary>} />
-              <Route path="/alerts" element={<RouteErrorBoundary><AlertsPage /></RouteErrorBoundary>} />
-              <Route path="/history" element={<RouteErrorBoundary><HistoryPage /></RouteErrorBoundary>} />
-              <Route path="/reports" element={<RouteErrorBoundary><ReportsPage /></RouteErrorBoundary>} />
-              <Route path="/analytics" element={<RouteErrorBoundary><AnalyticsPage /></RouteErrorBoundary>} />
-              <Route path="/settings" element={<RouteErrorBoundary><SettingsPage /></RouteErrorBoundary>} />
+              <Route
+                path="/predict"
+                element={
+                  <RouteErrorBoundary>
+                    <PredictPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/map"
+                element={
+                  <RouteErrorBoundary>
+                    <MapPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/alerts"
+                element={
+                  <RouteErrorBoundary>
+                    <AlertsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/history"
+                element={
+                  <RouteErrorBoundary>
+                    <HistoryPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <RouteErrorBoundary>
+                    <ReportsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <RouteErrorBoundary>
+                    <AnalyticsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RouteErrorBoundary>
+                    <SettingsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/compliance"
+                element={
+                  <RouteErrorBoundary>
+                    <CompliancePage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/incidents"
+                element={
+                  <RouteErrorBoundary>
+                    <IncidentsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/community"
+                element={
+                  <RouteErrorBoundary>
+                    <CommunityPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/evacuation"
+                element={
+                  <RouteErrorBoundary>
+                    <EvacuationPage />
+                  </RouteErrorBoundary>
+                }
+              />
 
               {/* Admin Routes (guarded by role) */}
-              <Route path="/admin" element={
-                <RequireRole role="admin">
-                  <RouteErrorBoundary><AdminPage /></RouteErrorBoundary>
+              <Route
+                path="/admin"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminUsersPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/logs"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminLogsPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/barangays"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminBarangaysPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/data"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminDataPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/models"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminModelsPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/config"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminConfigPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/security"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminSecurityPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/monitoring"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminMonitoringPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/storage"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminStoragePage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/workflow"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminWorkflowPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/sensor"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminSensorPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+            </Route>
+          </Route>
+
+          {/* ── Operator Dashboard Routes ─────────────────────────── */}
+          <Route element={<ProtectedRoute />}>
+            <Route
+              element={
+                <RequireRole requiredRole="operator">
+                  <OperatorLayout />
                 </RequireRole>
-              } />
-              <Route path="/admin/users" element={
-                <RequireRole role="admin">
-                  <RouteErrorBoundary><AdminUsersPage /></RouteErrorBoundary>
+              }
+            >
+              <Route
+                path="/operator"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorOverviewPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/map"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorMapPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/weather"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorWeatherPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/tides"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorTidesPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/incidents"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorIncidentsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/alerts"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorAlertsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/broadcast"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorBroadcastPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/reports"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorReportsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/evacuation"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorEvacuationPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/residents"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorResidentsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/predict"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorPredictPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/analytics"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorAnalyticsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/aar"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorAARPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/settings"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorSettingsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+            </Route>
+          </Route>
+
+          {/* ── Resident Dashboard Routes ─────────────────────────── */}
+          <Route element={<ProtectedRoute />}>
+            <Route
+              element={
+                <RequireRole requiredRole="user">
+                  <ResidentLayout />
                 </RequireRole>
-              } />
-              <Route path="/admin/logs" element={
-                <RequireRole role="admin">
-                  <RouteErrorBoundary><AdminLogsPage /></RouteErrorBoundary>
-                </RequireRole>
-              } />
-              <Route path="/admin/barangays" element={
-                <RequireRole role="admin">
-                  <RouteErrorBoundary><AdminBarangaysPage /></RouteErrorBoundary>
-                </RequireRole>
-              } />
-              <Route path="/admin/data" element={
-                <RequireRole role="admin">
-                  <RouteErrorBoundary><AdminDataPage /></RouteErrorBoundary>
-                </RequireRole>
-              } />
-              <Route path="/admin/models" element={
-                <RequireRole role="admin">
-                  <RouteErrorBoundary><AdminModelsPage /></RouteErrorBoundary>
-                </RequireRole>
-              } />
-              <Route path="/admin/config" element={
-                <RequireRole role="admin">
-                  <RouteErrorBoundary><AdminConfigPage /></RouteErrorBoundary>
-                </RequireRole>
-              } />
+              }
+            >
+              <Route
+                path="/resident"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentOverviewPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/risk"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentRiskPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/map"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentMapPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/alerts"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentAlertsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/emergency"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentEmergencyPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/evacuation"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentEvacuationPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/report"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentReportPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/community"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentCommunityPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/my-reports"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentMyReportsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/guide"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentGuidePage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/plan"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentPlanPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/profile/household"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentHouseholdPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/resident/settings"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentSettingsPage />
+                  </RouteErrorBoundary>
+                }
+              />
             </Route>
           </Route>
 
@@ -118,12 +608,13 @@ function App() {
       </Suspense>
 
       {/* Toast Notifications */}
-      <Toaster
-        position="top-right"
-        expand={false}
-        richColors
-        closeButton
-      />
+      <Toaster position="top-right" expand={false} richColors closeButton />
+
+      {/* Scroll to top on route change */}
+      <ScrollToTop />
+
+      {/* Offline Indicator */}
+      <OfflineBanner />
 
       {/* Cookie Consent Banner */}
       <CookieConsent />

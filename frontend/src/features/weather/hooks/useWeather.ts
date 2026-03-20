@@ -5,29 +5,32 @@
  * Provides queries for weather data, hourly forecasts, and statistics.
  */
 
-import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
-import { weatherApi } from '../services/weatherApi';
 import type {
+  ApiError,
+  DateRangeParams,
+  HourlyWeatherParams,
+  PaginatedResponse,
   WeatherData,
   WeatherDataParams,
-  HourlyWeatherParams,
   WeatherStats,
-  PaginatedResponse,
-  DateRangeParams,
-  ApiError,
-} from '@/types';
+} from "@/types";
+import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { weatherApi } from "../services/weatherApi";
 
 /**
  * Query keys for weather data
  */
 export const weatherKeys = {
-  all: ['weather'] as const,
-  data: () => [...weatherKeys.all, 'data'] as const,
-  dataList: (params?: WeatherDataParams) => [...weatherKeys.data(), params] as const,
-  hourly: () => [...weatherKeys.all, 'hourly'] as const,
-  hourlyList: (params?: HourlyWeatherParams) => [...weatherKeys.hourly(), params] as const,
-  stats: () => [...weatherKeys.all, 'stats'] as const,
-  statsByRange: (params?: DateRangeParams) => [...weatherKeys.stats(), params] as const,
+  all: ["weather"] as const,
+  data: () => [...weatherKeys.all, "data"] as const,
+  dataList: (params?: WeatherDataParams) =>
+    [...weatherKeys.data(), params] as const,
+  hourly: () => [...weatherKeys.all, "hourly"] as const,
+  hourlyList: (params?: HourlyWeatherParams) =>
+    [...weatherKeys.hourly(), params] as const,
+  stats: () => [...weatherKeys.all, "stats"] as const,
+  statsByRange: (params?: DateRangeParams) =>
+    [...weatherKeys.stats(), params] as const,
 };
 
 /**
@@ -44,12 +47,12 @@ export function useWeatherData(
   params?: WeatherDataParams,
   options?: Omit<
     UseQueryOptions<PaginatedResponse<WeatherData>, ApiError>,
-    'queryKey' | 'queryFn'
-  >
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: weatherKeys.dataList(params),
-    queryFn: () => weatherApi.getData(params),
+    queryFn: ({ signal }) => weatherApi.getData(params, { signal }),
     ...options,
   });
 }
@@ -66,11 +69,14 @@ export function useWeatherData(
  */
 export function useHourlyWeather(
   params?: HourlyWeatherParams,
-  options?: Omit<UseQueryOptions<WeatherData[], ApiError>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<WeatherData[], ApiError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: weatherKeys.hourlyList(params),
-    queryFn: () => weatherApi.getHourlyForecast(params),
+    queryFn: ({ signal }) => weatherApi.getHourlyForecast(params, { signal }),
     // Weather data doesn't change fast - 30 minutes stale time
     staleTime: 30 * 60 * 1000,
     ...options,
@@ -89,11 +95,14 @@ export function useHourlyWeather(
  */
 export function useWeatherStats(
   params?: DateRangeParams,
-  options?: Omit<UseQueryOptions<WeatherStats, ApiError>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<WeatherStats, ApiError>,
+    "queryKey" | "queryFn"
+  >,
 ) {
   return useQuery({
     queryKey: weatherKeys.statsByRange(params),
-    queryFn: () => weatherApi.getStats(params),
+    queryFn: ({ signal }) => weatherApi.getStats(params, { signal }),
     ...options,
   });
 }

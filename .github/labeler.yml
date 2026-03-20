@@ -1,0 +1,104 @@
+# =============================================================================
+# FLOODINGNAQUE — Auto-Labeler Configuration
+# Used by actions/labeler in pr-manager.yml
+# Docs: https://github.com/actions/labeler
+# =============================================================================
+
+# ── Area labels ──────────────────────────────────────────────────────────────
+
+area/backend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/**"
+          - "!backend/models/**"
+          - "!backend/app/services/predict.py"
+          - "!backend/alembic/versions/**"
+          - "!backend/scripts/train*.py"
+          - "!backend/scripts/retrain*.py"
+
+area/frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "frontend/**"
+
+area/ml-model:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/models/**"
+          - "backend/app/services/predict.py"
+          - "backend/scripts/train*.py"
+          - "backend/scripts/retrain*.py"
+          - "backend/scripts/generate_thesis_report.py"
+          - "backend/scripts/compare_models.py"
+          - "backend/config/training_config.yaml"
+
+area/database:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/alembic/**"
+          - "backend/app/models/**"
+          - "backend/alembic.ini"
+
+area/infrastructure:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "compose*.yaml"
+          - "**/Dockerfile"
+          - "**/Dockerfile.*"
+          - "nginx/**"
+          - "pgbouncer/**"
+          - "monitoring/**"
+          - ".github/workflows/**"
+
+area/weather-api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/app/services/weather*.py"
+          - "backend/app/services/meteostat*.py"
+          - "backend/app/services/manila_bay_tide_service.py"
+          - "backend/app/services/worldtides*.py"
+          - "backend/app/services/google_weather*.py"
+          - "backend/app/services/enso_service.py"
+          - "backend/app/services/pagasa*.py"
+
+area/docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+
+area/tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/tests/**"
+          - "frontend/src/**/*.test.*"
+          - "frontend/src/**/*.spec.*"
+          - "frontend/e2e/**"
+
+area/config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/.env*"
+          - "backend/config/**"
+          - "pyproject.toml"
+          - ".pre-commit-config.yaml"
+          - ".github/dependabot.yml"
+
+# ── Risk labels (used by enforcement rules) ──────────────────────────────────
+
+risk/ml-model-changed:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/models/**"
+          - "backend/app/services/predict.py"
+
+risk/db-migration:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/alembic/versions/**"
+
+risk/api-contract-change:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "backend/app/api/routes/**"
+          - "backend/app/api/schemas/**"

@@ -89,6 +89,7 @@ except ImportError:  # pragma: no cover
 # Configuration
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class XGBoostConfig:
     """Configuration for XGBoost classifier."""
@@ -226,6 +227,7 @@ LIGHTGBM_PARAM_GRID_FAST = {
 # Factory helpers
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 def create_xgboost_model(
     config: Optional[XGBoostConfig] = None,
     y_train: Optional[pd.Series] = None,
@@ -246,9 +248,7 @@ def create_xgboost_model(
     XGBClassifier
     """
     if not _XGBOOST_AVAILABLE:
-        raise ImportError(
-            "XGBoost is not installed. Install with: pip install xgboost>=2.1"
-        )
+        raise ImportError("XGBoost is not installed. Install with: pip install xgboost>=2.1")
 
     config = config or XGBoostConfig()
 
@@ -259,8 +259,7 @@ def create_xgboost_model(
         if pos > 0:
             config.scale_pos_weight = float(neg / pos)
             logger.info(
-                f"XGBoost scale_pos_weight auto-set to {config.scale_pos_weight:.2f} "
-                f"(neg={neg}, pos={pos})"
+                f"XGBoost scale_pos_weight auto-set to {config.scale_pos_weight:.2f} " f"(neg={neg}, pos={pos})"
             )
 
     return XGBClassifier(**config.to_xgb_params())
@@ -282,9 +281,7 @@ def create_lightgbm_model(
     LGBMClassifier
     """
     if not _LIGHTGBM_AVAILABLE:
-        raise ImportError(
-            "LightGBM is not installed. Install with: pip install lightgbm>=4.5"
-        )
+        raise ImportError("LightGBM is not installed. Install with: pip install lightgbm>=4.5")
 
     config = config or LightGBMConfig()
     return LGBMClassifier(**config.to_lgbm_params())
@@ -354,15 +351,17 @@ def create_ensemble_model(
 
     # ── Gradient Boosting (sklearn built-in, optional) ──────────────────────
     if ensemble_config.include_gradient_boosting:
-        estimators.append((
-            "gbm",
-            GradientBoostingClassifier(
-                n_estimators=200,
-                max_depth=6,
-                learning_rate=0.05,
-                random_state=ensemble_config.random_state,
-            ),
-        ))
+        estimators.append(
+            (
+                "gbm",
+                GradientBoostingClassifier(
+                    n_estimators=200,
+                    max_depth=6,
+                    learning_rate=0.05,
+                    random_state=ensemble_config.random_state,
+                ),
+            )
+        )
 
     if len(estimators) < 2:
         raise ValueError(
@@ -374,8 +373,7 @@ def create_ensemble_model(
     weights = ensemble_config.weights
     if weights and len(weights) != len(estimators):
         logger.warning(
-            f"Weight count ({len(weights)}) != estimator count ({len(estimators)}). "
-            "Falling back to equal weights."
+            f"Weight count ({len(weights)}) != estimator count ({len(estimators)}). " "Falling back to equal weights."
         )
         weights = None
 
@@ -387,8 +385,7 @@ def create_ensemble_model(
     )
 
     logger.info(
-        f"Ensemble created: {[name for name, _ in estimators]}, "
-        f"voting={ensemble_config.voting}, weights={weights}"
+        f"Ensemble created: {[name for name, _ in estimators]}, " f"voting={ensemble_config.voting}, weights={weights}"
     )
 
     return voter
@@ -397,6 +394,7 @@ def create_ensemble_model(
 # ═════════════════════════════════════════════════════════════════════════════
 # Model Comparison
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class ModelComparisonResult:
@@ -467,11 +465,7 @@ def compare_models(
         y_pred = model.predict(X_test)
         inference_time = (time.time() - t0) * 1000  # ms
 
-        y_proba = (
-            model.predict_proba(X_test)[:, 1]
-            if hasattr(model, "predict_proba")
-            else y_pred.astype(float)
-        )
+        y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred.astype(float)
 
         metrics = {
             "accuracy": float(accuracy_score(y_test, y_pred)),
@@ -617,6 +611,7 @@ def compare_models(
 # ═════════════════════════════════════════════════════════════════════════════
 # Availability checks
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 def get_available_algorithms() -> Dict[str, bool]:
     """Return which advanced ML frameworks are installed."""

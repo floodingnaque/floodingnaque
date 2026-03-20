@@ -6,15 +6,37 @@
  */
 
 // Components
-export { FloodMap, type FloodMapProps, type FloodMapRef } from './components/FloodMap';
-export { RiskMarkers, type RiskMarkersProps } from './components/RiskMarkers';
-export { LocationPicker, type LocationPickerProps, type SelectedLocation } from './components/LocationPicker';
-export { HazardOverlay, type HazardOverlayProps } from './components/HazardOverlay';
+export {
+  EvacuationMarkers,
+  type EvacuationMarkersProps,
+} from "./components/EvacuationMarkers";
+export {
+  FloodMap,
+  type FloodMapProps,
+  type FloodMapRef,
+} from "./components/FloodMap";
+export {
+  HazardOverlay,
+  type HazardOverlayProps,
+} from "./components/HazardOverlay";
+export {
+  LocationPicker,
+  type LocationPickerProps,
+  type SelectedLocation,
+} from "./components/LocationPicker";
+export {
+  MapLayerControl,
+  type BaseMapType,
+  type LayerVisibility,
+  type MapLayerControlProps,
+} from "./components/MapLayerControl";
+export { RiskMarkers, type RiskMarkersProps } from "./components/RiskMarkers";
 
 // Hooks
 export {
+  hazardMapKeys,
   useHazardMap,
-  type HazardMapData,
   type HazardFeature,
   type HazardFeatureProperties,
-} from './hooks/useHazardMap';
+  type HazardMapData,
+} from "./hooks/useHazardMap";

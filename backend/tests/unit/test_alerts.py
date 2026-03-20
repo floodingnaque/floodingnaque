@@ -6,7 +6,7 @@ Tests for app/services/alerts.py
 
 import os
 import smtplib
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
@@ -137,15 +137,18 @@ class TestAlertDelivery:
 
     # ----- Email delivery tests -----
 
-    @patch.dict(os.environ, {
-        "EMAIL_SANDBOX_MODE": "False",
-        "SMTP_HOST": "smtp.test.com",
-        "SMTP_PORT": "587",
-        "SMTP_USERNAME": "user@test.com",
-        "SMTP_PASSWORD": "pass",
-        "SMTP_FROM_EMAIL": "alerts@floodingnaque.com",
-        "SMTP_USE_TLS": "True",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "EMAIL_SANDBOX_MODE": "False",
+            "SMTP_HOST": "smtp.test.com",
+            "SMTP_PORT": "587",
+            "SMTP_USERNAME": "user@test.com",
+            "SMTP_PASSWORD": "pass",
+            "SMTP_FROM_EMAIL": "alerts@floodingnaque.com",
+            "SMTP_USE_TLS": "True",
+        },
+    )
     @patch("app.services.alerts.smtplib.SMTP")
     def test_email_delivery_via_smtp(self, mock_smtp_class):
         """Test email is delivered through SMTP when sandbox is off."""
@@ -173,13 +176,16 @@ class TestAlertDelivery:
         status = system._send_email(["user@example.com"], "Test", "Body")
         assert status == "sandbox"
 
-    @patch.dict(os.environ, {
-        "EMAIL_SANDBOX_MODE": "False",
-        "SMTP_HOST": "smtp.test.com",
-        "SMTP_PORT": "587",
-        "SMTP_USERNAME": "user@test.com",
-        "SMTP_PASSWORD": "pass",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "EMAIL_SANDBOX_MODE": "False",
+            "SMTP_HOST": "smtp.test.com",
+            "SMTP_PORT": "587",
+            "SMTP_USERNAME": "user@test.com",
+            "SMTP_PASSWORD": "pass",
+        },
+    )
     @patch("app.services.alerts.smtplib.SMTP")
     def test_email_smtp_failure_returns_failed(self, mock_smtp_class):
         """Test SMTP error results in 'failed' status."""

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from app.api.middleware.rate_limit import limiter
 from app.utils.api_constants import HTTP_OK, HTTP_SERVICE_UNAVAILABLE
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 from flask import Blueprint, g, jsonify
 
 logger = get_logger(__name__)

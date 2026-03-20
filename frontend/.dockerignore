@@ -1,13 +1,18 @@
-# Dependencies
+# =====================================================
+# Docker Ignore File for Floodingnaque Frontend
+# =====================================================
+
+# Dependencies (rebuilt in Docker)
 node_modules/
 
-# Build output
+# Build output (rebuilt in Docker)
 dist/
 
 # Test / coverage artifacts
 coverage/
 playwright-report/
 test-results/
+e2e/
 
 # Version control
 .git/
@@ -16,6 +21,7 @@ test-results/
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Editor / IDE
 .vscode/
@@ -24,8 +30,22 @@ test-results/
 *.swo
 
 # Documentation (not needed in image)
+docs/
 *.md
+!README.md
 
 # OS files
 Thumbs.db
 .DS_Store
+
+# Vercel (not needed in Docker)
+.vercel/
+.vercelignore
+vercel.json
+
+# Test config (not needed in image)
+vitest.config.ts
+playwright.config.ts
+
+# Logs
+*.log

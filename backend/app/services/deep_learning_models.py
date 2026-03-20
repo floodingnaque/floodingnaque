@@ -71,10 +71,7 @@ try:
 
     _torch_available = True
 except ImportError:
-    logger.info(
-        "PyTorch not installed. Deep learning models unavailable. "
-        "Install with: pip install torch"
-    )
+    logger.info("PyTorch not installed. Deep learning models unavailable. " "Install with: pip install torch")
 
 # Paths
 MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "models"
@@ -83,15 +80,13 @@ MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "models"
 def _check_torch():
     """Raise if PyTorch is not available."""
     if not _torch_available:
-        raise ImportError(
-            "PyTorch is required for deep learning models. "
-            "Install with: pip install torch"
-        )
+        raise ImportError("PyTorch is required for deep learning models. " "Install with: pip install torch")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Configuration
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class DeepLearningConfig:
@@ -135,6 +130,7 @@ class DeepLearningConfig:
 # ═════════════════════════════════════════════════════════════════════════════
 # Dataset
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class FloodSequenceDataset:
     """
@@ -222,7 +218,7 @@ class FloodSequenceDataset:
             X = np.nan_to_num(X, nan=0.0)
 
             for i in range(sequence_length, len(X)):
-                seq = X[i - sequence_length: i]
+                seq = X[i - sequence_length : i]
                 target = y[i]
                 all_sequences.append(seq)
                 all_targets.append(target)
@@ -373,9 +369,7 @@ if _torch_available:
 
             pe = torch.zeros(max_len, d_model)
             position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-            div_term = torch.exp(
-                torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
-            )
+            div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
             pe[:, 0::2] = torch.sin(position * div_term)
             pe[:, 1::2] = torch.cos(position * div_term[: d_model // 2])
             pe = pe.unsqueeze(0)  # (1, max_len, d_model)
@@ -416,9 +410,7 @@ if _torch_available:
             )
 
             # Positional encoding (generous max_len to handle variable-length inputs)
-            self.pos_encoder = PositionalEncoding(
-                d_model, max_len=500, dropout=config.dropout
-            )
+            self.pos_encoder = PositionalEncoding(d_model, max_len=500, dropout=config.dropout)
 
             # Transformer encoder
             encoder_layer = nn.TransformerEncoderLayer(
@@ -430,9 +422,7 @@ if _torch_available:
                 batch_first=True,
                 norm_first=True,  # Pre-norm for better training stability
             )
-            self.transformer = nn.TransformerEncoder(
-                encoder_layer, num_layers=config.num_layers
-            )
+            self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=config.num_layers)
 
             # CLS token for aggregation
             self.cls_token = nn.Parameter(torch.randn(1, 1, d_model))
@@ -485,6 +475,7 @@ if _torch_available:
 # Trainer
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class DeepLearningTrainer:
     """
     Training loop for FloodLSTM / FloodTransformer.
@@ -519,10 +510,7 @@ class DeepLearningTrainer:
 
         model = model.to(self.device)
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        logger.info(
-            f"Built {self.config.model_type.upper()} model: "
-            f"{n_params:,} trainable parameters"
-        )
+        logger.info(f"Built {self.config.model_type.upper()} model: " f"{n_params:,} trainable parameters")
         return model
 
     def train(
@@ -560,12 +548,8 @@ class DeepLearningTrainer:
             generator=torch.Generator().manual_seed(self.config.random_state),
         )
 
-        train_loader = DataLoader(
-            train_ds, batch_size=self.config.batch_size, shuffle=True, drop_last=True
-        )
-        val_loader = DataLoader(
-            val_ds, batch_size=self.config.batch_size, shuffle=False
-        )
+        train_loader = DataLoader(train_ds, batch_size=self.config.batch_size, shuffle=True, drop_last=True)
+        val_loader = DataLoader(val_ds, batch_size=self.config.batch_size, shuffle=False)
 
         # ── Class weight ────────────────────────────────────────────────────
         pos_weight = self.config.class_weight
@@ -577,9 +561,7 @@ class DeepLearningTrainer:
             pos_weight = n_neg / max(n_pos, 1)
             logger.info(f"Auto class weight: {pos_weight:.2f}")
 
-        criterion = nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor([pos_weight], device=self.device)
-        )
+        criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([pos_weight], device=self.device))
 
         # ── Optimiser & scheduler ───────────────────────────────────────────
         optimizer = torch.optim.AdamW(
@@ -587,9 +569,7 @@ class DeepLearningTrainer:
             lr=self.config.learning_rate,
             weight_decay=self.config.weight_decay,
         )
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=self.config.epochs, eta_min=1e-6
-        )
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.config.epochs, eta_min=1e-6)
 
         # ── Training loop ───────────────────────────────────────────────────
         best_val_loss = float("inf")
@@ -622,14 +602,16 @@ class DeepLearningTrainer:
             val_metrics = self._evaluate(val_loader, criterion)
             val_loss = val_metrics["loss"]
 
-            self.training_history.append({
-                "epoch": epoch,
-                "train_loss": avg_train_loss,
-                "val_loss": val_loss,
-                "val_accuracy": val_metrics.get("accuracy", 0),
-                "val_f1": val_metrics.get("f1_score", 0),
-                "lr": scheduler.get_last_lr()[0],
-            })
+            self.training_history.append(
+                {
+                    "epoch": epoch,
+                    "train_loss": avg_train_loss,
+                    "val_loss": val_loss,
+                    "val_accuracy": val_metrics.get("accuracy", 0),
+                    "val_f1": val_metrics.get("f1_score", 0),
+                    "lr": scheduler.get_last_lr()[0],
+                }
+            )
 
             # Log every 10 epochs
             if epoch % 10 == 0 or epoch == 1:
@@ -714,9 +696,7 @@ class DeepLearningTrainer:
 
         return metrics
 
-    def predict(
-        self, sequences: np.ndarray, return_proba: bool = True
-    ) -> Dict[str, Any]:
+    def predict(self, sequences: np.ndarray, return_proba: bool = True) -> Dict[str, Any]:
         """
         Make predictions on new sequences.
 
@@ -754,10 +734,7 @@ class DeepLearningTrainer:
 
         if path is None:
             MODELS_DIR.mkdir(parents=True, exist_ok=True)
-            path = str(
-                MODELS_DIR
-                / f"flood_{self.config.model_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt"
-            )
+            path = str(MODELS_DIR / f"flood_{self.config.model_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt")
 
         checkpoint = {
             "model_state_dict": self.model.state_dict(),
@@ -830,6 +807,7 @@ class DeepLearningTrainer:
 # Integration with UnifiedTrainer
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 def train_deep_learning_model(
     df: pd.DataFrame,
     feature_cols: List[str],
@@ -883,9 +861,7 @@ def train_deep_learning_model(
     )
 
     # Create dataset
-    dataset = FloodSequenceDataset.from_dataframe(
-        df, available, target_col=target_col, sequence_length=sequence_length
-    )
+    dataset = FloodSequenceDataset.from_dataframe(df, available, target_col=target_col, sequence_length=sequence_length)
 
     # Train
     trainer = DeepLearningTrainer(config=config)

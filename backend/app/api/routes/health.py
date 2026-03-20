@@ -16,7 +16,7 @@ from app.api.middleware.rate_limit import get_endpoint_limit, limiter
 from app.models.db import get_db_session, get_pool_status
 from app.services.predict import get_current_model_info
 from app.services.scheduler import scheduler
-from app.utils.sentry import is_sentry_enabled
+from app.utils.observability.sentry import is_sentry_enabled
 from flask import Blueprint, jsonify, request
 from sqlalchemy import text
 
@@ -86,7 +86,7 @@ def check_external_api_health() -> dict:
         dict: External API circuit breaker status
     """
     try:
-        from app.utils.circuit_breaker import meteostat_breaker, openweathermap_breaker, weatherstack_breaker
+        from app.utils.resilience.circuit_breaker import meteostat_breaker, openweathermap_breaker, weatherstack_breaker
 
         return {
             "openweathermap": openweathermap_breaker.get_status(),
@@ -147,7 +147,7 @@ def check_cache_health() -> dict:
         dict: Cache health status
     """
     try:
-        from app.utils.cache import get_cache_stats
+        from app.utils.resilience.cache import get_cache_stats
 
         return get_cache_stats()
     except ImportError:
@@ -402,17 +402,28 @@ def health():
     }
 
     if model_info:
+        model_path = model_info.get("model_path", "")
+        model_file = os.path.basename(model_path) if model_path else None
+        file_size_bytes = None
+        checksum = model_info.get("checksum")
+        if model_path and os.path.isfile(model_path):
+            file_size_bytes = os.path.getsize(model_path)
+
         response["model"] = {
             "loaded": True,
             "type": model_info.get("model_type"),
-            # Don't expose internal file paths
             "features_count": len(model_info.get("features", [])),
+            "model_file": model_file,
+            "file_size_bytes": file_size_bytes,
+            "checksum": checksum,
         }
         if model_info.get("metadata"):
             metadata = model_info["metadata"]
             response["model"]["version"] = metadata.get("version")
             response["model"]["created_at"] = metadata.get("created_at")
             response["model"]["metrics"] = metadata.get("metrics", {})
+            response["model"]["training_data"] = metadata.get("training_data", {})
+            response["model"]["model_parameters"] = metadata.get("model_parameters", {})
     else:
         response["model"] = {"loaded": False}
 

@@ -1,12 +1,9 @@
-import tailwindcssAnimate from "tailwindcss-animate"
+import tailwindcssAnimate from "tailwindcss-animate";
 
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     container: {
       center: true,
@@ -17,8 +14,18 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont',
-               'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -56,17 +63,17 @@ export default {
         },
         // Custom flood-related colors
         flood: {
-          low: "#22c55e",
-          moderate: "#eab308",
+          low: "hsl(var(--risk-safe))",
+          moderate: "hsl(var(--risk-alert))",
           high: "#f97316",
-          severe: "#ef4444",
+          severe: "hsl(var(--risk-critical))",
           extreme: "#7c3aed",
         },
-        // Design system risk colors (aligned with thesis spec)
+        // Design system risk colors — single source of truth via CSS vars
         risk: {
-          safe: "#28A745",
-          alert: "#FFC107",
-          critical: "#DC3545",
+          safe: "hsl(var(--risk-safe))",
+          alert: "hsl(var(--risk-alert))",
+          critical: "hsl(var(--risk-critical))",
         },
       },
       borderRadius: {
@@ -83,12 +90,22 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "slide-up": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fade-in 0.3s ease-out",
+        "slide-up": "slide-up 0.3s ease-out",
       },
     },
   },
   plugins: [tailwindcssAnimate],
-}
+};

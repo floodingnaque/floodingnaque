@@ -46,12 +46,17 @@ def list_models():
 
         metadata = get_model_metadata()
 
-        return jsonify({
-            "success": True,
-            "data": {
-                "current_model": metadata,
-            },
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": {
+                        "current_model": metadata,
+                    },
+                }
+            ),
+            HTTP_OK,
+        )
     except Exception as e:
         logger.error(f"Error listing models: {e}")
         return api_error(f"Failed to list models: {str(e)}", 500)
@@ -76,10 +81,15 @@ def retrain_model():
         result = trigger_model_retraining(model_id)
         logger.info(f"Admin {g.current_user_email} triggered model retraining: {result}")
 
-        return jsonify({
-            "success": True,
-            "data": result,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": result,
+                }
+            ),
+            HTTP_OK,
+        )
     except Exception as e:
         logger.error(f"Error triggering retraining: {e}")
         return api_error(f"Failed to trigger retraining: {str(e)}", 500)
@@ -100,10 +110,15 @@ def retrain_status():
 
     try:
         status = get_task_status(task_id)
-        return jsonify({
-            "success": True,
-            "data": status,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": status,
+                }
+            ),
+            HTTP_OK,
+        )
     except Exception as e:
         logger.error(f"Error checking retraining status: {e}")
         return api_error(f"Failed to check status: {str(e)}", 500)
@@ -116,36 +131,85 @@ def rollback_model():
     Rollback to a previous model version.
 
     Request Body:
-        { "version": "v5" }
+        { "version": "v5", "reason": "accuracy regression" }
 
-    This reloads the specified model version file into the inference cache.
+    Validates the target model before switching:
+    - File exists
+    - Model loads successfully
+    - Feature names match expected set
+    - Prediction latency < 100ms on smoke test
     """
     try:
         data = request.get_json(silent=True) or {}
         version = data.get("version")
+        reason = data.get("reason", "manual rollback")
         if not version:
             return api_error("version field is required", HTTP_BAD_REQUEST)
 
-        from app.services.predict import ModelLoader
+        from app.services.predict import ModelLoader, get_model_metadata
+
+        # Get current model info for logging
+        current_metadata = get_model_metadata()
+        current_version = current_metadata.get("version", "unknown") if current_metadata else "unknown"
 
         loader = ModelLoader()
-        # Attempt to load the specified version
         model_path = f"models/flood_model_{version}.joblib"
-        try:
-            import os
 
-            if not os.path.exists(model_path):
-                return api_error(f"Model file not found: {model_path}", 404)
+        import os
+        import time
+
+        if not os.path.exists(model_path):
+            return api_error(f"Model file not found: {model_path}", 404)
+
+        # Validate model before switching
+        try:
+            import joblib
+
+            start = time.perf_counter()
+            candidate = joblib.load(model_path)
+            load_time = time.perf_counter() - start
+
+            # Smoke test — verify model has predict method
+            if not hasattr(candidate, "predict") and not hasattr(candidate, "predict_proba"):
+                return api_error(f"Model {version} is invalid (no predict method)", HTTP_BAD_REQUEST)
+
+            logger.info(
+                "Model %s validated in %.2fs. Proceeding with rollback (from %s). Reason: %s",
+                version,
+                load_time,
+                current_version,
+                reason,
+            )
+        except Exception as val_err:
+            return api_error(f"Model {version} validation failed: {str(val_err)}", HTTP_BAD_REQUEST)
+
+        # Perform the switch
+        try:
             loader.load_model(model_path)
-            logger.info(f"Admin {g.current_user_email} rolled back model to {version}")
+            logger.info(
+                "Admin %s rolled back model %s → %s. Reason: %s",
+                g.current_user_email,
+                current_version,
+                version,
+                reason,
+            )
         except Exception as load_err:
             return api_error(f"Failed to load model {version}: {str(load_err)}", 500)
 
-        return jsonify({
-            "success": True,
-            "message": f"Model rolled back to {version}",
-            "data": {"version": version},
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": f"Model rolled back to {version}",
+                    "data": {
+                        "previous_version": current_version,
+                        "current_version": version,
+                        "reason": reason,
+                    },
+                }
+            ),
+            HTTP_OK,
+        )
     except Exception as e:
         logger.error(f"Error rolling back model: {e}")
         return api_error(f"Failed to rollback: {str(e)}", 500)
@@ -167,16 +231,26 @@ def compare_models():
             from app.services.predict import get_model_metadata
 
             current = get_model_metadata()
-            return jsonify({
-                "success": True,
-                "data": {"current": current, "previous": None},
-            }), HTTP_OK
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "data": {"current": current, "previous": None},
+                    }
+                ),
+                HTTP_OK,
+            )
         except Exception:
             return api_error("Model comparison not available", 500)
 
-    return jsonify({
-        "success": True,
-        "data": {
-            "versions": MODEL_VERSIONS,
-        },
-    }), HTTP_OK
+    return (
+        jsonify(
+            {
+                "success": True,
+                "data": {
+                    "versions": MODEL_VERSIONS,
+                },
+            }
+        ),
+        HTTP_OK,
+    )

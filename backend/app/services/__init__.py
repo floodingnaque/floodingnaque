@@ -87,7 +87,6 @@ from app.services.pagasa_bulletin_service import (
     PAGASARainfallBulletinService,
     get_pagasa_bulletin_service,
 )
-
 from app.services.predict import ModelLoader, get_current_model_info, predict_flood
 
 # Risk classification

@@ -18,23 +18,23 @@ read_secret() {
     local var_name="$1"
     local default_value="$2"
     local file_var_name="${var_name}_FILE"
-    
+
     # Get the value of the _FILE variable
     eval "local file_path=\${$file_var_name:-}"
-    
+
     if [ -n "$file_path" ] && [ -f "$file_path" ]; then
         # Read from file, trim whitespace
         cat "$file_path" | tr -d '\n\r'
         return
     fi
-    
+
     # Fall back to direct environment variable
     eval "local env_value=\${$var_name:-}"
     if [ -n "$env_value" ]; then
         echo "$env_value"
         return
     fi
-    
+
     # Return default if nothing else works
     echo "$default_value"
 }

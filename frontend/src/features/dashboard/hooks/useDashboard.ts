@@ -5,15 +5,15 @@
  * with automatic refresh capabilities.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { dashboardApi, type DashboardStats } from '../services/dashboardApi';
+import { useQuery } from "@tanstack/react-query";
+import { dashboardApi, type DashboardStats } from "../services/dashboardApi";
 
 /**
  * Query keys for dashboard-related queries
  */
 export const dashboardQueryKeys = {
-  all: ['dashboard'] as const,
-  stats: () => [...dashboardQueryKeys.all, 'stats'] as const,
+  all: ["dashboard"] as const,
+  stats: () => [...dashboardQueryKeys.all, "stats"] as const,
 };
 
 /**
@@ -29,7 +29,7 @@ export const dashboardQueryKeys = {
 export function useDashboardStats() {
   return useQuery<DashboardStats>({
     queryKey: dashboardQueryKeys.stats(),
-    queryFn: dashboardApi.getStats,
+    queryFn: ({ signal }) => dashboardApi.getStats({ signal }),
     staleTime: 1000 * 60, // 1 minute
     refetchInterval: 1000 * 60 * 5, // 5 minutes
     refetchIntervalInBackground: false, // Don't refetch when tab is hidden

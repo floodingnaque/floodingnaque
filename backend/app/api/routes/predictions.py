@@ -19,6 +19,7 @@ from app.utils.api_constants import (
 from app.utils.api_responses import api_error
 from flask import Blueprint, g, jsonify, request
 from sqlalchemy import asc, desc, func
+from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +180,9 @@ def get_predictions():
             else:
                 query = query.order_by(asc(sort_column))
 
+            # Eager-load weather data to include inputs in response
+            query = query.options(joinedload(Prediction.weather_data))
+
             # Single-pass: window function for total count + pagination
             total_col = func.count().over().label("_total")
             query = query.add_columns(total_col)
@@ -191,19 +195,28 @@ def get_predictions():
             # Format response
             predictions_data = []
             for pred in predictions:
-                predictions_data.append(
-                    {
-                        "id": pred.id,
-                        "weather_data_id": pred.weather_data_id,
-                        "prediction": pred.prediction,
-                        "risk_level": pred.risk_level,
-                        "risk_label": pred.risk_label,
-                        "confidence": pred.confidence,
-                        "model_version": pred.model_version,
-                        "model_name": pred.model_name,
-                        "created_at": pred.created_at.isoformat() if pred.created_at else None,
+                record = {
+                    "id": pred.id,
+                    "weather_data_id": pred.weather_data_id,
+                    "prediction": pred.prediction,
+                    "risk_level": pred.risk_level,
+                    "risk_label": pred.risk_label,
+                    "confidence": pred.confidence,
+                    "model_version": pred.model_version,
+                    "model_name": pred.model_name,
+                    "created_at": pred.created_at.isoformat() if pred.created_at else None,
+                }
+                # Include weather inputs when available
+                wd = pred.weather_data
+                if wd:
+                    record["weather_data"] = {
+                        "temperature": wd.temperature,
+                        "humidity": wd.humidity,
+                        "precipitation": wd.precipitation,
+                        "wind_speed": wd.wind_speed,
+                        "pressure": wd.pressure,
                     }
-                )
+                predictions_data.append(record)
 
         return (
             jsonify(
@@ -256,6 +269,7 @@ def get_prediction_by_id(prediction_id):
         with get_db_session() as session:
             prediction = (
                 session.query(Prediction)
+                .options(joinedload(Prediction.weather_data))
                 .filter(Prediction.id == prediction_id, Prediction.is_deleted.is_(False))
                 .first()
             )
@@ -277,20 +291,18 @@ def get_prediction_by_id(prediction_id):
                 "created_at": prediction.created_at.isoformat() if prediction.created_at else None,
             }
 
-            # Include associated weather data if available
-            if prediction.weather_data_id:
-                weather = session.query(WeatherData).filter(WeatherData.id == prediction.weather_data_id).first()
-
-                if weather:
-                    prediction_data["weather_data"] = {
-                        "id": weather.id,
-                        "temperature": weather.temperature,
-                        "humidity": weather.humidity,
-                        "precipitation": weather.precipitation,
-                        "wind_speed": weather.wind_speed,
-                        "pressure": weather.pressure,
-                        "timestamp": weather.timestamp.isoformat() if weather.timestamp else None,
-                    }
+            # Include associated weather data (eagerly loaded via relationship)
+            if prediction.weather_data:
+                weather = prediction.weather_data
+                prediction_data["weather_data"] = {
+                    "id": weather.id,
+                    "temperature": weather.temperature,
+                    "humidity": weather.humidity,
+                    "precipitation": weather.precipitation,
+                    "wind_speed": weather.wind_speed,
+                    "pressure": weather.pressure,
+                    "timestamp": weather.timestamp.isoformat() if weather.timestamp else None,
+                }
 
         return jsonify({"success": True, "data": prediction_data, "request_id": request_id}), HTTP_OK
 

@@ -10,37 +10,33 @@
  * non-essential cookies are set until the user gives consent.
  */
 
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Cookie, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
+import { Cookie, X } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
-const STORAGE_KEY = 'cookie-consent';
+const STORAGE_KEY = "cookie-consent";
 
-type ConsentValue = 'accepted' | 'declined';
+type ConsentValue = "accepted" | "declined";
 
 /**
  * Renders a fixed-position cookie consent banner.
  * Automatically hidden once the user makes a choice.
  */
 export function CookieConsent() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
+  const [visible, setVisible] = useState(() => {
     // Show the banner only when no preference has been stored
     const stored = localStorage.getItem(STORAGE_KEY) as ConsentValue | null;
-    if (!stored) {
-      setVisible(true);
-    }
-  }, []);
+    return !stored;
+  });
 
   function handleAccept() {
-    localStorage.setItem(STORAGE_KEY, 'accepted' satisfies ConsentValue);
+    localStorage.setItem(STORAGE_KEY, "accepted" satisfies ConsentValue);
     setVisible(false);
   }
 
   function handleDecline() {
-    localStorage.setItem(STORAGE_KEY, 'declined' satisfies ConsentValue);
+    localStorage.setItem(STORAGE_KEY, "declined" satisfies ConsentValue);
     setVisible(false);
   }
 
@@ -55,11 +51,17 @@ export function CookieConsent() {
       <div className="container mx-auto flex flex-col items-center gap-4 px-4 py-4 sm:flex-row sm:justify-between">
         {/* Message */}
         <div className="flex items-start gap-3 text-sm text-muted-foreground">
-          <Cookie className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <Cookie
+            className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+            aria-hidden="true"
+          />
           <p>
-            We use essential cookies to keep the application running and optional
-            analytics cookies to improve your experience.{' '}
-            <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
+            We use essential cookies to keep the application running and
+            optional analytics cookies to improve your experience.{" "}
+            <Link
+              to="/privacy"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
               Learn more
             </Link>
           </p>

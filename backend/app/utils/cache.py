@@ -8,10 +8,9 @@ _warnings.warn(
     stacklevel=2,
 )
 
-from app.utils.resilience.cache import *  # noqa: F401, F403, E402
-
 # Private names are skipped by `import *` - re-export them explicitly so
 # existing tests / call-sites that reference them keep working.
+from app.utils.resilience.cache import *  # noqa: F401, F403, E402
 from app.utils.resilience.cache import (  # noqa: F401, E402
     _cache_enabled,
     _make_cache_key,

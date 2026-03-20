@@ -334,7 +334,7 @@ def deprecated_endpoints():
 @pytest.fixture
 def mock_metrics_extended():
     """Mock Prometheus metrics for testing without Prometheus installed."""
-    with patch("app.utils.metrics._metrics") as mock:
+    with patch("app.utils.observability.metrics._metrics") as mock:
         mock.predictions_total = MagicMock()
         mock.external_api_calls_total = MagicMock()
         mock.db_pool_connections = MagicMock()

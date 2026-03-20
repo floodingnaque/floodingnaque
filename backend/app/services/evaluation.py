@@ -286,10 +286,7 @@ def evaluate_system_for_thesis() -> Dict:
     # -----------------------------------------------------------------
     dataset_path = _Path(__file__).resolve().parent.parent.parent / "data" / "processed" / "training_dataset_v2.csv"
     if not dataset_path.exists():
-        raise FileNotFoundError(
-            f"Training dataset not found at {dataset_path}. "
-            "Run the data pipeline first."
-        )
+        raise FileNotFoundError(f"Training dataset not found at {dataset_path}. " "Run the data pipeline first.")
 
     df = pd.read_csv(dataset_path)
     if "flood" not in df.columns:
@@ -298,17 +295,20 @@ def evaluate_system_for_thesis() -> Dict:
     from sklearn.model_selection import train_test_split
 
     feature_cols = ["temperature", "humidity", "precipitation"]
-    optional_cols = ["wind_speed", "precip_3day_sum", "precip_7day_sum",
-                     "is_monsoon_season", "temp_humidity_interaction"]
+    optional_cols = [
+        "wind_speed",
+        "precip_3day_sum",
+        "precip_7day_sum",
+        "is_monsoon_season",
+        "temp_humidity_interaction",
+    ]
     feature_cols = [c for c in feature_cols + optional_cols if c in df.columns]
     df_clean = df[feature_cols + ["flood"]].dropna()
 
     X = df_clean[feature_cols]
     y = df_clean["flood"].astype(int)
 
-    _, X_test, _, y_test = train_test_split(
-        X, y, test_size=0.20, random_state=42, stratify=y
-    )
+    _, X_test, _, y_test = train_test_split(X, y, test_size=0.20, random_state=42, stratify=y)
 
     # Run predictions through the real model
     from app.services.predict import predict_flood

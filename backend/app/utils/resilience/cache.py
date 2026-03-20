@@ -22,6 +22,22 @@ _redis_client = None
 _cache_enabled = None
 
 
+def init_redis():
+    """
+    Eagerly initialize Redis connection at app startup.
+
+    Call from create_app() to avoid lazy initialization race conditions
+    and first-request latency. Falls back gracefully if Redis is not
+    configured or unavailable.
+    """
+    client = get_redis_client()
+    if client:
+        logger.info("Redis connection pre-warmed at startup")
+    else:
+        logger.info("Redis not available — caching disabled")
+    return client
+
+
 def get_redis_client():
     """
     Get or create a Redis client connection.
@@ -243,14 +259,24 @@ def cached(prefix: str, ttl: Union[int, timedelta] = 300, key_builder: Optional[
             cached_value = cache_get(cache_key)
             if cached_value is not None:
                 logger.debug(f"Cache hit: {cache_key}")
+                # Reconstruct Flask response tuple if cached as such
+                if isinstance(cached_value, dict) and cached_value.get("__flask_response__"):
+                    from flask import jsonify
+
+                    return jsonify(cached_value["data"]), cached_value["status"]
                 return cached_value
 
             # Execute function
             result = func(*args, **kwargs)
 
-            # Cache result
+            # Cache result — handle Flask response tuples (Response, status_code)
             if result is not None:
-                cache_set(cache_key, result, ttl)
+                to_cache = result
+                if isinstance(result, tuple) and len(result) == 2:
+                    resp_obj, status_code = result
+                    if hasattr(resp_obj, "get_json"):
+                        to_cache = {"__flask_response__": True, "data": resp_obj.get_json(), "status": status_code}
+                cache_set(cache_key, to_cache, ttl)
                 logger.debug(f"Cache set: {cache_key}")
 
             return result

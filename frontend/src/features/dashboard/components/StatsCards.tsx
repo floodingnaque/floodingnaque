@@ -5,12 +5,13 @@
  * Each card shows a metric with an icon, value, and optional trend indicator.
  */
 
-import { memo } from 'react';
-import { Activity, TrendingUp, AlertTriangle, Shield } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import type { DashboardStats } from '../services/dashboardApi';
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard } from "@/components/ui/glass-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { Activity, AlertTriangle, Shield, TrendingUp } from "lucide-react";
+import { memo } from "react";
+import type { DashboardStats } from "../services/dashboardApi";
 
 interface StatsCardsProps {
   /** Dashboard statistics data */
@@ -43,12 +44,13 @@ function StatCard({
   subtitle,
 }: StatCardProps) {
   return (
-    <Card>
+    <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
+      <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <div className={cn('p-2 rounded-md', bgColor)}>
+        <div className={cn("p-2 rounded-xl ring-1 ring-border/20", bgColor)}>
           <div className={iconColor}>{icon}</div>
         </div>
       </CardHeader>
@@ -59,11 +61,11 @@ function StatCard({
             {change && (
               <span
                 className={cn(
-                  'text-xs font-medium',
-                  change.isPositive ? 'text-green-600' : 'text-red-600'
+                  "text-xs font-medium",
+                  change.isPositive ? "text-risk-safe" : "text-risk-critical",
                 )}
               >
-                {change.isPositive ? '+' : ''}
+                {change.isPositive ? "+" : ""}
                 {change.value}%
               </span>
             )}
@@ -75,7 +77,7 @@ function StatCard({
           </div>
         )}
       </CardContent>
-    </Card>
+    </GlassCard>
   );
 }
 
@@ -89,29 +91,29 @@ function getRiskLevelInfo(level: number): {
 } {
   if (level <= 25) {
     return {
-      label: 'Low',
-      colorClass: 'text-green-600',
-      bgClass: 'bg-green-100 dark:bg-green-900/30',
+      label: "Low",
+      colorClass: "text-risk-safe",
+      bgClass: "bg-risk-safe/15",
     };
   }
   if (level <= 50) {
     return {
-      label: 'Moderate',
-      colorClass: 'text-yellow-600',
-      bgClass: 'bg-yellow-100 dark:bg-yellow-900/30',
+      label: "Moderate",
+      colorClass: "text-risk-alert",
+      bgClass: "bg-risk-alert/15",
     };
   }
   if (level <= 75) {
     return {
-      label: 'High',
-      colorClass: 'text-orange-600',
-      bgClass: 'bg-orange-100 dark:bg-orange-900/30',
+      label: "High",
+      colorClass: "text-orange-600",
+      bgClass: "bg-orange-100 dark:bg-orange-900/30",
     };
   }
   return {
-    label: 'Critical',
-    colorClass: 'text-red-600',
-    bgClass: 'bg-red-100 dark:bg-red-900/30',
+    label: "Critical",
+    colorClass: "text-risk-critical",
+    bgClass: "bg-risk-critical/15",
   };
 }
 
@@ -124,19 +126,19 @@ function getAlertColorInfo(count: number): {
 } {
   if (count === 0) {
     return {
-      colorClass: 'text-green-600',
-      bgClass: 'bg-green-100 dark:bg-green-900/30',
+      colorClass: "text-risk-safe",
+      bgClass: "bg-risk-safe/15",
     };
   }
   if (count <= 3) {
     return {
-      colorClass: 'text-amber-600',
-      bgClass: 'bg-amber-100 dark:bg-amber-900/30',
+      colorClass: "text-risk-alert",
+      bgClass: "bg-risk-alert/15",
     };
   }
   return {
-    colorClass: 'text-red-600',
-    bgClass: 'bg-red-100 dark:bg-red-900/30',
+    colorClass: "text-risk-critical",
+    bgClass: "bg-risk-critical/15",
   };
 }
 
@@ -146,23 +148,19 @@ function getAlertColorInfo(count: number): {
 export const StatsCards = memo(function StatsCards({ stats }: StatsCardsProps) {
   // Guard against incomplete or undefined stats to avoid runtime errors
   const safeTotalPredictions =
-    typeof stats?.total_predictions === 'number'
-      ? stats.total_predictions
-      : 0;
+    typeof stats?.total_predictions === "number" ? stats.total_predictions : 0;
   const safePredictionsToday =
-    typeof stats?.predictions_today === 'number'
-      ? stats.predictions_today
-      : 0;
+    typeof stats?.predictions_today === "number" ? stats.predictions_today : 0;
   const safeActiveAlerts =
-    typeof stats?.active_alerts === 'number' ? stats.active_alerts : 0;
+    typeof stats?.active_alerts === "number" ? stats.active_alerts : 0;
   const safeAvgRiskLevel =
-    typeof stats?.avg_risk_level === 'number' ? stats.avg_risk_level : 0;
+    typeof stats?.avg_risk_level === "number" ? stats.avg_risk_level : 0;
 
   const riskInfo = getRiskLevelInfo(safeAvgRiskLevel);
   const alertInfo = getAlertColorInfo(safeActiveAlerts);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="Total Predictions"
         value={safeTotalPredictions.toLocaleString()}
@@ -187,7 +185,7 @@ export const StatsCards = memo(function StatsCards({ stats }: StatsCardsProps) {
         icon={<AlertTriangle className="h-4 w-4" />}
         iconColor={alertInfo.colorClass}
         bgColor={alertInfo.bgClass}
-        subtitle={safeActiveAlerts === 0 ? 'All clear' : 'Requires attention'}
+        subtitle={safeActiveAlerts === 0 ? "All clear" : "Requires attention"}
       />
 
       <StatCard
@@ -207,18 +205,19 @@ export const StatsCards = memo(function StatsCards({ stats }: StatsCardsProps) {
  */
 export function StatsCardsSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
+        <GlassCard key={i} className="overflow-hidden">
+          <div className="h-1 w-full bg-linear-to-r from-muted/60 via-muted to-muted/60" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-xl" />
           </CardHeader>
           <CardContent>
             <Skeleton className="h-8 w-20 mb-2" />
             <Skeleton className="h-3 w-32" />
           </CardContent>
-        </Card>
+        </GlassCard>
       ))}
     </div>
   );

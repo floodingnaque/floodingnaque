@@ -367,10 +367,10 @@ Emit-Log "INFO" "Seed=$Seed CVFolds=$CVFolds DryRun=$DryRun"
 # =========================
 if ($HasIngestSource -and -not $SkipIngestion) {
     Emit-Log "INFO" "=== DATA INGESTION ==="
-    
+
     # Build ingestion arguments
     $IngestArgs = @()
-    
+
     if ($IngestFile) {
         $IngestArgs += "--file"
         $IngestArgs += $IngestFile
@@ -392,21 +392,21 @@ if ($HasIngestSource -and -not $SkipIngestion) {
         $IngestArgs += "--days"
         $IngestArgs += $IngestDays
     }
-    
+
     $IngestScript = Join-Path $ScriptsPath "ingest_training_data.py"
-    
+
     $sources = @()
     if ($IngestGoogle) { $sources += "Google" }
     if ($IngestMeteostat) { $sources += "Meteostat" }
     if ($IngestTides) { $sources += "WorldTides" }
     if ($IngestFile) { $sources += "File: $IngestFile" }
     if ($IngestDir) { $sources += "Dir: $IngestDir" }
-    
+
     Run-Step "Data ingestion ($($sources -join ', '))" {
         param($script, $args)
         & python $script @args
     }.GetNewClosure() -Critical
-    
+
     # Actually run it (Run-Step uses jobs which don't work well with params)
     if (-not $DryRun) {
         Emit-Log "INFO" "Running: python $IngestScript $($IngestArgs -join ' ')"
@@ -456,18 +456,18 @@ elseif ($Progressive6) {
     $ProgressiveArgs = @()
     $ProgressiveArgs += "--cv-folds"
     $ProgressiveArgs += $CVFolds
-    
+
     if ($Quick) {
         $ProgressiveArgs += "--quick"
     }
-    
+
     if ($Version) {
         $ProgressiveArgs += "--version"
         $ProgressiveArgs += $Version
     }
-    
+
     $ProgressiveScript = Join-Path $ScriptsPath "train_progressive_v6.py"
-    
+
     if (-not $DryRun) {
         Emit-Log "INFO" "Running: python $ProgressiveScript $($ProgressiveArgs -join ' ')"
         & python $ProgressiveScript @ProgressiveArgs

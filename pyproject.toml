@@ -37,10 +37,25 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
 markers = [
-    "snapshot: marks tests as snapshot tests (using syrupy)",
-    "no_health_mock: skip auto-mocking of health check dependencies",
-    "slow: marks tests as slow running",
-    "integration: marks tests as integration tests requiring external services",
+    "unit: Unit tests (fast, no external dependencies)",
+    "integration: Integration tests (require running server)",
+    "security: Security-focused tests",
+    "load: Load/performance tests (require locust)",
+    "model: ML model-specific tests",
+    "slow: Tests that take longer to run",
+    "edge_cases: Edge case and boundary testing",
+    "property: Property-based tests using Hypothesis",
+    "contract: Contract tests for API compatibility",
+    "snapshot: Snapshot tests for regression detection (using syrupy)",
+    "api_versioning: API versioning compatibility tests",
+    "negative: Negative path tests (failures, errors, edge cases)",
+    "performance: Performance and benchmark tests",
+    "benchmark: Performance benchmark tests",
+    "network: Network failure simulation tests",
+    "timeout: Timeout handling tests",
+    "rate_limit: Rate limiting tests",
+    "asyncio: Async/await tests",
+    "no_health_mock: Skip automatic health check mocking",
 ]
 
 # Syrupy snapshot settings

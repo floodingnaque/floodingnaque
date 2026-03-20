@@ -1,6 +1,6 @@
 ---
-name: Plan--Floodingnaque
-description: Researches codebases and outlines detailed, actionable multi-step plans. Never implements-only plans.
+name: Plan
+description: Researches codebases and outlines detailed, actionable multi-step plans. Never implements — only plans.
 argument-hint: Describe the goal, problem, or feature to research and plan
 handoffs:
   - label: 🚀 Implement This Plan
@@ -15,13 +15,13 @@ handoffs:
     showContinueOn: false
     send: true
   - label: 🔄 Break Into Smaller Tasks
-    agent: Plan--Floodingnaque
+    agent: Plan
     prompt: This plan is too large. Break it into 2-4 smaller, independently implementable phases with clear boundaries.
   - label: 🧪 Add Test Coverage Plan
-    agent: Plan--Floodingnaque
+    agent: Plan
     prompt: Expand this plan with comprehensive test coverage. Include unit tests, integration tests, and E2E tests following existing patterns in `backend/tests/` and `frontend/e2e/`.
   - label: 📊 Estimate Complexity
-    agent: Plan--Floodingnaque
+    agent: Plan
     prompt: Analyze this plan and provide complexity estimates (time, risk, dependencies) for each step. Flag any steps that may require research spikes.
 ---
 

@@ -79,13 +79,62 @@ def _resolve_db_url() -> str:
 def _attach_pool_events(eng: Engine) -> None:
     """Register connection-pool monitoring events."""
 
+    # Statement timeout (ms) — kills queries exceeding this duration.
+    # Guards against connection leaks caused by runaway queries.
+    _statement_timeout_ms = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "30000"))  # 30s default
+    # Max connection age (seconds) — recycle connections older than this.
+    _max_conn_age = int(os.getenv("DB_MAX_CONN_AGE_SECONDS", "3600"))  # 1h default
+
+    @event.listens_for(eng, "connect")
+    def receive_connect(dbapi_conn: Any, connection_record: Any) -> None:
+        logger.info("New database connection established")
+        connection_record.info["created_at"] = time.time()
+        # Set statement_timeout on each new PostgreSQL connection
+        try:
+            cursor = dbapi_conn.cursor()
+            cursor.execute(f"SET statement_timeout = {_statement_timeout_ms}")
+            cursor.close()
+            logger.debug("SET statement_timeout = %dms on new connection", _statement_timeout_ms)
+        except Exception:  # nosec B110 — SQLite or non-PG driver, skip silently
+            pass
+
     @event.listens_for(eng, "checkout")
     def receive_checkout(dbapi_conn: Any, connection_record: Any, connection_proxy: Any) -> None:
         _increment_metric("checkouts")
         with _metrics_lock:
             pool_metrics["last_checkout_time"] = time.time()
         connection_record.info["checkout_time"] = time.time()
-        logger.debug("Connection checked out from pool (total: %s)", pool_metrics["checkouts"])
+
+        # Recycle connections that exceed max age
+        created_at = connection_record.info.get("created_at")
+        if created_at and (time.time() - created_at) > _max_conn_age:
+            logger.info(
+                "Recycling connection older than %ds (age=%.0fs)",
+                _max_conn_age,
+                time.time() - created_at,
+            )
+            connection_record.invalidate()
+            raise Exception("Connection recycled due to max age")  # forces pool to create new
+
+        pool = eng.pool
+        active = pool.checkedout()
+        total = pool.size() + pool.overflow()
+        logger.debug(
+            "Connection checked out (active: %s, idle: %s, overflow: %s)",
+            active,
+            pool.checkedin(),
+            pool.overflow(),
+        )
+
+        # Leak detection: warn when pool utilisation exceeds 80%
+        if total > 0 and (active / total) >= 0.8:
+            _increment_metric("pool_exhausted_count")
+            logger.warning(
+                "CONNECTION POOL HIGH UTILISATION: %d/%d connections in use (%.0f%%)",
+                active,
+                total,
+                (active / total) * 100,
+            )
 
     @event.listens_for(eng, "checkin")
     def receive_checkin(dbapi_conn: Any, connection_record: Any) -> None:
@@ -98,7 +147,20 @@ def _attach_pool_events(eng: Engine) -> None:
                 total = pool_metrics["checkins"]
                 if total > 0:
                     pool_metrics["avg_checkout_time_ms"] = pool_metrics["total_checkout_time_ms"] / total
-        logger.debug("Connection checked in to pool (total: %s)", pool_metrics["checkins"])
+
+            # Warn on long-held connections (potential leak)
+            if duration_ms > 10000:  # > 10 seconds
+                logger.warning(
+                    "Connection held for %.1fs — possible leak or slow query",
+                    duration_ms / 1000,
+                )
+        pool = eng.pool
+        logger.debug(
+            "Connection checked in (active: %s, idle: %s, overflow: %s)",
+            pool.checkedout(),
+            pool.checkedin(),
+            pool.overflow(),
+        )
 
     @event.listens_for(eng, "invalidate")
     def receive_invalidate(dbapi_conn: Any, connection_record: Any, exception: Any) -> None:
@@ -108,10 +170,6 @@ def _attach_pool_events(eng: Engine) -> None:
             logger.warning("Connection invalidated due to: %s", exception)
         else:
             logger.debug("Connection invalidated (total: %s)", pool_metrics["invalidated"])
-
-    @event.listens_for(eng, "connect")
-    def receive_connect(dbapi_conn: Any, connection_record: Any) -> None:
-        logger.info("New database connection established")
 
     @event.listens_for(eng, "close")
     def receive_close(dbapi_conn: Any, connection_record: Any) -> None:
@@ -158,7 +216,7 @@ def get_engine() -> Engine:
         else:
             is_supabase = "supabase" in db_url.lower()
             if is_supabase and db_pool_size == 20:
-                pool_size, max_overflow, pool_recycle = 3, 5, 600
+                pool_size, max_overflow, pool_recycle = 10, 5, 600
                 logger.info("Using optimized pool settings for Supabase (override with DB_POOL_SIZE)")
             else:
                 pool_size, max_overflow, pool_recycle = db_pool_size, db_max_overflow, db_pool_recycle
@@ -298,9 +356,17 @@ db_session = _SessionProxy()  # type: ignore[assignment]
 
 
 from app.models.ab_test import ABTestRecord  # noqa: E402, F401
+from app.models.after_action_report import AfterActionReport  # noqa: E402, F401
 from app.models.alert import AlertHistory  # noqa: E402, F401
+from app.models.api_key import APIKey  # noqa: E402, F401
 from app.models.api_request import APIRequest, EarthEngineRequest  # noqa: E402, F401
 from app.models.cache import SatelliteWeatherCache, TideDataCache  # noqa: E402, F401
+
+# ── Community Engagement models (crowdsourced reporting + evacuation) ─────
+from app.models.community_report import CommunityReport  # noqa: E402, F401
+from app.models.evacuation_alert_log import EvacuationAlertLog  # noqa: E402, F401
+from app.models.evacuation_center import EvacuationCenter  # noqa: E402, F401
+from app.models.incident import Incident  # noqa: E402, F401
 from app.models.model_registry import ModelRegistry  # noqa: E402, F401
 from app.models.prediction import Prediction  # noqa: E402, F401
 from app.models.user import User  # noqa: E402, F401

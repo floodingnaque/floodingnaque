@@ -51,7 +51,8 @@ def evaluate_model(model_path=None, data_path=None):
         model_path = Path(model_path)
 
     if data_path is None:
-        data_path = DATA_DIR / "synthetic_dataset.csv"
+        # Use real processed data from v2 preprocessing pipeline
+        data_path = DATA_DIR / "processed" / "cumulative_v2_up_to_2025.csv"
     else:
         data_path = Path(data_path)
 

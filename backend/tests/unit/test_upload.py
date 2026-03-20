@@ -155,11 +155,10 @@ class TestUploadEndpoint:
     """Tests for upload endpoint."""
 
     @patch("app.api.routes.upload.get_db_session")
-    @patch("app.api.routes.upload.require_api_key")
-    def test_upload_valid_csv(self, mock_auth, mock_db_session, client, valid_csv_content):
+    @patch("app.api.routes.upload.require_auth_or_api_key", lambda f: f)
+    def test_upload_valid_csv(self, mock_db_session, client, valid_csv_content):
         """Test uploading valid CSV file."""
         # Setup mocks
-        mock_auth.return_value = lambda f: f
         mock_session = MagicMock()
         mock_db_session.return_value.__enter__ = MagicMock(return_value=mock_session)
         mock_db_session.return_value.__exit__ = MagicMock(return_value=None)

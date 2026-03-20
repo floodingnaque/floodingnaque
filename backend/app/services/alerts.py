@@ -19,10 +19,11 @@ import json
 import logging
 import os
 import smtplib
+from dataclasses import dataclass, field
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import requests
 from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LOCATION_NAME, DEFAULT_LONGITUDE
@@ -61,8 +62,14 @@ class AlertSystem:
 
     # All supported channel identifiers
     SUPPORTED_CHANNELS = (
-        "web", "sms", "email", "slack",
-        "firebase_push", "messenger", "telegram", "siren",
+        "web",
+        "sms",
+        "email",
+        "slack",
+        "firebase_push",
+        "messenger",
+        "telegram",
+        "siren",
     )
 
     def __init__(
@@ -207,7 +214,8 @@ class AlertSystem:
             self._persist_alert(alert_record)
             logger.info(
                 "Alert suppressed by smart logic for %s: %s",
-                location, smart_decision.contributing_factors,
+                location,
+                smart_decision.contributing_factors,
             )
             return alert_record
 
@@ -223,9 +231,7 @@ class AlertSystem:
 
                 client_count = broadcast_alert(alert_record)
                 alert_record["delivery_status"]["sse"] = "delivered"
-                logger.info(
-                    f"SSE broadcast: {risk_label} for {location} → {client_count} clients"
-                )
+                logger.info(f"SSE broadcast: {risk_label} for {location} → {client_count} clients")
             except Exception as sse_exc:
                 logger.error(f"SSE broadcast failed: {sse_exc}")
                 alert_record["delivery_status"]["sse"] = "failed"
@@ -237,17 +243,10 @@ class AlertSystem:
 
         # Auto-trigger SMS for Critical risk conditions regardless of alert_type
         # This ensures community alerts reach residents even if only 'web' was requested.
-        if (
-            risk_data.get("risk_level") == 2
-            and self.sms_enabled
-            and alert_type not in ["sms", "all"]
-            and recipients
-        ):
+        if risk_data.get("risk_level") == 2 and self.sms_enabled and alert_type not in ["sms", "all"] and recipients:
             sms_status = self._send_sms(recipients, message)
             alert_record["delivery_status"]["sms_critical_auto"] = sms_status
-            logger.info(
-                f"Auto SMS (Critical) sent: {risk_label} for {location} → {sms_status}"
-            )
+            logger.info(f"Auto SMS (Critical) sent: {risk_label} for {location} → {sms_status}")
 
         if alert_type in ["email", "all"] and self.email_enabled and recipients:
             email_status = self._send_email(recipients, risk_label, message)
@@ -263,7 +262,9 @@ class AlertSystem:
 
         if alert_type in ["firebase_push", "all"] and self.firebase_push_enabled:
             fcm_status = self._firebase_channel.dispatch(
-                message=message, risk_label=risk_label, location=location,
+                message=message,
+                risk_label=risk_label,
+                location=location,
                 recipients=recipients,
             )
             alert_record["delivery_status"]["firebase_push"] = fcm_status
@@ -271,7 +272,9 @@ class AlertSystem:
 
         if alert_type in ["messenger", "all"] and self.messenger_enabled:
             messenger_status = self._messenger_channel.dispatch(
-                message=message, risk_label=risk_label, location=location,
+                message=message,
+                risk_label=risk_label,
+                location=location,
                 recipients=recipients,
             )
             alert_record["delivery_status"]["messenger"] = messenger_status
@@ -279,7 +282,9 @@ class AlertSystem:
 
         if alert_type in ["telegram", "all"] and self.telegram_enabled:
             telegram_status = self._telegram_channel.dispatch(
-                message=message, risk_label=risk_label, location=location,
+                message=message,
+                risk_label=risk_label,
+                location=location,
                 recipients=recipients,
             )
             alert_record["delivery_status"]["telegram"] = telegram_status
@@ -287,7 +292,9 @@ class AlertSystem:
 
         if alert_type in ["siren", "all"] and self.siren_enabled:
             siren_status = self._siren_channel.dispatch(
-                message=message, risk_label=risk_label, location=location,
+                message=message,
+                risk_label=risk_label,
+                location=location,
                 recipients=recipients,
             )
             alert_record["delivery_status"]["siren"] = siren_status
@@ -297,19 +304,25 @@ class AlertSystem:
         if risk_data.get("risk_level") == 2 and alert_type not in ["all"]:
             if self.firebase_push_enabled and "firebase_push" not in alert_record["delivery_status"]:
                 auto_fcm = self._firebase_channel.dispatch(
-                    message=message, risk_label=risk_label, location=location,
+                    message=message,
+                    risk_label=risk_label,
+                    location=location,
                     recipients=recipients,
                 )
                 alert_record["delivery_status"]["firebase_push_critical_auto"] = auto_fcm
             if self.telegram_enabled and "telegram" not in alert_record["delivery_status"]:
                 auto_tg = self._telegram_channel.dispatch(
-                    message=message, risk_label=risk_label, location=location,
+                    message=message,
+                    risk_label=risk_label,
+                    location=location,
                     recipients=recipients,
                 )
                 alert_record["delivery_status"]["telegram_critical_auto"] = auto_tg
             if self.siren_enabled and "siren" not in alert_record["delivery_status"]:
                 auto_siren = self._siren_channel.dispatch(
-                    message=message, risk_label=risk_label, location=location,
+                    message=message,
+                    risk_label=risk_label,
+                    location=location,
                     recipients=recipients,
                 )
                 alert_record["delivery_status"]["siren_critical_auto"] = auto_siren
@@ -758,6 +771,122 @@ class AlertSystem:
             logger.error(f"Failed to fetch alerts by risk level: {str(e)}")
             # Fallback to in-memory cache
             return [alert for alert in self._alert_cache if alert.get("risk_level") == risk_level]
+
+
+# ---------------------------------------------------------------------------
+# AlertContext — typed input for the alert dispatch pipeline
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class AlertContext:
+    """Typed container for all data needed to dispatch an alert."""
+
+    risk_level: int  # 0=Safe, 1=Alert, 2=Critical
+    risk_label: str
+    confidence: float
+    location: str = "Parañaque City"
+    barangay: Optional[str] = None
+    rainfall_mm: float = 0.0
+    rainfall_3h: float = 0.0
+    tide_height: float = 0.0
+    recipients: List[str] = field(default_factory=list)
+    channels: List[str] = field(default_factory=lambda: ["web"])
+    escalation_state: Optional[str] = None
+    contributing_factors: List[str] = field(default_factory=list)
+
+    def to_risk_data(self) -> Dict[str, Any]:
+        """Convert to the risk_data dict expected by AlertSystem.send_alert()."""
+        return {
+            "risk_level": self.risk_level,
+            "risk_label": self.risk_label,
+            "confidence": self.confidence,
+            "rainfall_mm": self.rainfall_mm,
+            "rainfall_3h": self.rainfall_3h,
+            "tide_height": self.tide_height,
+        }
+
+
+# ---------------------------------------------------------------------------
+# AlertMessageBuilder — role-aware message formatting
+# ---------------------------------------------------------------------------
+
+
+class AlertMessageBuilder:
+    """
+    Produces role-tailored alert messages for different channels.
+
+    - **resident_sms**: Short Filipino SMS (≤160 chars for 1 Semaphore credit)
+    - **operator_html**: Detailed HTML for operator email dashboards
+    - **telegram_md**: Markdown-formatted message for Telegram bot
+    """
+
+    # Risk labels in Filipino for SMS messages
+    _RISK_LABELS_FIL: Dict[str, str] = {
+        "Safe": "Ligtas",
+        "Alert": "Babala",
+        "Critical": "Mapanganib",
+    }
+
+    @classmethod
+    def resident_sms(cls, ctx: AlertContext) -> str:
+        """
+        Build a concise Filipino SMS message for residents.
+
+        Fits within 160 characters for a single SMS credit.
+        """
+        label_fil = cls._RISK_LABELS_FIL.get(ctx.risk_label, ctx.risk_label)
+        location = ctx.barangay or ctx.location
+
+        msg = f"BABALA SA BAHA - {label_fil.upper()}\n" f"Lugar: {location}\n" f"Ulan: {ctx.rainfall_3h:.0f}mm/3h\n"
+        if ctx.risk_level >= 2:
+            msg += "Lumikas agad sa pinakamalapit na evacuation center."
+        else:
+            msg += "Mag-ingat at maghanda."
+
+        return msg[:160]
+
+    @classmethod
+    def operator_html(cls, ctx: AlertContext) -> str:
+        """Build a detailed HTML alert for operator email dashboards."""
+        color_map = {"Safe": "#28a745", "Alert": "#ffc107", "Critical": "#dc3545"}
+        color = color_map.get(ctx.risk_label, "#6c757d")
+
+        factors_html = ""
+        if ctx.contributing_factors:
+            items = "".join(f"<li>{f}</li>" for f in ctx.contributing_factors)
+            factors_html = f"<ul>{items}</ul>"
+
+        return f"""
+        <div style="border-left: 4px solid {color}; padding: 12px; margin: 8px 0;">
+            <strong style="color: {color};">{ctx.risk_label.upper()}</strong>
+            — {ctx.location}{f' ({ctx.barangay})' if ctx.barangay else ''}
+            <br>Confidence: {ctx.confidence:.0%}
+            | Rainfall 3h: {ctx.rainfall_3h:.1f}mm
+            | Tide: {ctx.tide_height:.2f}m
+            {f'<br>Escalation: {ctx.escalation_state}' if ctx.escalation_state else ''}
+            {factors_html}
+        </div>
+        """
+
+    @classmethod
+    def telegram_md(cls, ctx: AlertContext) -> str:
+        """Build a Telegram Markdown-formatted alert message."""
+        emoji = {"Safe": "🟢", "Alert": "🟡", "Critical": "🔴"}.get(ctx.risk_label, "⚪")
+
+        lines = [
+            f"{emoji} *Flood Alert — {ctx.risk_label}*",
+            f"📍 {ctx.location}{f' ({ctx.barangay})' if ctx.barangay else ''}",
+            f"🌧 Rainfall 3h: {ctx.rainfall_3h:.1f}mm",
+            f"🌊 Tide: {ctx.tide_height:.2f}m",
+            f"📊 Confidence: {ctx.confidence:.0%}",
+        ]
+        if ctx.contributing_factors:
+            lines.append("⚠️ " + ", ".join(ctx.contributing_factors))
+        if ctx.risk_level >= 2:
+            lines.append("\n🚨 *Evacuate to nearest center immediately.*")
+
+        return "\n".join(lines)
 
 
 def get_alert_system(

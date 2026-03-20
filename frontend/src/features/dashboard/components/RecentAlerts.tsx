@@ -5,14 +5,14 @@
  * Color-coded by risk level with links to the full alerts page.
  */
 
-import { memo } from 'react';
-import { Link } from 'react-router-dom';
-import { Bell, ChevronRight, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { formatRelativeTime, truncate, cn } from '@/lib/utils';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn, formatRelativeTime, truncate } from "@/lib/utils";
+import { AlertTriangle, Bell, ChevronRight } from "lucide-react";
+import { memo } from "react";
+import { Link } from "react-router-dom";
 
 /**
  * Alert data structure for flood risk notifications.
@@ -43,34 +43,34 @@ interface RecentAlertsProps {
  */
 function getRiskLevelInfo(level: number): {
   label: string;
-  variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  variant: "default" | "secondary" | "destructive" | "outline";
   className: string;
 } {
   if (level <= 25) {
     return {
-      label: 'Low',
-      variant: 'secondary',
-      className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-200',
+      label: "Low",
+      variant: "secondary",
+      className: "bg-risk-safe/15 text-risk-safe border-risk-safe/30",
     };
   }
   if (level <= 50) {
     return {
-      label: 'Moderate',
-      variant: 'secondary',
-      className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200',
+      label: "Moderate",
+      variant: "secondary",
+      className: "bg-risk-alert/15 text-risk-alert border-risk-alert/30",
     };
   }
   if (level <= 75) {
     return {
-      label: 'High',
-      variant: 'secondary',
-      className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200',
+      label: "High",
+      variant: "secondary",
+      className: "bg-risk-alert/25 text-risk-alert border-risk-alert/40",
     };
   }
   return {
-    label: 'Critical',
-    variant: 'destructive',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200',
+    label: "Critical",
+    variant: "destructive",
+    className: "bg-risk-critical/15 text-risk-critical border-risk-critical/30",
   };
 }
 
@@ -81,33 +81,31 @@ function AlertRow({ alert }: { alert: AlertData }) {
   const riskInfo = getRiskLevelInfo(alert.risk_level);
 
   return (
-    <Link
-      to="/alerts"
-      className="block group"
-    >
+    <Link to="/alerts" className="block group">
       <div className="flex items-start gap-3 py-3 px-2 -mx-2 rounded-md border-b last:border-b-0 hover:bg-muted/50 transition-colors">
         <div
           className={cn(
-            'p-1.5 rounded-full shrink-0 mt-0.5',
-            riskInfo.className.replace('text-', 'bg-').split(' ')[0] + '/20'
+            "p-1.5 rounded-full shrink-0 mt-0.5",
+            riskInfo.className.replace("text-", "bg-").split(" ")[0] + "/20",
           )}
         >
           <AlertTriangle
             className={cn(
-              'h-3.5 w-3.5',
-              riskInfo.className.includes('red')
-                ? 'text-red-600'
-                : riskInfo.className.includes('orange')
-                ? 'text-orange-600'
-                : riskInfo.className.includes('yellow')
-                ? 'text-yellow-600'
-                : 'text-green-600'
+              "h-3.5 w-3.5",
+              riskInfo.className.includes("critical")
+                ? "text-risk-critical"
+                : riskInfo.className.includes("alert")
+                  ? "text-risk-alert"
+                  : "text-risk-safe",
             )}
           />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className={cn('text-xs', riskInfo.className)}>
+            <Badge
+              variant="outline"
+              className={cn("text-xs", riskInfo.className)}
+            >
               {riskInfo.label}
             </Badge>
             {alert.location && (
@@ -135,8 +133,8 @@ function AlertRow({ alert }: { alert: AlertData }) {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-6 text-center">
-      <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 mb-3">
-        <Bell className="h-5 w-5 text-green-600" />
+      <div className="p-3 rounded-full bg-risk-safe/15 dark:bg-risk-safe/20 mb-3">
+        <Bell className="h-5 w-5 text-risk-safe" />
       </div>
       <p className="text-sm font-medium">No active alerts</p>
       <p className="text-xs text-muted-foreground mt-1">
@@ -216,7 +214,10 @@ export function RecentAlertsSkeleton() {
       <CardContent className="pt-0">
         <div className="space-y-0">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-start gap-3 py-3 border-b last:border-b-0">
+            <div
+              key={i}
+              className="flex items-start gap-3 py-3 border-b last:border-b-0"
+            >
               <Skeleton className="h-6 w-6 rounded-full shrink-0" />
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">

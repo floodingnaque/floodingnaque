@@ -5,23 +5,28 @@
  */
 
 // Components
-export { PredictionForm } from './components/PredictionForm';
-export { PredictionResult } from './components/PredictionResult';
-export { RiskDisplay } from './components/RiskDisplay';
+export { ExplainabilityPanel } from "./components/ExplainabilityPanel";
+export { PersonalizedRiskBanner } from "./components/PersonalizedRiskBanner";
+export { PredictionForm } from "./components/PredictionForm";
+export { PredictionResult } from "./components/PredictionResult";
+export { RiskDisplay } from "./components/RiskDisplay";
 
 // Hooks
-export { usePrediction, type UsePredictionOptions } from './hooks/usePrediction';
 export {
   useLocationPrediction,
   type UseLocationPredictionOptions,
-} from './hooks/useLocationPrediction';
+} from "./hooks/useLocationPrediction";
+export {
+  usePrediction,
+  type UsePredictionOptions,
+} from "./hooks/usePrediction";
 
 // Services
-export { predictionApi } from './services/predictionApi';
+export { predictionApi } from "./services/predictionApi";
 
 // Utils
 export {
   celsiusToKelvin,
-  kelvinToCelsius,
   formatTemperature,
-} from './utils/temperature';
+  kelvinToCelsius,
+} from "./utils/temperature";

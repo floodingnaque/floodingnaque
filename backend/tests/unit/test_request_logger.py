@@ -24,13 +24,10 @@ class TestLogRequestToDb:
         assert callable(log_request_to_db)
 
     @patch("app.api.middleware.request_logger._is_logging_disabled", return_value=False)
-    @patch("app.api.middleware.request_logger.get_db_session")
-    def test_log_request_to_db_success(self, mock_get_db, mock_disabled):
-        """Test successful request logging to database."""
+    @patch("app.api.middleware.request_logger._log_executor")
+    def test_log_request_to_db_success(self, mock_executor, mock_disabled):
+        """Test successful request logging dispatches to background thread."""
         app = Flask(__name__)
-        mock_session = MagicMock()
-        mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_get_db.return_value.__exit__ = MagicMock(return_value=None)
 
         with app.test_request_context("/api/test", method="GET"):
             g.start_time = time.time()
@@ -38,8 +35,13 @@ class TestLogRequestToDb:
 
             log_request_to_db()
 
-            mock_session.add.assert_called_once()
-            mock_session.commit.assert_called_once()
+            mock_executor.submit.assert_called_once()
+            # Verify the persister function and log_data were passed
+            call_args = mock_executor.submit.call_args
+            log_data = call_args[0][1]
+            assert log_data["request_id"] == "test-request-123"
+            assert log_data["endpoint"] == "/api/test"
+            assert log_data["method"] == "GET"
 
     def test_log_request_to_db_no_start_time(self):
         """Test log_request_to_db handles missing start_time."""
@@ -99,13 +101,10 @@ class TestGetDbSession:
 class TestAPIVersionExtraction:
     """Tests for API version extraction from path."""
 
-    @patch("app.api.middleware.request_logger.get_db_session")
-    def test_api_version_extracted_from_v1_path(self, mock_get_db):
+    @patch("app.api.middleware.request_logger._log_executor")
+    def test_api_version_extracted_from_v1_path(self, mock_executor):
         """Test API version is extracted from /v1/ path."""
         app = Flask(__name__)
-        mock_session = MagicMock()
-        mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_get_db.return_value.__exit__ = MagicMock(return_value=None)
 
         with app.test_request_context("/v1/predict", method="POST"):
             g.start_time = time.time()
@@ -113,19 +112,15 @@ class TestAPIVersionExtraction:
 
             log_request_to_db()
 
-            # Verify APIRequest was created with correct version
-            call_args = mock_session.add.call_args
+            call_args = mock_executor.submit.call_args
             if call_args:
-                api_request = call_args[0][0]
-                assert hasattr(api_request, "api_version")
+                log_data = call_args[0][1]
+                assert log_data["api_version"] == "v1"
 
-    @patch("app.api.middleware.request_logger.get_db_session")
-    def test_api_version_default(self, mock_get_db):
+    @patch("app.api.middleware.request_logger._log_executor")
+    def test_api_version_default(self, mock_executor):
         """Test API version defaults to v1."""
         app = Flask(__name__)
-        mock_session = MagicMock()
-        mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_get_db.return_value.__exit__ = MagicMock(return_value=None)
 
         with app.test_request_context("/health", method="GET"):
             g.start_time = time.time()
@@ -133,43 +128,41 @@ class TestAPIVersionExtraction:
 
             log_request_to_db()
 
-            call_args = mock_session.add.call_args
+            call_args = mock_executor.submit.call_args
             if call_args:
-                api_request = call_args[0][0]
-                assert api_request.api_version == "v1"
+                log_data = call_args[0][1]
+                assert log_data["api_version"] == "v1"
 
 
 class TestErrorHandling:
     """Tests for error handling in request logging."""
 
     @patch("app.api.middleware.request_logger._is_logging_disabled", return_value=False)
-    @patch("app.api.middleware.request_logger.get_db_session")
+    @patch("app.api.middleware.request_logger._log_executor")
     @patch("app.api.middleware.request_logger.logger")
-    def test_database_error_logged(self, mock_logger, mock_get_db, mock_disabled):
-        """Test database errors are logged, not raised."""
+    def test_data_preparation_error_logged(self, mock_logger, mock_executor, mock_disabled):
+        """Test errors during data preparation are logged, not raised."""
         app = Flask(__name__)
-        mock_get_db.side_effect = Exception("Database connection error")
+        # Make request.path raise to simulate a data-preparation error
+        mock_executor.submit.side_effect = Exception("submit failed")
 
         with app.test_request_context("/api/test"):
             g.start_time = time.time()
             g.request_id = "test-error-123"
 
-            # Should not raise, just log error
+            # Should not raise, just log warning
             log_request_to_db()
 
-            mock_logger.error.assert_called()
+            mock_logger.warning.assert_called()
 
 
 class TestResponseTimeMeasurement:
     """Tests for response time measurement."""
 
-    @patch("app.api.middleware.request_logger.get_db_session")
-    def test_response_time_calculated(self, mock_get_db):
+    @patch("app.api.middleware.request_logger._log_executor")
+    def test_response_time_calculated(self, mock_executor):
         """Test response time is calculated correctly."""
         app = Flask(__name__)
-        mock_session = MagicMock()
-        mock_get_db.return_value.__enter__ = MagicMock(return_value=mock_session)
-        mock_get_db.return_value.__exit__ = MagicMock(return_value=None)
 
         with app.test_request_context("/api/test"):
             g.start_time = time.time() - 0.1  # 100ms ago
@@ -177,9 +170,9 @@ class TestResponseTimeMeasurement:
 
             log_request_to_db()
 
-            call_args = mock_session.add.call_args
+            call_args = mock_executor.submit.call_args
             if call_args:
-                api_request = call_args[0][0]
+                log_data = call_args[0][1]
                 # Response time should be around 100ms
-                assert api_request.response_time_ms >= 90
-                assert api_request.response_time_ms <= 200
+                assert log_data["response_time_ms"] >= 90
+                assert log_data["response_time_ms"] <= 200

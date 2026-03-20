@@ -3,7 +3,7 @@ import logging
 
 def setup_logging():
     """Setup logging configuration using the shared logging helper."""
-    from app.utils import logging as logging_utils
+    from app.utils.observability import logging as logging_utils
 
     return logging_utils.setup_logging()
 

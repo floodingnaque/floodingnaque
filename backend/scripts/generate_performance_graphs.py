@@ -103,7 +103,6 @@ class PerformanceGraphGenerator:
         candidates = [
             PROCESSED_DIR / "cumulative_v2_up_to_2025.csv",
             PROCESSED_DIR / "cumulative_up_to_2025.csv",
-            DATA_DIR / "synthetic_dataset.csv",
         ]
         for path in candidates:
             if path.exists():

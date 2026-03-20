@@ -99,7 +99,7 @@ COPY --chown=appuser:appgroup app/ ./app/
 COPY --chown=appuser:appgroup config/ ./config/
 # NOTE: models/ and data/ are volume-mounted at runtime, not baked into the image.
 # Mount in compose: ./backend/models:/app/models, ./backend/data:/app/data
-COPY --chown=appuser:appgroup alembic.ini main.py ./
+COPY --chown=appuser:appgroup alembic.ini main.py gunicorn.conf.py ./
 
 # Copy entrypoint script
 COPY --chown=appuser:appgroup entrypoint.sh ./
@@ -123,26 +123,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ENTRYPOINT ["/usr/bin/tini", "--", "/app/entrypoint.sh"]
 
 # Default command: Run with Gunicorn
-# Uses ddtrace-run wrapper automatically if ddtrace is installed (Linux only)
-CMD ["sh", "-c", "\
-GUNICORN_ARGS=\"main:application \
-  --bind ${HOST}:${PORT} \
-  --workers ${GUNICORN_WORKERS} \
-  --threads ${GUNICORN_THREADS} \
-  --timeout ${GUNICORN_TIMEOUT} \
-  --worker-class ${GUNICORN_WORKER_CLASS} \
-  --max-requests ${GUNICORN_MAX_REQUESTS} \
-  --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER} \
-  --access-logfile - \
-  --error-logfile - \
-  --capture-output \
-  --enable-stdio-inheritance \
-  --preload\"; \
-if command -v ddtrace-run >/dev/null 2>&1; then \
-  exec ddtrace-run gunicorn $GUNICORN_ARGS; \
-else \
-  exec gunicorn $GUNICORN_ARGS; \
-fi"]
+# Default command: Run with Gunicorn (config in gunicorn.conf.py)
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "main:application"]
 
 # =====================================================
 # Stage 3: Development - Full dev environment

@@ -5,6 +5,7 @@ This guide explains how to configure Docker Secrets for the Floodingnaque produc
 ## Overview
 
 Docker Secrets provide a secure way to store and manage sensitive data such as:
+
 - Database credentials
 - API keys
 - Encryption keys
@@ -12,13 +13,13 @@ Docker Secrets provide a secure way to store and manage sensitive data such as:
 
 ### Benefits of Docker Secrets
 
-| Benefit | Description |
-| ------- | ----------- |
-| **Security** | Secrets are never exposed in `docker inspect`, logs, or environment |
-| **Memory-only** | Secrets are stored in tmpfs, never written to disk |
-| **Access Control** | Only services that explicitly need a secret can access it |
-| **Rotation** | Secrets can be updated without rebuilding containers |
-| **Auditability** | Clear separation between configuration and secrets |
+| Benefit            | Description                                                         |
+| ------------------ | ------------------------------------------------------------------- |
+| **Security**       | Secrets are never exposed in `docker inspect`, logs, or environment |
+| **Memory-only**    | Secrets are stored in tmpfs, never written to disk                  |
+| **Access Control** | Only services that explicitly need a secret can access it           |
+| **Rotation**       | Secrets can be updated without rebuilding containers                |
+| **Auditability**   | Clear separation between configuration and secrets                  |
 
 ## The `_FILE` Suffix Pattern
 
@@ -68,7 +69,6 @@ echo -n "postgresql://postgres.xxxx:password@aws-0-region.pooler.supabase.com:65
 echo -n "redis://default:password@host.redis-cloud.com:port" > redis_url.txt
 
 # Add API keys
-echo -n "your-datadog-api-key" > dd_api_key.txt
 echo -n "your-openweathermap-api-key" > owm_api_key.txt
 
 # PgBouncer passwords (if using pgbouncer profile)
@@ -91,18 +91,17 @@ docker compose -f compose.production.yaml up -d
 
 ## Secret Files Reference
 
-| Secret File | Environment Variable | Used By | Description |
-| ----------- | -------------------- | ------- | ----------- |
-| `secret_key.txt` | `SECRET_KEY_FILE` | backend | Flask session encryption |
-| `jwt_secret_key.txt` | `JWT_SECRET_KEY_FILE` | backend | JWT token signing |
-| `database_url.txt` | `DATABASE_URL_FILE` | backend, celery | PostgreSQL connection string |
-| `redis_url.txt` | `REDIS_URL_FILE` | backend, celery | Redis connection string |
-| `dd_api_key.txt` | `DD_API_KEY_FILE` | datadog-agent, backend | Datadog monitoring |
-| `owm_api_key.txt` | `OWM_API_KEY_FILE` | backend | OpenWeatherMap API |
-| `model_signing_key.txt` | `MODEL_SIGNING_KEY_FILE` | backend | ML model verification |
-| `pgbouncer_db_password.txt` | `DB_PASSWORD_FILE` | pgbouncer | Database password |
-| `pgbouncer_admin_password.txt` | `PGBOUNCER_ADMIN_PASSWORD_FILE` | pgbouncer | Admin console |
-| `pgbouncer_stats_password.txt` | `PGBOUNCER_STATS_PASSWORD_FILE` | pgbouncer | Stats user |
+| Secret File                    | Environment Variable            | Used By         | Description                  |
+| ------------------------------ | ------------------------------- | --------------- | ---------------------------- |
+| `secret_key.txt`               | `SECRET_KEY_FILE`               | backend         | Flask session encryption     |
+| `jwt_secret_key.txt`           | `JWT_SECRET_KEY_FILE`           | backend         | JWT token signing            |
+| `database_url.txt`             | `DATABASE_URL_FILE`             | backend, celery | PostgreSQL connection string |
+| `redis_url.txt`                | `REDIS_URL_FILE`                | backend, celery | Redis connection string      |
+| `owm_api_key.txt`              | `OWM_API_KEY_FILE`              | backend         | OpenWeatherMap API           |
+| `model_signing_key.txt`        | `MODEL_SIGNING_KEY_FILE`        | backend         | ML model verification        |
+| `pgbouncer_db_password.txt`    | `DB_PASSWORD_FILE`              | pgbouncer       | Database password            |
+| `pgbouncer_admin_password.txt` | `PGBOUNCER_ADMIN_PASSWORD_FILE` | pgbouncer       | Admin console                |
+| `pgbouncer_stats_password.txt` | `PGBOUNCER_STATS_PASSWORD_FILE` | pgbouncer       | Stats user                   |
 
 ## How It Works
 
@@ -193,6 +192,7 @@ The implementation supports graceful fallback:
 4. **Raise Error** - If `required=True` and no value found
 
 This allows the same codebase to work in:
+
 - **Production**: Secrets mounted as files
 - **Development**: Environment variables in `.env` files
 - **Testing**: Mocked values

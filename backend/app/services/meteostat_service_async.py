@@ -17,6 +17,7 @@ Features:
 import asyncio
 import logging
 import os
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -24,7 +25,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.meteostat_types import WeatherObservation
-from app.utils.circuit_breaker import CircuitOpenError
+from app.utils.resilience.circuit_breaker import CircuitOpenError
 from meteostat import Daily, Hourly, Point, Stations
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -236,9 +237,11 @@ class AsyncMeteostatService:
                 # Create a Point for the location
                 location = Point(lat, lon)
 
-                # Fetch hourly data
-                data = Hourly(location, start, end)
-                df = data.fetch()
+                # Fetch hourly data (suppress Meteostat's internal freq='H' deprecation)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message=".*'H' is deprecated", category=FutureWarning)
+                    data = Hourly(location, start, end)
+                    df = data.fetch()
 
                 if df.empty:
                     logger.warning(f"No hourly data available for lat={lat}, lon={lon}")
@@ -422,8 +425,10 @@ class AsyncMeteostatService:
                 location = Point(lat, lon)
 
                 # First try to get hourly data which includes humidity (rhum)
-                hourly_data = Hourly(location, start, end)
-                hourly_df = hourly_data.fetch()
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message=".*'H' is deprecated", category=FutureWarning)
+                    hourly_data = Hourly(location, start, end)
+                    hourly_df = hourly_data.fetch()
 
                 if not hourly_df.empty and "rhum" in hourly_df.columns:
                     # Aggregate hourly data to daily with actual humidity

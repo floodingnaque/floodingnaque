@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.api.middleware.rate_limit import limiter
 from app.core.security import (
+    JWT_ACCESS_TOKEN_EXPIRES,
     create_access_token,
     create_password_reset_token,
     create_refresh_token,
@@ -169,6 +170,13 @@ def register():
             session.add(user)
             session.flush()  # Get the user ID
 
+            # Auto-login: generate tokens so the user is signed in immediately
+            access_token = create_access_token(user.id, user.email, user.role)
+            refresh_token, refresh_hash = create_refresh_token(user.id)
+
+            user.refresh_token_hash = refresh_hash
+            user.refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=7)
+
             user_data = user.to_dict()
 
         logger.info(f"User registered: {email} [{request_id}]")
@@ -178,6 +186,10 @@ def register():
                 {
                     "success": True,
                     "message": "User registered successfully",
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "token_type": "Bearer",
+                    "expires_in": JWT_ACCESS_TOKEN_EXPIRES * 60,
                     "user": user_data,
                     "request_id": request_id,
                 }
@@ -259,9 +271,9 @@ def login():
 
             # Optional development bypass: skip password verification entirely.
             if AUTH_BYPASS_ENABLED:
-                assert os.getenv("APP_ENV", "").lower() != "production", (
-                    "AUTH_BYPASS must never be active in production"
-                )
+                assert (  # nosec B101 - intentional dev-only guard
+                    os.getenv("APP_ENV", "").lower() != "production"
+                ), "AUTH_BYPASS must never be active in production"
                 logger.warning(
                     "AUTH_BYPASS_ENABLED is TRUE - bypassing password verification for user '%s' [%s]",
                     email,
@@ -329,7 +341,7 @@ def login():
                     "access_token": access_token,
                     "refresh_token": refresh_token,
                     "token_type": "Bearer",
-                    "expires_in": int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")) * 60,
+                    "expires_in": JWT_ACCESS_TOKEN_EXPIRES * 60,
                     "user": user_data,
                     "request_id": request_id,
                 }
@@ -409,7 +421,7 @@ def refresh_token():
                     "success": True,
                     "access_token": access_token,
                     "token_type": "Bearer",
-                    "expires_in": int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "15")) * 60,
+                    "expires_in": JWT_ACCESS_TOKEN_EXPIRES * 60,
                     "request_id": request_id,
                 }
             ),
@@ -441,27 +453,27 @@ def logout():
     try:
         # Get token from Authorization header
         auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return api_error("InvalidRequest", "Authorization header required", HTTP_UNAUTHORIZED, request_id)
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+            payload, error = decode_token(token)
 
-        token = auth_header.split(" ", 1)[1]
-        payload, error = decode_token(token)
+            if not error:
+                user_id = int(payload.get("sub"))
 
-        if error:
-            # Token might be expired but we still want to logout
-            logger.debug(f"Logout with invalid/expired token [{request_id}]: {error}")
-            return jsonify({"success": True, "message": "Logged out successfully", "request_id": request_id}), HTTP_OK
+                with get_db_session() as session:
+                    user = session.query(User).filter(User.id == user_id).first()
+                    if user:
+                        # Invalidate refresh token
+                        user.refresh_token_hash = None
+                        user.refresh_token_expires = None
 
-        user_id = int(payload.get("sub"))
-
-        with get_db_session() as session:
-            user = session.query(User).filter(User.id == user_id).first()
-            if user:
-                # Invalidate refresh token
-                user.refresh_token_hash = None
-                user.refresh_token_expires = None
-
-        logger.info(f"User logged out: {payload.get('email')} [{request_id}]")
+                logger.info(f"User logged out: {payload.get('email')} [{request_id}]")
+            else:
+                # Token expired or invalid — still succeed (user is logging out)
+                logger.debug(f"Logout with invalid/expired token [{request_id}]: {error}")
+        else:
+            # No Authorization header — still succeed (client-side already cleared)
+            logger.debug(f"Logout without token [{request_id}]")
 
         return jsonify({"success": True, "message": "Logged out successfully", "request_id": request_id}), HTTP_OK
 
@@ -512,19 +524,56 @@ def request_password_reset():
                 .first()
             )
 
-            if user:
-                # Generate reset token and store its hash (never store plain text)
-                token, expires = create_password_reset_token()
-                import hashlib as _hashlib
+            if not user:
+                # In development, let the caller know the email was not found
+                # so they don't waste time waiting for a token that will never come.
+                from app.core.config import is_debug_mode
 
-                user.password_reset_token = _hashlib.sha256(token.encode()).hexdigest()
-                user.password_reset_expires = expires
+                if is_debug_mode():
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "message": "No account found with this email address (development only).",
+                                "email_found": False,
+                                "request_id": request_id,
+                            }
+                        ),
+                        HTTP_NOT_FOUND,
+                    )
+                return success_response, HTTP_OK
 
-                # In production, send email with reset link
-                logger.info(f"Password reset requested [{request_id}]")
-                # Note: Never log reset tokens - send via secure email channel only
+            # Generate reset token and store its hash (never store plain text)
+            token, expires = create_password_reset_token()
+            import hashlib as _hashlib
 
-                send_password_reset_email(email, token)
+            user.password_reset_token = _hashlib.sha256(token.encode()).hexdigest()
+            user.password_reset_expires = expires
+
+            # In production, send email with reset link
+            logger.info(f"Password reset requested [{request_id}]")
+            # Note: Never log reset tokens - send via secure email channel only
+
+            email_sent = send_password_reset_email(email, token)
+
+            # In development, if SMTP is not configured, return the token
+            # directly so developers can still test the reset flow.
+            if not email_sent:
+                from app.core.config import is_debug_mode
+
+                if is_debug_mode():
+                    logger.warning(f"SMTP not configured - returning reset token in response (dev mode) [{request_id}]")
+                    return (
+                        jsonify(
+                            {
+                                "success": True,
+                                "message": "SMTP not configured. Token returned in response (development only).",
+                                "dev_token": token,
+                                "request_id": request_id,
+                            }
+                        ),
+                        HTTP_OK,
+                    )
 
         return success_response, HTTP_OK
 
@@ -627,6 +676,107 @@ def confirm_password_reset():
         return api_error("ResetFailed", "Failed to reset password", HTTP_INTERNAL_ERROR, request_id)
 
 
+@users_bp.route("/me/change-password", methods=["POST"])
+@limiter.limit("5 per hour")
+def change_password():
+    """
+    Change the current authenticated user's password.
+
+    Requires the current password for verification and a new password
+    that meets the security policy.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Request Body:
+    {
+        "current_password": "OldPassword123!",
+        "new_password": "NewSecurePassword456!"
+    }
+
+    Returns:
+        200: Password changed successfully
+        400: Invalid request / weak password
+        401: Not authenticated / wrong current password
+    ---
+    tags:
+      - Authentication
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Authorization header required", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+
+        data = request.get_json()
+        if not data:
+            return api_error("InvalidRequest", "No data provided", HTTP_BAD_REQUEST, request_id)
+
+        current_password = data.get("current_password", "")
+        new_password = data.get("new_password", "")
+
+        if not current_password or not new_password:
+            return api_error(
+                "ValidationError",
+                "Current password and new password are required",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        # Validate new password meets security policy
+        is_valid, password_errors = is_secure_password(new_password)
+        if not is_valid:
+            return api_error("ValidationError", "; ".join(password_errors), HTTP_BAD_REQUEST, request_id)
+
+        with get_db_session() as session:
+            user = session.query(User).filter(User.id == user_id, User.is_deleted.is_(False)).first()
+
+            if not user:
+                return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+            # Verify current password
+            if not verify_password(current_password, user.password_hash):
+                return api_error(
+                    "InvalidPassword",
+                    "Current password is incorrect",
+                    HTTP_UNAUTHORIZED,
+                    request_id,
+                )
+
+            # Update password
+            user.password_hash = hash_password(new_password)
+
+            # Invalidate all refresh tokens (force re-login on other devices)
+            user.refresh_token_hash = None
+            user.refresh_token_expires = None
+
+        logger.info(f"Password changed for user_id={user_id} [{request_id}]")
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Password changed successfully.",
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(f"Password change error [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("PasswordChangeFailed", "Failed to change password", HTTP_INTERNAL_ERROR, request_id)
+
+
 @users_bp.route("/me", methods=["GET"])
 @limiter.limit("60 per minute")
 def get_current_user():
@@ -671,6 +821,85 @@ def get_current_user():
     except Exception as e:
         logger.error(f"Get user error [{request_id}]: {str(e)}", exc_info=True)
         return api_error("UserFetchFailed", "Failed to fetch user profile", HTTP_INTERNAL_ERROR, request_id)
+
+
+@users_bp.route("/me", methods=["PATCH"])
+@limiter.limit("10 per hour")
+def update_current_user():
+    """
+    Update current authenticated user profile.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Body (all optional):
+        name: str — Full name (2-255 chars)
+        email: str — Valid email address
+
+    Returns:
+        200: Updated user profile
+        400: Validation error
+        401: Not authenticated
+        409: Email already in use
+    ---
+    tags:
+      - Authentication
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Authorization header required", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+        data = request.get_json(silent=True) or {}
+
+        with get_db_session() as session:
+            user = session.query(User).filter(User.id == user_id, User.is_deleted.is_(False)).first()
+
+            if not user:
+                return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+            # Update name
+            if "name" in data:
+                name = str(data["name"]).strip()
+                if len(name) < 2 or len(name) > 255:
+                    return api_error(
+                        "ValidationError", "Name must be between 2 and 255 characters", HTTP_BAD_REQUEST, request_id
+                    )
+                user.full_name = name
+
+            # Update email
+            if "email" in data:
+                email = str(data["email"]).strip().lower()
+                if not validate_email(email):
+                    return api_error("ValidationError", "Invalid email address", HTTP_BAD_REQUEST, request_id)
+                if email != user.email:
+                    existing = (
+                        session.query(User)
+                        .filter(User.email == email, User.id != user_id, User.is_deleted.is_(False))
+                        .first()
+                    )
+                    if existing:
+                        return api_error("EmailConflict", "Email address is already in use", HTTP_CONFLICT, request_id)
+                    user.email = email
+
+            session.commit()
+            user_data = user.to_dict(include_sensitive=True)
+
+        logger.info(f"Profile updated [{request_id}]: user_id={user_id}")
+        return jsonify({"success": True, "user": user_data, "request_id": request_id}), HTTP_OK
+
+    except Exception as e:
+        logger.error(f"Profile update error [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("ProfileUpdateFailed", "Failed to update profile", HTTP_INTERNAL_ERROR, request_id)
 
 
 @users_bp.route("/me", methods=["DELETE"])

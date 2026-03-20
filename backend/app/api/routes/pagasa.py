@@ -175,8 +175,7 @@ def list_barangays():
     from app.services.pagasa_radar_service import PARANAQUE_BARANGAYS
 
     barangays = [
-        {"key": k, "name": v["name"], "lat": v["lat"], "lon": v["lon"]}
-        for k, v in PARANAQUE_BARANGAYS.items()
+        {"key": k, "name": v["name"], "lat": v["lat"], "lon": v["lon"]} for k, v in PARANAQUE_BARANGAYS.items()
     ]
 
     return {

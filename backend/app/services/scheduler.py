@@ -10,10 +10,15 @@ import os
 import sys
 import tempfile
 
-from apscheduler.schedulers.background import BackgroundScheduler
 from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
+from apscheduler.schedulers.background import BackgroundScheduler
 
 logger = logging.getLogger(__name__)
+
+# Keep grace period slightly above 5-minute smart-alert interval by default.
+# This allows one delayed run to execute after a short outage while coalescing
+# multiple missed intervals into a single run.
+_misfire_grace_seconds = int(os.getenv("SCHEDULER_MISFIRE_GRACE_SECONDS", "360"))
 
 # Scheduler instance - jobs are added when start() is called
 scheduler = BackgroundScheduler(
@@ -21,7 +26,7 @@ scheduler = BackgroundScheduler(
     job_defaults={
         "coalesce": True,  # Combine missed runs into one
         "max_instances": 1,  # Only one instance of each job
-        "misfire_grace_time": 300,  # 5 minute grace period
+        "misfire_grace_time": _misfire_grace_seconds,
     },
 )
 
@@ -143,8 +148,7 @@ def scheduled_auto_retrain():
         trigger_check = check_retraining_needed()
         if trigger_check.get("should_retrain"):
             logger.info(
-                f"Auto-retrain triggered by: {trigger_check.get('triggered_by')}. "
-                "Starting retraining pipeline..."
+                f"Auto-retrain triggered by: {trigger_check.get('triggered_by')}. " "Starting retraining pipeline..."
             )
             result = run_auto_retrain(force=False)
             logger.info(f"Auto-retrain completed: status={result.get('status')}")
@@ -152,6 +156,25 @@ def scheduled_auto_retrain():
             logger.info("Auto-retrain check: no triggers fired, skipping.")
     except Exception as e:
         logger.error(f"Error in scheduled auto-retrain: {str(e)}", exc_info=True)
+
+
+def scheduled_drift_check():
+    """Scheduled task for model drift monitoring.
+
+    Computes PSI per feature, exports to Prometheus gauges, and logs warnings.
+    Runs every 6 hours by default (DRIFT_CHECK_INTERVAL_HOURS).
+    """
+    try:
+        from app.services.drift_monitor import check_drift
+
+        result = check_drift()
+        if result.get("drift_detected"):
+            logger.warning(
+                "Model drift detected! Drifted features: %s",
+                result.get("drifted_features"),
+            )
+    except Exception as e:
+        logger.error(f"Error in scheduled drift check: {str(e)}", exc_info=True)
 
 
 def scheduled_smart_alert_check():
@@ -162,9 +185,12 @@ def scheduled_smart_alert_check():
     through the smart alert pipeline.  This enables time-based escalation
     (Alert → Critical after persistence) and de-escalation even between
     user-triggered predictions.
+
+    Skips if no new weather data has arrived since the last check to avoid
+    redundant ML inference.
     """
-    from app.services.predict import predict_flood
     from app.services.alerts import send_flood_alert
+    from app.services.predict import predict_flood
     from app.services.smart_alert_evaluator import evaluate_smart_alert
 
     try:
@@ -174,14 +200,18 @@ def scheduled_smart_alert_check():
 
         # Get the most recent weather observation
         with get_db_session() as session:
-            latest = (
-                session.query(WeatherData)
-                .order_by(desc(WeatherData.created_at))
-                .first()
-            )
+            latest = session.query(WeatherData).order_by(desc(WeatherData.created_at)).limit(1).first()
             if not latest:
                 logger.info("Smart alert check: no weather data available, skipping.")
                 return
+
+            # Skip if weather data hasn't changed since last check
+            latest_ts = latest.created_at.isoformat() if latest.created_at else None
+            last_checked = getattr(scheduled_smart_alert_check, "_last_weather_ts", None)
+            if latest_ts and latest_ts == last_checked:
+                logger.debug("Smart alert check: weather data unchanged, skipping.")
+                return
+            scheduled_smart_alert_check._last_weather_ts = latest_ts
 
             weather_input = {
                 "temperature": latest.temperature,
@@ -208,7 +238,9 @@ def scheduled_smart_alert_check():
 
             logger.info(
                 "Smart alert check completed: risk_level=%d, escalation=%s, suppressed=%s",
-                risk_level, escalation_state, was_suppressed,
+                risk_level,
+                escalation_state,
+                was_suppressed,
             )
 
             # Only dispatch if risk is elevated and not suppressed
@@ -374,6 +406,21 @@ def init_scheduler():
             logger.info(f"Auto-retrain scheduled every {retrain_interval_days} day(s)")
 
     logger.info(f"Scheduler initialized with ingestion interval: {ingest_interval_minutes} minute(s)")
+
+    # Add drift monitoring job (every 6 hours by default)
+    drift_interval_hours = int(os.getenv("DRIFT_CHECK_INTERVAL_HOURS", "6"))
+    drift_enabled = os.getenv("DRIFT_CHECK_ENABLED", "True").lower() == "true"
+    if drift_enabled:
+        scheduler.add_job(
+            scheduled_drift_check,
+            "interval",
+            hours=drift_interval_hours,
+            id="drift_check",
+            name="Model Drift Monitoring",
+            replace_existing=True,
+        )
+        logger.info(f"Drift check scheduled every {drift_interval_hours} hour(s)")
+
     _scheduler_initialized = True
 
 

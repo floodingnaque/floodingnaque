@@ -23,7 +23,7 @@ from app.services.meteostat_service_async import (
     AsyncMeteostatService,
     WeatherObservation,
 )
-from app.utils.circuit_breaker import CircuitOpenError
+from app.utils.resilience.circuit_breaker import CircuitOpenError
 
 # =============================================================================
 # Test Fixtures
@@ -75,7 +75,7 @@ def mock_stations_df():
 def mock_hourly_df():
     """Create a mock hourly weather DataFrame."""
     now = datetime.now(timezone.utc)
-    dates = pd.date_range(end=now, periods=24, freq="H")
+    dates = pd.date_range(end=now, periods=24, freq="h")
     return pd.DataFrame(
         {
             "temp": [28.5, 28.0, 27.5, 27.0] * 6,

@@ -18,10 +18,10 @@ import pytest
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 
-
 # ═════════════════════════════════════════════════════════════════════════════
 # Helper
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 def _try_import(module: str) -> bool:
     """Check if a module can be imported."""
@@ -36,6 +36,7 @@ def _try_import(module: str) -> bool:
 # Fixtures
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def flood_dataset():
     """Create a synthetic binary classification dataset mimicking flood data."""
@@ -49,9 +50,16 @@ def flood_dataset():
         random_state=42,
     )
     feature_names = [
-        "temperature", "humidity", "precipitation", "is_monsoon_season", "month",
-        "temp_humidity_interaction", "humidity_precip_interaction",
-        "temp_precip_interaction", "monsoon_precip_interaction", "saturation_risk",
+        "temperature",
+        "humidity",
+        "precipitation",
+        "is_monsoon_season",
+        "month",
+        "temp_humidity_interaction",
+        "humidity_precip_interaction",
+        "temp_precip_interaction",
+        "monsoon_precip_interaction",
+        "saturation_risk",
     ]
     X_df = pd.DataFrame(X, columns=feature_names)
     y_series = pd.Series(y, name="flood")
@@ -63,7 +71,11 @@ def train_test_data(flood_dataset):
     """Split flood dataset into train/test."""
     X, y = flood_dataset
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y,
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y,
     )
     return X_train, X_test, y_train, y_test
 
@@ -72,18 +84,18 @@ def train_test_data(flood_dataset):
 # XGBoost Tests
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestXGBoost:
     """Tests for the XGBoost classifier wrapper."""
 
     def test_xgboost_available(self):
         """XGBoost should be importable."""
         from app.services.advanced_models import _XGBOOST_AVAILABLE
+
         # We only test that the check exists; actual availability depends on env
         assert isinstance(_XGBOOST_AVAILABLE, bool)
 
-    @pytest.mark.skipif(
-        not _try_import("xgboost"), reason="XGBoost not installed"
-    )
+    @pytest.mark.skipif(not _try_import("xgboost"), reason="XGBoost not installed")
     def test_create_xgboost_model(self, train_test_data):
         from app.services.advanced_models import XGBoostConfig, create_xgboost_model
 
@@ -97,9 +109,7 @@ class TestXGBoost:
         assert len(preds) == len(X_test)
         assert set(np.unique(preds)).issubset({0, 1})
 
-    @pytest.mark.skipif(
-        not _try_import("xgboost"), reason="XGBoost not installed"
-    )
+    @pytest.mark.skipif(not _try_import("xgboost"), reason="XGBoost not installed")
     def test_xgboost_scale_pos_weight(self, train_test_data):
         """scale_pos_weight should be auto-computed from label distribution."""
         from app.services.advanced_models import create_xgboost_model
@@ -109,9 +119,7 @@ class TestXGBoost:
         # Should be > 1 for imbalanced data
         assert model.get_params()["scale_pos_weight"] > 1.0
 
-    @pytest.mark.skipif(
-        not _try_import("xgboost"), reason="XGBoost not installed"
-    )
+    @pytest.mark.skipif(not _try_import("xgboost"), reason="XGBoost not installed")
     def test_xgboost_config(self):
         from app.services.advanced_models import XGBoostConfig
 
@@ -121,9 +129,7 @@ class TestXGBoost:
         assert params["max_depth"] == 4
         assert params["learning_rate"] == 0.1
 
-    @pytest.mark.skipif(
-        not _try_import("xgboost"), reason="XGBoost not installed"
-    )
+    @pytest.mark.skipif(not _try_import("xgboost"), reason="XGBoost not installed")
     def test_xgboost_predict_proba(self, train_test_data):
         from app.services.advanced_models import create_xgboost_model
 
@@ -139,16 +145,16 @@ class TestXGBoost:
 # LightGBM Tests
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestLightGBM:
     """Tests for the LightGBM classifier wrapper."""
 
     def test_lightgbm_available(self):
         from app.services.advanced_models import _LIGHTGBM_AVAILABLE
+
         assert isinstance(_LIGHTGBM_AVAILABLE, bool)
 
-    @pytest.mark.skipif(
-        not _try_import("lightgbm"), reason="LightGBM not installed"
-    )
+    @pytest.mark.skipif(not _try_import("lightgbm"), reason="LightGBM not installed")
     def test_create_lightgbm_model(self, train_test_data):
         from app.services.advanced_models import create_lightgbm_model
 
@@ -161,9 +167,7 @@ class TestLightGBM:
         assert len(preds) == len(X_test)
         assert set(np.unique(preds)).issubset({0, 1})
 
-    @pytest.mark.skipif(
-        not _try_import("lightgbm"), reason="LightGBM not installed"
-    )
+    @pytest.mark.skipif(not _try_import("lightgbm"), reason="LightGBM not installed")
     def test_lightgbm_config(self):
         from app.services.advanced_models import LightGBMConfig
 
@@ -173,9 +177,7 @@ class TestLightGBM:
         assert params["num_leaves"] == 31
         assert params["is_unbalance"] is True
 
-    @pytest.mark.skipif(
-        not _try_import("lightgbm"), reason="LightGBM not installed"
-    )
+    @pytest.mark.skipif(not _try_import("lightgbm"), reason="LightGBM not installed")
     def test_lightgbm_predict_proba(self, train_test_data):
         from app.services.advanced_models import create_lightgbm_model
 
@@ -190,6 +192,7 @@ class TestLightGBM:
 # ═════════════════════════════════════════════════════════════════════════════
 # Ensemble Tests
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestEnsemble:
     """Tests for the Ensemble Voting Classifier."""
@@ -263,6 +266,7 @@ class TestEnsemble:
 # Model Comparison Tests
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestModelComparison:
     """Tests for the compare_models() function."""
 
@@ -275,8 +279,10 @@ class TestModelComparison:
 
         X_train, X_test, y_train, y_test = train_test_data
         result = compare_models(
-            X_train=X_train, y_train=y_train,
-            X_test=X_test, y_test=y_test,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
             cv_folds=3,
             output_dir=str(tmp_path),
         )
@@ -295,8 +301,10 @@ class TestModelComparison:
 
         X_train, X_test, y_train, y_test = train_test_data
         result = compare_models(
-            X_train=X_train, y_train=y_train,
-            X_test=X_test, y_test=y_test,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
             cv_folds=3,
             output_dir=str(tmp_path),
         )
@@ -314,8 +322,10 @@ class TestModelComparison:
 
         X_train, X_test, y_train, y_test = train_test_data
         result = compare_models(
-            X_train=X_train, y_train=y_train,
-            X_test=X_test, y_test=y_test,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
             include_xgboost=False,
             include_lightgbm=False,
             include_ensemble=False,
@@ -330,6 +340,7 @@ class TestModelComparison:
 # ═════════════════════════════════════════════════════════════════════════════
 # Availability Helpers
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestAvailability:
     """Tests for get_available_algorithms()."""

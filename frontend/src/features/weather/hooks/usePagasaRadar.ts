@@ -150,6 +150,7 @@ export function usePagasaRadar(options: UsePagasaRadarOptions = {}): UsePagasaRa
       const interval = setInterval(fetchData, refreshInterval);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [refreshInterval, enabled, fetchData]);
 
   return {

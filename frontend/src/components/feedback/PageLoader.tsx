@@ -5,7 +5,7 @@
  * when lazy-loaded route components are being fetched.
  */
 
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from "lucide-react";
 
 /**
  * Displays a centered spinner filling the content area.
@@ -19,9 +19,16 @@ export function PageLoader() {
       aria-live="polite"
       aria-label="Loading page"
     >
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="flex flex-col items-center gap-4">
+        {/* Top progress bar */}
+        <div className="w-48 h-1 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full animate-[loading-bar_1.5s_ease-in-out_infinite]" />
+        </div>
+        <Loader2
+          className="h-8 w-8 animate-spin text-primary"
+          aria-hidden="true"
+        />
+        <p className="text-sm font-medium text-muted-foreground">Loading…</p>
         <span className="sr-only">Loading page</span>
       </div>
     </div>

@@ -7,22 +7,22 @@
  * and contributing factors.
  */
 
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from "date-fns";
 import {
-  MapPin,
-  Clock,
   Check,
   CheckCircle2,
+  Clock,
   CloudRain,
+  MapPin,
   ShieldAlert,
   TrendingUp,
-} from 'lucide-react';
+} from "lucide-react";
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { AlertBadge } from './AlertBadge';
-import type { Alert } from '@/types';
+import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/ui/glass-card";
+import { cn } from "@/lib/utils";
+import type { Alert } from "@/types";
+import { AlertBadge } from "./AlertBadge";
 
 /**
  * AlertCard component props
@@ -47,7 +47,7 @@ function formatRelativeTime(dateString: string): string {
   try {
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   } catch {
-    return 'Unknown time';
+    return "Unknown time";
   }
 }
 
@@ -74,21 +74,32 @@ export function AlertCard({
   };
 
   return (
-    <Card
+    <GlassCard
+      intensity="light"
       className={cn(
-        'transition-all duration-200',
-        alert.acknowledged && 'opacity-60',
-        !compact && 'hover:shadow-md',
-        className
+        "overflow-hidden transition-all duration-300",
+        alert.acknowledged && "opacity-60",
+        !compact && "hover:shadow-lg",
+        className,
       )}
     >
-      <CardContent className={cn('p-4', compact && 'p-3')}>
+      <div
+        className={cn(
+          "h-1 w-full",
+          alert.risk_level >= 2
+            ? "bg-linear-to-r from-red-500/60 via-red-400 to-rose-500/60"
+            : alert.risk_level >= 1
+              ? "bg-linear-to-r from-amber-500/60 via-amber-400 to-yellow-500/60"
+              : "bg-linear-to-r from-emerald-500/60 via-emerald-400 to-teal-500/60",
+        )}
+      />
+      <div className={cn("p-4", compact && "p-3")}>
         <div className="flex items-start gap-3">
           {/* Risk Badge */}
-          <div className="flex-shrink-0 pt-0.5">
+          <div className="shrink-0 pt-0.5">
             <AlertBadge
               riskLevel={alert.risk_level}
-              size={compact ? 'sm' : 'md'}
+              size={compact ? "sm" : "md"}
             />
           </div>
 
@@ -97,9 +108,9 @@ export function AlertCard({
             {/* Message */}
             <p
               className={cn(
-                'font-medium text-foreground',
-                compact ? 'text-sm' : 'text-base',
-                alert.acknowledged && 'text-muted-foreground'
+                "font-medium text-foreground",
+                compact ? "text-sm" : "text-base",
+                alert.acknowledged && "text-muted-foreground",
               )}
             >
               {alert.message}
@@ -108,29 +119,29 @@ export function AlertCard({
             {/* Meta info */}
             <div
               className={cn(
-                'flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-muted-foreground',
-                compact ? 'text-xs' : 'text-sm'
+                "flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-muted-foreground",
+                compact ? "text-xs" : "text-sm",
               )}
             >
               {/* Location */}
               {alert.location && (
                 <span className="flex items-center gap-1">
-                  <MapPin className={cn('h-3 w-3', compact && 'h-2.5 w-2.5')} />
+                  <MapPin className={cn("h-3 w-3", compact && "h-2.5 w-2.5")} />
                   {alert.location}
                 </span>
               )}
 
               {/* Triggered time */}
               <span className="flex items-center gap-1">
-                <Clock className={cn('h-3 w-3', compact && 'h-2.5 w-2.5')} />
+                <Clock className={cn("h-3 w-3", compact && "h-2.5 w-2.5")} />
                 {formatRelativeTime(alert.triggered_at)}
               </span>
 
               {/* Acknowledged status */}
               {alert.acknowledged && (
-                <span className="flex items-center gap-1 text-green-600">
+                <span className="flex items-center gap-1 text-risk-safe">
                   <CheckCircle2
-                    className={cn('h-3 w-3', compact && 'h-2.5 w-2.5')}
+                    className={cn("h-3 w-3", compact && "h-2.5 w-2.5")}
                   />
                   Acknowledged
                 </span>
@@ -146,15 +157,15 @@ export function AlertCard({
                   {alert.confidence_score != null && (
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
                         alert.confidence_score >= 0.7
-                          ? 'bg-green-50 text-green-700'
+                          ? "bg-risk-safe/10 text-risk-safe"
                           : alert.confidence_score >= 0.45
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-red-50 text-red-700'
+                            ? "bg-risk-alert/10 text-risk-alert"
+                            : "bg-risk-critical/10 text-risk-critical",
                       )}
                     >
-                      <ShieldAlert className="h-3 w-3" />
+                      <ShieldAlert className="w-3 h-3" />
                       {(alert.confidence_score * 100).toFixed(0)}% confidence
                     </span>
                   )}
@@ -163,30 +174,30 @@ export function AlertCard({
                   {alert.rainfall_3h != null && alert.rainfall_3h > 0 && (
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
                         alert.rainfall_3h >= 80
-                          ? 'bg-red-50 text-red-700'
+                          ? "bg-risk-critical/10 text-risk-critical"
                           : alert.rainfall_3h >= 50
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-blue-50 text-blue-700'
+                            ? "bg-risk-alert/10 text-risk-alert"
+                            : "bg-primary/10 text-primary",
                       )}
                     >
-                      <CloudRain className="h-3 w-3" />
+                      <CloudRain className="w-3 h-3" />
                       {alert.rainfall_3h.toFixed(1)} mm / 3h
                     </span>
                   )}
 
                   {/* Escalation state */}
-                  {alert.escalation_state === 'auto_escalated' && (
+                  {alert.escalation_state === "auto_escalated" && (
                     <span
-                      className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
+                      className="inline-flex items-center gap-1 rounded-full bg-risk-critical/15 px-2 py-0.5 text-xs font-medium text-risk-critical"
                       title={
                         alert.escalation_reason
                           ? `Reason: ${alert.escalation_reason}`
-                          : 'Auto-escalated due to sustained risk'
+                          : "Auto-escalated due to sustained risk"
                       }
                     >
-                      <TrendingUp className="h-3 w-3" />
+                      <TrendingUp className="w-3 h-3" />
                       Escalated
                     </span>
                   )}
@@ -211,36 +222,36 @@ export function AlertCard({
           </div>
 
           {/* Action */}
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             {alert.acknowledged ? (
               <div
                 className={cn(
-                  'flex items-center justify-center rounded-full bg-green-100',
-                  compact ? 'h-7 w-7' : 'h-8 w-8'
+                  "flex items-center justify-center rounded-full bg-risk-safe/15",
+                  compact ? "h-7 w-7" : "h-8 w-8",
                 )}
               >
                 <Check
                   className={cn(
-                    'text-green-600',
-                    compact ? 'h-3.5 w-3.5' : 'h-4 w-4'
+                    "text-risk-safe",
+                    compact ? "h-3.5 w-3.5" : "h-4 w-4",
                   )}
                 />
               </div>
             ) : (
               <Button
                 variant="outline"
-                size={compact ? 'sm' : 'default'}
+                size={compact ? "sm" : "default"}
                 onClick={handleAcknowledge}
                 disabled={isAcknowledging}
                 className="whitespace-nowrap"
               >
-                {isAcknowledging ? 'Acknowledging...' : 'Acknowledge'}
+                {isAcknowledging ? "Acknowledging..." : "Acknowledge"}
               </Button>
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   );
 }
 

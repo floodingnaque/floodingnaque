@@ -57,26 +57,26 @@ x-security: &security
 
 x-resources-small: &resources-small
   limits:
-    cpus: '0.5'
+    cpus: "0.5"
     memory: 512M
   reservations:
-    cpus: '0.1'
+    cpus: "0.1"
     memory: 128M
 
 x-resources-medium: &resources-medium
   limits:
-    cpus: '1'
+    cpus: "1"
     memory: 1G
   reservations:
-    cpus: '0.25'
+    cpus: "0.25"
     memory: 256M
 
 x-resources-large: &resources-large
   limits:
-    cpus: '2'
+    cpus: "2"
     memory: 2G
   reservations:
-    cpus: '0.5'
+    cpus: "0.5"
     memory: 512M
 
 x-healthcheck: &healthcheck-template
@@ -90,7 +90,6 @@ x-healthcheck: &healthcheck-template
 # ===================
 
 services:
-
   # ─── 1. Weather Data Collector ─────────────────
   weather-collector:
     <<: *security
@@ -107,6 +106,7 @@ services:
       SERVICE_NAME: weather-collector
       APP_ENV: development
       SCHEDULER_ENABLED: "true"
+      COLLECTION_INTERVAL_S: ${COLLECTION_INTERVAL_S:-300}
       METEOSTAT_API_KEY: ${METEOSTAT_API_KEY:-}
       GOOGLE_WEATHER_API_KEY: ${GOOGLE_WEATHER_API_KEY:-}
       WORLDTIDES_API_KEY: ${WORLDTIDES_API_KEY:-}
@@ -123,7 +123,13 @@ services:
       - microservices
     healthcheck:
       <<: *healthcheck-template
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')",
+        ]
     deploy:
       resources:
         <<: *resources-small
@@ -146,6 +152,8 @@ services:
       SERVICE_NAME: ml-prediction
       APP_ENV: development
       MODEL_PATH: /app/models
+      PREDICTION_CACHE_TTL: ${PREDICTION_CACHE_TTL:-60}
+      FLOODINGNAQUE_FLAG_ENSEMBLE_MODEL: ${FLOODINGNAQUE_FLAG_ENSEMBLE_MODEL:-false}
     volumes:
       - ./services/ml-prediction/app:/app/app:ro
       - ./services/shared:/app/shared:ro
@@ -159,7 +167,13 @@ services:
       - microservices
     healthcheck:
       <<: *healthcheck-template
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')",
+        ]
     deploy:
       resources:
         <<: *resources-large
@@ -188,6 +202,9 @@ services:
       TWILIO_SID: ${TWILIO_SID:-}
       TWILIO_TOKEN: ${TWILIO_TOKEN:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SMS_COOLDOWN_MINUTES: ${SMS_COOLDOWN_MINUTES:-30}
+      ALERT_COOLDOWN_MINUTES: ${ALERT_COOLDOWN_MINUTES:-15}
+      SEMAPHORE_API_KEY: ${SEMAPHORE_API_KEY:-}
     volumes:
       - ./services/alert-notification/app:/app/app:ro
       - ./services/shared:/app/shared:ro
@@ -200,7 +217,13 @@ services:
       - microservices
     healthcheck:
       <<: *healthcheck-template
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5003/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5003/health')",
+        ]
     deploy:
       resources:
         <<: *resources-small
@@ -234,7 +257,13 @@ services:
       - microservices
     healthcheck:
       <<: *healthcheck-template
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5004/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5004/health')",
+        ]
     deploy:
       resources:
         <<: *resources-small
@@ -277,7 +306,13 @@ services:
       - microservices
     healthcheck:
       <<: *healthcheck-template
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5005/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5005/health')",
+        ]
     deploy:
       resources:
         <<: *resources-medium
@@ -305,7 +340,15 @@ services:
       - microservices
     healthcheck:
       <<: *healthcheck-template
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
     deploy:
       resources:
         <<: *resources-small
@@ -329,7 +372,11 @@ services:
     networks:
       - microservices
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-floodingnaque}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-floodingnaque}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -345,7 +392,7 @@ services:
     image: redis:7.2-alpine
     container_name: fn-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --save 60 1000
     ports:
       - "127.0.0.1:6379:6379"
     volumes:

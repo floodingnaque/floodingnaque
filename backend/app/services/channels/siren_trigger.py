@@ -26,7 +26,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import requests
-
 from app.services.channels.base import NotificationChannel
 
 logger = logging.getLogger(__name__)
@@ -42,17 +41,9 @@ class SirenTriggerChannel(NotificationChannel):
         super().__init__(sandbox=sandbox)
         self._api_url = os.getenv("SIREN_API_URL", "")
         self._api_key = os.getenv("SIREN_API_KEY", "")
-        self._critical_only = (
-            os.getenv("SIREN_CRITICAL_ONLY", "True").lower() == "true"
-        )
-        self._default_duration = int(
-            os.getenv("SIREN_ACTIVATION_DURATION", "60")
-        )
-        self._default_zones = [
-            z.strip()
-            for z in os.getenv("SIREN_ZONES", "").split(",")
-            if z.strip()
-        ]
+        self._critical_only = os.getenv("SIREN_CRITICAL_ONLY", "True").lower() == "true"
+        self._default_duration = int(os.getenv("SIREN_ACTIVATION_DURATION", "60"))
+        self._default_zones = [z.strip() for z in os.getenv("SIREN_ZONES", "").split(",") if z.strip()]
 
     def is_configured(self) -> bool:
         return bool(self._api_url and self._api_key)
@@ -116,17 +107,13 @@ class SirenTriggerChannel(NotificationChannel):
             logger.warning("SirenTriggerChannel - no zones configured")
             return "not_configured"
 
-        pattern = self._SIREN_PATTERNS.get(
-            risk_label, self._SIREN_PATTERNS["Alert"]
-        )
+        pattern = self._SIREN_PATTERNS.get(risk_label, self._SIREN_PATTERNS["Alert"])
 
         payload = {
             "command": "activate",
             "zones": zones,
             "pattern": pattern["pattern"],
-            "duration_sec": (extra or {}).get(
-                "duration_sec", pattern["duration_sec"]
-            ),
+            "duration_sec": (extra or {}).get("duration_sec", pattern["duration_sec"]),
             "repeat": pattern["repeat"],
             "risk_label": risk_label,
             "location": location,
@@ -168,8 +155,7 @@ class SirenTriggerChannel(NotificationChannel):
 
         except requests.ConnectionError:
             logger.error(
-                "Siren API unreachable at %s - "
-                "logging trigger for manual follow-up",
+                "Siren API unreachable at %s - " "logging trigger for manual follow-up",
                 self._api_url,
             )
             self._log_offline_trigger(payload, zones)
@@ -183,9 +169,7 @@ class SirenTriggerChannel(NotificationChannel):
     # Offline fallback
     # ------------------------------------------------------------------
 
-    def _log_offline_trigger(
-        self, payload: Dict[str, Any], zones: List[str]
-    ) -> None:
+    def _log_offline_trigger(self, payload: Dict[str, Any], zones: List[str]) -> None:
         """
         Log a trigger event when the siren API is unreachable.
 
@@ -213,10 +197,7 @@ class SirenTriggerChannel(NotificationChannel):
                 "critical_only": self._critical_only,
                 "default_zones": self._default_zones,
                 "default_duration_sec": self._default_duration,
-                "siren_patterns": {
-                    k: v["description"]
-                    for k, v in self._SIREN_PATTERNS.items()
-                },
+                "siren_patterns": {k: v["description"] for k, v in self._SIREN_PATTERNS.items()},
             }
         )
         return info

@@ -1,18 +1,18 @@
 /**
  * UI Store
- * 
+ *
  * Zustand store for managing UI state including sidebar state
  * and theme preferences. Persisted to localStorage.
  */
 
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { useShallow } from 'zustand/react/shallow';
+import { create } from "zustand";
+import { createJSONStorage, devtools, persist } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 
 /**
  * Theme type
  */
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
 /**
  * Notification preferences
@@ -68,12 +68,12 @@ type UIStore = UIState & UIActions;
  * Get system preference for color scheme
  */
 function getSystemTheme(): Theme {
-  if (typeof window !== 'undefined') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
+  if (typeof window !== "undefined") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
   }
-  return 'light';
+  return "light";
 }
 
 /**
@@ -82,7 +82,7 @@ function getSystemTheme(): Theme {
 const initialState: UIState = {
   sidebarOpen: false,
   sidebarCollapsed: false,
-  theme: 'light', // Will be overridden by persist or system preference
+  theme: "light", // Will be overridden by persist or system preference
   notifications: {
     emailAlerts: true,
     pushNotifications: true,
@@ -94,84 +94,87 @@ const initialState: UIState = {
  * UI store with persistence
  */
 export const useUIStore = create<UIStore>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+  devtools(
+    persist(
+      (set, get) => ({
+        ...initialState,
 
-      toggleSidebar: () => {
-        set((state) => ({ sidebarOpen: !state.sidebarOpen }));
-      },
+        toggleSidebar: () => {
+          set((state) => ({ sidebarOpen: !state.sidebarOpen }));
+        },
 
-      setSidebarOpen: (open: boolean) => {
-        set({ sidebarOpen: open });
-      },
+        setSidebarOpen: (open: boolean) => {
+          set({ sidebarOpen: open });
+        },
 
-      collapseSidebar: () => {
-        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
-      },
+        collapseSidebar: () => {
+          set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));
+        },
 
-      setSidebarCollapsed: (collapsed: boolean) => {
-        set({ sidebarCollapsed: collapsed });
-      },
+        setSidebarCollapsed: (collapsed: boolean) => {
+          set({ sidebarCollapsed: collapsed });
+        },
 
-      toggleTheme: () => {
-        const newTheme = get().theme === 'light' ? 'dark' : 'light';
-        set({ theme: newTheme });
-        applyTheme(newTheme);
-      },
+        toggleTheme: () => {
+          const newTheme = get().theme === "light" ? "dark" : "light";
+          set({ theme: newTheme });
+          applyTheme(newTheme);
+        },
 
-      setTheme: (theme: Theme) => {
-        set({ theme });
-        applyTheme(theme);
-      },
+        setTheme: (theme: Theme) => {
+          set({ theme });
+          applyTheme(theme);
+        },
 
-      toggleNotification: (key: keyof NotificationPreferences) => {
-        set((state) => ({
-          notifications: {
-            ...state.notifications,
-            [key]: !state.notifications[key],
-          },
-        }));
-      },
+        toggleNotification: (key: keyof NotificationPreferences) => {
+          set((state) => ({
+            notifications: {
+              ...state.notifications,
+              [key]: !state.notifications[key],
+            },
+          }));
+        },
 
-      setNotifications: (prefs: Partial<NotificationPreferences>) => {
-        set((state) => ({
-          notifications: { ...state.notifications, ...prefs },
-        }));
-      },
-    }),
-    {
-      name: 'ui-storage',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        sidebarCollapsed: state.sidebarCollapsed,
-        theme: state.theme,
-        notifications: state.notifications,
+        setNotifications: (prefs: Partial<NotificationPreferences>) => {
+          set((state) => ({
+            notifications: { ...state.notifications, ...prefs },
+          }));
+        },
       }),
-      // Apply theme on rehydration
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // If no stored theme, use system preference
-          if (!state.theme) {
-            state.theme = getSystemTheme();
+      {
+        name: "ui-storage",
+        storage: createJSONStorage(() => localStorage),
+        partialize: (state) => ({
+          sidebarCollapsed: state.sidebarCollapsed,
+          theme: state.theme,
+          notifications: state.notifications,
+        }),
+        // Apply theme on rehydration
+        onRehydrateStorage: () => (state) => {
+          if (state) {
+            // If no stored theme, use system preference
+            if (!state.theme) {
+              state.theme = getSystemTheme();
+            }
+            applyTheme(state.theme);
           }
-          applyTheme(state.theme);
-        }
+        },
       },
-    }
-  )
+    ),
+    { name: "ui-store", enabled: import.meta.env.DEV },
+  ),
 );
 
 /**
  * Apply theme to document
  */
 function applyTheme(theme: Theme): void {
-  if (typeof document !== 'undefined') {
+  if (typeof document !== "undefined") {
     const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
+    if (theme === "dark") {
+      root.classList.add("dark");
     } else {
-      root.classList.remove('dark');
+      root.classList.remove("dark");
     }
   }
 }
@@ -179,9 +182,9 @@ function applyTheme(theme: Theme): void {
 /**
  * Initialize theme on first load
  */
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   // Check if already rehydrated
-  const stored = localStorage.getItem('ui-storage');
+  const stored = localStorage.getItem("ui-storage");
   if (!stored) {
     // Apply system preference if no stored preference
     applyTheme(getSystemTheme());
@@ -193,8 +196,10 @@ if (typeof window !== 'undefined') {
  */
 export const useTheme = () => useUIStore((state) => state.theme);
 export const useSidebarOpen = () => useUIStore((state) => state.sidebarOpen);
-export const useSidebarCollapsed = () => useUIStore((state) => state.sidebarCollapsed);
-export const useNotifications = () => useUIStore((state) => state.notifications);
+export const useSidebarCollapsed = () =>
+  useUIStore((state) => state.sidebarCollapsed);
+export const useNotifications = () =>
+  useUIStore((state) => state.notifications);
 
 /**
  * Action hooks
@@ -240,7 +245,7 @@ export const useSidebarState = () =>
       toggle: state.toggleSidebar,
       setOpen: state.setSidebarOpen,
       toggleCollapse: state.collapseSidebar,
-    }))
+    })),
   );
 
 export default useUIStore;

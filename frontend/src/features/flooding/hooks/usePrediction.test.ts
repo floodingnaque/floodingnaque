@@ -58,7 +58,7 @@ describe('usePrediction', () => {
     expect(result.current.data?.risk_label).toBeDefined();
     expect(result.current.data?.probability).toBeDefined();
     expect(onSuccess).toHaveBeenCalledTimes(1);
-    const successCallArg = onSuccess.mock.calls[0][0];
+    const successCallArg = onSuccess.mock.calls[0]![0];
     expect(successCallArg).toMatchObject({
       prediction: expect.any(Number),
       risk_level: expect.any(Number),

@@ -33,6 +33,12 @@
   list([
     dict({
       'confidence': 0.85,
+      'explanation': None,
+      'features_used': list([
+        'temperature',
+        'humidity',
+        'precipitation',
+      ]),
       'model_version': '1.0.0',
       'prediction': 0,
       'probability': dict({
@@ -43,9 +49,25 @@
       'risk_description': 'No immediate flood risk. Normal weather conditions.',
       'risk_label': 'Safe',
       'risk_level': 0,
+      'smart_alert': dict({
+        'confidence_score': 0.85,
+        'contributing_factors': list([
+        ]),
+        'escalation_reason': 'de-escalating',
+        'escalation_state': 'watch',
+        'original_risk_level': 0,
+        'rainfall_3h': 5.0,
+        'was_suppressed': False,
+      }),
     }),
     dict({
       'confidence': 0.8,
+      'explanation': None,
+      'features_used': list([
+        'temperature',
+        'humidity',
+        'precipitation',
+      ]),
       'model_version': '1.0.0',
       'prediction': 1,
       'probability': dict({
@@ -56,9 +78,29 @@
       'risk_description': 'High flood risk. Immediate action required. Evacuate if necessary.',
       'risk_label': 'Critical',
       'risk_level': 2,
+      'smart_alert': dict({
+        'confidence_score': 0.8,
+        'contributing_factors': list([
+          'Heavy rainfall (100.0 mm/h)',
+          'High 3h accumulation (100.0 mm)',
+          'High humidity (95%)',
+          'Cooldown: duplicate Critical within 600s',
+        ]),
+        'escalation_reason': 'direct_critical',
+        'escalation_state': 'critical',
+        'original_risk_level': 2,
+        'rainfall_3h': 100.0,
+        'was_suppressed': True,
+      }),
     }),
     dict({
       'confidence': 0.6,
+      'explanation': None,
+      'features_used': list([
+        'temperature',
+        'humidity',
+        'precipitation',
+      ]),
       'model_version': '1.0.0',
       'prediction': 0,
       'probability': dict({
@@ -69,6 +111,17 @@
       'risk_description': 'Moderate flood risk. Monitor conditions closely. Prepare for possible flooding.',
       'risk_label': 'Alert',
       'risk_level': 1,
+      'smart_alert': dict({
+        'confidence_score': 0.6,
+        'contributing_factors': list([
+          'Moderate rainfall (15.0 mm/h)',
+        ]),
+        'escalation_reason': 'sustained_critical',
+        'escalation_state': 'critical',
+        'original_risk_level': 1,
+        'rainfall_3h': 15.0,
+        'was_suppressed': False,
+      }),
     }),
   ])
 # ---
@@ -143,6 +196,12 @@
 # name: TestPredictionSnapshots.test_alert_weather_prediction_snapshot
   dict({
     'confidence': 0.55,
+    'explanation': None,
+    'features_used': list([
+      'temperature',
+      'humidity',
+      'precipitation',
+    ]),
     'model_version': '1.0.0',
     'prediction': 0,
     'probability': dict({
@@ -153,11 +212,28 @@
     'risk_description': 'Moderate flood risk. Monitor conditions closely. Prepare for possible flooding.',
     'risk_label': 'Alert',
     'risk_level': 1,
+    'smart_alert': dict({
+      'confidence_score': 0.55,
+      'contributing_factors': list([
+        'Moderate rainfall (20.0 mm/h)',
+      ]),
+      'escalation_reason': None,
+      'escalation_state': 'alert',
+      'original_risk_level': 1,
+      'rainfall_3h': 20.0,
+      'was_suppressed': False,
+    }),
   })
 # ---
 # name: TestPredictionSnapshots.test_critical_weather_prediction_snapshot
   dict({
     'confidence': 0.8,
+    'explanation': None,
+    'features_used': list([
+      'temperature',
+      'humidity',
+      'precipitation',
+    ]),
     'model_version': '1.0.0',
     'prediction': 1,
     'probability': dict({
@@ -168,11 +244,30 @@
     'risk_description': 'High flood risk. Immediate action required. Evacuate if necessary.',
     'risk_label': 'Critical',
     'risk_level': 2,
+    'smart_alert': dict({
+      'confidence_score': 0.8,
+      'contributing_factors': list([
+        'Heavy rainfall (100.0 mm/h)',
+        'High 3h accumulation (100.0 mm)',
+        'High humidity (95%)',
+      ]),
+      'escalation_reason': 'direct_critical',
+      'escalation_state': 'critical',
+      'original_risk_level': 2,
+      'rainfall_3h': 100.0,
+      'was_suppressed': False,
+    }),
   })
 # ---
 # name: TestPredictionSnapshots.test_safe_weather_prediction_snapshot
   dict({
     'confidence': 0.85,
+    'explanation': None,
+    'features_used': list([
+      'temperature',
+      'humidity',
+      'precipitation',
+    ]),
     'model_version': '1.0.0',
     'prediction': 0,
     'probability': dict({
@@ -183,6 +278,16 @@
     'risk_description': 'No immediate flood risk. Normal weather conditions.',
     'risk_label': 'Safe',
     'risk_level': 0,
+    'smart_alert': dict({
+      'confidence_score': 0.85,
+      'contributing_factors': list([
+      ]),
+      'escalation_reason': 'de-escalating',
+      'escalation_state': 'watch',
+      'original_risk_level': 0,
+      'rainfall_3h': 5.0,
+      'was_suppressed': False,
+    }),
   })
 # ---
 # name: TestRiskClassificationSnapshots.test_alert_risk_classification_snapshot

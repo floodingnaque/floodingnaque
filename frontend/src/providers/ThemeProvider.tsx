@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 /**
  * Theme Provider
- * 
+ *
  * Provides theme context for the application, managing light/dark mode
  * with system preference detection and localStorage persistence.
  */
@@ -44,7 +44,7 @@ interface ThemeProviderProps {
 
 /**
  * ThemeProvider component
- * 
+ *
  * Manages theme state and applies theme class to document root.
  * Syncs with system preference and persists to localStorage.
  */
@@ -59,13 +59,13 @@ export function ThemeProvider({
   // Apply theme to document on mount and theme change
   useEffect(() => {
     const root = document.documentElement;
-    
+
     // Remove both classes first
     root.classList.remove('light', 'dark');
-    
+
     // Determine effective theme
     let effectiveTheme = theme;
-    
+
     // If no theme is set, check localStorage or system preference
     if (!effectiveTheme) {
       const stored = localStorage.getItem('ui-storage');
@@ -85,10 +85,10 @@ export function ThemeProvider({
       // Set the theme in store
       setTheme(effectiveTheme);
     }
-    
+
     // Apply theme class
     root.classList.add(effectiveTheme);
-    
+
     // Update color-scheme CSS property for native elements
     root.style.colorScheme = effectiveTheme;
   }, [theme, defaultTheme, setTheme]);
@@ -96,7 +96,7 @@ export function ThemeProvider({
   // Listen for system preference changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const handleChange = (e: MediaQueryListEvent) => {
       // Only auto-switch if user hasn't explicitly set a preference
       const stored = localStorage.getItem('ui-storage');
@@ -127,11 +127,11 @@ export function ThemeProvider({
  */
 export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
-  
+
   if (context === undefined) {
     throw new Error('useTheme must be used within a ThemeProvider');
   }
-  
+
   return context;
 }
 

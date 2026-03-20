@@ -131,17 +131,18 @@ class TestSecurityTxtExpiration:
     @patch.dict(
         "os.environ",
         {
-            "SECURITY_TXT_EXPIRES": "2027-01-01T00:00:00Z",
+            "SECURITY_TXT_EXPIRES": "2030-01-01T00:00:00Z",
         },
     )
     def test_custom_expiration_date(self):
         """Test custom expiration date is used."""
         content = get_security_txt_content()
 
-        assert "2027-01-01" in content
+        assert "2030-01-01" in content
 
-    def test_default_expiration_is_future(self):
+    def test_default_expiration_is_future(self, monkeypatch):
         """Test default expiration is at least 1 year in future."""
+        monkeypatch.delenv("SECURITY_TXT_EXPIRES", raising=False)
         content = get_security_txt_content()
 
         # Extract expiration date

@@ -6,16 +6,24 @@
  */
 
 // Services
-export { reportsApi, type ReportParams, type ReportType } from './services/reportsApi';
+export {
+  getReportLabel,
+  reportsApi,
+  type ReportParams,
+  type ReportType,
+} from "./services/reportsApi";
 
 // Hooks
 export {
-  useExportPDF,
-  useExportCSV,
-  useReportExport,
   downloadBlob,
   reportsKeys,
-} from './hooks/useReports';
+  useExportCSV,
+  useExportPDF,
+  useReportExport,
+} from "./hooks/useReports";
 
 // Components
-export { ReportGenerator, type ReportGeneratorProps } from './components/ReportGenerator';
+export {
+  ReportGenerator,
+  type ReportGeneratorProps,
+} from "./components/ReportGenerator";

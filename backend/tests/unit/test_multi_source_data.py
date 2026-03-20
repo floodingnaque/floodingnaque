@@ -12,14 +12,9 @@ Covers:
 import math
 import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-
-# ---------------------------------------------------------------------------
-# PAGASA Rainfall Bulletin Service
-# ---------------------------------------------------------------------------
-
 from app.services.pagasa_bulletin_service import (
     PAGASARainfallBulletinService,
     RainfallAdvisoryLevel,
@@ -30,6 +25,10 @@ from app.services.pagasa_bulletin_service import (
     _parse_advisory_level,
     get_pagasa_bulletin_service,
 )
+
+# ---------------------------------------------------------------------------
+# PAGASA Rainfall Bulletin Service
+# ---------------------------------------------------------------------------
 
 
 class TestPAGASABulletinHelpers:
@@ -139,9 +138,7 @@ class TestPAGASABulletinService:
         assert PAGASARainfallBulletinService._parse_date("not a date") is None
 
     def test_extract_areas(self):
-        areas = PAGASARainfallBulletinService._extract_areas(
-            "affecting Metro Manila, Cavite, and Laguna."
-        )
+        areas = PAGASARainfallBulletinService._extract_areas("affecting Metro Manila, Cavite, and Laguna.")
         assert len(areas) >= 2
         assert any("Manila" in a for a in areas)
 
@@ -151,11 +148,11 @@ class TestPAGASABulletinService:
 # ---------------------------------------------------------------------------
 
 from app.services.mmda_flood_service import (
+    PARANAQUE_FLOOD_STATIONS,
     FloodAdvisory,
     FloodAlarmLevel,
     FloodStationReading,
     MMDAFloodService,
-    PARANAQUE_FLOOD_STATIONS,
     _advisory_affects_paranaque,
     _classify_alarm,
     get_mmda_flood_service,
@@ -226,20 +223,30 @@ class TestMMDAFloodService:
 
     def test_cached_advisories(self):
         svc = get_mmda_flood_service()
-        svc._set_cached("advisories_pnq", {
-            "status": "ok", "advisories": [], "count": 0,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
-            "source": "mmda_flood",
-        })
+        svc._set_cached(
+            "advisories_pnq",
+            {
+                "status": "ok",
+                "advisories": [],
+                "count": 0,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "source": "mmda_flood",
+            },
+        )
         result = svc.get_active_advisories(paranaque_only=True)
         assert result["status"] == "ok"
 
     def test_combined_status(self):
         svc = get_mmda_flood_service()
         svc._set_cached("advisories_pnq", {"status": "ok", "advisories": [], "count": 0})
-        svc._set_cached("station_readings", {
-            "status": "ok", "stations": [], "highest_alarm": "normal",
-        })
+        svc._set_cached(
+            "station_readings",
+            {
+                "status": "ok",
+                "stations": [],
+                "highest_alarm": "normal",
+            },
+        )
         result = svc.get_combined_status()
         assert "flood_advisories" in result
         assert "station_readings" in result
@@ -433,7 +440,8 @@ class TestRiverHelpers:
                 station_id="paranaque_river_upstream",
                 station_name="Test",
                 river="Parañaque River",
-                lat=14.0, lon=121.0,
+                lat=14.0,
+                lon=121.0,
                 water_level_m=2.5,  # normal
                 alarm_level=RiverAlarmLevel.NORMAL,
                 flow_rate_cms=None,
@@ -450,7 +458,8 @@ class TestRiverHelpers:
                 station_id="paranaque_river_upstream",
                 station_name="Test",
                 river="Parañaque River",
-                lat=14.0, lon=121.0,
+                lat=14.0,
+                lon=121.0,
                 water_level_m=12.5,  # near overflow
                 alarm_level=RiverAlarmLevel.OVERFLOW,
                 flow_rate_cms=None,
@@ -470,7 +479,8 @@ class TestRiverReading:
             station_id="test",
             station_name="Test Station",
             river="Test River",
-            lat=14.0, lon=121.0,
+            lat=14.0,
+            lon=121.0,
             water_level_m=5.0,
             alarm_level=RiverAlarmLevel.ALERT,
             flow_rate_cms=2.5,
@@ -621,10 +631,13 @@ class TestFallbackChain:
     """Test FallbackChain execution."""
 
     def test_first_source_succeeds(self):
-        chain = FallbackChain("rainfall", [
-            ("primary", SourceQuality.AUTHORITATIVE, lambda: {"status": "ok", "value": 42}),
-            ("fallback", SourceQuality.SECONDARY, lambda: {"status": "ok", "value": 99}),
-        ])
+        chain = FallbackChain(
+            "rainfall",
+            [
+                ("primary", SourceQuality.AUTHORITATIVE, lambda: {"status": "ok", "value": 42}),
+                ("fallback", SourceQuality.SECONDARY, lambda: {"status": "ok", "value": 99}),
+            ],
+        )
         result = chain.execute()
         assert result.source_name == "primary"
         assert result.quality == SourceQuality.AUTHORITATIVE
@@ -634,10 +647,13 @@ class TestFallbackChain:
         def fail():
             raise RuntimeError("boom")
 
-        chain = FallbackChain("rainfall", [
-            ("primary", SourceQuality.AUTHORITATIVE, fail),
-            ("fallback", SourceQuality.SECONDARY, lambda: {"status": "ok"}),
-        ])
+        chain = FallbackChain(
+            "rainfall",
+            [
+                ("primary", SourceQuality.AUTHORITATIVE, fail),
+                ("fallback", SourceQuality.SECONDARY, lambda: {"status": "ok"}),
+            ],
+        )
         result = chain.execute()
         assert result.source_name == "fallback"
         assert result.is_fallback
@@ -646,28 +662,37 @@ class TestFallbackChain:
         def fail():
             raise RuntimeError("boom")
 
-        chain = FallbackChain("rainfall", [
-            ("src1", SourceQuality.AUTHORITATIVE, fail),
-            ("src2", SourceQuality.SECONDARY, fail),
-        ])
+        chain = FallbackChain(
+            "rainfall",
+            [
+                ("src1", SourceQuality.AUTHORITATIVE, fail),
+                ("src2", SourceQuality.SECONDARY, fail),
+            ],
+        )
         result = chain.execute()
         assert result.quality == SourceQuality.UNAVAILABLE
         assert result.error is not None
         assert result.data is None
 
     def test_disabled_source_skipped(self):
-        chain = FallbackChain("tide", [
-            ("disabled_src", SourceQuality.PRIMARY, lambda: {"status": "disabled"}),
-            ("working_src", SourceQuality.SECONDARY, lambda: {"status": "ok"}),
-        ])
+        chain = FallbackChain(
+            "tide",
+            [
+                ("disabled_src", SourceQuality.PRIMARY, lambda: {"status": "disabled"}),
+                ("working_src", SourceQuality.SECONDARY, lambda: {"status": "ok"}),
+            ],
+        )
         result = chain.execute()
         assert result.source_name == "working_src"
 
     def test_error_status_skipped(self):
-        chain = FallbackChain("river", [
-            ("error_src", SourceQuality.PRIMARY, lambda: {"status": "error", "message": "fail"}),
-            ("ok_src", SourceQuality.SECONDARY, lambda: {"status": "ok"}),
-        ])
+        chain = FallbackChain(
+            "river",
+            [
+                ("error_src", SourceQuality.PRIMARY, lambda: {"status": "error", "message": "fail"}),
+                ("ok_src", SourceQuality.SECONDARY, lambda: {"status": "ok"}),
+            ],
+        )
         result = chain.execute()
         assert result.source_name == "ok_src"
 
@@ -706,16 +731,19 @@ class TestDataAggregationService:
         """Aggregated data should have the expected envelope fields."""
         svc = get_aggregation_service()
         # Inject cache to avoid real HTTP calls
-        svc._set_cached("aggregated", {
-            "sources": {},
-            "reliability_score": 0.5,
-            "source_count": 0,
-            "sources_available": 0,
-            "sources_failed": 0,
-            "fetch_latency_ms": 10,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "warnings": [],
-        })
+        svc._set_cached(
+            "aggregated",
+            {
+                "sources": {},
+                "reliability_score": 0.5,
+                "source_count": 0,
+                "sources_available": 0,
+                "sources_failed": 0,
+                "fetch_latency_ms": 10,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "warnings": [],
+            },
+        )
         result = svc.get_aggregated_data()
         assert "reliability_score" in result
         assert "sources" in result

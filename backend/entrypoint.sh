@@ -76,6 +76,20 @@ else
     echo "SKIP: SKIP_MIGRATIONS=true - skipping Alembic migrations"
 fi
 
+# --------------------------------------------------
+# 4. Seed default admin account
+# --------------------------------------------------
+if [ "${SEED_ADMIN:-true}" = "true" ]; then
+    echo "Seeding default admin account..."
+    if python create_admin.py --env "${APP_ENV:-development}" 2>&1; then
+        echo "OK: Admin seed completed"
+    else
+        echo "WARNING: Admin seed failed (non-fatal) - continuing startup"
+    fi
+else
+    echo "SKIP: SEED_ADMIN=false - skipping admin seed"
+fi
+
 echo "=== Entrypoint complete - starting application ==="
 
 # Execute the CMD passed to this entrypoint

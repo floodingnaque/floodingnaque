@@ -5,20 +5,14 @@
  * for the Admin dashboard. Data sourced from paranaque.ts constants.
  */
 
-import { memo, useMemo } from 'react';
-import { Cpu, TrendingUp, Award, Database, Layers } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -26,9 +20,28 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { MODEL_VERSIONS } from '@/config/paranaque';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import {
+  Award,
+  Cpu,
+  Database,
+  Layers,
+  Loader2,
+  TrendingUp,
+} from "lucide-react";
+import { memo, useMemo } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { useModelHistory } from "../hooks/useAnalytics";
 
 // ---------------------------------------------------------------------------
 // Model Version Comparison Table
@@ -39,7 +52,30 @@ export const ModelVersionTable = memo(function ModelVersionTable({
 }: {
   className?: string;
 }) {
-  const latest = MODEL_VERSIONS[MODEL_VERSIONS.length - 1];
+  const { data, isLoading } = useModelHistory();
+  const models = useMemo(() => data?.models ?? [], [data?.models]);
+  const latest = models.find((m) => m.is_active) ?? models[models.length - 1];
+
+  if (isLoading) {
+    return (
+      <Card className={className}>
+        <CardContent className="py-10 flex items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading model history…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!models.length) {
+    return (
+      <Card className={className}>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          No model version data available.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={className}>
@@ -51,12 +87,14 @@ export const ModelVersionTable = memo(function ModelVersionTable({
               Model Version History
             </CardTitle>
             <CardDescription className="mt-1">
-              Random Forest classifier progression from v1 → {latest.version}
+              Random Forest classifier progression from v1 → v{latest?.version}
             </CardDescription>
           </div>
-          <Badge className="bg-primary text-primary-foreground">
-            Active: {latest.version}
-          </Badge>
+          {latest && (
+            <Badge className="bg-primary text-primary-foreground">
+              Active: v{latest.version}
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -75,39 +113,44 @@ export const ModelVersionTable = memo(function ModelVersionTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {MODEL_VERSIONS.map((m) => {
-                const isLatest = m.version === latest.version;
+              {models.map((m) => {
+                const isActive = m.is_active;
                 return (
                   <TableRow
                     key={m.version}
-                    className={cn(isLatest && 'bg-primary/5 font-medium')}
+                    className={cn(isActive && "bg-primary/5 font-medium")}
                   >
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        {m.version}
-                        {isLatest && (
-                          <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                        v{m.version}
+                        {isActive && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] px-1 py-0"
+                          >
                             live
                           </Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {(m.accuracy * 100).toFixed(2)}%
+                      {(m.metrics.accuracy * 100).toFixed(2)}%
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {(m.precision * 100).toFixed(2)}%
+                      {(m.metrics.precision * 100).toFixed(2)}%
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {(m.recall * 100).toFixed(2)}%
+                      {(m.metrics.recall * 100).toFixed(2)}%
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {(m.f1 * 100).toFixed(2)}%
+                      {(m.metrics.f1_score * 100).toFixed(2)}%
                     </TableCell>
                     <TableCell className="text-right">
-                      {m.samples.toLocaleString()}
+                      {m.training_data.total_records.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right">{m.features}</TableCell>
+                    <TableCell className="text-right">
+                      {m.training_data.num_features}
+                    </TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground max-w-50 truncate">
                       {m.description}
                     </TableCell>
@@ -131,14 +174,42 @@ export const AccuracyProgressionChart = memo(function AccuracyProgressionChart({
 }: {
   className?: string;
 }) {
+  const { data, isLoading } = useModelHistory();
+  const models = useMemo(() => data?.models ?? [], [data?.models]);
+
   const chartData = useMemo(
     () =>
-      MODEL_VERSIONS.map((m) => ({
-        version: m.version,
-        accuracy: +(m.accuracy * 100).toFixed(2),
-        f1: +(m.f1 * 100).toFixed(2),
+      models.map((m) => ({
+        version: `v${m.version}`,
+        accuracy: +(m.metrics.accuracy * 100).toFixed(2),
+        f1: +(m.metrics.f1_score * 100).toFixed(2),
       })),
-    [],
+    [models],
+  );
+
+  if (isLoading || !chartData.length) {
+    return (
+      <Card className={className}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Accuracy Progression
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-55 text-sm text-muted-foreground">
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "No data available"
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const minVal = Math.max(
+    0,
+    Math.min(...chartData.map((d) => Math.min(d.accuracy, d.f1))) - 10,
   );
 
   return (
@@ -151,26 +222,35 @@ export const AccuracyProgressionChart = memo(function AccuracyProgressionChart({
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
+          <BarChart
+            data={chartData}
+            margin={{ top: 5, right: 10, bottom: 5, left: -10 }}
+          >
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="version" tick={{ fontSize: 11 }} />
-            <YAxis
-              tick={{ fontSize: 11 }}
-              domain={[80, 100]}
-              unit="%"
-            />
+            <YAxis tick={{ fontSize: 11 }} domain={[minVal, 100]} unit="%" />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '0.5rem',
+                backgroundColor: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "0.5rem",
                 fontSize: 12,
               }}
               formatter={(v) => [`${v}%`]}
             />
             <Legend verticalAlign="bottom" height={30} />
-            <Bar dataKey="accuracy" fill="#1E3A5F" radius={[4, 4, 0, 0]} name="Accuracy" />
-            <Bar dataKey="f1" fill="#28A745" radius={[4, 4, 0, 0]} name="F1 Score" />
+            <Bar
+              dataKey="accuracy"
+              fill="hsl(var(--primary))"
+              radius={[4, 4, 0, 0]}
+              name="Accuracy"
+            />
+            <Bar
+              dataKey="f1"
+              fill="hsl(var(--risk-safe))"
+              radius={[4, 4, 0, 0]}
+              name="F1 Score"
+            />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -187,41 +267,57 @@ export const ModelSummaryCards = memo(function ModelSummaryCards({
 }: {
   className?: string;
 }) {
-  const latest = MODEL_VERSIONS[MODEL_VERSIONS.length - 1];
+  const { data, isLoading } = useModelHistory();
+  const models = useMemo(() => data?.models ?? [], [data?.models]);
+  const latest = models.find((m) => m.is_active) ?? models[models.length - 1];
+
+  if (isLoading || !latest) {
+    return (
+      <div className={cn("grid gap-4 grid-cols-2 sm:grid-cols-4", className)}>
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardContent className="pt-5 pb-4 px-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   const cards = [
     {
       icon: Award,
-      label: 'Accuracy',
-      value: `${(latest.accuracy * 100).toFixed(2)}%`,
-      color: 'text-risk-safe',
+      label: "Accuracy",
+      value: `${(latest.metrics.accuracy * 100).toFixed(2)}%`,
+      color: "text-risk-safe",
     },
     {
       icon: TrendingUp,
-      label: 'F1 Score',
-      value: `${(latest.f1 * 100).toFixed(2)}%`,
-      color: 'text-primary',
+      label: "F1 Score",
+      value: `${(latest.metrics.f1_score * 100).toFixed(2)}%`,
+      color: "text-primary",
     },
     {
       icon: Database,
-      label: 'Training Samples',
-      value: latest.samples.toLocaleString(),
-      color: 'text-muted-foreground',
+      label: "Training Samples",
+      value: latest.training_data.total_records.toLocaleString(),
+      color: "text-muted-foreground",
     },
     {
       icon: Layers,
-      label: 'Features',
-      value: latest.features.toString(),
-      color: 'text-muted-foreground',
+      label: "Features",
+      value: latest.training_data.num_features.toString(),
+      color: "text-muted-foreground",
     },
   ];
 
   return (
-    <div className={cn('grid gap-4 grid-cols-2 sm:grid-cols-4', className)}>
+    <div className={cn("grid gap-4 grid-cols-2 sm:grid-cols-4", className)}>
       {cards.map((c) => (
         <Card key={c.label}>
           <CardContent className="pt-5 pb-4 px-4 flex items-center gap-3">
-            <c.icon className={cn('h-5 w-5', c.color)} />
+            <c.icon className={cn("h-5 w-5", c.color)} />
             <div>
               <p className="text-xs text-muted-foreground">{c.label}</p>
               <p className="text-lg font-bold">{c.value}</p>

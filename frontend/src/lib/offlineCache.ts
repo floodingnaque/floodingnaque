@@ -80,7 +80,7 @@ export async function cachePrediction(
     const count = await db.count(STORE_NAME);
     if (count > MAX_CACHED) {
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(tx.objectStoreNames[0]);
+      const store = tx.objectStore(STORE_NAME);
       let cursor = await store.openCursor();
       let toDelete = count - MAX_CACHED;
       while (cursor && toDelete > 0) {

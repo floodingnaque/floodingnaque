@@ -19,7 +19,7 @@ This document describes the expected columns and data types for all dataset type
 
 ### PAGASA Weather Station Data
 
-**Files:** 
+**Files:**
 - `Floodingnaque_CADS-S0126006_NAIA Daily Data.csv`
 - `Floodingnaque_CADS-S0126006_Port Area Daily Data.csv`
 - `Floodingnaque_CADS-S0126006_Science Garden Daily Data.csv`
@@ -58,14 +58,14 @@ This document describes the expected columns and data types for all dataset type
 **Source:** City of Parañaque Disaster Risk Reduction and Management Office (CDRRMO)
 
 > ⚠️ **Note:** These files have irregular header formats. Rows 1-4 typically contain metadata and multi-row headers. Use `skiprows` or preprocessing when loading.
-> 
+>
 > **Recommended:** Use the cleaned versions in `data/cleaned/` instead:
 > - `cleaned/Floodingnaque_Flood_Records_2022_cleaned.csv`
 > - `cleaned/Floodingnaque_Flood_Records_2023_cleaned.csv`
 > - `cleaned/Floodingnaque_Flood_Records_2024_cleaned.csv`
 > - `cleaned/Floodingnaque_Flood_Records_2025_cleaned.csv`
 > - `cleaned/Floodingnaque_Flood_Records_All_cleaned.csv` (combined)
-> 
+>
 > Generate cleaned files with: `python scripts/clean_raw_flood_records.py`
 
 **Cleaned Files Schema:**
@@ -117,7 +117,7 @@ This document describes the expected columns and data types for all dataset type
 
 ### Cumulative Training Dataset
 
-**Files:** 
+**Files:**
 - `processed/cumulative_v2_up_to_2022.csv`
 - `processed/cumulative_v2_up_to_2023.csv`
 - `processed/cumulative_v2_up_to_2024.csv`

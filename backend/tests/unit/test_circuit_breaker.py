@@ -8,7 +8,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from app.utils.circuit_breaker import (
+from app.utils.resilience.circuit_breaker import (
     CircuitBreaker,
     CircuitOpenError,
     CircuitState,

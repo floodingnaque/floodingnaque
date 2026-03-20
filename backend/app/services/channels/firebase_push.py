@@ -20,7 +20,6 @@ import os
 from typing import Any, Dict, List, Optional
 
 import requests
-
 from app.services.channels.base import NotificationChannel
 
 logger = logging.getLogger(__name__)
@@ -49,9 +48,7 @@ class FirebasePushChannel(NotificationChannel):
             self._project_id
             and (
                 os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
-                or os.path.exists(
-                    os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
-                )
+                or os.path.exists(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", ""))
             )
         )
 
@@ -99,15 +96,10 @@ class FirebasePushChannel(NotificationChannel):
             return self._access_token  # type: ignore[return-value]
 
         except ImportError:
-            logger.warning(
-                "google-auth package not installed - "
-                "falling back to FIREBASE_ACCESS_TOKEN env var"
-            )
+            logger.warning("google-auth package not installed - " "falling back to FIREBASE_ACCESS_TOKEN env var")
             token = os.getenv("FIREBASE_ACCESS_TOKEN", "")
             if not token:
-                raise RuntimeError(
-                    "Neither google-auth nor FIREBASE_ACCESS_TOKEN is available"
-                )
+                raise RuntimeError("Neither google-auth nor FIREBASE_ACCESS_TOKEN is available")
             return token
 
     # ------------------------------------------------------------------
@@ -157,10 +149,7 @@ class FirebasePushChannel(NotificationChannel):
         If *recipients* is empty the alert is sent to the default topic.
         """
         access_token = self._get_access_token()
-        url = (
-            f"https://fcm.googleapis.com/v1/projects/"
-            f"{self._project_id}/messages:send"
-        )
+        url = f"https://fcm.googleapis.com/v1/projects/" f"{self._project_id}/messages:send"
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json; UTF-8",

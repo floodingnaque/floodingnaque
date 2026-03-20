@@ -11,49 +11,58 @@
  * - drainage: Drainage capacity classification
  */
 
-import { useMemo } from 'react';
-import { Polygon, Popup, Tooltip } from 'react-leaflet';
-import type { PathOptions } from 'leaflet';
-import type { HazardFeature, HazardFeatureProperties } from '../hooks/useHazardMap';
+import type { PathOptions } from "leaflet";
+import { memo, useMemo } from "react";
+import { Polygon, Popup, Tooltip } from "react-leaflet";
+import type {
+  HazardFeature,
+  HazardFeatureProperties,
+} from "../hooks/useHazardMap";
 
 export interface HazardOverlayProps {
   /** GeoJSON features to render as polygons */
   features: HazardFeature[];
   /** Overlay mode affecting popup content */
-  mode?: 'hazard' | 'elevation' | 'drainage';
+  mode?: "hazard" | "elevation" | "drainage";
   /** Opacity for polygon fill (0-1, default: 0.35) */
   fillOpacity?: number;
   /** Whether to show tooltips on hover */
   showTooltips?: boolean;
   /** Callback when a barangay polygon is clicked */
-  onBarangayClick?: (barangayKey: string, properties: HazardFeatureProperties) => void;
+  onBarangayClick?: (
+    barangayKey: string,
+    properties: HazardFeatureProperties,
+  ) => void;
 }
 
 /**
  * Convert GeoJSON [lon, lat] coordinates to Leaflet [lat, lng] format
  */
 function geoJsonToLeaflet(coords: number[][][]): [number, number][] {
-  return coords[0].map(([lon, lat]) => [lat, lon] as [number, number]);
+  return coords[0]!.map(([lon, lat]) => [lat, lon] as [number, number]);
 }
 
 /**
  * Get color for a feature based on overlay mode
  */
-function getFeatureColor(properties: HazardFeatureProperties, mode: string): string {
+function getFeatureColor(
+  properties: HazardFeatureProperties,
+  mode: string,
+): string {
   switch (mode) {
-    case 'elevation':
-      return properties.hazard_color || '#6c757d';
-    case 'drainage': {
+    case "elevation":
+      return properties.hazard_color || "#6c757d";
+    case "drainage": {
       const drainColors: Record<string, string> = {
-        poor: '#dc3545',
-        moderate: '#ffc107',
-        good: '#28a745',
+        poor: "hsl(var(--risk-critical))",
+        moderate: "hsl(var(--risk-alert))",
+        good: "hsl(var(--risk-safe))",
       };
-      return drainColors[properties.drainage_capacity] || '#6c757d';
+      return drainColors[properties.drainage_capacity] || "#6c757d";
     }
-    case 'hazard':
+    case "hazard":
     default:
-      return properties.hazard_color || '#6c757d';
+      return properties.hazard_color || "#6c757d";
   }
 }
 
@@ -67,9 +76,9 @@ function formatScore(score: number): string {
 /**
  * HazardOverlay - Renders flood hazard polygons on the map
  */
-export function HazardOverlay({
+export const HazardOverlay = memo(function HazardOverlay({
   features,
-  mode = 'hazard',
+  mode = "hazard",
   fillOpacity = 0.35,
   showTooltips = true,
   onBarangayClick,
@@ -113,9 +122,10 @@ export function HazardOverlay({
             <Tooltip direction="top" sticky>
               <strong>{properties.name}</strong>
               <br />
-              {mode === 'hazard' && (
+              {mode === "hazard" && (
                 <>
-                  Hazard: {properties.hazard_classification.toUpperCase()} ({formatScore(properties.hazard_score)})
+                  Hazard: {properties.hazard_classification.toUpperCase()} (
+                  {formatScore(properties.hazard_score)})
                   {properties.current_rainfall_mm > 0 && (
                     <>
                       <br />
@@ -124,12 +134,13 @@ export function HazardOverlay({
                   )}
                 </>
               )}
-              {mode === 'elevation' && (
+              {mode === "elevation" && (
                 <>
-                  Elevation: {properties.mean_elevation_m}m (min: {properties.min_elevation_m}m)
+                  Elevation: {properties.mean_elevation_m}m (min:{" "}
+                  {properties.min_elevation_m}m)
                 </>
               )}
-              {mode === 'drainage' && (
+              {mode === "drainage" && (
                 <>
                   Drainage: {properties.drainage_capacity}
                   <br />
@@ -142,9 +153,12 @@ export function HazardOverlay({
           {/* Detail popup on click */}
           <Popup maxWidth={320}>
             <div className="text-sm">
-              <h3 className="mb-2 text-base font-semibold">{properties.name}</h3>
+              <h3 className="mb-2 text-base font-semibold">
+                {properties.name}
+              </h3>
               <p className="text-muted-foreground mb-2 text-xs">
-                Pop: {properties.population.toLocaleString()} · Coordinates: {properties.lat.toFixed(4)}, {properties.lon.toFixed(4)}
+                Pop: {properties.population.toLocaleString()} · Coordinates:{" "}
+                {properties.lat.toFixed(4)}, {properties.lon.toFixed(4)}
               </p>
 
               {/* Hazard Assessment */}
@@ -165,36 +179,42 @@ export function HazardOverlay({
 
               {/* Elevation */}
               <div className="mb-1">
-                <span className="font-medium">Elevation:</span>{' '}
-                {properties.mean_elevation_m}m avg / {properties.min_elevation_m}m min
-                <span className="text-muted-foreground text-xs"> (slope: {properties.slope_pct}%)</span>
+                <span className="font-medium">Elevation:</span>{" "}
+                {properties.mean_elevation_m}m avg /{" "}
+                {properties.min_elevation_m}m min
+                <span className="text-muted-foreground text-xs">
+                  {" "}
+                  (slope: {properties.slope_pct}%)
+                </span>
               </div>
 
               {/* Drainage */}
               <div className="mb-1">
-                <span className="font-medium">Drainage:</span>{' '}
+                <span className="font-medium">Drainage:</span>{" "}
                 {properties.drainage_capacity}
                 <span className="text-muted-foreground text-xs">
-                  {' '}· {properties.nearest_waterway} ({properties.distance_to_waterway_m}m)
+                  {" "}
+                  · {properties.nearest_waterway} (
+                  {properties.distance_to_waterway_m}m)
                 </span>
               </div>
 
               {/* Surface */}
               <div className="mb-1">
-                <span className="font-medium">Impervious surface:</span>{' '}
+                <span className="font-medium">Impervious surface:</span>{" "}
                 {properties.impervious_surface_pct}%
               </div>
 
               {/* History */}
               <div className="mb-1">
-                <span className="font-medium">Flood events (recorded):</span>{' '}
+                <span className="font-medium">Flood events (recorded):</span>{" "}
                 {properties.flood_history_events}
               </div>
 
               {/* Current rainfall */}
               {properties.current_rainfall_mm > 0 && (
                 <div className="mt-2 rounded bg-blue-50 p-1.5 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                  <span className="font-medium">Live rainfall:</span>{' '}
+                  <span className="font-medium">Live rainfall:</span>{" "}
                   {properties.current_rainfall_mm.toFixed(1)} mm/hr
                 </div>
               )}
@@ -204,6 +224,6 @@ export function HazardOverlay({
       ))}
     </>
   );
-}
+});
 
 export default HazardOverlay;

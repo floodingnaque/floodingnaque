@@ -12,10 +12,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-
 # ═════════════════════════════════════════════════════════════════════════════
 # Fixtures
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 def db_session():
@@ -49,6 +49,7 @@ def mock_db_session(db_session):
 # ═════════════════════════════════════════════════════════════════════════════
 # Registration Tests
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestRegisterModel:
     """Tests for register_model()."""
@@ -119,6 +120,7 @@ class TestRegisterModel:
 
         # v1 should be retired
         from app.models.model_registry import ModelRegistry
+
         v1 = mock_db_session.query(ModelRegistry).filter_by(version=1).first()
         assert v1.is_active is False
 
@@ -148,6 +150,7 @@ class TestRegisterModel:
 # ═════════════════════════════════════════════════════════════════════════════
 # Promotion / Retirement Tests
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestPromoteRetire:
     """Tests for promote_version() and retire_version()."""
@@ -185,6 +188,7 @@ class TestPromoteRetire:
 # ═════════════════════════════════════════════════════════════════════════════
 # Query Tests
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestQueryVersions:
     """Tests for version querying functions."""
@@ -282,6 +286,7 @@ class TestQueryVersions:
 # ═════════════════════════════════════════════════════════════════════════════
 # ModelRegistry ORM Tests
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestModelRegistryORM:
     """Tests for the ModelRegistry ORM model itself."""

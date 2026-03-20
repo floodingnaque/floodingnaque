@@ -53,6 +53,7 @@ os.environ.setdefault("STARTUP_HEALTH_CHECK", "false")
 os.environ.setdefault("SCHEDULER_ENABLED", "false")
 os.environ.setdefault("ENV_VALIDATION_ENABLED", "false")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")  # Disable rate limiting in tests
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")  # In-memory SQLite for tests
 # PBKDF2 fallback salt – required by _hash_api_key_pbkdf2() in auth middleware.
 # Without this, any call to validate_api_key / revoke / expire raises ValueError.
 os.environ.setdefault(
@@ -124,6 +125,10 @@ def client(app):
     """Create a test client for making HTTP requests."""
     with app.test_client() as testing_client:
         with app.app_context():
+            # Recreate tables after reset_singletons disposed the engine
+            from app.models.db import Base, get_engine
+
+            Base.metadata.create_all(get_engine())
             yield testing_client
 
 
@@ -239,6 +244,17 @@ def reset_singletons():
 
 def _reset_all_singletons():
     """Helper function to reset all known singleton instances."""
+    # Reset database engine and session singletons to prevent stale connections
+    try:
+        import app.models.db as _db_mod
+
+        if _db_mod._engine is not None:
+            _db_mod._engine.dispose()
+            _db_mod._engine = None
+        _db_mod._Session = None
+    except (ImportError, AttributeError):
+        pass
+
     # Reset ModelLoader singleton
     try:
         from app.services.predict import ModelLoader

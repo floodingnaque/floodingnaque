@@ -4,12 +4,12 @@
 # Prevents unnecessary files from being copied to Docker image
 
 # Git
-.git
+.git/
 .gitignore
 .gitattributes
 
-# Python
-__pycache__
+# Python bytecode & packaging
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -31,44 +31,40 @@ wheels/
 *.egg
 
 # Virtual environments
-.env
-# Note: .env.* files are excluded from the Docker image for security.
-# For docker-compose: Use env_file directive (loads at container runtime)
-# For standalone docker run: Use --env-file flag
-# Example: docker run --env-file .env.production floodingnaque-api:latest
-.env.development
-.env.staging
-.env.production
-.env.local
-!.env.example
-.venv
+.venv/
 venv/
 ENV/
+
+# Environment files (use env_file directive or --env-file at runtime)
+.env
+.env.*
+!.env.example
 
 # Sensitive files - SECURITY
 *.pem
 *.key
-# Keep .crt files - they're mounted at runtime for database SSL
-# *.crt
+*.p12
+*.pfx
 secrets/
 secrets*
 *.secret
 credentials/
 .credentials
+
 # Keep certs directory structure (files are mounted at runtime)
 !certs/
 !certs/.gitkeep
 
 # Google Cloud credentials (NEVER include in Docker image!)
 google_oauth_credentials.json
+google_application_credentials*.json
 client_secret*.json
 *-service-account.json
 *-sa-key.json
 floodingnaque-*.json
-google_application_credentials*.json
 *.iam.gserviceaccount.com.json
 earth*.json
-astral-archive-482008-g2-b4f2279053c0.json
+astral-archive-*.json
 
 # IDE
 .vscode/
@@ -85,24 +81,27 @@ astral-archive-482008-g2-b4f2279053c0.json
 .nox/
 .coverage
 .coverage.*
+.coveragerc
 htmlcov/
 .pytest_cache/
+.hypothesis/
 nosetests.xml
 coverage.xml
 *.cover
-.hypothesis/
 pytest.ini
+mypy.ini
+tests/
 
-# Documentation (don't need in runtime)
+# Documentation (not needed in runtime)
 docs/
 *.md
 !README.md
 
 # Jupyter
-.ipynb_checkpoints
+.ipynb_checkpoints/
 *.ipynb
 
-# Logs (will be created at runtime)
+# Logs (created at runtime)
 logs/
 *.log
 
@@ -116,15 +115,11 @@ temp/
 .DS_Store
 Thumbs.db
 
-# Scripts not needed in production (training, evaluation, etc.)
+# Scripts not needed in production
 scripts/
-# Allow specific scripts needed in production image
 !scripts/backup_database.sh
 !scripts/backup_database.py
 !scripts/purge_expired_ips.py
-
-# Tests not needed in production image
-tests/
 
 # Evaluation results
 evaluation_results/
@@ -137,19 +132,28 @@ backups/
 *.db
 data/*.db
 
-# Data subdirectories (raw/cleaned data not needed in image — mounted at runtime)
+# Data subdirectories (raw/cleaned data not needed — mounted at runtime)
 data/raw/
 data/cleaned/
 data/processed/
+data/earthengine_cache/
+data/meteostat_cache/
 
 # Reports
 reports/
 
 # mypy cache
 .mypy_cache/
-mypy.ini
 
 # Docker files (prevent nested copying)
 Dockerfile*
 docker-compose*
+compose.*
 .dockerignore
+
+# Misc tooling
+.flake8
+.pre-commit-config.yaml
+.cache_ggshield
+.ggshield.yaml
+.ggshield/

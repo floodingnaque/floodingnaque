@@ -167,6 +167,50 @@ class ImbalanceConfig(BaseModel):
     smotenc: SmotencConfig = Field(default_factory=SmotencConfig, description="SMOTENC settings")
 
 
+class RiskFloodProbabilityConfig(BaseModel):
+    """Flood probability thresholds for risk classification.
+
+    Calibrated from v6 model on 1,660 flood / 3,889 non-flood records.
+    """
+
+    critical: float = Field(default=0.75, ge=0.0, le=1.0)
+    alert: float = Field(default=0.40, ge=0.0, le=1.0)
+    safe_max: float = Field(default=0.10, ge=0.0, le=1.0)
+
+
+class RiskPrecipitationConfig(BaseModel):
+    """Precipitation thresholds aligned with PAGASA Rainfall Warning System."""
+
+    alert_min: float = Field(default=7.5, ge=0.0)
+    alert_max: float = Field(default=30.0, ge=0.0)
+    humidity_threshold: float = Field(default=82.0, ge=0.0, le=100.0)
+    humidity_precip_min: float = Field(default=5.0, ge=0.0)
+
+
+class RiskRainfall3hConfig(BaseModel):
+    """3-hour rainfall accumulation thresholds (PAGASA-aligned)."""
+
+    critical: float = Field(default=65.0, ge=0.0)
+    alert: float = Field(default=30.0, ge=0.0)
+
+
+class RiskTideConfig(BaseModel):
+    """Tide risk thresholds."""
+
+    alert_factor: float = Field(default=0.8, ge=0.0, le=1.0)
+    critical_combined_factor: float = Field(default=0.7, ge=0.0, le=1.0)
+    critical_combined_flood_prob: float = Field(default=0.40, ge=0.0, le=1.0)
+
+
+class RiskClassificationConfig(BaseModel):
+    """Risk classification thresholds — consumed by risk_classifier.py."""
+
+    flood_probability: RiskFloodProbabilityConfig = Field(default_factory=RiskFloodProbabilityConfig)
+    precipitation: RiskPrecipitationConfig = Field(default_factory=RiskPrecipitationConfig)
+    rainfall_3h: RiskRainfall3hConfig = Field(default_factory=RiskRainfall3hConfig)
+    tide: RiskTideConfig = Field(default_factory=RiskTideConfig)
+
+
 class AlertThresholds(BaseModel):
     """Metric alert thresholds."""
 
@@ -416,6 +460,7 @@ class ConfigSchema(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     resources: ResourcesConfig = Field(default_factory=ResourcesConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
+    risk_classification: RiskClassificationConfig = Field(default_factory=RiskClassificationConfig)
 
     model_config = {"extra": "allow"}  # Allow extra fields for flexibility
 

@@ -7,8 +7,9 @@ Run this to test Sentry without starting the full Flask app.
 import os
 import sys
 
+import pytest
 from app.core.config import load_env
-from app.utils.sentry import (
+from app.utils.observability.sentry import (
     add_breadcrumb,
     capture_exception,
     capture_message,
@@ -38,10 +39,10 @@ def test_sentry_disabled():
 
     if not result and not enabled:
         print("✅ PASS: Sentry correctly disabled when DSN not set\n")
-        return True
     else:
         print("❌ FAIL: Sentry should be disabled\n")
-        return False
+    assert not result
+    assert not enabled
 
 
 def test_sentry_enabled():
@@ -69,10 +70,10 @@ def test_sentry_enabled():
         event_id = capture_message("Test message from Floodingnaque", level="info")
         print(f"✓ Event ID: {event_id}")
         print("✅ PASS: Message captured (would be sent to Sentry)\n")
-        return True
     else:
         print("❌ FAIL: Sentry should be enabled\n")
-        return False
+    assert result
+    assert enabled
 
 
 def test_sentry_functions():
@@ -102,11 +103,10 @@ def test_sentry_functions():
             print(f"✓ capture_exception() - Event ID: {event_id}")
 
         print("✅ PASS: All utility functions working\n")
-        return True
 
     except Exception as e:
         print(f"❌ FAIL: {e}\n")
-        return False
+        pytest.fail(f"Sentry utility function failed: {e}")
 
 
 def main():

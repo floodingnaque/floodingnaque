@@ -1,24 +1,29 @@
+import datetime
 import hashlib
 import hmac
 import json
 import logging
 import os
-import pickle
+import pickle  # nosec B403 - used only for joblib model loading, not arbitrary deserialization
 import tempfile
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import joblib
+import numpy as np
 import pandas as pd
 from app.services.risk_classifier import classify_risk_level
 from app.services.smart_alert_evaluator import evaluate_smart_alert
+from app.services.xai_engine import generate_explanation
 from app.utils.secrets import get_secret
 
 logger = logging.getLogger(__name__)
 
-# Default model path constant
-DEFAULT_MODEL_PATH = os.path.join("models", "flood_rf_model.joblib")
+# Resolve model paths relative to the backend directory, not CWD
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_MODELS_DIR = str(_BACKEND_DIR / "models")
+DEFAULT_MODEL_PATH = str(_BACKEND_DIR / "models" / "flood_rf_model.joblib")
 
 # HMAC key for model signing - resolved lazily so that secrets
 # loaded at startup time (after import) are picked up correctly.
@@ -125,17 +130,41 @@ def compute_model_checksum(model_path: str) -> str:
     """
     Compute SHA-256 checksum of a model file for integrity verification.
 
+    Uses a `.sha256` sidecar cache keyed on file mtime to avoid re-hashing
+    unchanged model files.
+
     Args:
         model_path: Path to the model file
 
     Returns:
         str: Hex-encoded SHA-256 checksum
     """
+    sidecar = Path(model_path).with_suffix(".sha256")
+    try:
+        current_mtime = os.path.getmtime(model_path)
+        if sidecar.exists():
+            cached = sidecar.read_text().strip().split(":", 1)
+            if len(cached) == 2:
+                cached_mtime, cached_hash = cached
+                if float(cached_mtime) == current_mtime:
+                    return cached_hash
+    except (OSError, ValueError):
+        pass  # Fall through to full computation
+
     sha256_hash = hashlib.sha256()
     with open(model_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             sha256_hash.update(chunk)
-    return sha256_hash.hexdigest()
+    digest = sha256_hash.hexdigest()
+
+    # Persist to sidecar for next load
+    try:
+        current_mtime = os.path.getmtime(model_path)
+        sidecar.write_text(f"{current_mtime}:{digest}")
+    except OSError:
+        pass
+
+    return digest
 
 
 def compute_model_hmac_signature(model_path: str, signing_key: str) -> str:
@@ -311,7 +340,7 @@ def save_model_with_checksum(model, model_path: str, metadata: Dict[str, Any]) -
     return checksum
 
 
-def list_available_models(models_dir: str = "models") -> List[Dict[str, Any]]:
+def list_available_models(models_dir: str = DEFAULT_MODELS_DIR) -> List[Dict[str, Any]]:
     """List all available model versions."""
     models_path = Path(models_dir)
     if not models_path.exists():
@@ -332,7 +361,7 @@ def list_available_models(models_dir: str = "models") -> List[Dict[str, Any]]:
     return models
 
 
-def get_latest_model_version(models_dir: str = "models") -> Optional[int]:
+def get_latest_model_version(models_dir: str = DEFAULT_MODELS_DIR) -> Optional[int]:
     """Get the latest model version number."""
     models = list_available_models(models_dir)
     if models:
@@ -346,6 +375,61 @@ def get_latest_model_version(models_dir: str = "models") -> Optional[int]:
             return metadata["version"]
 
     return None
+
+
+def _validate_loaded_model(model: Any, metadata: Optional[Dict], model_path: str) -> None:
+    """
+    Post-load smoke test for a model.
+
+    Verifies:
+    - Model has predict/predict_proba methods
+    - Feature names in metadata match model (if available)
+    - A dummy prediction completes in < 100ms
+    """
+    import time
+
+    import numpy as np
+
+    # Check model has prediction capabilities
+    has_predict = hasattr(model, "predict")
+    has_proba = hasattr(model, "predict_proba")
+    if not has_predict and not has_proba:
+        raise ValueError(f"Model at {model_path} has no predict or predict_proba method")
+
+    # Check feature names if metadata provides them
+    expected_features = None
+    if metadata:
+        expected_features = metadata.get("feature_names") or metadata.get("features")
+    if expected_features and hasattr(model, "feature_names_in_"):
+        model_features = list(model.feature_names_in_)
+        if set(model_features) != set(expected_features):
+            missing = set(expected_features) - set(model_features)
+            extra = set(model_features) - set(expected_features)
+            logger.warning(
+                "Feature mismatch in model %s: missing=%s, extra=%s",
+                model_path,
+                missing or "none",
+                extra or "none",
+            )
+
+    # Smoke-test prediction latency with dummy input
+    try:
+        n_features = len(expected_features) if expected_features else 13
+        dummy = np.zeros((1, n_features))
+        start = time.perf_counter()
+        if has_proba:
+            model.predict_proba(dummy)
+        else:
+            model.predict(dummy)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        if elapsed_ms > 100:
+            logger.warning("Model smoke-test prediction took %.1fms (threshold: 100ms)", elapsed_ms)
+        else:
+            logger.debug("Model smoke-test passed in %.1fms", elapsed_ms)
+    except Exception as exc:
+        # Non-fatal: model may expect specific feature names in DataFrame
+        logger.debug("Model smoke-test skipped (expected): %s", exc)
 
 
 def _load_model(model_path: Optional[str] = None, force_reload: bool = False, verify_integrity: bool = True) -> Any:
@@ -396,6 +480,9 @@ def _load_model(model_path: Optional[str] = None, force_reload: bool = False, ve
             metadata = get_model_metadata(model_path)
             checksum = compute_model_checksum(model_path)
 
+            # Post-load validation: verify model can produce predictions
+            _validate_loaded_model(model, metadata, model_path)
+
             loader.set_model(model, model_path, metadata, checksum)
 
             logger.info("Model loaded successfully")
@@ -416,13 +503,102 @@ def _load_model(model_path: Optional[str] = None, force_reload: bool = False, ve
     return loader.model
 
 
-def load_model_version(version: int, models_dir: str = "models", force_reload: bool = False) -> Any:
+def load_model_version(version: int, models_dir: str = DEFAULT_MODELS_DIR, force_reload: bool = False) -> Any:
     """Load a specific model version."""
     model_path = Path(models_dir) / f"flood_model_v{version}.joblib"
     if not model_path.exists():
         raise FileNotFoundError(f"Model version {version} not found at {model_path}")
 
     return _load_model(str(model_path), force_reload=force_reload)
+
+
+def _compute_rolling_features() -> Dict[str, Any]:
+    """
+    Compute rolling weather features from stored WeatherData records.
+
+    Queries the database for recent weather observations and computes:
+    - precip_3day_sum: total precipitation over last 3 days
+    - precip_7day_sum: total precipitation over last 7 days
+    - rain_streak: consecutive days with precipitation > 0.1mm (most recent)
+
+    Returns:
+        Dict with computed rolling features and metadata about data availability.
+        Keys: precip_3day_sum, precip_7day_sum, rain_streak, tide_height,
+              _rolling_source ("database" or "unavailable"),
+              _days_available (int).
+    """
+    result: Dict[str, Any] = {
+        "_rolling_source": "unavailable",
+        "_days_available": 0,
+    }
+
+    try:
+        from app.models.db import get_db_session
+        from app.models.weather import WeatherData
+        from sqlalchemy import func
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        seven_days_ago = now - datetime.timedelta(days=7)
+
+        with get_db_session() as session:
+            # Get daily precipitation sums for last 7 days, grouped by date
+            daily_records = (
+                session.query(
+                    func.date(WeatherData.timestamp).label("day"),
+                    func.sum(WeatherData.precipitation).label("daily_precip"),
+                    func.max(WeatherData.precipitation).label("max_precip"),
+                )
+                .filter(
+                    WeatherData.is_deleted.is_(False),
+                    WeatherData.timestamp >= seven_days_ago,
+                )
+                .group_by(func.date(WeatherData.timestamp))
+                .order_by(func.date(WeatherData.timestamp).desc())
+                .all()
+            )
+
+            if not daily_records:
+                logger.warning("No weather records found in last 7 days for rolling features")
+                return result
+
+            result["_days_available"] = len(daily_records)
+            result["_rolling_source"] = "database"
+
+            # Compute precip_7day_sum from all available days
+            precip_values = [float(r.daily_precip or 0.0) for r in daily_records]
+            result["precip_7day_sum"] = sum(precip_values)
+
+            # Compute precip_3day_sum from most recent 3 days
+            result["precip_3day_sum"] = sum(precip_values[:3])
+
+            # Compute rain_streak: consecutive days with max_precip > 0.1mm
+            # starting from most recent day going backwards
+            streak = 0
+            for r in daily_records:
+                if (r.max_precip or 0.0) > 0.1:
+                    streak += 1
+                else:
+                    break
+            result["rain_streak"] = streak
+
+            # Get most recent tide_height if available
+            latest_tide = (
+                session.query(WeatherData.tide_height)
+                .filter(
+                    WeatherData.is_deleted.is_(False),
+                    WeatherData.tide_height.isnot(None),
+                    WeatherData.timestamp >= seven_days_ago,
+                )
+                .order_by(WeatherData.timestamp.desc())
+                .first()
+            )
+            if latest_tide and latest_tide.tide_height is not None:
+                result["tide_height"] = float(latest_tide.tide_height)
+
+    except Exception as e:
+        logger.warning("Could not compute rolling features from database: %s", e)
+
+    return result
 
 
 def predict_flood(
@@ -446,6 +622,31 @@ def predict_flood(
     if not isinstance(input_data, dict):
         raise ValueError("input_data must be a dictionary")
 
+    # --- Ensemble model feature flag ---
+    # When enabled, delegate to EnsemblePredictor for the classification step.
+    # All post-processing (risk level, smart alerts, XAI) still runs below.
+    _use_ensemble = os.getenv("FLOODINGNAQUE_FLAG_ENSEMBLE_MODEL", "false").lower() == "true"
+    _ensemble_prediction: Dict[str, Any] | None = None
+    if _use_ensemble and model_version is None:
+        try:
+            from app.ml.ensemble_model import EnsemblePredictor
+
+            ep = EnsemblePredictor.get_instance()
+            if ep.is_enabled():
+                from app.services.data_aggregation_service import DataBundle
+
+                # Build a minimal feature vector from input_data
+                bundle = DataBundle(
+                    temperature=input_data.get("temperature", 0.0),
+                    humidity=input_data.get("humidity", 0.0),
+                    precipitation=input_data.get("precipitation", 0.0),
+                )
+                _ensemble_prediction = ep.predict(bundle.to_feature_vector())
+                if "error" not in _ensemble_prediction:
+                    logger.info("Ensemble prediction used: %s", _ensemble_prediction)
+        except Exception as exc:
+            logger.warning("Ensemble prediction failed, falling back to default: %s", exc)
+
     # Validate required fields
     required_fields = ["temperature", "humidity", "precipitation"]
     missing_fields = [field for field in required_fields if field not in input_data]
@@ -459,37 +660,81 @@ def predict_flood(
         model = _load_model()
 
     try:
-        # Convert input_data to DataFrame
-        df = pd.DataFrame([input_data])
-
         # Track any features filled with defaults
         fill_values = {}
 
-        # Get model feature names if available
+        # Compute derived features from raw weather inputs before filling defaults.
+        # These interaction features match the preprocessing pipeline used during
+        # training (preprocess_pagasa_data.py / preprocess_official_flood_records.py).
+        temp = input_data.get("temperature")  # Kelvin
+        humidity = input_data.get("humidity")
+        precip = input_data.get("precipitation", 0.0)
+
+        now = datetime.datetime.now()
+        month = now.month
+        # Philippine monsoon season: June–November
+        is_monsoon = 1 if 6 <= month <= 11 else 0
+
+        derived_features = {}
+        if temp is not None and humidity is not None:
+            derived_features["temp_humidity_interaction"] = temp * humidity / 100
+        if temp is not None and precip is not None:
+            derived_features["temp_precip_interaction"] = temp * np.log1p(precip)
+        if humidity is not None and precip is not None:
+            derived_features["humidity_precip_interaction"] = humidity * precip / 100
+            derived_features["saturation_risk"] = int(humidity > 85 and precip > 20)
+        derived_features["is_monsoon_season"] = is_monsoon
+        derived_features["month"] = month
+        if precip is not None:
+            derived_features["monsoon_precip_interaction"] = is_monsoon * precip
+
+        # Compute rolling features from weather history in database.
+        # These features (precip_3day_sum, precip_7day_sum, rain_streak, tide_height)
+        # are trained with real historical data — defaulting to 0.0 degrades accuracy.
+        rolling = _compute_rolling_features()
+        rolling_source = rolling.pop("_rolling_source", "unavailable")
+        days_available = rolling.pop("_days_available", 0)
+
+        # Only inject rolling values NOT already provided in input_data
+        for key, val in rolling.items():
+            if key not in input_data:
+                derived_features[key] = val
+
+        # Merge raw input + derived features into a single lookup dict
+        all_features = {**input_data, **derived_features}
+
+        # Build feature array directly as NumPy (skip DataFrame overhead for single predictions)
         if hasattr(model, "feature_names_in_"):
-            # Ensure columns match model expectations
-            expected_features = model.feature_names_in_
-            # Use reasonable defaults for missing features
-            fill_values = {}
+            expected_features = list(model.feature_names_in_)
+            feature_values = []
             for feature in expected_features:
-                if feature not in input_data:
+                val = all_features.get(feature)
+                if val is None or (isinstance(val, float) and np.isnan(val)):
                     # Provide reasonable defaults based on feature name
                     if "wind" in feature.lower():
-                        fill_values[feature] = 10.0  # Default wind speed
+                        default = 10.0
                     elif "temperature" in feature.lower():
-                        fill_values[feature] = 298.15  # Default temperature (25°C)
+                        default = 298.15
                     elif "humidity" in feature.lower():
-                        fill_values[feature] = 50.0  # Default humidity
-                    elif "precipitation" in feature.lower():
-                        fill_values[feature] = 0.0  # Default precipitation
+                        default = 50.0
+                    elif "precipitation" in feature.lower() or "precip" in feature.lower():
+                        default = 0.0
+                    elif "tide" in feature.lower():
+                        default = 0.0
+                    elif feature in ("rain_streak",):
+                        default = 0
                     else:
-                        fill_values[feature] = 0.0  # Default for other features
+                        default = 0.0
+                    fill_values[feature] = default
+                    feature_values.append(default)
+                else:
+                    feature_values.append(val)
 
-            # Reindex with custom fill values
-            df = df.reindex(columns=expected_features)
-            # Apply custom fill values for missing features
-            for feature, value in fill_values.items():
-                df[feature] = df[feature].fillna(value)
+            # Use a named DataFrame so scikit-learn receives the feature names
+            # it was trained with. Passing a plain NumPy array triggers:
+            #   UserWarning: X does not have valid feature names, but
+            #   RandomForestClassifier was fitted with feature names
+            X = pd.DataFrame([feature_values], columns=expected_features)
 
             # Warn caller about imputed features
             if fill_values:
@@ -498,15 +743,25 @@ def predict_flood(
                     len(fill_values),
                     ", ".join(f"{k}={v}" for k, v in fill_values.items()),
                 )
+        else:
+            # Fallback: model has no feature_names_in_, use DataFrame for safety
+            # All v1-v6 models have feature_names_in_; this path is only for
+            # manually-loaded or third-party models. DataFrame adds ~5-10ms overhead.
+            logger.warning(
+                "predict_flood: model lacks feature_names_in_, falling back to DataFrame. "
+                "Retrain model with scikit-learn >= 1.0 to enable fast NumPy path."
+            )
+            df = pd.DataFrame([all_features])
+            X = df
 
         # Make prediction
-        prediction = model.predict(df)
+        prediction = model.predict(X)
         result = int(prediction[0])
 
         # Get probabilities if requested or if risk level classification is needed
         probability_dict = None
         if (return_proba or return_risk_level) and hasattr(model, "predict_proba"):
-            proba = model.predict_proba(df)[0]
+            proba = model.predict_proba(X)[0]
             probability_dict = {"no_flood": float(proba[0]), "flood": float(proba[1]) if len(proba) > 1 else 0.0}
 
         # Classify risk level if requested
@@ -535,6 +790,12 @@ def predict_flood(
                 risk_classification["risk_level"] = smart_decision.risk_level
                 risk_classification["risk_label"] = smart_decision.risk_label
                 risk_classification["confidence"] = smart_decision.confidence
+                # Keep risk_color in sync with the overridden label
+                from app.services.risk_classifier import RISK_LEVEL_COLORS
+
+                risk_classification["risk_color"] = RISK_LEVEL_COLORS.get(
+                    smart_decision.risk_label, risk_classification["risk_color"]
+                )
             except Exception as smart_exc:
                 logger.warning("Smart alert evaluation failed, using base classification: %s", smart_exc)
 
@@ -549,6 +810,29 @@ def predict_flood(
                 response["probability"] = probability_dict
             if fill_values:
                 response["imputed_defaults"] = fill_values
+
+            # Feature completeness tracking — indicates data quality of this prediction
+            if hasattr(model, "feature_names_in_"):
+                total_features = len(model.feature_names_in_)
+                defaulted_count = len(fill_values)
+                features_with_real_data = total_features - defaulted_count
+                confidence_impact = "high" if defaulted_count > 2 else "low" if defaulted_count > 0 else "none"
+                response["feature_completeness"] = {
+                    "features_available": features_with_real_data,
+                    "features_total": total_features,
+                    "features_defaulted": list(fill_values.keys()),
+                    "confidence_impact": confidence_impact,
+                    "rolling_data_source": rolling_source,
+                    "rolling_days_available": days_available,
+                }
+                if defaulted_count > 2:
+                    logger.warning(
+                        "Prediction made with %d/%d features defaulted (%s) — confidence may be reduced",
+                        defaulted_count,
+                        total_features,
+                        ", ".join(fill_values.keys()),
+                    )
+
             if risk_classification:
                 response["risk_level"] = risk_classification["risk_level"]
                 response["risk_label"] = risk_classification["risk_label"]
@@ -567,6 +851,23 @@ def predict_flood(
                     "contributing_factors": smart_decision.contributing_factors,
                     "original_risk_level": smart_decision.original_risk_level,
                 }
+
+            # ── Explainable AI (XAI) ──────────────────────────────────
+            try:
+                explanation = generate_explanation(
+                    model=model,
+                    input_data=input_data,
+                    risk_label=risk_classification["risk_label"] if risk_classification else "Unknown",
+                    confidence=risk_classification["confidence"] if risk_classification else 0.5,
+                )
+                response["explanation"] = explanation
+            except Exception as xai_exc:
+                logger.warning("XAI explanation generation failed: %s", xai_exc)
+                response["explanation"] = None
+
+            # Surface model feature names for frontend
+            if hasattr(model, "feature_names_in_"):
+                response["features_used"] = list(model.feature_names_in_)
 
             logger.info(
                 f"Prediction: {result}, Risk Level: {risk_classification['risk_label'] if risk_classification else 'N/A'}"

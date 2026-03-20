@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 DATA_DIR = BACKEND_DIR / "data"
+RAW_DIR = DATA_DIR / "raw" / "flood_records"
 CLEANED_DIR = DATA_DIR / "cleaned"
 
 # Source files pattern
@@ -321,8 +322,8 @@ def parse_2022_2023_format(file_path: Path, year: int) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-def parse_2024_format(file_path: Path) -> pd.DataFrame:
-    """Parse 2024 format with different column layout."""
+def parse_2024_format(file_path: Path, year: int = 2024) -> pd.DataFrame:
+    """Parse 2024/2025 format with different column layout."""
     records = []
 
     try:
@@ -341,7 +342,7 @@ def parse_2024_format(file_path: Path) -> pd.DataFrame:
             continue
 
         line_lower = line.lower()
-        if any(h in line_lower for h in ["year 2024", "flood", "depth", "weather", "disturbances", "barangay"]):
+        if any(h in line_lower for h in [f"year {year}", "flood", "depth", "weather", "disturbances", "barangay"]):
             if "14." not in line and "121." not in line:
                 continue
 
@@ -351,11 +352,11 @@ def parse_2024_format(file_path: Path) -> pd.DataFrame:
         if record_match:
             if current_record and current_record.get("latitude"):
                 records.append(current_record.copy())
-            current_record = {"record_num": int(record_match.group(1)), "year": 2024}
+            current_record = {"record_num": int(record_match.group(1)), "year": year}
 
         # Date
         date_match = re.search(
-            r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{1,2},?\s*2024",
+            r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{1,2},?\s*" + str(year),
             line,
             re.IGNORECASE,
         )
@@ -407,9 +408,136 @@ def parse_2024_format(file_path: Path) -> pd.DataFrame:
 
 
 def parse_2025_format(file_path: Path) -> pd.DataFrame:
-    """Parse 2025 format (similar to 2024 but with additional columns)."""
-    # 2025 format is similar to 2024
-    return parse_2024_format(file_path)
+    """
+    Parse 2025 format.
+
+    The 2025 CSV (Excel export with merged cells) splits each record's date
+    across lines:
+      - A preceding context line contains the month+day in either
+        "Month DD" (e.g. "May 6,") or "DD Month" (e.g. "19 July") order.
+      - The record line starts with the 1-3 digit record number.
+        Early records (May-June): "N   2025   TIME   MONTH ..."
+        Later records (July+):    "N   [spaces]   depth_inches   [spaces]   2025   ...coords"
+
+    Strategy: detect record lines by 1-3 digit record number at line start
+    (avoids confusing the 4-digit year "2025" with a record number), then
+    look back up to LOOK_BACK lines for a month+day date fragment.
+    """
+    records = []
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        logger.error(f"Error reading {file_path}: {e}")
+        return pd.DataFrame()
+
+    lines = [line.strip().replace('"', "") for line in content.split("\n")]
+
+    record_re = re.compile(r"^([1-9]\d{0,2})\s+")  # 1-3 digit record numbers only
+    month_day_re = re.compile(
+        r"(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+(\d{1,2}),?)"  # "May 6," or "June 7"
+        r"|(?:(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*)",  # "19 July"
+        re.IGNORECASE,
+    )
+    coord_re = re.compile(r"(\d{2}\.\d{5,})")
+    depth_re = re.compile(r"(gutter|knee|waist|chest|ankle)\s*(level)?", re.IGNORECASE)
+    weather_re = re.compile(r"(easterlies|thunderstorm|monsoon|itcz|habagat|amihan|localized)", re.IGNORECASE)
+
+    LOOK_BACK = 15
+
+    def _extract_date_from_match(md_match) -> Optional[Tuple]:
+        """Return (date_str, month_int, day_int) or None from a month_day_re match."""
+        if not md_match:
+            return None
+        if md_match.group(1):  # "Month DD" format — groups 1 & 2
+            month_str, day_str = md_match.group(1), md_match.group(2)
+        else:  # "DD Month" format — groups 3 & 4
+            day_str, month_str = md_match.group(3), md_match.group(4)
+        parsed = parse_date_flexible(f"{month_str} {day_str}, 2025", 2025)
+        if parsed:
+            return parsed.strftime("%Y-%m-%d"), parsed.month, parsed.day
+        return None
+
+    current_record: Dict = {}
+
+    for i, line in enumerate(lines):
+        if not line:
+            continue
+
+        record_match = record_re.match(line)
+
+        if record_match:
+            # Save completed previous record
+            if current_record and current_record.get("latitude"):
+                records.append(current_record.copy())
+
+            current_record = {
+                "record_num": int(record_match.group(1)),
+                "year": 2025,
+            }
+
+            # --- Date: look backwards for a month+day fragment ---
+            look_back_start = max(0, i - LOOK_BACK)
+            for prev_line in reversed(lines[look_back_start:i]):
+                result = _extract_date_from_match(month_day_re.search(prev_line))
+                if result:
+                    current_record["date"], current_record["month"], current_record["day"] = result
+                    break
+
+            # Fallback: check the current record line itself
+            if not current_record.get("date"):
+                result = _extract_date_from_match(month_day_re.search(line))
+                if result:
+                    current_record["date"], current_record["month"], current_record["day"] = result
+
+            # --- Coordinates ---
+            for coord in coord_re.findall(line):
+                val = float(coord)
+                if 14 <= val <= 15:
+                    current_record["latitude"] = val
+                elif 120 <= val <= 122:
+                    current_record["longitude"] = val
+
+            # --- Flood depth ---
+            depth_m = depth_re.search(line)
+            if depth_m and not current_record.get("flood_depth"):
+                current_record["flood_depth"] = standardize_flood_depth(depth_m.group())
+
+            # --- Weather ---
+            weather_m = weather_re.search(line)
+            if weather_m and not current_record.get("weather_disturbance"):
+                current_record["weather_disturbance"] = weather_m.group()
+
+            # --- Location: first meaningful text on the record line after stripping coords/fields ---
+            loc_line = re.sub(r"\d{2}\.\d{5,}", "", line)
+            loc_line = re.sub(r"^\d+\s+2025\s+\d{4}H?\s+[A-Z]+\s*", "", loc_line)
+            loc_line = loc_line.strip()
+            if loc_line and not current_record.get("location"):
+                loc_line = re.sub(r"\s{2,}", " ", loc_line)
+                if len(loc_line) > 2:
+                    current_record["location"] = loc_line[:80].strip()
+
+        elif current_record:
+            # Continuation lines — pick up coordinates and depth if missing
+            if not current_record.get("latitude"):
+                for coord in coord_re.findall(line):
+                    val = float(coord)
+                    if 14 <= val <= 15:
+                        current_record["latitude"] = val
+                    elif 120 <= val <= 122:
+                        current_record["longitude"] = val
+
+            if not current_record.get("flood_depth"):
+                depth_m = depth_re.search(line)
+                if depth_m:
+                    current_record["flood_depth"] = standardize_flood_depth(depth_m.group())
+
+    # Last record
+    if current_record and current_record.get("latitude"):
+        records.append(current_record)
+
+    return pd.DataFrame(records)
 
 
 def clean_and_standardize(df: pd.DataFrame) -> pd.DataFrame:
@@ -447,7 +575,7 @@ def clean_year(year: int) -> Optional[pd.DataFrame]:
         logger.error(f"No source file defined for year {year}")
         return None
 
-    source_path = DATA_DIR / SOURCE_FILES[year]
+    source_path = RAW_DIR / SOURCE_FILES[year]
     if not source_path.exists():
         logger.error(f"Source file not found: {source_path}")
         return None

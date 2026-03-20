@@ -1431,6 +1431,17 @@ def create_training_dataset_v2(output_path: Optional[Path] = None) -> pd.DataFra
     combined["temperature"] = combined["temperature"].fillna(combined["temperature"].median())
     combined["humidity"] = combined["humidity"].fillna(combined["humidity"].median())
 
+    # Enhanced temporal features
+    dates = pd.to_datetime(combined["date"], errors="coerce")
+    combined["day_of_week"] = dates.dt.dayofweek  # 0=Monday, 6=Sunday
+    # Season: 0=dry (Dec-Feb), 1=pre-monsoon (Mar-May), 2=monsoon (Jun-Sep), 3=post-monsoon (Oct-Nov)
+    combined["season"] = (
+        combined["month"]
+        .map({12: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 1, 6: 2, 7: 2, 8: 2, 9: 2, 10: 3, 11: 3})
+        .fillna(0)
+        .astype(int)
+    )
+
     # Ensure numeric types
     numeric_cols = [
         "flood",
@@ -1441,6 +1452,8 @@ def create_training_dataset_v2(output_path: Optional[Path] = None) -> pd.DataFra
         "humidity",
         "wind_speed",
         "is_monsoon_season",
+        "day_of_week",
+        "season",
     ]
     for col in numeric_cols:
         if col in combined.columns:

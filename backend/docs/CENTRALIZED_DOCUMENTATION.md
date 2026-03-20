@@ -18,10 +18,9 @@ This file consolidates all previous documentation in this directory.
 - [References](#references)
 - [Other](#other)
 
-
 ## Quick Start
 
-```powershell
+````powershell
 **Version**: 2.0 | **Estimated Setup Time**: 5-10 minutes
 Complete guide to setting up and running the Floodingnaque backend API for flood prediction.
 
@@ -35,56 +34,60 @@ The Floodingnaque API uses a dual-token authentication system:
 
 - **Refresh Token**: Long-lived token (7 days) for obtaining new access tokens
 
-```
+````
+
 Authentication Flow
 Login
-Frontend   API
+Frontend API
 access_token
 refresh_token
 API Request
-+ Bearer token
-Response
-Token Expired
-new access_token
-Table | Purpose
-`weather_data` | Historical weather records
-`predictions` | Flood predictions with audit trail
-`alert_history` | Alert delivery logs
-`model_registry` | ML model version tracking
-For detailed schema information, see [DATABASE_GUIDE.md](DATABASE_GUIDE.md).
-The backend is now production-ready with comprehensive features, error handling, and best practices implemented.
-This document outlines the database improvements implemented to enhance quality, performance, security, and maintainability of the Floodingnaque backend system.
-The application uses SQLite as the default database, configured through SQLAlchemy ORM.
-Docker Secrets provide a more secure way to manage sensitive configuration data compared to environment variables. This guide explains how to set up and use Docker secrets with Floodingnaque.
+
+- Bearer token
+  Response
+  Token Expired
+  new access_token
+  Table | Purpose
+  `weather_data` | Historical weather records
+  `predictions` | Flood predictions with audit trail
+  `alert_history` | Alert delivery logs
+  `model_registry` | ML model version tracking
+  For detailed schema information, see [DATABASE_GUIDE.md](DATABASE_GUIDE.md).
+  The backend is now production-ready with comprehensive features, error handling, and best practices implemented.
+  This document outlines the database improvements implemented to enhance quality, performance, security, and maintainability of the Floodingnaque backend system.
+  The application uses SQLite as the default database, configured through SQLAlchemy ORM.
+  Docker Secrets provide a more secure way to manage sensitive configuration data compared to environment variables. This guide explains how to set up and use Docker secrets with Floodingnaque.
+
 1. **Install Vault client in container**
 2. **Configure Vault agent for automatic secret injection**
 3. **Use Vault-aware application configuration**
-This runbook provides step-by-step procedures for responding to security incidents in the Floodingnaque application. All team members with system access should be familiar with these procedures.
-The model versioning system provides enterprise-grade capabilities for managing ML models in production:
+   This runbook provides step-by-step procedures for responding to security incidents in the Floodingnaque application. All team members with system access should be familiar with these procedures.
+   The model versioning system provides enterprise-grade capabilities for managing ML models in production:
+
 - **Semantic Versioning**: MAJOR.MINOR.PATCH versioning with prerelease and build metadata support
 - **A/B Testing**: Compare model performance with multiple traffic splitting strategies
 - **Performance Monitoring**: Track accuracy, latency, error rates, and confidence
 - **Automated Rollback**: Automatic rollback when performance degrades below thresholds
-Floodingnaque API includes comprehensive observability infrastructure for monitoring, tracing, and debugging in production environments. This guide covers structured logging, distributed tracing, metrics collection, and dashboard usage.
-This guide explains how to use **Parañaque City's official flood records (2022-2025)** to train your Random Forest models. This real-world data will make your thesis significantly more impressive!
-This runbook provides operational procedures for managing the Floodingnaque flood prediction system in production.
-**System Components:**
+  Floodingnaque API includes comprehensive observability infrastructure for monitoring, tracing, and debugging in production environments. This guide covers structured logging, distributed tracing, metrics collection, and dashboard usage.
+  This guide explains how to use **Parañaque City's official flood records (2022-2025)** to train your Random Forest models. This real-world data will make your thesis significantly more impressive!
+  This runbook provides operational procedures for managing the Floodingnaque flood prediction system in production.
+  **System Components:**
 - Backend API (Flask + Gunicorn)
 - Celery Workers (async task processing)
 - Redis Cloud (caching, rate limiting, task queue)
 - Supabase PostgreSQL (database)
-- Datadog Agent (monitoring)
 - Prometheus (metrics)
-Floodingnaque uses **Server-Sent Events (SSE)** for real-time communication. SSE provides a simple, efficient one-way channel from server to client, perfect for flood alert notifications.
-SSE Communication Flow
-GET /sse/alerts
-text/event-stream
-event: connected
-event: heartbeat   (every 30s)
-event: alert   (when alerts occur)
-Process events                   Broadcast alerts
-The Floodingnaque API implements a multi-layered testing strategy with 85% code coverage requirement. This guide covers all testing approaches including unit tests, integration tests, property-based testing, contract testing, and snapshot testing.
-The Floodingnaque API testing framework has been enhanced with advanced testing methodologies to ensure robustness, API compatibility, and regression prevention while maintaining the existing 85% coverage requirement.
+- Grafana (dashboards)
+  Floodingnaque uses **Server-Sent Events (SSE)** for real-time communication. SSE provides a simple, efficient one-way channel from server to client, perfect for flood alert notifications.
+  SSE Communication Flow
+  GET /sse/alerts
+  text/event-stream
+  event: connected
+  event: heartbeat (every 30s)
+  event: alert (when alerts occur)
+  Process events Broadcast alerts
+  The Floodingnaque API implements a multi-layered testing strategy with 85% code coverage requirement. This guide covers all testing approaches including unit tests, integration tests, property-based testing, contract testing, and snapshot testing.
+  The Floodingnaque API testing framework has been enhanced with advanced testing methodologies to ensure robustness, API compatibility, and regression prevention while maintaining the existing 85% coverage requirement.
 
 ## Architecture
 
@@ -202,9 +205,10 @@ This guide explains how to use Alembic for database schema migrations in the Flo
 alembic downgrade base
 
 ```
+
 Alembic automatically uses your `DATABASE_URL` environment variable:
 
-```bash
+````bash
 For data transformations, create a manual migration:
 
 ```powershell
@@ -476,7 +480,6 @@ humidity | FLOAT | Humidity percentage
 precipitation | FLOAT | Precipitation amount
 timestamp | DATETIME | When the data was recorded
 echo "postgresql://user:pass@host:5432/db?sslmode=require" > ./secrets/database_url.txt
-echo "your-dd-api-key" > ./secrets/dd_api_key.txt
 #### Get Weather Data
 
 ```http
@@ -986,11 +989,6 @@ print('Database OK:', result.scalar())
 3. Check if IP is whitelisted in Supabase
 
 4. Increase DB_POOL_SIZE if connection exhausted
-If DD_API_KEY is configured:
-
-- APM: https://app.datadoghq.com/apm
-
-- Infrastructure: https://app.datadoghq.com/infrastructure
 Each version saves:
 
 - Training date/time
@@ -1171,8 +1169,10 @@ models/flood_rf_model.json   → Metadata for newest version
 **Answer:**  **Automatic Version Control!**
 **Version Numbering:**
 
-```
+````
+
 **Each Version Stores:**
+
 - Model file (.joblib)
 - Metadata (.json) with:
 - Version number
@@ -1183,9 +1183,9 @@ models/flood_rf_model.json   → Metadata for newest version
 - Feature importance
 - Cross-validation results (if used)
 - Grid search results (if used)
-**View All Versions:**
+  **View All Versions:**
 
-```powershell
+````powershell
 python -c "from app.services.predict import list_available_models; import json; print(json.dumps(list_available_models(), indent=2))"
 This guide explains how to use the enhanced model training, versioning, validation, and evaluation features.
 This document describes the enhanced model versioning system with semantic versioning, A/B testing capabilities, and automated rollback features.
@@ -1203,7 +1203,8 @@ alembic upgrade head
 ```powershell
 alembic downgrade -1
 
-```
+````
+
 New files created: 8
 Files modified: 4
 Lines added: ~1,500
@@ -1219,12 +1220,13 @@ Script | Purpose
 `merge_datasets.py` | Merge multiple CSV files
 `validate_model.py` | Model validation
 python scripts/train.py
-+ pytest==7.4.3
-+ pytest-cov==4.1.0
-+ faker==21.0.0
-python -c "from app.api.app import app; print('App imports successfully')"
 
-```bash
+- pytest==7.4.3
+- pytest-cov==4.1.0
+- faker==21.0.0
+  python -c "from app.api.app import app; print('App imports successfully')"
+
+````bash
 cd backend
 With hyperparameter tuning:
 python scripts/train.py --grid-search --cv-folds 10
@@ -2031,7 +2033,8 @@ Get API documentation.
 "base_url": "http://localhost:5000"
 }
 
-```
+````
+
 METEOSTAT_API_KEY=your_weatherstack_api_key_here
 PORT=5000
 HOST=0.0.0.0
@@ -2044,7 +2047,7 @@ LOG_LEVEL=INFO
 
 - Encrypted storage recommendations in documentation
 
-```python
+````python
 This document provides a comprehensive reference of all error codes returned by the Floodingnaque API for frontend error handling.
 Complete guide for integrating frontend applications with the Floodingnaque API.
 
@@ -2207,10 +2210,12 @@ waitress-serve --host=0.0.0.0 --port=5000 --threads=4 main:app
 -  JSON parsing for PowerShell compatibility
 cd backend
 
-```
-Or use waitress (Windows-compatible):
-5. **Rate Limiting**: Consider adding rate limiting middleware
+````
+
+Or use waitress (Windows-compatible): 5. **Rate Limiting**: Consider adding rate limiting middleware
+
 #### **Infrastructure**
+
 - [x] Database schema optimized
 - [x] Connection pooling configured
 - [x] Error handling implemented
@@ -2218,7 +2223,9 @@ Or use waitress (Windows-compatible):
 - [ ] Load balancer setup (recommended)
 - [ ] Database backup automation
 - [ ] Monitoring alerts
+
 #### **Security**
+
 - [x] No exposed credentials
 - [x] Input validation
 - [x] Rate limiting available
@@ -2226,14 +2233,18 @@ Or use waitress (Windows-compatible):
 - [ ] SSL certificates installed
 - [ ] Security headers configured
 - [ ] Penetration testing completed
+
 #### **Performance**
+
 - [x] Database indexes created
 - [x] Connection pooling optimized
 - [x] Query optimization done
 - [ ] CDN for static assets
 - [ ] Redis caching (optional)
 - [ ] Database read replicas (optional)
+
 #### **Monitoring**
+
 - [x] Structured logging
 - [ ] Application performance monitoring (APM)
 - [ ] Error tracking (Sentry)
@@ -2248,10 +2259,12 @@ Or use waitress (Windows-compatible):
 - [ ] Performance baseline established
 - [ ] Disaster recovery plan documented
 - [ ] Security audit completed
+
 #### **Predictions Table**
+
 Stores all flood predictions for analysis and audit trail:
 
-```sql
+````sql
 CREATE TABLE predictions (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 weather_data_id INTEGER,
@@ -2377,8 +2390,10 @@ cp .env.example .env
 -  Error logging with context
 python-json-logger==2.0.7
 
-```
+````
+
 **Important:**
+
 - Never commit `.env` file to version control
 - Use `.env.example` as a template
 - Store production keys securely
@@ -2393,42 +2408,43 @@ python-json-logger==2.0.7
 - **Severity:** P1/P2/P3/P4
 - **Duration:** Start to Resolution
 - **Impact:** Affected users/systems
-rollback_event = manager.record_prediction(
-latency_ms=45.0,
-confidence=0.92,
-risk_level='low',
-error=False
-)
-rollback = manager.record_prediction(
-latency_ms=latency,
-confidence=result.get('confidence'),
-risk_level=result.get('risk_level')
-if rollback:
-result['warning'] = f"Model rolled back: {rollback.reason.value}"
-return jsonify(result)
-PROMETHEUS_METRICS_ENABLED=true
-SERVICE_NAME=floodingnaque-api
-APP_VERSION=2.0.0
-If SENTRY_DSN is configured, errors are automatically reported.
-Dashboard: https://sentry.io (check your organization)
-This guide explains how to set up and use Sentry for error tracking and performance monitoring in the Floodingnaque backend.
-Sentry is a real-time error tracking and performance monitoring platform that helps you:
+  rollback_event = manager.record_prediction(
+  latency_ms=45.0,
+  confidence=0.92,
+  risk_level='low',
+  error=False
+  )
+  rollback = manager.record_prediction(
+  latency_ms=latency,
+  confidence=result.get('confidence'),
+  risk_level=result.get('risk_level')
+  if rollback:
+  result['warning'] = f"Model rolled back: {rollback.reason.value}"
+  return jsonify(result)
+  PROMETHEUS_METRICS_ENABLED=true
+  SERVICE_NAME=floodingnaque-api
+  APP_VERSION=2.0.0
+  If SENTRY_DSN is configured, errors are automatically reported.
+  Dashboard: https://sentry.io (check your organization)
+  This guide explains how to set up and use Sentry for error tracking and performance monitoring in the Floodingnaque backend.
+  Sentry is a real-time error tracking and performance monitoring platform that helps you:
 - **Catch errors before users report them**
 - **Track performance bottlenecks**
 - **Get detailed stack traces and context**
 - **Monitor application health in production**
 - **Set up alerts for critical issues**
+
 1. Go to [sentry.io](https://sentry.io) and sign up (free tier available)
 2. Create a new project and select **Flask** as the platform
 3. Copy your **DSN** (Data Source Name) - it looks like:
-https://abc123def456@o123456.ingest.sentry.io/7890123
-SENTRY_DSN=https://your-key@your-org.ingest.sentry.io/your-project-id
-SENTRY_ENVIRONMENT=production
-SENTRY_RELEASE=2.0.0
-SENTRY_TRACES_SAMPLE_RATE=0.1  # 10% of transactions
-SENTRY_PROFILES_SAMPLE_RATE=0.1  # 10% of profiles
+   https://abc123def456@o123456.ingest.sentry.io/7890123
+   SENTRY_DSN=https://your-key@your-org.ingest.sentry.io/your-project-id
+   SENTRY_ENVIRONMENT=production
+   SENTRY_RELEASE=2.0.0
+   SENTRY_TRACES_SAMPLE_RATE=0.1 # 10% of transactions
+   SENTRY_PROFILES_SAMPLE_RATE=0.1 # 10% of profiles
 
-```python
+````python
 from app.utils.sentry import start_transaction
 SENTRY_DSN=  # Leave empty
 
@@ -2447,7 +2463,8 @@ capture_message("Test message", level='info')
 alembic upgrade +1
 alembic upgrade abc123
 
-```
+````
+
 Aspect | Before | After
 Exposed Keys | 2 | 0
 Input Validation | No | Yes (15+)
@@ -2460,32 +2477,33 @@ Security Score | C | A-
 **Engineer**: Senior Backend Developer
 python scripts/migrate_db.py
 **Daily:**
+
 - Monitor error logs
 - Check API response times
 - Verify backup completion
-**Weekly:**
+  **Weekly:**
 - Review slow queries
 - Analyze error patterns
 - Update dependencies (security patches)
-**Monthly:**
+  **Monthly:**
 - Database optimization (VACUUM, ANALYZE)
 - Clean old data per retention policy
 - Review and update documentation
-**Quarterly:**
+  **Quarterly:**
 - Security audit
 - Performance benchmarking
 - Disaster recovery drill
-Metric | Before (Synthetic Only) | After (PAGASA Integration)
-Data Volume | ~1,000 samples | ~5,000+ samples
-Temporal Coverage | Limited | 2020-2025 (5 years)
-Feature Count | 4-5 | 15-20+
-Feature Quality | Synthetic | Ground-truth observations
-Spatial Resolution | Single point | 3 station network
-Validation | Random split | Temporal validation
-Preferred maintenance window: **Sunday 02:00-06:00 PHT (Asia/Manila)**
-Notify stakeholders 48 hours in advance for planned maintenance.
-**Migration Status**:  Completed
-**Data Integrity**:  Verified
+  Metric | Before (Synthetic Only) | After (PAGASA Integration)
+  Data Volume | ~1,000 samples | ~5,000+ samples
+  Temporal Coverage | Limited | 2020-2025 (5 years)
+  Feature Count | 4-5 | 15-20+
+  Feature Quality | Synthetic | Ground-truth observations
+  Spatial Resolution | Single point | 3 station network
+  Validation | Random split | Temporal validation
+  Preferred maintenance window: **Sunday 02:00-06:00 PHT (Asia/Manila)**
+  Notify stakeholders 48 hours in advance for planned maintenance.
+  **Migration Status**: Completed
+  **Data Integrity**: Verified
 
 ## Security
 
@@ -2516,6 +2534,7 @@ Notify stakeholders 48 hours in advance for planned maintenance.
 #### **Security Improvements**
 
 ```
+
 Before:
 API keys exposed: OWM_API_KEY=e61cddc2c4134ecd3f258fdbcdcebf09
 No input validation
@@ -2531,7 +2550,7 @@ Latest secure versions
 
 #### **Validation Coverage**
 
-```python
+````python
 Temperature: 173.15K to 333.15K (-100°C to 60°C)
 Humidity: 0% to 100%
 Precipitation: 0mm to 500mm
@@ -2839,11 +2858,12 @@ Alembic is a database migration tool for SQLAlchemy that allows you to:
 cd backend
 alembic revision --autogenerate -m "Initial schema"
 
-```
+````
+
 **Note:** The correct flag is `--autogenerate` (not `--autoregenerate`)
 Check the generated file in `alembic/versions/`:
 
-```python
+````python
 def upgrade() -> None:
 op.create_table('weather_data',
 sa.Column('id', sa.Integer(), nullable=False),
@@ -4701,7 +4721,6 @@ docker secret create floodingnaque_secret_key ./secrets/secret_key.txt
 docker secret create floodingnaque_jwt_secret_key ./secrets/jwt_secret_key.txt
 docker secret create floodingnaque_database_url ./secrets/database_url.txt
 docker secret create floodingnaque_redis_url ./secrets/redis_url.txt
-docker secret create floodingnaque_dd_api_key ./secrets/dd_api_key.txt
 
 3. **Modify compose.production.yaml**:
 Add secrets section at the top level:
@@ -4714,8 +4733,6 @@ database_url:
 file: ./secrets/database_url.txt
 redis_url:
 file: ./secrets/redis_url.txt
-dd_api_key:
-file: ./secrets/dd_api_key.txt
 
 4. **Update service to use secrets**:
 services:
@@ -4730,8 +4747,6 @@ rm -P ./secrets/*.txt     # macOS
 docker stack deploy -c compose.production.yaml floodingnaque
 For non-Swarm deployments, you can use file-based secrets.
 echo "postgresql://user:pass@host:5432/db?sslmode=require" > ./secrets/database_url.txt
-echo "your-dd-api-key" > ./secrets/dd_api_key.txt
-
 - secret_key
 
 - jwt_secret_key
@@ -6579,7 +6594,7 @@ correlation_id:"18d4f2a3-8b7c9def1234"
 **grep/jq (JSON logs):**
 grep "18d4f2a3-8b7c9def1234" logs/app.log | jq .
 grep "18d4f2a3-8b7c9def1234" logs/app.log | jq '{timestamp, level, message, duration_ms}'
-**Log Aggregation Query (Splunk/Datadog):**
+**Log Aggregation Query (Loki/Splunk):**
 correlation_id="18d4f2a3-8b7c9def1234" | sort @timestamp
 floodingnaque_http_request_total
 floodingnaque_http_request_duration_seconds
@@ -9410,3 +9425,4 @@ pip install --upgrade pip setuptools wheel
 This should work 99% of the time on Windows!
 **Tested On**: Windows 11, Python 3.12
 **Status**:  Working
+````

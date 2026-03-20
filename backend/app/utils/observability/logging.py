@@ -30,7 +30,13 @@ from app.core.constants import LOG_LEVELS
 
 _LOG_CONFIGURED = False
 
-_SAMPLING_ENABLED = os.getenv("LOG_SAMPLING_ENABLED", "False").lower() == "true"
+_SAMPLING_ENABLED = (
+    os.getenv(
+        "LOG_SAMPLING_ENABLED",
+        "true" if os.getenv("APP_ENV", "development") == "production" else "false",
+    ).lower()
+    == "true"
+)
 _SAMPLING_RATE = float(os.getenv("LOG_SAMPLING_RATE", "0.1"))
 _SAMPLING_EXCLUDE_ERRORS = os.getenv("LOG_SAMPLING_EXCLUDE_ERRORS", "True").lower() == "true"
 

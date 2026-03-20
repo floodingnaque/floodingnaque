@@ -35,6 +35,25 @@ _cache_stats = {
 MAX_CACHE_ENTRIES = 1000
 DEFAULT_CACHE_TTL = 300  # 5 minutes
 
+# Redis-backed cross-worker cache (lazy init)
+_redis_cache_available: Optional[bool] = None
+
+
+def _use_redis_cache() -> bool:
+    """Check once whether Redis cache utilities are usable."""
+    global _redis_cache_available
+    if _redis_cache_available is None:
+        try:
+            if os.getenv("REDIS_URL") or os.getenv("CACHE_REDIS_URL"):
+                from app.utils.resilience.cache import cache_get as _cg  # noqa: F401
+
+                _redis_cache_available = True
+            else:
+                _redis_cache_available = False
+        except Exception:
+            _redis_cache_available = False
+    return _redis_cache_available
+
 
 def _make_query_cache_key(query_str: str, params: Optional[Dict] = None) -> str:
     """Generate a unique cache key for a query."""
@@ -53,7 +72,20 @@ def _evict_expired_cache():
 
 
 def query_cache_get(cache_key: str) -> Optional[Any]:
-    """Get a value from query cache."""
+    """Get a value from query cache (Redis if available, else in-memory)."""
+    if _use_redis_cache():
+        try:
+            from app.utils.resilience.cache import cache_get
+
+            val = cache_get(f"floodingnaque:qcache:{cache_key}")
+            if val is not None:
+                _cache_stats["hits"] += 1
+                return val
+            _cache_stats["misses"] += 1
+            return None
+        except Exception:  # nosec B110 — fall through to in-memory cache
+            pass
+
     _evict_expired_cache()
 
     entry = _query_cache.get(cache_key)
@@ -67,7 +99,16 @@ def query_cache_get(cache_key: str) -> Optional[Any]:
 
 
 def query_cache_set(cache_key: str, value: Any, ttl: int = DEFAULT_CACHE_TTL) -> None:
-    """Set a value in query cache."""
+    """Set a value in query cache (Redis if available, else in-memory)."""
+    if _use_redis_cache():
+        try:
+            from app.utils.resilience.cache import cache_set
+
+            cache_set(f"floodingnaque:qcache:{cache_key}", value, ttl=ttl)
+            return
+        except Exception:  # nosec B110 — fall through to in-memory cache
+            pass
+
     global _query_cache
 
     # Evict old entries if cache is full
@@ -261,13 +302,13 @@ def with_eager_loading(
 # ============================================================================
 
 # Global slow query threshold (milliseconds)
-SLOW_QUERY_THRESHOLD_MS = float(os.getenv("SLOW_QUERY_THRESHOLD_MS", "100"))
+# Default is higher for development (remote Supabase latency) and lower for production
+_default_threshold = "200" if os.getenv("APP_ENV", "development") == "development" else "100"
+SLOW_QUERY_THRESHOLD_MS = float(os.getenv("SLOW_QUERY_THRESHOLD_MS", _default_threshold))
 
 # Slow query log
 _slow_queries: List[Dict[str, Any]] = []
 MAX_SLOW_QUERY_LOG = 100
-
-import os
 
 
 def setup_slow_query_logging(engine: Engine, threshold_ms: Optional[float] = None):
@@ -284,6 +325,10 @@ def setup_slow_query_logging(engine: Engine, threshold_ms: Optional[float] = Non
     def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
         conn.info.setdefault("query_start_time", []).append(time.time())
 
+    # Background request-logging INSERTs are expected to be slow with
+    # remote Supabase; logging them as slow queries is just noise.
+    _SKIP_PATTERNS = ("INSERT INTO api_requests",)
+
     @event.listens_for(engine, "after_cursor_execute")
     def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
         start_times = conn.info.get("query_start_time", [])
@@ -291,7 +336,7 @@ def setup_slow_query_logging(engine: Engine, threshold_ms: Optional[float] = Non
             start_time = start_times.pop()
             duration_ms = (time.time() - start_time) * 1000
 
-            if duration_ms >= threshold:
+            if duration_ms >= threshold and not any(p in statement for p in _SKIP_PATTERNS):
                 log_slow_query(statement, parameters, duration_ms)
 
     logger.info(f"Slow query logging enabled (threshold: {threshold}ms)")

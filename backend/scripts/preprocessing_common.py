@@ -579,68 +579,6 @@ def classify_rainfall_intensity(precipitation: pd.Series) -> pd.Series:
 
 
 # =============================================================================
-# Synthetic Data Generation
-# =============================================================================
-
-
-def create_synthetic_non_flood_records(
-    flood_df: pd.DataFrame,
-    ratio: float = 2.0,
-    year_col: str = "year",
-) -> pd.DataFrame:
-    """
-    Create synthetic non-flood records to balance the dataset.
-
-    :param flood_df: DataFrame with flood records.
-    :type flood_df: pd.DataFrame
-    :param ratio: Ratio of non-flood to flood records.
-    :type ratio: float
-    :param year_col: Year column name.
-    :type year_col: str
-    :return: DataFrame with synthetic non-flood records.
-    :rtype: pd.DataFrame
-
-    Note
-    ----
-    Generated records have realistic weather conditions
-    typical of non-flood days in Metro Manila.
-    """
-    non_flood_records = []
-
-    for year in flood_df[year_col].unique():
-        year_floods = flood_df[flood_df[year_col] == year]
-        n_year = int(len(year_floods) * ratio)
-
-        months = np.random.choice(range(1, 13), n_year)
-        days = np.random.choice(range(1, 29), n_year)
-
-        for i in range(n_year):
-            month = months[i]
-            is_monsoon = month in MONSOON_MONTHS
-
-            record = {
-                "year": year,
-                "month": month,
-                "day": days[i],
-                "flood": 0,
-                "risk_level": 0,
-                "precipitation": np.random.exponential(5) if not is_monsoon else np.random.exponential(8),
-                "temperature": np.random.normal(30 if not is_monsoon else 28, 2),
-                "humidity": np.random.normal(70 if not is_monsoon else 80, 10),
-                "is_monsoon_season": int(is_monsoon),
-            }
-
-            # Clip values to realistic ranges
-            record["precipitation"] = min(record["precipitation"], 18)
-            record["temperature"] = max(25, min(record["temperature"], 38))
-            record["humidity"] = max(40, min(record["humidity"], 95))
-
-            non_flood_records.append(record)
-
-    return pd.DataFrame(non_flood_records)
-
-
-# =============================================================================
 # Exported Functions
 # =============================================================================
 
@@ -667,6 +605,4 @@ __all__ = [
     "handle_missing_values",
     # Calculations
     "calculate_heat_index",
-    # Synthetic data
-    "create_synthetic_non_flood_records",
 ]

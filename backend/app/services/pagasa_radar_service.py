@@ -28,8 +28,8 @@ from app.core.constants import (
     STUDY_AREA_BOUNDS,
     STUDY_AREA_STATIONS,
 )
-from app.utils.circuit_breaker import retry_with_backoff
-from app.utils.correlation import inject_correlation_headers
+from app.utils.observability.correlation import inject_correlation_headers
+from app.utils.resilience.circuit_breaker import retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # PAGASA public endpoints for weather data
-PAGASA_BASE_URL = os.getenv(
-    "PAGASA_BASE_URL", "https://pubfiles.pagasa.dost.gov.ph"
-)
-PAGASA_API_URL = os.getenv(
-    "PAGASA_API_URL", "https://api.pagasa.dost.gov.ph"
-)
+PAGASA_BASE_URL = os.getenv("PAGASA_BASE_URL", "https://pubfiles.pagasa.dost.gov.ph")
+PAGASA_API_URL = os.getenv("PAGASA_API_URL", "https://api.pagasa.dost.gov.ph")
 
 # Radar mosaic tile resolution (~1 km per pixel at Metro Manila latitudes)
 RADAR_RESOLUTION_KM = 1.0
@@ -81,6 +77,7 @@ PARANAQUE_BARANGAYS: Dict[str, Dict[str, Any]] = {
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 class RadarPrecipitationEstimate:
     """Radar precipitation estimate for a single point/barangay."""
@@ -291,8 +288,7 @@ class PAGASARadarService:
 
         # Build bulk request for all barangay centroids
         points = [
-            {"key": k, "lat": v["lat"], "lon": v["lon"], "name": v["name"]}
-            for k, v in PARANAQUE_BARANGAYS.items()
+            {"key": k, "lat": v["lat"], "lon": v["lon"], "name": v["name"]} for k, v in PARANAQUE_BARANGAYS.items()
         ]
 
         try:
@@ -368,9 +364,7 @@ class PAGASARadarService:
         estimates: List[RadarPrecipitationEstimate] = []
 
         for key, brgy in PARANAQUE_BARANGAYS.items():
-            rainfall = self._idw_interpolate(
-                brgy["lat"], brgy["lon"], station_readings
-            )
+            rainfall = self._idw_interpolate(brgy["lat"], brgy["lon"], station_readings)
             estimates.append(
                 RadarPrecipitationEstimate(
                     barangay_key=key,
@@ -448,17 +442,19 @@ class PAGASARadarService:
             for obs in data.get("observations", []):
                 station = next((s for s in stations if s["id"] == obs.get("station_id")), None)
                 if station:
-                    results.append({
-                        "station_id": station["id"],
-                        "name": station["name"],
-                        "lat": station["lat"],
-                        "lon": station["lon"],
-                        "rainfall_mm": float(obs.get("rainfall", 0)),
-                        "temperature": obs.get("temperature"),
-                        "humidity": obs.get("humidity"),
-                        "wind_speed": obs.get("wind_speed"),
-                        "timestamp": obs.get("timestamp"),
-                    })
+                    results.append(
+                        {
+                            "station_id": station["id"],
+                            "name": station["name"],
+                            "lat": station["lat"],
+                            "lon": station["lon"],
+                            "rainfall_mm": float(obs.get("rainfall", 0)),
+                            "temperature": obs.get("temperature"),
+                            "humidity": obs.get("humidity"),
+                            "wind_speed": obs.get("wind_speed"),
+                            "timestamp": obs.get("timestamp"),
+                        }
+                    )
 
             logger.info(f"Fetched AWS observations from {len(results)} stations")
         except requests.exceptions.RequestException as exc:
@@ -578,9 +574,7 @@ class PAGASARadarService:
     # Summary builder
     # ------------------------------------------------------------------
 
-    def _build_city_summary(
-        self, estimates: List[RadarPrecipitationEstimate]
-    ) -> Dict[str, Any]:
+    def _build_city_summary(self, estimates: List[RadarPrecipitationEstimate]) -> Dict[str, Any]:
         """Build a city-wide summary from per-barangay estimates."""
         barangays: Dict[str, Any] = {}
         total_rain = 0.0
@@ -634,6 +628,7 @@ class PAGASARadarService:
 # ---------------------------------------------------------------------------
 # Module-level convenience
 # ---------------------------------------------------------------------------
+
 
 def get_pagasa_radar_service() -> PAGASARadarService:
     """Get singleton PAGASARadarService instance."""

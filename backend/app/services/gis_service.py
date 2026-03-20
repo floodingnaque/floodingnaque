@@ -24,10 +24,10 @@ logger = logging.getLogger(__name__)
 # Barangay GIS data - elevation, drainage, and hazard classifications
 # ---------------------------------------------------------------------------
 
-# Elevation data derived from SRTM 30m DEM (metres above sea level)
-# Two key metrics per barangay:
-#   mean_elevation_m - average terrain height
-#   min_elevation_m  - lowest point (flood-prone areas collect water here)
+# Elevation data approximated from SRTM 30m DEM (NASA Shuttle Radar
+# Topography Mission, 2000). Accessed via USGS EarthExplorer / OpenTopography.
+# Resolution: ~30m, vertical accuracy ±16m (90% confidence).
+# Values represent barangay centroid approximations — not survey-grade.
 
 BARANGAY_ELEVATION: Dict[str, Dict[str, float]] = {
     "baclaran": {"mean_elevation_m": 3.2, "min_elevation_m": 1.0, "slope_pct": 0.3},
@@ -48,8 +48,13 @@ BARANGAY_ELEVATION: Dict[str, Dict[str, float]] = {
     "sucat": {"mean_elevation_m": 9.0, "min_elevation_m": 5.5, "slope_pct": 1.2},
 }
 
-# Drainage network proximity - how close the barangay centroid is to major
-# waterways / drainage channels, plus estimated drainage capacity.
+# Drainage network proximity and flood history.
+# Waterway names: NAMRIA topographic maps, verified against OpenStreetMap.
+# Distances: estimated from barangay centroids to nearest mapped waterway.
+# Drainage capacity: classified by urbanisation level + DRRMO flood frequency.
+# flood_history_events: actual counts from DRRMO flood records 2022-2025
+#   (295 total identifiable flood events across Parañaque; 135 records had
+#    unresolved barangay attribution and are excluded from per-barangay tallies).
 # Parañaque's main waterways: Parañaque River, Wawa River, La Huerta Creek.
 
 BARANGAY_DRAINAGE: Dict[str, Dict[str, Any]] = {
@@ -57,133 +62,217 @@ BARANGAY_DRAINAGE: Dict[str, Dict[str, Any]] = {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 350,
         "drainage_capacity": "poor",
-        "flood_history_events": 12,
+        "flood_history_events": 7,
         "impervious_surface_pct": 85,
     },
     "don_galo": {
         "nearest_waterway": "Manila Bay Coast",
         "distance_to_waterway_m": 200,
         "drainage_capacity": "poor",
-        "flood_history_events": 15,
+        "flood_history_events": 0,
         "impervious_surface_pct": 80,
     },
     "la_huerta": {
         "nearest_waterway": "La Huerta Creek",
         "distance_to_waterway_m": 150,
         "drainage_capacity": "poor",
-        "flood_history_events": 18,
+        "flood_history_events": 2,
         "impervious_surface_pct": 75,
     },
     "san_dionisio": {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 500,
         "drainage_capacity": "moderate",
-        "flood_history_events": 7,
+        "flood_history_events": 24,
         "impervious_surface_pct": 70,
     },
     "tambo": {
         "nearest_waterway": "Manila Bay Coast",
         "distance_to_waterway_m": 100,
         "drainage_capacity": "poor",
-        "flood_history_events": 20,
+        "flood_history_events": 2,
         "impervious_surface_pct": 82,
     },
     "vitalez": {
         "nearest_waterway": "Wawa River",
         "distance_to_waterway_m": 400,
         "drainage_capacity": "moderate",
-        "flood_history_events": 8,
+        "flood_history_events": 5,
         "impervious_surface_pct": 72,
     },
     "bf_homes": {
         "nearest_waterway": "BF Homes Canal",
         "distance_to_waterway_m": 300,
         "drainage_capacity": "moderate",
-        "flood_history_events": 14,
+        "flood_history_events": 2,
         "impervious_surface_pct": 78,
     },
     "don_bosco": {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 600,
         "drainage_capacity": "good",
-        "flood_history_events": 5,
+        "flood_history_events": 10,
         "impervious_surface_pct": 65,
     },
     "marcelo_green": {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 450,
         "drainage_capacity": "moderate",
-        "flood_history_events": 8,
+        "flood_history_events": 11,
         "impervious_surface_pct": 68,
     },
     "merville": {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 800,
         "drainage_capacity": "good",
-        "flood_history_events": 3,
+        "flood_history_events": 11,
         "impervious_surface_pct": 55,
     },
     "moonwalk": {
         "nearest_waterway": "BF Homes Canal",
         "distance_to_waterway_m": 250,
         "drainage_capacity": "poor",
-        "flood_history_events": 16,
+        "flood_history_events": 11,
         "impervious_surface_pct": 80,
     },
     "san_antonio": {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 500,
         "drainage_capacity": "moderate",
-        "flood_history_events": 9,
+        "flood_history_events": 25,
         "impervious_surface_pct": 70,
     },
     "san_isidro": {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 700,
         "drainage_capacity": "good",
-        "flood_history_events": 4,
+        "flood_history_events": 20,
         "impervious_surface_pct": 60,
     },
     "san_martin": {
         "nearest_waterway": "Wawa River",
         "distance_to_waterway_m": 350,
         "drainage_capacity": "moderate",
-        "flood_history_events": 10,
+        "flood_history_events": 3,
         "impervious_surface_pct": 74,
     },
     "santo_nino": {
         "nearest_waterway": "Parañaque River",
         "distance_to_waterway_m": 650,
         "drainage_capacity": "good",
-        "flood_history_events": 4,
+        "flood_history_events": 11,
         "impervious_surface_pct": 58,
     },
     "sucat": {
         "nearest_waterway": "Sucat River",
         "distance_to_waterway_m": 400,
         "drainage_capacity": "moderate",
-        "flood_history_events": 6,
+        "flood_history_events": 4,
         "impervious_surface_pct": 62,
     },
 }
 
 # Simplified polygon boundaries (GeoJSON-ready [lon, lat] rings)
 BARANGAY_POLYGONS: Dict[str, List[List[float]]] = {
-    "baclaran": [[121.0040, 14.5280], [120.9960, 14.5260], [120.9970, 14.5210], [121.0040, 14.5200], [121.0040, 14.5280]],
-    "don_galo": [[120.9960, 14.5160], [120.9870, 14.5150], [120.9880, 14.5090], [120.9960, 14.5080], [120.9960, 14.5160]],
-    "la_huerta": [[120.9930, 14.4940], [120.9810, 14.4930], [120.9820, 14.4850], [120.9930, 14.4840], [120.9930, 14.4940]],
-    "san_dionisio": [[121.0120, 14.5110], [121.0010, 14.5100], [121.0020, 14.5040], [121.0120, 14.5030], [121.0120, 14.5110]],
+    "baclaran": [
+        [121.0040, 14.5280],
+        [120.9960, 14.5260],
+        [120.9970, 14.5210],
+        [121.0040, 14.5200],
+        [121.0040, 14.5280],
+    ],
+    "don_galo": [
+        [120.9960, 14.5160],
+        [120.9870, 14.5150],
+        [120.9880, 14.5090],
+        [120.9960, 14.5080],
+        [120.9960, 14.5160],
+    ],
+    "la_huerta": [
+        [120.9930, 14.4940],
+        [120.9810, 14.4930],
+        [120.9820, 14.4850],
+        [120.9930, 14.4840],
+        [120.9930, 14.4940],
+    ],
+    "san_dionisio": [
+        [121.0120, 14.5110],
+        [121.0010, 14.5100],
+        [121.0020, 14.5040],
+        [121.0120, 14.5030],
+        [121.0120, 14.5110],
+    ],
     "tambo": [[120.9990, 14.5230], [120.9900, 14.5220], [120.9910, 14.5150], [120.9990, 14.5140], [120.9990, 14.5230]],
-    "vitalez": [[120.9950, 14.4990], [120.9860, 14.4980], [120.9870, 14.4920], [120.9950, 14.4910], [120.9950, 14.4990]],
-    "bf_homes": [[121.0310, 14.4620], [121.0150, 14.4610], [121.0160, 14.4480], [121.0310, 14.4470], [121.0310, 14.4620]],
-    "don_bosco": [[121.0300, 14.4810], [121.0180, 14.4800], [121.0190, 14.4720], [121.0300, 14.4710], [121.0300, 14.4810]],
-    "marcelo_green": [[121.0150, 14.4860], [121.0050, 14.4850], [121.0060, 14.4790], [121.0150, 14.4780], [121.0150, 14.4860]],
-    "merville": [[121.0410, 14.4770], [121.0300, 14.4760], [121.0310, 14.4680], [121.0410, 14.4670], [121.0410, 14.4770]],
-    "moonwalk": [[121.0160, 14.4590], [121.0040, 14.4580], [121.0050, 14.4500], [121.0160, 14.4490], [121.0160, 14.4590]],
-    "san_antonio": [[121.0200, 14.4720], [121.0080, 14.4710], [121.0090, 14.4650], [121.0200, 14.4640], [121.0200, 14.4720]],
-    "san_isidro": [[121.0360, 14.4550], [121.0240, 14.4540], [121.0250, 14.4460], [121.0360, 14.4450], [121.0360, 14.4550]],
-    "san_martin": [[121.0060, 14.4660], [120.9940, 14.4650], [120.9950, 14.4570], [121.0060, 14.4560], [121.0060, 14.4660]],
-    "santo_nino": [[121.0230, 14.4500], [121.0110, 14.4490], [121.0120, 14.4410], [121.0230, 14.4400], [121.0230, 14.4500]],
+    "vitalez": [
+        [120.9950, 14.4990],
+        [120.9860, 14.4980],
+        [120.9870, 14.4920],
+        [120.9950, 14.4910],
+        [120.9950, 14.4990],
+    ],
+    "bf_homes": [
+        [121.0310, 14.4620],
+        [121.0150, 14.4610],
+        [121.0160, 14.4480],
+        [121.0310, 14.4470],
+        [121.0310, 14.4620],
+    ],
+    "don_bosco": [
+        [121.0300, 14.4810],
+        [121.0180, 14.4800],
+        [121.0190, 14.4720],
+        [121.0300, 14.4710],
+        [121.0300, 14.4810],
+    ],
+    "marcelo_green": [
+        [121.0150, 14.4860],
+        [121.0050, 14.4850],
+        [121.0060, 14.4790],
+        [121.0150, 14.4780],
+        [121.0150, 14.4860],
+    ],
+    "merville": [
+        [121.0410, 14.4770],
+        [121.0300, 14.4760],
+        [121.0310, 14.4680],
+        [121.0410, 14.4670],
+        [121.0410, 14.4770],
+    ],
+    "moonwalk": [
+        [121.0160, 14.4590],
+        [121.0040, 14.4580],
+        [121.0050, 14.4500],
+        [121.0160, 14.4490],
+        [121.0160, 14.4590],
+    ],
+    "san_antonio": [
+        [121.0200, 14.4720],
+        [121.0080, 14.4710],
+        [121.0090, 14.4650],
+        [121.0200, 14.4640],
+        [121.0200, 14.4720],
+    ],
+    "san_isidro": [
+        [121.0360, 14.4550],
+        [121.0240, 14.4540],
+        [121.0250, 14.4460],
+        [121.0360, 14.4450],
+        [121.0360, 14.4550],
+    ],
+    "san_martin": [
+        [121.0060, 14.4660],
+        [120.9940, 14.4650],
+        [120.9950, 14.4570],
+        [121.0060, 14.4560],
+        [121.0060, 14.4660],
+    ],
+    "santo_nino": [
+        [121.0230, 14.4500],
+        [121.0110, 14.4490],
+        [121.0120, 14.4410],
+        [121.0230, 14.4400],
+        [121.0230, 14.4500],
+    ],
     "sucat": [[121.0510, 14.4680], [121.0390, 14.4670], [121.0400, 14.4580], [121.0510, 14.4570], [121.0510, 14.4680]],
 }
 
@@ -422,18 +511,20 @@ class GISService:
                 color = "#ca0020"  # High (> 9m)
                 band = ">9m"
 
-            features.append({
-                "type": "Feature",
-                "geometry": {"type": "Polygon", "coordinates": [polygon]},
-                "properties": {
-                    "key": key,
-                    "name": meta["name"],
-                    "mean_elevation_m": mean_elev,
-                    "min_elevation_m": elev.get("min_elevation_m", 0),
-                    "elevation_band": band,
-                    "color": color,
-                },
-            })
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Polygon", "coordinates": [polygon]},
+                    "properties": {
+                        "key": key,
+                        "name": meta["name"],
+                        "mean_elevation_m": mean_elev,
+                        "min_elevation_m": elev.get("min_elevation_m", 0),
+                        "elevation_band": band,
+                        "color": color,
+                    },
+                }
+            )
 
         return {
             "type": "FeatureCollection",
@@ -459,19 +550,21 @@ class GISService:
             capacity = drain.get("drainage_capacity", "unknown")
             color_map = {"poor": "#dc3545", "moderate": "#ffc107", "good": "#28a745", "unknown": "#6c757d"}
 
-            features.append({
-                "type": "Feature",
-                "geometry": {"type": "Polygon", "coordinates": [polygon]},
-                "properties": {
-                    "key": key,
-                    "name": meta["name"],
-                    "drainage_capacity": capacity,
-                    "nearest_waterway": drain.get("nearest_waterway", ""),
-                    "distance_to_waterway_m": drain.get("distance_to_waterway_m", 0),
-                    "impervious_surface_pct": drain.get("impervious_surface_pct", 0),
-                    "color": color_map.get(capacity, "#6c757d"),
-                },
-            })
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Polygon", "coordinates": [polygon]},
+                    "properties": {
+                        "key": key,
+                        "name": meta["name"],
+                        "drainage_capacity": capacity,
+                        "nearest_waterway": drain.get("nearest_waterway", ""),
+                        "distance_to_waterway_m": drain.get("distance_to_waterway_m", 0),
+                        "impervious_surface_pct": drain.get("impervious_surface_pct", 0),
+                        "color": color_map.get(capacity, "#6c757d"),
+                    },
+                }
+            )
 
         return {
             "type": "FeatureCollection",

@@ -91,4 +91,3 @@ with get_db_session() as session:
 - The database file (`floodingnaque.db`) is created automatically in the `backend/data/` directory
 - Sessions are managed via context manager for proper cleanup
 - For production, consider using PostgreSQL or MySQL instead of SQLite
-

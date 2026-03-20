@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -117,7 +117,7 @@ class ValidationReport:
     """Aggregated result of a full validation run."""
 
     phase: str
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     passed: bool = True
     total_rows: int = 0
     total_columns: int = 0
@@ -132,11 +132,7 @@ class ValidationReport:
 
     @property
     def error_count(self) -> int:
-        return sum(
-            1
-            for i in self.issues
-            if i.severity in (Severity.ERROR, Severity.CRITICAL)
-        )
+        return sum(1 for i in self.issues if i.severity in (Severity.ERROR, Severity.CRITICAL))
 
     @property
     def warning_count(self) -> int:
@@ -244,9 +240,7 @@ class DatasetValidator:
         )
         return report
 
-    def validate_file(
-        self, path: str | Path, **read_kwargs: Any
-    ) -> ValidationReport:
+    def validate_file(self, path: str | Path, **read_kwargs: Any) -> ValidationReport:
         """Convenience helper: read a CSV and validate it."""
         path = Path(path)
         if not path.exists():
@@ -309,9 +303,7 @@ class DatasetValidator:
                 )
             )
 
-    def _check_missing_values(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_missing_values(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Check per-column missing-value ratio."""
         for col in df.columns:
             missing = int(df[col].isna().sum())
@@ -352,9 +344,7 @@ class DatasetValidator:
                     )
                 )
 
-    def _check_value_ranges(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_value_ranges(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Validate that values fall within physically plausible ranges."""
         for col, spec in self.feature_ranges.items():
             if col not in df.columns:
@@ -418,9 +408,7 @@ class DatasetValidator:
                         )
                     )
 
-    def _check_target_distribution(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_target_distribution(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Ensure the flood target column is reasonably distributed."""
         if "flood" not in df.columns:
             return
@@ -457,9 +445,7 @@ class DatasetValidator:
                 )
             )
 
-    def _check_minimum_samples(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_minimum_samples(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Warn if the dataset is too small for reliable training."""
         if len(df) < self.min_samples:
             report.add_issue(
@@ -477,9 +463,7 @@ class DatasetValidator:
                 )
             )
 
-    def _check_feature_variance(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_feature_variance(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Flag numeric features with zero variance (constant columns)."""
         for col in df.select_dtypes(include=[np.number]).columns:
             if df[col].nunique(dropna=True) <= 1:
@@ -494,9 +478,7 @@ class DatasetValidator:
 
     # Phase-specific ----------------------------------------------------------
 
-    def _check_confidence_scores(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_confidence_scores(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Semi-supervised phase: validate pseudo-label confidence scores."""
         if "label_confidence" not in df.columns:
             report.add_issue(
@@ -539,9 +521,7 @@ class DatasetValidator:
             sources = df["label_source"].value_counts().to_dict()
             report.statistics["label_sources"] = sources
 
-    def _check_temporal_coverage(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_temporal_coverage(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Historical phase: verify date range and coverage."""
         if "date" not in df.columns:
             return
@@ -595,9 +575,7 @@ class DatasetValidator:
                 )
             )
 
-    def _check_spatial_coverage(
-        self, df: pd.DataFrame, report: ValidationReport
-    ) -> None:
+    def _check_spatial_coverage(self, df: pd.DataFrame, report: ValidationReport) -> None:
         """Historical phase: verify barangay / location coverage."""
         if "barangay" not in df.columns:
             return
@@ -610,10 +588,7 @@ class DatasetValidator:
                 ValidationIssue(
                     check="sparse_spatial_coverage",
                     severity=Severity.WARNING,
-                    message=(
-                        f"Only {n_barangays} unique barangays. "
-                        "Spatial generalization may be poor."
-                    ),
+                    message=(f"Only {n_barangays} unique barangays. " "Spatial generalization may be poor."),
                     column="barangay",
                 )
             )
@@ -640,10 +615,7 @@ class DatasetValidator:
         if numeric_cols:
             desc = df[numeric_cols].describe().to_dict()
             # Trim to reduce payload
-            stats["numeric_summary"] = {
-                col: {k: round(v, 4) for k, v in vals.items()}
-                for col, vals in desc.items()
-            }
+            stats["numeric_summary"] = {col: {k: round(v, 4) for k, v in vals.items()} for col, vals in desc.items()}
 
         if "flood" in df.columns:
             stats["target_distribution"] = df["flood"].value_counts().to_dict()

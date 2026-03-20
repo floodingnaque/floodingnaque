@@ -5,15 +5,18 @@
  * Small "System Admin" link beneath the LGU card.
  */
 
-import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Users, Building2, ShieldCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
+import { useIsAuthenticated, useUser } from "@/state/stores";
+import { motion, useInView } from "framer-motion";
+import { Building2, ShieldCheck, Users } from "lucide-react";
+import { useRef } from "react";
+import { Link } from "react-router-dom";
 
 export function DualCTA() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, amount: 0.25 });
+  const isAuthenticated = useIsAuthenticated();
+  const user = useUser();
 
   return (
     <section id="cta" className="py-20 sm:py-24 bg-background">
@@ -27,8 +30,8 @@ export function DualCTA() {
             Choose Your Dashboard
           </h2>
           <p className="mt-3 text-muted-foreground max-w-lg mx-auto leading-relaxed">
-            Whether you're a resident checking your barangay or an LGU officer managing alerts -
-            we've got you covered.
+            Whether you're a resident checking your barangay or an LGU officer
+            managing alerts - we've got you covered.
           </p>
         </div>
 
@@ -46,11 +49,27 @@ export function DualCTA() {
             </div>
             <h3 className="text-xl font-bold text-foreground">For Residents</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Monitor real-time flood risk levels across Paranaque City barangays, explore an
-              interactive risk map, and receive timely early-warning notifications.
+              Monitor real-time flood risk levels across Paranaque City
+              barangays, explore an interactive risk map, and receive timely
+              early-warning notifications.
             </p>
-            <Button asChild size="lg" className="bg-risk-safe hover:bg-risk-safe/90 text-white w-full mt-auto">
-              <Link to="/login">Check My Barangay &rarr;</Link>
+            <Button
+              asChild
+              size="lg"
+              className="bg-risk-safe hover:bg-risk-safe/90 text-white w-full mt-auto"
+            >
+              <Link
+                to={
+                  isAuthenticated && user?.role === "user"
+                    ? "/resident"
+                    : "/login"
+                }
+              >
+                {isAuthenticated && user?.role === "user"
+                  ? "Go to Dashboard"
+                  : "Check My Barangay"}{" "}
+                &rarr;
+              </Link>
             </Button>
           </motion.div>
 
@@ -64,13 +83,31 @@ export function DualCTA() {
             <div className="h-16 w-16 rounded-full bg-primary/15 flex items-center justify-center">
               <Building2 className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="text-xl font-bold text-foreground">For LGU / DRRMO</h3>
+            <h3 className="text-xl font-bold text-foreground">
+              For LGU / DRRMO
+            </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Oversee flood operations from a centralized command dashboard, dispatch
-              multi-channel alerts, generate compliance reports, and evaluate predictive models.
+              Oversee flood operations from a centralized command dashboard,
+              dispatch multi-channel alerts, generate compliance reports, and
+              evaluate predictive models.
             </p>
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-white w-full mt-auto">
-              <Link to="/login?role=lgu">LGU Dashboard &rarr;</Link>
+            <Button
+              asChild
+              size="lg"
+              className="bg-primary hover:bg-primary/90 text-white w-full mt-auto"
+            >
+              <Link
+                to={
+                  isAuthenticated && user?.role === "operator"
+                    ? "/operator"
+                    : "/login?role=lgu"
+                }
+              >
+                {isAuthenticated && user?.role === "operator"
+                  ? "Go to Dashboard"
+                  : "LGU Dashboard"}{" "}
+                &rarr;
+              </Link>
             </Button>
           </motion.div>
 
@@ -79,18 +116,34 @@ export function DualCTA() {
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-8 flex flex-col items-center text-center space-y-5"
+            className="rounded-xl border border-risk-alert/30 bg-risk-alert/5 p-8 flex flex-col items-center text-center space-y-5"
           >
-            <div className="h-16 w-16 rounded-full bg-amber-500/15 flex items-center justify-center">
-              <ShieldCheck className="h-8 w-8 text-amber-600" />
+            <div className="h-16 w-16 rounded-full bg-risk-alert/15 flex items-center justify-center">
+              <ShieldCheck className="h-8 w-8 text-risk-alert" />
             </div>
             <h3 className="text-xl font-bold text-foreground">System Admin</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Administer user roles and permissions, audit system activity logs, configure
-              platform feature flags, and monitor infrastructure health in real time.
+              Administer user roles and permissions, audit system activity logs,
+              configure platform feature flags, and monitor infrastructure
+              health in real time.
             </p>
-            <Button asChild size="lg" className="bg-amber-600 hover:bg-amber-600/90 text-white w-full mt-auto">
-              <Link to="/login?role=admin">Admin Portal &rarr;</Link>
+            <Button
+              asChild
+              size="lg"
+              className="bg-risk-alert hover:bg-risk-alert/90 text-white w-full mt-auto"
+            >
+              <Link
+                to={
+                  isAuthenticated && user?.role === "admin"
+                    ? "/admin"
+                    : "/login?role=admin"
+                }
+              >
+                {isAuthenticated && user?.role === "admin"
+                  ? "Go to Dashboard"
+                  : "Admin Portal"}{" "}
+                &rarr;
+              </Link>
             </Button>
           </motion.div>
         </div>

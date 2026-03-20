@@ -6,29 +6,29 @@
  * Displays the simulation result inline after submission.
  */
 
-import { useState, useCallback } from 'react';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
-  MessageSquare,
-  Send,
-  Loader2,
   CheckCircle2,
+  Loader2,
+  MessageSquare,
   Phone,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { useSimulateSms } from '../hooks/useAlerts';
-import type { SmsSimulationResponse } from '../services/alertsApi';
+  Send,
+} from "lucide-react";
+import { useCallback, useState } from "react";
+import { useSimulateSms } from "../hooks/useAlerts";
+import type { SmsSimulationResponse } from "../services/alertsApi";
 
 // ---------------------------------------------------------------------------
 // Risk level options
 // ---------------------------------------------------------------------------
 
 const RISK_OPTIONS = [
-  { value: 0, label: 'Safe', color: 'bg-risk-safe text-white' },
-  { value: 1, label: 'Alert', color: 'bg-risk-alert text-black' },
-  { value: 2, label: 'Critical', color: 'bg-risk-critical text-white' },
+  { value: 0, label: "Safe", color: "bg-risk-safe text-white" },
+  { value: 1, label: "Alert", color: "bg-risk-alert text-black" },
+  { value: 2, label: "Critical", color: "bg-risk-critical text-white" },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -36,10 +36,12 @@ const RISK_OPTIONS = [
 // ---------------------------------------------------------------------------
 
 export function SmsSimulationPanel({ className }: { className?: string }) {
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState("");
   const [riskLevel, setRiskLevel] = useState<number>(1);
-  const [message, setMessage] = useState('');
-  const [lastResult, setLastResult] = useState<SmsSimulationResponse | null>(null);
+  const [message, setMessage] = useState("");
+  const [lastResult, setLastResult] = useState<SmsSimulationResponse | null>(
+    null,
+  );
 
   const { mutate: simulate, isPending } = useSimulateSms({
     onSuccess: (data) => {
@@ -91,10 +93,10 @@ export function SmsSimulationPanel({ className }: { className?: string }) {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className={cn(
-                  'flex h-9 w-full rounded-md border border-input bg-transparent',
-                  'pl-9 pr-3 py-1 text-sm shadow-sm transition-colors',
-                  'placeholder:text-muted-foreground focus-visible:outline-none',
-                  'focus-visible:ring-1 focus-visible:ring-ring',
+                  "flex h-9 w-full rounded-md border border-input bg-transparent",
+                  "pl-9 pr-3 py-1 text-sm shadow-sm transition-colors",
+                  "placeholder:text-muted-foreground focus-visible:outline-none",
+                  "focus-visible:ring-1 focus-visible:ring-ring",
                 )}
                 required
               />
@@ -113,10 +115,10 @@ export function SmsSimulationPanel({ className }: { className?: string }) {
                   type="button"
                   onClick={() => setRiskLevel(opt.value)}
                   className={cn(
-                    'px-3 py-1 rounded-md text-xs font-semibold transition-all',
+                    "px-3 py-1 rounded-md text-xs font-semibold transition-all",
                     riskLevel === opt.value
                       ? opt.color
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                      : "bg-muted text-muted-foreground hover:bg-muted/80",
                   )}
                 >
                   {opt.label}
@@ -140,10 +142,10 @@ export function SmsSimulationPanel({ className }: { className?: string }) {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               className={cn(
-                'flex w-full rounded-md border border-input bg-transparent',
-                'px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground',
-                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                'resize-none',
+                "flex w-full rounded-md border border-input bg-transparent",
+                "px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground",
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "resize-none",
               )}
             />
           </div>
@@ -166,7 +168,7 @@ export function SmsSimulationPanel({ className }: { className?: string }) {
 
         {/* Result banner */}
         {lastResult && (
-          <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-3 space-y-1">
+          <div className="mt-4 rounded-lg border border-risk-safe/30 bg-risk-safe/10 p-3 space-y-1">
             <div className="flex items-center gap-2 text-sm font-semibold text-risk-safe">
               <CheckCircle2 className="h-4 w-4" />
               Simulation Sent
@@ -175,14 +177,14 @@ export function SmsSimulationPanel({ className }: { className?: string }) {
               <strong>To:</strong> {lastResult.phone}
             </p>
             <p className="text-xs text-muted-foreground">
-              <strong>Risk:</strong> {lastResult.risk_label} (level{' '}
+              <strong>Risk:</strong> {lastResult.risk_label} (level{" "}
               {lastResult.risk_level})
             </p>
             <p className="text-xs text-muted-foreground line-clamp-2">
               <strong>Message:</strong> {lastResult.message}
             </p>
             <p className="text-[10px] text-muted-foreground/70">
-              {new Date(lastResult.simulated_at).toLocaleString('en-PH')}
+              {new Date(lastResult.simulated_at).toLocaleString("en-PH")}
             </p>
           </div>
         )}

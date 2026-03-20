@@ -1,182 +1,339 @@
 /**
  * Alert Store
- * 
+ *
  * Zustand store for managing real-time alerts from SSE connection.
- * Not persisted - alerts are ephemeral and fetched fresh on connection.
+ * Implements:
+ * - Connection state machine (IDLE → CONNECTING → CONNECTED → RECONNECTING → FAILED)
+ * - Circular buffer with 200-alert hard cap (Critical alerts evicted last)
+ * - SSE deduplication via time-windowed ID set (60s)
+ * - Derived unreadCount (computed, not stored separately)
  */
 
-import { create } from 'zustand';
-import type { Alert } from '@/types';
+import { postTabMessage } from "@/lib/tab-sync";
+import type { Alert } from "@/types";
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 
-/**
- * Maximum number of live alerts to keep in memory
- */
-const MAX_LIVE_ALERTS = 50;
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
-/**
- * Alert store state interface
- */
+/** Hard cap on live alerts in memory */
+const MAX_LIVE_ALERTS = 200;
+/** Number of alerts persisted to localStorage for offline fallback */
+const PERSIST_LIMIT = 50;
+/** Deduplication window in milliseconds */
+const DEDUP_WINDOW_MS = 60_000;
+/** localStorage key for persisted alert subset */
+const STORAGE_KEY = "floodingnaque_alerts_cache";
+
+// ---------------------------------------------------------------------------
+// Connection state machine
+// ---------------------------------------------------------------------------
+
+export type ConnectionState =
+  | "IDLE"
+  | "CONNECTING"
+  | "CONNECTED"
+  | "RECONNECTING"
+  | "FAILED";
+
+// ---------------------------------------------------------------------------
+// Dedup key helper
+// ---------------------------------------------------------------------------
+
+function dedupKey(alert: Alert): string {
+  return `${alert.id}:${alert.risk_level}:${alert.triggered_at}`;
+}
+
+// ---------------------------------------------------------------------------
+// Circular buffer eviction:
+// When at cap, remove the oldest non-Critical alert first.
+// If all are Critical, remove the oldest overall.
+// ---------------------------------------------------------------------------
+
+function evictOne(alerts: Alert[]): Alert[] {
+  // Find oldest non-critical
+  for (let i = alerts.length - 1; i >= 0; i--) {
+    if (alerts[i]!.risk_level !== 2) {
+      return [...alerts.slice(0, i), ...alerts.slice(i + 1)];
+    }
+  }
+  // All Critical — drop the oldest
+  return alerts.slice(0, -1);
+}
+
+// ---------------------------------------------------------------------------
+// localStorage helpers (best-effort, never throw)
+// ---------------------------------------------------------------------------
+
+function persistAlerts(alerts: Alert[]): void {
+  try {
+    const subset = alerts.slice(0, PERSIST_LIMIT);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(subset));
+  } catch {
+    // localStorage full or unavailable — silently ignore
+  }
+}
+
+function loadPersistedAlerts(): Alert[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as Alert[];
+  } catch {
+    // Corrupt data — clear it
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+}
+
+// ---------------------------------------------------------------------------
+// Store interfaces
+// ---------------------------------------------------------------------------
+
 interface AlertState {
-  /** List of live alerts, newest first */
+  /** Live alerts, newest first — hard cap at MAX_LIVE_ALERTS */
   liveAlerts: Alert[];
-  /** Count of unread alerts */
-  unreadCount: number;
-  /** Whether SSE connection is active */
-  isConnected: boolean;
+  /** Set of acknowledged alert IDs (used to derive unreadCount) */
+  acknowledgedIds: Set<number>;
+  /** Connection state machine state */
+  connectionState: ConnectionState;
   /** Connection error message if any */
   connectionError: string | null;
+  /** Recent dedup keys with expiry timestamps */
+  _recentKeys: Map<string, number>;
 }
 
-/**
- * Alert store actions interface
- */
 interface AlertActions {
-  /** Add a new alert to the list */
   addAlert: (alert: Alert) => void;
-  /** Mark all alerts as read */
+  /** Add alert without broadcasting to other tabs (prevents loop) */
+  addAlertSilent: (alert: Alert) => void;
   markAllRead: () => void;
-  /** Set connection status */
-  setConnected: (connected: boolean) => void;
-  /** Set connection error */
+  setConnectionState: (state: ConnectionState) => void;
   setConnectionError: (error: string | null) => void;
-  /** Clear all alerts */
   clearAlerts: () => void;
-  /** Remove a specific alert by ID */
   removeAlert: (alertId: number) => void;
-  /** Update an existing alert */
   updateAlert: (alertId: number, updates: Partial<Alert>) => void;
+  /** Prune expired dedup keys (called periodically) */
+  pruneDedup: () => void;
 }
 
-/**
- * Combined alert store type
- */
 type AlertStore = AlertState & AlertActions;
 
-/**
- * Initial state
- */
+// ---------------------------------------------------------------------------
+// Backward compat: mirror isConnected for consumers that read it
+// ---------------------------------------------------------------------------
+
+// We compute isConnected + unreadCount as derived selectors below.
+
+// ---------------------------------------------------------------------------
+// Initial state
+// ---------------------------------------------------------------------------
+
 const initialState: AlertState = {
-  liveAlerts: [],
-  unreadCount: 0,
-  isConnected: false,
+  liveAlerts: loadPersistedAlerts(),
+  acknowledgedIds: new Set<number>(),
+  connectionState: "IDLE" as ConnectionState,
   connectionError: null,
+  _recentKeys: new Map<string, number>(),
 };
 
-/**
- * Alert store (no persistence)
- */
-export const useAlertStore = create<AlertStore>()((set, get) => ({
-  ...initialState,
+// ---------------------------------------------------------------------------
+// Store
+// ---------------------------------------------------------------------------
 
-  addAlert: (alert: Alert) => {
-    set((state) => {
-      // Check if alert already exists (by ID)
-      const exists = state.liveAlerts.some((a) => a.id === alert.id);
-      if (exists) {
-        // Update existing alert
-        return {
-          liveAlerts: state.liveAlerts.map((a) =>
-            a.id === alert.id ? alert : a
-          ),
-        };
-      }
+export const useAlertStore = create<AlertStore>()(
+  devtools(
+    (set, get) => {
+      // Shared alert insertion logic (used by both addAlert and addAlertSilent)
+      const insertAlert = (alert: Alert) => {
+        set((state) => {
+          const now = Date.now();
+          const key = dedupKey(alert);
 
-      // Add new alert at the beginning, maintain max limit
-      const updatedAlerts = [alert, ...state.liveAlerts].slice(0, MAX_LIVE_ALERTS);
-      
-      return {
-        liveAlerts: updatedAlerts,
-        unreadCount: state.unreadCount + 1,
+          // --- Dedup check ---
+          const expiry = state._recentKeys.get(key);
+          if (expiry !== undefined && expiry > now) {
+            return state;
+          }
+
+          const newKeys = new Map(state._recentKeys);
+          newKeys.set(key, now + DEDUP_WINDOW_MS);
+
+          // --- Existing alert update ---
+          const existsIdx = state.liveAlerts.findIndex(
+            (a) => a.id === alert.id,
+          );
+          if (existsIdx !== -1) {
+            const updated = [...state.liveAlerts];
+            updated[existsIdx] = alert;
+            return { liveAlerts: updated, _recentKeys: newKeys };
+          }
+
+          // --- New alert: prepend + enforce cap ---
+          let updated = [alert, ...state.liveAlerts];
+          while (updated.length > MAX_LIVE_ALERTS) {
+            updated = evictOne(updated);
+          }
+
+          persistAlerts(updated);
+          return { liveAlerts: updated, _recentKeys: newKeys };
+        });
       };
-    });
-  },
 
-  markAllRead: () => {
-    set({ unreadCount: 0 });
-  },
+      return {
+        ...initialState,
 
-  setConnected: (connected: boolean) => {
-    set({ 
-      isConnected: connected,
-      // Clear error when successfully connected
-      connectionError: connected ? null : get().connectionError,
-    });
-  },
+        addAlert: (alert: Alert) => {
+          insertAlert(alert);
+          // Broadcast to other tabs
+          postTabMessage({ type: "NEW_ALERT", payload: alert });
+        },
 
-  setConnectionError: (error: string | null) => {
-    set({ 
-      connectionError: error,
-      isConnected: error ? false : get().isConnected,
-    });
-  },
+        addAlertSilent: (alert: Alert) => {
+          // Insert without broadcasting (called from tab-sync listener)
+          insertAlert(alert);
+        },
 
-  clearAlerts: () => {
-    set({
-      liveAlerts: [],
-      unreadCount: 0,
-    });
-  },
+        markAllRead: () => {
+          set((state) => {
+            const ids = new Set(state.acknowledgedIds);
+            for (const a of state.liveAlerts) {
+              ids.add(a.id);
+            }
+            return { acknowledgedIds: ids };
+          });
+        },
 
-  removeAlert: (alertId: number) => {
-    set((state) => ({
-      liveAlerts: state.liveAlerts.filter((a) => a.id !== alertId),
-    }));
-  },
+        setConnectionState: (connectionState: ConnectionState) => {
+          set({
+            connectionState,
+            connectionError:
+              connectionState === "CONNECTED" ? null : get().connectionError,
+          });
+        },
 
-  updateAlert: (alertId: number, updates: Partial<Alert>) => {
-    set((state) => ({
-      liveAlerts: state.liveAlerts.map((a) =>
-        a.id === alertId ? { ...a, ...updates } : a
-      ),
-    }));
-  },
-}));
+        setConnectionError: (error: string | null) => {
+          set({
+            connectionError: error,
+            connectionState: error ? "FAILED" : get().connectionState,
+          });
+        },
 
-/**
- * Selector hooks for common alert state
- */
+        clearAlerts: () => {
+          set({
+            liveAlerts: [],
+            acknowledgedIds: new Set<number>(),
+            _recentKeys: new Map<string, number>(),
+          });
+          persistAlerts([]);
+        },
+
+        removeAlert: (alertId: number) => {
+          set((state) => ({
+            liveAlerts: state.liveAlerts.filter((a) => a.id !== alertId),
+          }));
+        },
+
+        updateAlert: (alertId: number, updates: Partial<Alert>) => {
+          set((state) => ({
+            liveAlerts: state.liveAlerts.map((a) =>
+              a.id === alertId ? { ...a, ...updates } : a,
+            ),
+          }));
+        },
+
+        pruneDedup: () => {
+          const now = Date.now();
+          set((state) => {
+            const pruned = new Map<string, number>();
+            for (const [k, v] of state._recentKeys) {
+              if (v > now) pruned.set(k, v);
+            }
+            return { _recentKeys: pruned };
+          });
+        },
+      };
+    },
+    { name: "alert-store", enabled: import.meta.env.DEV },
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// Selector hooks
+// ---------------------------------------------------------------------------
+
 export const useLiveAlerts = () => useAlertStore((state) => state.liveAlerts);
-export const useUnreadCount = () => useAlertStore((state) => state.unreadCount);
-export const useAlertConnectionStatus = () =>
-  useAlertStore((state) => ({
-    isConnected: state.isConnected,
-    connectionError: state.connectionError,
-  }));
 
-/**
- * Action hooks
- *
- * Similar to the UI store, we avoid returning a freshly created object
- * from the selector on every render, which can cause React's
- * useSyncExternalStore to think the snapshot is unstable and
- * contribute to infinite update warnings in StrictMode.
- */
+/** Derived unread count — never stored, always computed */
+export const useUnreadCount = () =>
+  useAlertStore(
+    (state) =>
+      state.liveAlerts.filter((a) => !state.acknowledgedIds.has(a.id)).length,
+  );
+
+/** Backward-compatible boolean derived from connection state machine */
+export const useIsConnected = () =>
+  useAlertStore((state) => state.connectionState === "CONNECTED");
+
+export const useConnectionState = () =>
+  useAlertStore((state) => state.connectionState);
+
+export const useAlertConnectionStatus = () =>
+  useAlertStore(
+    useShallow((state) => ({
+      isConnected: state.connectionState === "CONNECTED",
+      connectionState: state.connectionState,
+      connectionError: state.connectionError,
+    })),
+  );
+
+// ---------------------------------------------------------------------------
+// Action hooks (stable references)
+// ---------------------------------------------------------------------------
+
 export const useAlertActions = () => {
   const addAlert = useAlertStore((state) => state.addAlert);
   const markAllRead = useAlertStore((state) => state.markAllRead);
-  const setConnected = useAlertStore((state) => state.setConnected);
+  const setConnectionState = useAlertStore((state) => state.setConnectionState);
   const setConnectionError = useAlertStore((state) => state.setConnectionError);
   const clearAlerts = useAlertStore((state) => state.clearAlerts);
   const removeAlert = useAlertStore((state) => state.removeAlert);
   const updateAlert = useAlertStore((state) => state.updateAlert);
+  const pruneDedup = useAlertStore((state) => state.pruneDedup);
 
   return {
     addAlert,
     markAllRead,
-    setConnected,
+    setConnectionState,
     setConnectionError,
     clearAlerts,
     removeAlert,
     updateAlert,
+    pruneDedup,
   };
+};
+
+/** @deprecated Use setConnectionState instead */
+export const useSetConnected = () => {
+  const setConnectionState = useAlertStore((state) => state.setConnectionState);
+  return (connected: boolean) =>
+    setConnectionState(connected ? "CONNECTED" : "IDLE");
 };
 
 /**
  * Get alerts by risk level
  */
-export const useAlertsByRiskLevel = (riskLevel: Alert['risk_level']) =>
+export const useAlertsByRiskLevel = (riskLevel: Alert["risk_level"]) =>
   useAlertStore((state) =>
-    state.liveAlerts.filter((a) => a.risk_level === riskLevel)
+    state.liveAlerts.filter((a) => a.risk_level === riskLevel),
   );
 
 /**
@@ -184,7 +341,7 @@ export const useAlertsByRiskLevel = (riskLevel: Alert['risk_level']) =>
  */
 export const useHighRiskAlertsCount = () =>
   useAlertStore(
-    (state) => state.liveAlerts.filter((a) => a.risk_level >= 2).length
+    (state) => state.liveAlerts.filter((a) => a.risk_level >= 2).length,
   );
 
 export default useAlertStore;

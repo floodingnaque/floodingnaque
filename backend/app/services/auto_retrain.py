@@ -51,6 +51,7 @@ REPORTS_DIR = BACKEND_DIR / "reports"
 # Configuration
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class RetrainingConfig:
     """Configuration for the automated retraining pipeline."""
@@ -113,6 +114,7 @@ class RetrainingConfig:
 # ═════════════════════════════════════════════════════════════════════════════
 # Drift Detection (PSI)
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 def compute_psi(
     reference: np.ndarray,
@@ -229,6 +231,7 @@ def detect_drift(
 # Data Freshness
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 def check_data_freshness(
     data_dir: str = str(PROCESSED_DIR),
     last_training_hash: Optional[str] = None,
@@ -266,18 +269,20 @@ def check_data_freshness(
         try:
             # Hash file content for change detection
             with open(f, "rb") as fh:
-                file_hash = hashlib.md5(fh.read()).hexdigest()  # nosec B303
+                file_hash = hashlib.md5(fh.read()).hexdigest()  # nosec B303,B324
             hasher.update(file_hash.encode())
 
             # Count records
             n_rows = sum(1 for _ in open(f, "r")) - 1  # minus header
             total_records += max(0, n_rows)
 
-            result["files_found"].append({
-                "name": f.name,
-                "records": n_rows,
-                "hash": file_hash[:12],
-            })
+            result["files_found"].append(
+                {
+                    "name": f.name,
+                    "records": n_rows,
+                    "hash": file_hash[:12],
+                }
+            )
         except Exception as e:
             logger.warning(f"Error reading {f.name}: {e}")
 
@@ -294,6 +299,7 @@ def check_data_freshness(
 # ═════════════════════════════════════════════════════════════════════════════
 # Retraining Pipeline
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class AutoRetrainingPipeline:
     """
@@ -463,10 +469,7 @@ class AutoRetrainingPipeline:
                             output_dir=self.config.models_dir,
                         )
                         result["dl_model"] = dl_results
-                        self._log_step(
-                            "train_dl", "success",
-                            f"F1={dl_results['metrics'].get('f1_score', 0):.4f}"
-                        )
+                        self._log_step("train_dl", "success", f"F1={dl_results['metrics'].get('f1_score', 0):.4f}")
                 except ImportError:
                     self._log_step("train_dl", "skipped", "PyTorch not available")
                 except Exception as e:
@@ -492,10 +495,7 @@ class AutoRetrainingPipeline:
                 except Exception as e:
                     self._log_step("promote", "error", str(e))
             else:
-                self._log_step(
-                    "promote", "skipped",
-                    f"Did not meet criteria: {promotion_check['failed_criteria']}"
-                )
+                self._log_step("promote", "skipped", f"Did not meet criteria: {promotion_check['failed_criteria']}")
 
             result["promoted"] = promoted
 
@@ -602,6 +602,7 @@ class AutoRetrainingPipeline:
 # ═════════════════════════════════════════════════════════════════════════════
 # Convenience Functions
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 def run_auto_retrain(
     force: bool = False,

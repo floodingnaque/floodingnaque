@@ -83,7 +83,7 @@ def cleanup_connections():
 
     try:
         # Close Redis connections if available
-        from app.utils.cache import get_redis_client
+        from app.utils.resilience.cache import get_redis_client
 
         redis_client = get_redis_client()
         if redis_client:
@@ -134,6 +134,12 @@ if __name__ == "__main__":
 
     try:
         application.run(host=host, port=port, debug=debug)
+    except OSError as e:
+        # WinError 10038: socket closed during shutdown — harmless on Windows CTRL+C
+        if "WinError" in str(e) or getattr(e, "winerror", None):
+            logger.debug(f"Ignoring Windows socket teardown error: {e}")
+        else:
+            raise
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received")
     finally:

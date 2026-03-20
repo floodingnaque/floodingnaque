@@ -36,11 +36,7 @@ class EmailAlertChannel(NotificationChannel):
     display_name = "Email Alert"
 
     def is_configured(self) -> bool:
-        return bool(
-            os.getenv("SMTP_HOST")
-            and os.getenv("SMTP_USERNAME")
-            and os.getenv("SMTP_PASSWORD")
-        )
+        return bool(os.getenv("SMTP_HOST") and os.getenv("SMTP_USERNAME") and os.getenv("SMTP_PASSWORD"))
 
     # ------------------------------------------------------------------
     # Core send

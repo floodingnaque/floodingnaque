@@ -2,118 +2,173 @@
  * useAlertStream Hook
  *
  * SSE (Server-Sent Events) hook for real-time alert updates.
- * Manages EventSource connection with automatic reconnection.
+ * Implements a full connection state machine:
+ *   IDLE → CONNECTING → CONNECTED → RECONNECTING → FAILED
  *
- * Authentication: Because the browser's EventSource API does not
- * support custom headers, we fetch a short-lived ticket from the
- * server and pass it as a query parameter over HTTPS.
+ * On FAILED state, falls back to polling /api/v1/alerts/recent every 30s.
+ *
+ * Authentication: Fetches a short-lived SSE ticket from the server and
+ * passes it as a query parameter over HTTPS. If 401 is received, calls
+ * authApi.refresh() before re-establishing the connection.
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { useAlertStore } from '@/state/stores/alertStore';
-import { API_CONFIG } from '@/config/api.config';
-import api from '@/lib/api-client';
-import { captureException } from '@/lib/sentry';
-import type { Alert, SSEAlertEvent, SSEAlertData } from '@/types';
+import { API_CONFIG } from "@/config/api.config";
+import api from "@/lib/api-client";
+import { captureException } from "@/lib/sentry";
+import type { ConnectionState } from "@/state/stores/alertStore";
+import { useAlertStore } from "@/state/stores/alertStore";
+import type { Alert, SSEAlertData, SSEAlertEvent } from "@/types";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "sonner";
+import { alertsApi } from "../services/alertsApi";
 
-/**
- * Options for the useAlertStream hook
- */
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const MAX_RECONNECT_ATTEMPTS = 10;
+const MAX_BACKOFF_MS = 60_000;
+const INITIAL_BACKOFF_MS = 1_000;
+const POLLING_INTERVAL_MS = 30_000;
+const DEDUP_PRUNE_INTERVAL_MS = 30_000;
+
+// ---------------------------------------------------------------------------
+// Options / Return types
+// ---------------------------------------------------------------------------
+
 interface UseAlertStreamOptions {
-  /** Whether the SSE connection should be enabled (default: true) */
   enabled?: boolean;
-  /** Callback when a new alert is received */
   onAlert?: (alert: Alert) => void;
-  /** Callback when a connection error occurs */
   onError?: (error: Event) => void;
-  /** Callback when connection is established */
   onConnect?: () => void;
-  /** Callback when connection is lost */
   onDisconnect?: () => void;
-  /** Reconnection delay in milliseconds (default: 5000) */
-  reconnectDelay?: number;
-  /** Maximum reconnection attempts (default: 10) */
-  maxReconnectAttempts?: number;
 }
 
-/**
- * Return type for the useAlertStream hook
- */
 interface UseAlertStreamReturn {
-  /** Whether the SSE connection is currently active */
   isConnected: boolean;
-  /** Manual reconnect function */
+  connectionState: ConnectionState;
   reconnect: () => void;
-  /** Manual disconnect function */
   disconnect: () => void;
-  /** Last heartbeat timestamp */
   lastHeartbeat: Date | null;
-  /** Number of reconnection attempts */
   reconnectAttempts: number;
 }
 
-/**
- * useAlertStream hook for real-time alert updates via SSE
- *
- * @param options - Configuration options for the SSE connection
- * @returns Connection state and control functions
- *
- * @example
- * const { isConnected, reconnect } = useAlertStream({
- *   enabled: true,
- *   onAlert: (alert) => console.log('New alert:', alert),
- * });
- */
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 export function useAlertStream(
-  options: UseAlertStreamOptions = {}
+  options: UseAlertStreamOptions = {},
 ): UseAlertStreamReturn {
-  const {
-    enabled = true,
-    onAlert,
-    onError,
-    onConnect,
-    onDisconnect,
-    reconnectDelay = 5000,
-    maxReconnectAttempts = 10,
-  } = options;
+  const { enabled = true, onAlert, onError, onConnect, onDisconnect } = options;
 
   // Store actions
   const addAlert = useAlertStore((state) => state.addAlert);
-  const setConnected = useAlertStore((state) => state.setConnected);
+  const setConnectionState = useAlertStore((state) => state.setConnectionState);
   const setConnectionError = useAlertStore((state) => state.setConnectionError);
-  const isConnected = useAlertStore((state) => state.isConnected);
+  const pruneDedup = useAlertStore((state) => state.pruneDedup);
+  const connectionState = useAlertStore((state) => state.connectionState);
 
   // Local state
   const [lastHeartbeat, setLastHeartbeat] = useState<Date | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const [shouldReconnect, setShouldReconnect] = useState(false);
 
-  // Refs for managing connection
+  // Refs
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+  const dedupPruneRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isReconnectingRef = useRef(false);
+  // Generation counter: prevents orphaned EventSource connections from async
+  // race conditions (e.g. React StrictMode double-mount). Checked after every
+  // async gap in createConnection; incremented on cleanup to invalidate stale calls.
+  const connectionIdRef = useRef(0);
+  // Track the last SSE event ID received for replay on reconnection
+  const lastEventIdRef = useRef<string | null>(null);
 
-  /**
-   * Fetch a short-lived SSE ticket from the server and build the
-   * SSE endpoint URL with the ticket as a query parameter.
-   *
-   * The ticket is a single-use, time-limited token that the SSE
-   * endpoint validates in lieu of an Authorization header.
-   */
+  // Stable callback refs
+  const onAlertRef = useRef(onAlert);
+  const onErrorRef = useRef(onError);
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
+  useEffect(() => {
+    onAlertRef.current = onAlert;
+  }, [onAlert]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+  useEffect(() => {
+    onConnectRef.current = onConnect;
+  }, [onConnect]);
+  useEffect(() => {
+    onDisconnectRef.current = onDisconnect;
+  }, [onDisconnect]);
+
+  // ---------------------------------------------------------------------------
+  // Polling fallback (activated when state machine reaches FAILED)
+  // ---------------------------------------------------------------------------
+
+  const startPollingFallback = useCallback(() => {
+    if (pollingIntervalRef.current) return; // Already polling
+
+    const poll = async () => {
+      try {
+        const recent = await alertsApi.getRecentAlerts(20);
+        for (const alert of recent) {
+          addAlert(alert);
+          onAlertRef.current?.(alert);
+        }
+      } catch {
+        // Polling failure — silently retry next cycle
+      }
+    };
+
+    // Immediate first poll + interval
+    poll();
+    pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
+  }, [addAlert]);
+
+  const stopPollingFallback = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // SSE ticket + URL
+  // ---------------------------------------------------------------------------
+
   const getSseUrl = useCallback(async (): Promise<string> => {
     const baseUrl = API_CONFIG.sseUrl || API_CONFIG.baseUrl;
     const sseBase = `${baseUrl}${API_CONFIG.endpoints.sse.alerts}`;
 
-    // Obtain a short-lived ticket (authenticated via httpOnly cookie)
     const { ticket } = await api.post<{ ticket: string }>(
       `${API_CONFIG.endpoints.sse.alerts}/ticket`,
     );
-    return `${sseBase}?ticket=${encodeURIComponent(ticket)}`;
+    let url = `${sseBase}?ticket=${encodeURIComponent(ticket)}`;
+    if (lastEventIdRef.current) {
+      url += `&lastEventId=${encodeURIComponent(lastEventIdRef.current)}`;
+    }
+    return url;
   }, []);
 
-  /**
-   * Clean up the EventSource connection
-   */
+  // ---------------------------------------------------------------------------
+  // Cleanup
+  // ---------------------------------------------------------------------------
+
   const cleanup = useCallback(() => {
+    connectionIdRef.current++; // Invalidate any pending async createConnection
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -122,58 +177,111 @@ export function useAlertStream(
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
+    isReconnectingRef.current = false;
   }, []);
 
-  /**
-   * Disconnect from SSE stream
-   */
   const disconnect = useCallback(() => {
     cleanup();
-    setConnected(false);
+    stopPollingFallback();
+    setConnectionState("IDLE");
     setReconnectAttempts(0);
-    setShouldReconnect(false);
-    onDisconnect?.();
-  }, [cleanup, setConnected, onDisconnect]);
+    onDisconnectRef.current?.();
+  }, [cleanup, stopPollingFallback, setConnectionState]);
 
-  /**
-   * Create and configure EventSource connection
-   */
+  // ---------------------------------------------------------------------------
+  // Reconnect scheduler with exponential backoff (1s, 2s, 4s, …, 60s max)
+  // ---------------------------------------------------------------------------
+
+  const scheduleReconnect = useCallback(
+    (attempt: number) => {
+      if (attempt >= MAX_RECONNECT_ATTEMPTS) {
+        setConnectionState("FAILED");
+        setConnectionError(
+          `Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`,
+        );
+        toast.error("Live alerts disconnected", {
+          description:
+            "Falling back to periodic polling. Refresh the page to retry SSE.",
+          duration: Infinity,
+        });
+        isReconnectingRef.current = false;
+        // Activate polling fallback
+        startPollingFallback();
+        return;
+      }
+
+      isReconnectingRef.current = true;
+      setConnectionState("RECONNECTING");
+      const delay = Math.min(
+        INITIAL_BACKOFF_MS * Math.pow(2, attempt),
+        MAX_BACKOFF_MS,
+      );
+      const jitteredDelay = delay * (0.5 + Math.random() * 0.5);
+
+      reconnectTimeoutRef.current = setTimeout(() => {
+        isReconnectingRef.current = false;
+        createConnection();
+      }, jitteredDelay);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [startPollingFallback],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Create SSE connection
+  // ---------------------------------------------------------------------------
+
   const createConnection = useCallback(async () => {
-    // Clean up any existing connection
-    cleanup();
-
-    if (!enabled) {
-      return;
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
     }
+
+    if (!enabled) return;
+
+    // Claim a connection generation — checked after async ticket fetch
+    const myId = ++connectionIdRef.current;
+
+    setConnectionState("CONNECTING");
 
     try {
       const url = await getSseUrl();
+
+      // A newer createConnection or cleanup ran while we awaited — bail out
+      if (myId !== connectionIdRef.current) return;
+
       const eventSource = new EventSource(url);
       eventSourceRef.current = eventSource;
 
-      // Connection opened
+      // ----- Connection opened -----
       eventSource.onopen = () => {
-        setConnected(true);
+        setConnectionState("CONNECTED");
         setConnectionError(null);
         setReconnectAttempts(0);
-        setShouldReconnect(false);
-        onConnect?.();
+        isReconnectingRef.current = false;
+        stopPollingFallback(); // Stop polling if SSE resumes
+        onConnectRef.current?.();
       };
 
-      // Handle alert events
-      eventSource.addEventListener('alert', (event: MessageEvent) => {
+      // ----- Alert events -----
+      eventSource.addEventListener("alert", (event: MessageEvent) => {
         try {
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
           const data: SSEAlertData = JSON.parse(event.data);
-          addAlert(data.alert);
-          onAlert?.(data.alert);
+          // Defer list re-render to avoid blocking map/badge interactions
+          startTransition(() => {
+            addAlert(data.alert);
+          });
+          onAlertRef.current?.(data.alert);
         } catch (parseError) {
-          captureException(parseError, { context: 'SSE alert event parse' });
+          captureException(parseError, { context: "SSE alert event parse" });
         }
       });
 
-      // Handle heartbeat events
-      eventSource.addEventListener('heartbeat', (event: MessageEvent) => {
+      // ----- Heartbeat events -----
+      eventSource.addEventListener("heartbeat", (event: MessageEvent) => {
         try {
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
           const data = JSON.parse(event.data);
           setLastHeartbeat(new Date(data.timestamp));
         } catch {
@@ -181,31 +289,36 @@ export function useAlertStream(
         }
       });
 
-      // Handle connection events
-      eventSource.addEventListener('connection', (event: MessageEvent) => {
+      // ----- Connection status events -----
+      eventSource.addEventListener("connection", (event: MessageEvent) => {
         try {
-          const data: SSEAlertEvent['data'] = JSON.parse(event.data);
-          if ('status' in data) {
-            if (data.status === 'connected') {
-              setConnected(true);
-            } else if (data.status === 'disconnected') {
-              setConnected(false);
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
+          const data: SSEAlertEvent["data"] = JSON.parse(event.data);
+          if ("status" in data) {
+            if (data.status === "connected") {
+              setConnectionState("CONNECTED");
+            } else if (data.status === "disconnected") {
+              setConnectionState("RECONNECTING");
             }
           }
         } catch (parseError) {
-          captureException(parseError, { context: 'SSE connection event parse' });
+          captureException(parseError, {
+            context: "SSE connection event parse",
+          });
         }
       });
 
-      // Handle generic messages (fallback)
+      // ----- Generic message fallback -----
       eventSource.onmessage = (event: MessageEvent) => {
         try {
           const eventData: SSEAlertEvent = JSON.parse(event.data);
-
-          if (eventData.type === 'alert' && 'alert' in eventData.data) {
-            addAlert(eventData.data.alert);
-            onAlert?.(eventData.data.alert);
-          } else if (eventData.type === 'heartbeat') {
+          if (eventData.type === "alert" && "alert" in eventData.data) {
+            const alertData = eventData.data as SSEAlertData;
+            startTransition(() => {
+              addAlert(alertData.alert);
+            });
+            onAlertRef.current?.(alertData.alert);
+          } else if (eventData.type === "heartbeat") {
             setLastHeartbeat(new Date());
           }
         } catch {
@@ -213,92 +326,87 @@ export function useAlertStream(
         }
       };
 
-      // Handle errors and reconnection
+      // ----- Error handler + reconnect -----
       eventSource.onerror = (error: Event) => {
-        setConnected(false);
-        setConnectionError('SSE connection error');
-        onError?.(error);
-        onDisconnect?.();
+        onErrorRef.current?.(error);
+        onDisconnectRef.current?.();
 
-        // Close the errored connection
         eventSource.close();
         eventSourceRef.current = null;
 
-        // Signal that we should reconnect
         setReconnectAttempts((prev) => {
-          const newAttempts = prev + 1;
-          if (newAttempts < maxReconnectAttempts && enabled) {
-            setShouldReconnect(true);
-          } else if (newAttempts >= maxReconnectAttempts) {
-            setConnectionError(
-              `Max reconnection attempts (${maxReconnectAttempts}) reached`
-            );
-          }
-          return newAttempts;
+          const next = prev + 1;
+          scheduleReconnect(next);
+          return next;
         });
       };
     } catch (error) {
-      captureException(error, { context: 'SSE EventSource creation' });
-      setConnectionError('Failed to establish SSE connection');
+      if (myId !== connectionIdRef.current) return;
+      captureException(error, { context: "SSE EventSource creation" });
+      setConnectionError("Failed to establish SSE connection");
+
+      setReconnectAttempts((prev) => {
+        const next = prev + 1;
+        scheduleReconnect(next);
+        return next;
+      });
     }
   }, [
     enabled,
     getSseUrl,
-    cleanup,
     addAlert,
-    setConnected,
+    setConnectionState,
     setConnectionError,
-    onAlert,
-    onError,
-    onConnect,
-    onDisconnect,
-    maxReconnectAttempts,
+    scheduleReconnect,
+    stopPollingFallback,
   ]);
 
-  /**
-   * Manual reconnect function
-   */
-  const reconnect = useCallback(() => {
-    setReconnectAttempts(0);
-    setShouldReconnect(false);
-    createConnection();
-  }, [createConnection]);
+  // ---------------------------------------------------------------------------
+  // Manual reconnect
+  // ---------------------------------------------------------------------------
 
-  // Handle initial connection and enabled changes
+  const reconnect = useCallback(() => {
+    cleanup();
+    stopPollingFallback();
+    setReconnectAttempts(0);
+    createConnection();
+  }, [cleanup, stopPollingFallback, createConnection]);
+
+  // ---------------------------------------------------------------------------
+  // Effect: connect on mount, cleanup on unmount
+  // ---------------------------------------------------------------------------
+
   useEffect(() => {
-    if (enabled) {
+    if (enabled && !isReconnectingRef.current) {
       createConnection();
-    } else {
-      // Clean up without calling disconnect to avoid setState warnings
+    } else if (!enabled) {
       cleanup();
+      stopPollingFallback();
     }
 
     return () => {
       cleanup();
+      stopPollingFallback();
     };
-  }, [enabled, createConnection, cleanup]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
-  // Handle reconnection with exponential backoff
+  // ---------------------------------------------------------------------------
+  // Effect: periodic dedup key pruning
+  // ---------------------------------------------------------------------------
+
   useEffect(() => {
-    if (shouldReconnect && reconnectAttempts > 0 && enabled) {
-      // Exponential backoff with jitter to avoid thundering-herd reconnects
-      const baseDelay = Math.min(reconnectDelay * Math.pow(2, reconnectAttempts - 1), 60000);
-      const backoffDelay = baseDelay * (0.5 + Math.random() * 0.5); // ±50% jitter
-      reconnectTimeoutRef.current = setTimeout(() => {
-        setShouldReconnect(false);
-        createConnection();
-      }, backoffDelay);
-
-      return () => {
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-      };
-    }
-  }, [shouldReconnect, reconnectAttempts, enabled, reconnectDelay, createConnection]);
+    dedupPruneRef.current = setInterval(pruneDedup, DEDUP_PRUNE_INTERVAL_MS);
+    return () => {
+      if (dedupPruneRef.current) {
+        clearInterval(dedupPruneRef.current);
+      }
+    };
+  }, [pruneDedup]);
 
   return {
-    isConnected,
+    isConnected: connectionState === "CONNECTED",
+    connectionState,
     reconnect,
     disconnect,
     lastHeartbeat,

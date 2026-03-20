@@ -736,9 +736,7 @@ class AsyncGoogleWeatherService:
             )
 
         if skipped:
-            logger.warning(
-                f"Skipped {skipped}/{len(chirps_data)} CHIRPS days with no ERA5 match"
-            )
+            logger.warning(f"Skipped {skipped}/{len(chirps_data)} CHIRPS days with no ERA5 match")
         logger.info(f"Prepared {len(results)} training records with real ERA5 features")
         return results
 

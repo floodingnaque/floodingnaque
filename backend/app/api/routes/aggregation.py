@@ -30,6 +30,7 @@ def _get_request_id() -> str:
 def _get_aggregation_service():
     """Lazy-load the aggregation service."""
     from app.services.data_aggregation_service import get_aggregation_service
+
     return get_aggregation_service()
 
 
@@ -69,11 +70,16 @@ def get_aggregated_data():
             )
 
         data = svc.get_aggregated_data()
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"Aggregation error [{request_id}]: {exc}", exc_info=True)
@@ -106,11 +112,16 @@ def get_source_health():
     try:
         svc = _get_aggregation_service()
         health = svc.get_source_health()
-        return jsonify({
-            "success": True,
-            "data": health,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": health,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"Health check error [{request_id}]: {exc}", exc_info=True)
@@ -162,11 +173,16 @@ def get_category_data(category: str):
     try:
         svc = _get_aggregation_service()
         data = svc.get_category_data(category)
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"Category [{category}] error [{request_id}]: {exc}", exc_info=True)
@@ -196,16 +212,22 @@ def get_mmda_advisories():
 
     try:
         from app.services.mmda_flood_service import get_mmda_flood_service
+
         svc = get_mmda_flood_service()
 
         paranaque_only = request.args.get("all", "false").lower() != "true"
         data = svc.get_active_advisories(paranaque_only=paranaque_only)
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"MMDA advisories error [{request_id}]: {exc}", exc_info=True)
@@ -229,14 +251,20 @@ def get_mmda_stations():
 
     try:
         from app.services.mmda_flood_service import get_mmda_flood_service
+
         svc = get_mmda_flood_service()
         data = svc.get_station_readings()
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"MMDA stations error [{request_id}]: {exc}", exc_info=True)
@@ -266,6 +294,7 @@ def get_manila_bay_tide():
 
     try:
         from app.services.manila_bay_tide_service import get_manila_bay_tide_service
+
         svc = get_manila_bay_tide_service()
 
         data = svc.get_current_tide()
@@ -275,11 +304,16 @@ def get_manila_bay_tide():
             influence = svc.get_tide_influence(storm_surge_m=storm_surge)
             data["influence"] = influence.get("influence")
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"Manila Bay tide error [{request_id}]: {exc}", exc_info=True)
@@ -306,17 +340,23 @@ def get_tide_forecast():
 
     try:
         from app.services.manila_bay_tide_service import get_manila_bay_tide_service
+
         svc = get_manila_bay_tide_service()
 
         hours = request.args.get("hours", default=24, type=int)
         hours = max(1, min(hours, 72))
 
         data = svc.get_tide_forecast(hours=hours)
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"Tide forecast error [{request_id}]: {exc}", exc_info=True)
@@ -343,14 +383,20 @@ def get_river_readings():
 
     try:
         from app.services.river_water_level_service import get_river_water_level_service
+
         svc = get_river_water_level_service()
         data = svc.get_all_readings()
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"River readings error [{request_id}]: {exc}", exc_info=True)
@@ -378,17 +424,23 @@ def get_river_station(station_id: str):
 
     try:
         from app.services.river_water_level_service import get_river_water_level_service
+
         svc = get_river_water_level_service()
         data = svc.get_station_reading(station_id)
 
         if data.get("status") == "not_found":
             return api_error("NotFound", data.get("message", "Station not found"), 404, request_id)
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"River station error [{request_id}]: {exc}", exc_info=True)
@@ -412,14 +464,20 @@ def get_river_system():
 
     try:
         from app.services.river_water_level_service import get_river_water_level_service
+
         svc = get_river_water_level_service()
         data = svc.get_river_system_status()
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"River system error [{request_id}]: {exc}", exc_info=True)
@@ -449,16 +507,22 @@ def get_pagasa_bulletins():
 
     try:
         from app.services.pagasa_bulletin_service import get_pagasa_bulletin_service
+
         svc = get_pagasa_bulletin_service()
 
         paranaque_only = request.args.get("all", "false").lower() != "true"
         data = svc.get_active_advisories(paranaque_only=paranaque_only)
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"PAGASA bulletins error [{request_id}]: {exc}", exc_info=True)
@@ -482,14 +546,20 @@ def get_severe_weather():
 
     try:
         from app.services.pagasa_bulletin_service import get_pagasa_bulletin_service
+
         svc = get_pagasa_bulletin_service()
         data = svc.get_combined_status()
 
-        return jsonify({
-            "success": True,
-            "data": data,
-            "request_id": request_id,
-        }), HTTP_OK
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": data,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"Severe weather error [{request_id}]: {exc}", exc_info=True)
@@ -538,11 +608,22 @@ def get_reliability_info():
                 "is_fallback": source_data.get("is_fallback"),
             }
 
-        return jsonify({
-            "success": True,
-            "data": reliability,
-            "request_id": request_id,
-        }), HTTP_OK
+        # Include per-source EMA reliability tracking
+        from app.services.data_aggregation_service import reliability_snapshot
+
+        ema_snapshot = reliability_snapshot()
+        reliability["ema_tracking"] = ema_snapshot
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": reliability,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
 
     except Exception as exc:
         logger.error(f"Reliability info error [{request_id}]: {exc}", exc_info=True)

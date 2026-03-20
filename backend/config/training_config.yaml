@@ -32,6 +32,7 @@ _anchors:
     - month
     - weather_type
     - season
+    - day_of_week
     - station_id
 
   # Interaction features (engineered)
@@ -187,7 +188,7 @@ model:
     max_depth: 15
     min_samples_split: 5
     min_samples_leaf: 2
-    class_weight: "balanced_subsample"  # Enterprise: handles imbalance per tree
+    class_weight: "balanced_subsample" # Enterprise: handles imbalance per tree
     max_features: "sqrt"
     n_jobs: -1
 
@@ -196,7 +197,7 @@ model:
     enabled: true
     n_trials: 50
     timeout_minutes: 30
-    sampler: "TPE"  # Tree-structured Parzen Estimator
+    sampler: "TPE" # Tree-structured Parzen Estimator
     pruner: "MedianPruner"
 
     # Search space
@@ -210,31 +211,32 @@ model:
   # Grid search parameters (fallback if Optuna disabled)
   grid_search:
     enabled: false
-    n_iter: 50  # For RandomizedSearchCV
+    n_iter: 100 # For RandomizedSearchCV
     cv_folds: 10
     scoring: "f1_weighted"
 
     param_grid:
-      n_estimators: [100, 150, 200, 250, 300]
+      n_estimators: [100, 150, 200, 250, 300, 400]
       max_depth: [10, 15, 20, 25, null]
       min_samples_split: [2, 5, 10]
       min_samples_leaf: [1, 2, 4]
       max_features: ["sqrt", "log2", 0.5, 0.7]
+      bootstrap: [true, false]
 
   # Model calibration
   calibration:
     enabled: true
-    method: "isotonic"  # or "sigmoid" - isotonic better for large datasets
+    method: "isotonic" # or "sigmoid" - isotonic better for large datasets
     cv_folds: 5
 
 # Imbalance Handling
 imbalance:
   # Primary strategy: class_weight (built into RandomForest)
-  strategy: "class_weight"  # Options: "class_weight", "smotenc", "hybrid"
+  strategy: "class_weight" # Options: "class_weight", "smotenc", "hybrid"
 
   # SMOTENC settings (if strategy is "smotenc" or "hybrid")
   smotenc:
-    enabled: false  # Enable via --with-smote flag
+    enabled: false # Enable via --with-smote flag
     k_neighbors: 5
     sampling_strategy: "auto"
     # Categorical feature indices determined automatically
@@ -242,7 +244,7 @@ imbalance:
 # Metrics Configuration
 metrics:
   # F2 score prioritizes recall (missing floods is worse than false alarms)
-  primary: "f2"  # Options: "f1", "f2", "recall", "roc_auc"
+  primary: "f2" # Options: "f1", "f2", "recall", "roc_auc"
 
   # All metrics to track
   track:
@@ -250,14 +252,14 @@ metrics:
     - precision
     - recall
     - f1_score
-    - f2_score  # Recall-weighted F-score
+    - f2_score # Recall-weighted F-score
     - roc_auc
-    - brier_score  # Probability calibration quality
+    - brier_score # Probability calibration quality
 
   # Thresholds for alerts
   alerts:
     min_f2_score: 0.80
-    min_recall: 0.85  # Critical: must detect floods
+    min_recall: 0.85 # Critical: must detect floods
     max_brier_score: 0.25
 
 # Cross-Validation Settings
@@ -269,7 +271,7 @@ cross_validation:
   temporal:
     enabled: true
     n_splits: 5
-    gap: 0  # No gap between train and test
+    gap: 0 # No gap between train and test
 
 # Ensemble Settings (Phase 8)
 ensemble:
@@ -277,8 +279,8 @@ ensemble:
   stacking:
     enabled: true
     cv_folds: 5
-    stack_method: "predict_proba"  # Use probabilities, not hard predictions
-    passthrough: false  # Only use model predictions, not raw features
+    stack_method: "predict_proba" # Use probabilities, not hard predictions
+    passthrough: false # Only use model predictions, not raw features
 
   # Meta-learner
   meta_learner:
@@ -287,7 +289,7 @@ ensemble:
     class_weight: "balanced"
 
   # Base models from phases
-  base_phases: [4, 5, 6]  # Official, PAGASA, External APIs
+  base_phases: [4, 5, 6] # Official, PAGASA, External APIs
   include_station_models: true
 
 # Station-Specific Models (Phase 7)
@@ -312,7 +314,7 @@ stations:
 
 # MLflow Tracking Settings
 mlflow:
-  tracking_uri: "mlruns"  # Local directory or remote URI
+  tracking_uri: "mlruns" # Local directory or remote URI
   experiment_name: "floodingnaque_progressive_training"
   auto_log: true
   log_models: true
@@ -358,8 +360,8 @@ drift:
 
   # Population Stability Index (PSI) thresholds
   psi:
-    warning_threshold: 0.1  # Minor drift
-    alert_threshold: 0.2    # Significant drift - trigger retraining
+    warning_threshold: 0.1 # Minor drift
+    alert_threshold: 0.2 # Significant drift - trigger retraining
 
   # Features to monitor
   monitored_features:
@@ -372,7 +374,7 @@ drift:
   retrain_on:
     - psi_alert
     - performance_degradation
-    - scheduled  # Monthly
+    - scheduled # Monthly
 
 # Data Validation Settings
 validation:
@@ -381,14 +383,14 @@ validation:
   # Conversion reference: 299K = 25.85°C, 302K = 28.85°C (typical Metro Manila range)
   feature_ranges:
     temperature:
-      min: 15.0   # °C - Minimum observed in Metro Manila during cold fronts
-      max: 45.0   # °C - Maximum during extreme heat events
+      min: 15.0 # °C - Minimum observed in Metro Manila during cold fronts
+      max: 45.0 # °C - Maximum during extreme heat events
     humidity:
       min: 0.0
       max: 100.0
     precipitation:
       min: 0.0
-      max: 500.0  # mm (extreme events)
+      max: 500.0 # mm (extreme events)
     is_monsoon_season:
       values: [0, 1]
     month:
@@ -416,7 +418,7 @@ phases:
   # Base phase configuration that others can inherit from
   _base: &base_phase
     data_type: "official_records"
-    model_type: null  # Use default model
+    model_type: null # Use default model
     calibrate: false
 
   phase_1:
@@ -487,12 +489,12 @@ phases:
 
 # Logging Settings
 logging:
-  format: "json"  # "json" or "text"
+  format: "json" # "json" or "text"
   level: "INFO"
   file:
     enabled: true
     path: "logs/training.log"
-    max_bytes: 10485760  # 10MB
+    max_bytes: 10485760 # 10MB
     backup_count: 5
   console:
     enabled: true
@@ -510,7 +512,7 @@ resources:
   max_workers: -1
   # Performance alerts
   alert_on_degradation: true
-  degradation_threshold: 0.05  # 5% drop in F1
+  degradation_threshold: 0.05 # 5% drop in F1
 
 # =============================================================================
 # AUTOMATED RETRAINING PIPELINE
@@ -520,17 +522,17 @@ auto_retrain:
 
   # Trigger conditions (any one fires → retraining)
   triggers:
-    schedule_days: 30          # Maximum days between runs
-    min_new_records: 50        # Minimum new DRRMO records
-    psi_warning: 0.10          # PSI drift warning threshold
-    psi_alert: 0.20            # PSI drift → retrain threshold
+    schedule_days: 30 # Maximum days between runs
+    min_new_records: 50 # Minimum new DRRMO records
+    psi_warning: 0.10 # PSI drift warning threshold
+    psi_alert: 0.20 # PSI drift → retrain threshold
 
   # Performance gates (model must pass ALL to be promoted)
   promotion_criteria:
     min_f2_score: 0.85
     min_recall: 0.85
     min_f1_score: 0.80
-    max_metric_degradation: 0.03  # vs. current production model
+    max_metric_degradation: 0.03 # vs. current production model
 
   # Shadow deployment before promotion
   shadow:
@@ -540,9 +542,9 @@ auto_retrain:
 
   # Feature enrichment during retraining
   enrichment:
-    include_enso: true         # Merge ENSO indices (ONI, SOI)
-    include_spatial: true      # Merge barangay spatial features
-    include_deep_learning: false  # Also train LSTM/Transformer
+    include_enso: true # Merge ENSO indices (ONI, SOI)
+    include_spatial: true # Merge barangay spatial features
+    include_deep_learning: false # Also train LSTM/Transformer
 
   # Monitored features for drift detection
   drift_features:
@@ -562,12 +564,12 @@ deep_learning:
     num_layers: 2
     dropout: 0.3
     bidirectional: true
-    sequence_length: 14        # 14-day look-back window
+    sequence_length: 14 # 14-day look-back window
     prediction_horizon: 1
     batch_size: 64
     learning_rate: 0.001
     epochs: 100
-    patience: 15               # Early stopping
+    patience: 15 # Early stopping
 
   # Transformer configuration
   transformer:
@@ -587,10 +589,10 @@ deep_learning:
 # =============================================================================
 enso:
   enabled: true
-  include_lags: true           # Add lagged ONI features (1,2,3,6 months)
+  include_lags: true # Add lagged ONI features (1,2,3,6 months)
   indices:
-    - oni                      # Oceanic Niño Index (NOAA CPC)
-    - soi                      # Southern Oscillation Index (BoM)
+    - oni # Oceanic Niño Index (NOAA CPC)
+    - soi # Southern Oscillation Index (BoM)
   classification_thresholds:
     strong_el_nino: 1.5
     moderate_el_nino: 1.0
@@ -600,13 +602,13 @@ enso:
     moderate_la_nina: -1.5
   # Empirical rainfall modifiers for Metro Manila
   rainfall_modifiers:
-    strong_la_nina: 1.30       # +30% rainfall
+    strong_la_nina: 1.30 # +30% rainfall
     moderate_la_nina: 1.20
     weak_la_nina: 1.10
     neutral: 1.00
     weak_el_nino: 0.90
     moderate_el_nino: 0.85
-    strong_el_nino: 0.75       # -25% rainfall
+    strong_el_nino: 0.75 # -25% rainfall
 
 # =============================================================================
 # SPATIAL FEATURES (Barangay-Level)
@@ -614,12 +616,44 @@ enso:
 spatial:
   enabled: true
   # Feature groups to include
-  include_elevation: true      # Mean/min elevation, slope, vulnerability
-  include_drainage: true       # Drainage capacity, waterway proximity
-  include_land_use: true       # Runoff coefficient, green cover, density
-  include_composites: true     # Flood susceptibility index, absorption
+  include_elevation: true # Mean/min elevation, slope, vulnerability
+  include_drainage: true # Drainage capacity, waterway proximity
+  include_land_use: true # Runoff coefficient, green cover, density
+  include_composites: true # Flood susceptibility index, absorption
   # Flood depth estimation
   depth_estimation:
     enabled: true
-    method: "rational"         # Simplified Rational Method
-    uncertainty_pct: 30        # ±30% uncertainty bounds
+    method: "rational" # Simplified Rational Method
+    uncertainty_pct: 30 # ±30% uncertainty bounds
+
+# =============================================================================
+# Risk Classification Thresholds
+# Calibrated from 5,549 real records (DRRMO 2022-2025 + PAGASA weather data)
+# See: reports/threshold_calibration_report.json for full methodology
+# =============================================================================
+risk_classification:
+  flood_probability:
+    # Data source: v6 model predict_proba on 1,660 flood / 3,889 non-flood records
+    # Flood event probs: mean=0.94, p10=0.84, p25=0.93
+    # Non-flood probs:   mean=0.04, p75=0.01, p90=0.05
+    critical: 0.75 # >= this → Critical (all flood events exceed this at p10=0.84)
+    alert: 0.40 # >= this → Alert when flood predicted
+    safe_max: 0.10 # >= this → Alert even when no flood predicted (non-flood p90=0.05)
+  precipitation:
+    # Data source: flood-day precipitation stats from DRRMO + PAGASA combined data
+    # Flood-day precip: mean=21.3mm, median=10.5mm, p25=2.0mm, p75=33.0mm
+    # Non-flood precip: mean=1.16mm
+    # Aligned with PAGASA Rainfall Warning System:
+    #   Yellow: 7.5-15 mm/hr  |  Orange: 15-30 mm/hr  |  Red: >30 mm/hr
+    alert_min: 7.5 # mm - PAGASA Yellow Warning lower bound
+    alert_max: 30.0 # mm - PAGASA Red Warning threshold
+    humidity_threshold: 82.0 # % - flood-day humidity median (data: 81.9%)
+    humidity_precip_min: 5.0 # mm - min precip to pair with high humidity
+  rainfall_3h:
+    # Aligned with PAGASA Rainfall Warning System accumulation thresholds
+    critical: 65.0 # mm - 3h accumulation → Critical (PAGASA Red: >30mm/hr × ~2h)
+    alert: 30.0 # mm - 3h accumulation → Alert (PAGASA Orange: 15-30mm/hr)
+  tide:
+    alert_factor: 0.8 # tide_risk >= this → Alert
+    critical_combined_factor: 0.7 # tide_risk >= this + flood_prob check
+    critical_combined_flood_prob: 0.40 # flood_prob >= this with tide factor

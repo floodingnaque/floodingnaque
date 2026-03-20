@@ -2,13 +2,21 @@ import logging
 import os
 import re
 import threading
+import time as _time
 from datetime import datetime
 
 import requests
 from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.models.db import WeatherData, get_db_session
-from app.utils.circuit_breaker import CircuitOpenError, openweathermap_breaker, retry_with_backoff, weatherstack_breaker
-from app.utils.correlation import inject_correlation_headers
+from app.utils.observability.correlation import inject_correlation_headers
+from app.utils.observability.metrics import record_circuit_breaker_state, record_external_api_call
+from app.utils.resilience.cache import cache_get, cache_set
+from app.utils.resilience.circuit_breaker import (
+    CircuitOpenError,
+    openweathermap_breaker,
+    retry_with_backoff,
+    weatherstack_breaker,
+)
 from app.utils.secrets import get_secret
 
 logger = logging.getLogger(__name__)
@@ -109,15 +117,27 @@ def ingest_data(lat=None, lon=None):
         owm_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={owm_api_key}"
         logger.debug("Fetching weather data from OpenWeatherMap")
 
-        @retry_with_backoff(max_retries=2, base_delay=1.0, exceptions=(requests.exceptions.RequestException,))
-        def fetch_owm():
-            # Inject correlation headers for distributed tracing
-            headers = inject_correlation_headers({"User-Agent": "FloodingNaque/2.0 (Flood Prediction API)"})
-            response = requests.get(owm_url, timeout=10, headers=headers)
-            response.raise_for_status()
-            return response.json()
+        # Check cache first (5-minute TTL to avoid hammering the API)
+        owm_cache_key = f"owm:weather:{lat}:{lon}"
+        cached_owm = cache_get(owm_cache_key)
+        _t0 = _time.monotonic()
+        if cached_owm is not None:
+            logger.debug("Using cached OWM response")
+            owm_data = cached_owm
+        else:
 
-        owm_data = openweathermap_breaker.call(fetch_owm)
+            @retry_with_backoff(max_retries=2, base_delay=1.0, exceptions=(requests.exceptions.RequestException,))
+            def fetch_owm():
+                # Inject correlation headers for distributed tracing
+                headers = inject_correlation_headers({"User-Agent": "FloodingNaque/2.0 (Flood Prediction API)"})
+                response = requests.get(owm_url, timeout=10, headers=headers)
+                response.raise_for_status()
+                return response.json()
+
+            _t0 = _time.monotonic()
+            owm_data = openweathermap_breaker.call(fetch_owm)
+            record_external_api_call("openweathermap", "success", _time.monotonic() - _t0)
+            cache_set(owm_cache_key, owm_data, ttl=300)
 
         if "main" not in owm_data:
             raise ValueError("Invalid response from OpenWeatherMap API")
@@ -127,72 +147,94 @@ def ingest_data(lat=None, lon=None):
 
         logger.info(f"Successfully fetched data from OpenWeatherMap for lat={lat}, lon={lon}")
     except CircuitOpenError as e:
+        record_external_api_call("openweathermap", "circuit_open", 0.0)
+        record_circuit_breaker_state("openweathermap", "open")
         logger.error(f"OpenWeatherMap circuit breaker is open: {str(e)}")
         raise
     except requests.exceptions.RequestException as e:
+        record_external_api_call("openweathermap", "error", _time.monotonic() - _t0)
         logger.error(f"Error fetching data from OpenWeatherMap: {str(e)}")
         raise
     except (KeyError, ValueError) as e:
+        record_external_api_call("openweathermap", "error", _time.monotonic() - _t0)
         logger.error(f"Error parsing OpenWeatherMap response: {str(e)}")
         raise
 
     # Fetch precipitation data
-    # Priority: Weatherstack API > OpenWeatherMap rain data
+    # Priority: OpenWeatherMap rain > Weatherstack API (conserves 250 req/month quota)
     precipitation = 0
 
-    # Try Weatherstack API first if API key is provided (with circuit breaker)
-    if weatherstack_api_key:
+    # Try OpenWeatherMap rain data first (already fetched, no extra API call)
+    try:
+        if "rain" in owm_data and "3h" in owm_data["rain"]:
+            precipitation = owm_data["rain"]["3h"] / 3.0  # Convert 3h to hourly rate
+            logger.info("Retrieved precipitation data from OpenWeatherMap (3h)")
+        elif "rain" in owm_data and "1h" in owm_data["rain"]:
+            precipitation = owm_data["rain"]["1h"]
+            logger.info("Retrieved precipitation data from OpenWeatherMap (1h)")
+    except (KeyError, TypeError):
+        logger.debug("No rain data in OpenWeatherMap response")
+
+    # Fallback to Weatherstack API only when OWM has no precipitation data
+    if precipitation == 0 and weatherstack_api_key:
         try:
             # Check if circuit breaker is open before attempting
             if weatherstack_breaker.is_open:
                 logger.warning("Weatherstack circuit breaker is open, skipping to fallback")
             else:
-                # Weatherstack API endpoint for current weather
-                # Note: HTTPS requires paid plan, but we use it for security
-                # Free tier users should upgrade or the request will fail gracefully
-                weatherstack_url = (
-                    f"https://api.weatherstack.com/current?access_key={weatherstack_api_key}&query={lat},{lon}&units=m"
-                )
-                logger.debug("Fetching precipitation data from Weatherstack")
+                # Check Weatherstack cache first (10-min TTL — conserves 250 req/month quota)
+                ws_cache_key = f"weatherstack:precip:{lat}:{lon}"
+                cached_ws = cache_get(ws_cache_key)
+                if cached_ws is not None:
+                    if "current" in cached_ws:
+                        precip_value = cached_ws["current"].get("precip", 0)
+                        if precip_value is not None:
+                            precipitation = float(precip_value)
+                            logger.debug("Using cached Weatherstack precipitation data")
+                else:
+                    # Weatherstack API endpoint for current weather
+                    # Note: HTTPS requires paid plan, but we use it for security
+                    # Free tier users should upgrade or the request will fail gracefully
+                    weatherstack_url = f"https://api.weatherstack.com/current?access_key={weatherstack_api_key}&query={lat},{lon}&units=m"
+                    logger.debug("Fetching precipitation data from Weatherstack")
 
-                @retry_with_backoff(max_retries=2, base_delay=1.0, exceptions=(requests.exceptions.RequestException,))
-                def fetch_weatherstack():
-                    # Inject correlation headers for distributed tracing
-                    headers = inject_correlation_headers({"User-Agent": "FloodingNaque/2.0 (Flood Prediction API)"})
-                    response = requests.get(weatherstack_url, timeout=10, headers=headers)
-                    response.raise_for_status()
-                    return response.json()
+                    @retry_with_backoff(
+                        max_retries=2, base_delay=1.0, exceptions=(requests.exceptions.RequestException,)
+                    )
+                    def fetch_weatherstack():
+                        # Inject correlation headers for distributed tracing
+                        headers = inject_correlation_headers({"User-Agent": "FloodingNaque/2.0 (Flood Prediction API)"})
+                        response = requests.get(weatherstack_url, timeout=10, headers=headers)
+                        response.raise_for_status()
+                        return response.json()
 
-                weatherstack_data = weatherstack_breaker.call(fetch_weatherstack)
+                    _t1 = _time.monotonic()
+                    weatherstack_data = weatherstack_breaker.call(fetch_weatherstack)
+                    record_external_api_call("weatherstack", "success", _time.monotonic() - _t1)
 
-                # Check for errors in Weatherstack response
-                if "error" in weatherstack_data:
-                    # Don't log external API error details - may contain sensitive info
-                    logger.warning("Weatherstack API returned an error response")
-                elif "current" in weatherstack_data:
-                    # Weatherstack provides precipitation in 'precip' field (mm)
-                    precip_value = weatherstack_data["current"].get("precip", 0)
-                    if precip_value is not None:
-                        precipitation = float(precip_value)
-                        logger.info("Retrieved precipitation data from Weatherstack")
+                    # Cache the response (10-min TTL)
+                    cache_set(ws_cache_key, weatherstack_data, ttl=600)
+
+                    # Check for errors in Weatherstack response
+                    if "error" in weatherstack_data:
+                        # Don't log external API error details - may contain sensitive info
+                        logger.warning("Weatherstack API returned an error response")
+                    elif "current" in weatherstack_data:
+                        # Weatherstack provides precipitation in 'precip' field (mm)
+                        precip_value = weatherstack_data["current"].get("precip", 0)
+                        if precip_value is not None:
+                            precipitation = float(precip_value)
+                            logger.info("Retrieved precipitation data from Weatherstack")
         except CircuitOpenError:
+            record_external_api_call("weatherstack", "circuit_open", 0.0)
+            record_circuit_breaker_state("weatherstack", "open")
             logger.warning("Weatherstack circuit breaker open (using fallback)")
         except requests.exceptions.RequestException:
+            record_external_api_call("weatherstack", "error", _time.monotonic() - _t1)
             logger.warning("Error fetching data from Weatherstack API (continuing with OpenWeatherMap)")
         except (KeyError, ValueError, TypeError):
+            record_external_api_call("weatherstack", "error", _time.monotonic() - _t1)
             logger.warning("Error parsing Weatherstack response (continuing with OpenWeatherMap)")
-
-    # Fallback to OpenWeatherMap rain data if Weatherstack didn't provide precipitation
-    if precipitation == 0:
-        try:
-            if "rain" in owm_data and "3h" in owm_data["rain"]:
-                precipitation = owm_data["rain"]["3h"] / 3.0  # Convert 3h to hourly rate
-                logger.info("Retrieved precipitation data from OpenWeatherMap (3h)")
-            elif "rain" in owm_data and "1h" in owm_data["rain"]:
-                precipitation = owm_data["rain"]["1h"]
-                logger.info("Retrieved precipitation data from OpenWeatherMap (1h)")
-        except (KeyError, TypeError):
-            logger.debug("No rain data in OpenWeatherMap response")
 
     data["precipitation"] = precipitation
     data["timestamp"] = datetime.now()
@@ -201,14 +243,17 @@ def ingest_data(lat=None, lon=None):
     if precipitation == 0 and os.getenv("METEOSTAT_AS_FALLBACK", "True").lower() == "true":
         meteostat_svc = _get_meteostat_service()
         if meteostat_svc:
+            _t2 = _time.monotonic()
             try:
                 meteostat_data = meteostat_svc.get_weather_for_prediction(lat, lon)
+                record_external_api_call("meteostat", "success", _time.monotonic() - _t2)
                 if meteostat_data and meteostat_data.get("precipitation"):
                     precipitation = meteostat_data["precipitation"]
                     data["precipitation"] = precipitation
                     data["source"] = "OWM+Meteostat"
                     logger.info(f"Got precipitation from Meteostat fallback: {precipitation} mm")
             except Exception as e:
+                record_external_api_call("meteostat", "error", _time.monotonic() - _t2)
                 logger.debug(f"Meteostat fallback failed: {e}")
 
     # ---------------------------------------------------------------------------
@@ -219,8 +264,8 @@ def ingest_data(lat=None, lon=None):
     # or replace the station-level precipitation value.
     if os.getenv("PAGASA_RADAR_ENABLED", "True").lower() == "true":
         try:
-            from app.services.pagasa_radar_service import get_pagasa_radar_service
             from app.core.constants import get_nearest_station
+            from app.services.pagasa_radar_service import get_pagasa_radar_service
 
             pagasa = get_pagasa_radar_service()
             if pagasa.is_enabled():
@@ -284,8 +329,10 @@ def ingest_data(lat=None, lon=None):
 
     # Save to DB
     try:
+        # Remove keys that are not WeatherData columns before persisting
+        db_data = {k: v for k, v in data.items() if hasattr(WeatherData, k)}
         with get_db_session() as session:
-            weather_data = WeatherData(**data)
+            weather_data = WeatherData(**db_data)
             session.add(weather_data)
         logger.info("Successfully saved weather data to database")
     except Exception as e:

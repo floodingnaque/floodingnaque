@@ -298,25 +298,61 @@ class TestEvaluateSystemForThesis:
 
     def test_evaluate_system_returns_report(self):
         """Test that evaluate_system_for_thesis returns a complete report."""
-        with patch("app.services.evaluation.SystemEvaluator") as MockEvaluator:
-            mock_instance = MagicMock()
-            mock_instance.evaluate_accuracy.return_value = {
-                "accuracy": 1.0,
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1_score": 1.0,
-            }
-            mock_instance.evaluate_scalability.return_value = {"throughput": 100}
-            mock_instance.evaluate_reliability.return_value = {"success_rate": 0.99}
-            mock_instance.evaluate_usability.return_value = {"total_endpoints": 5}
-            mock_instance.generate_evaluation_report.return_value = {"status": "complete"}
-            MockEvaluator.return_value = mock_instance
+        expected_report = {"status": "complete"}
 
-            report = evaluate_system_for_thesis()
+        mock_evaluator = MagicMock()
+        mock_evaluator.evaluate_accuracy.return_value = {
+            "accuracy": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1_score": 1.0,
+        }
+        mock_evaluator.evaluate_scalability.return_value = {
+            "throughput": 100,
+            "total_requests": 100,
+            "failed_requests": 0,
+            "total_duration_seconds": 1.0,
+        }
+        mock_evaluator.evaluate_reliability.return_value = {"success_rate": 0.99}
+        mock_evaluator.evaluate_usability.return_value = {"total_endpoints": 5}
+        mock_evaluator.generate_evaluation_report.return_value = expected_report
 
-            assert report == {"status": "complete"}
-            mock_instance.evaluate_accuracy.assert_called_once()
-            mock_instance.evaluate_scalability.assert_called_once()
-            mock_instance.evaluate_reliability.assert_called_once()
-            mock_instance.evaluate_usability.assert_called_once()
-            mock_instance.generate_evaluation_report.assert_called_once()
+        with (
+            patch.object(SystemEvaluator, "__init__", lambda self: None),
+            patch.object(SystemEvaluator, "evaluate_accuracy", mock_evaluator.evaluate_accuracy),
+            patch.object(SystemEvaluator, "evaluate_scalability", mock_evaluator.evaluate_scalability),
+            patch.object(SystemEvaluator, "evaluate_reliability", mock_evaluator.evaluate_reliability),
+            patch.object(SystemEvaluator, "evaluate_usability", mock_evaluator.evaluate_usability),
+            patch.object(SystemEvaluator, "generate_evaluation_report", mock_evaluator.generate_evaluation_report),
+            patch("pandas.read_csv") as mock_read_csv,
+            patch("sklearn.model_selection.train_test_split") as mock_split,
+            patch("app.services.predict.predict_flood") as mock_predict,
+        ):
+
+            # Mock dataset loading
+            mock_df = MagicMock()
+            mock_df.columns = ["temperature", "humidity", "precipitation", "flood"]
+            mock_df.__getitem__ = MagicMock(return_value=mock_df)
+            mock_df.dropna.return_value = mock_df
+            mock_read_csv.return_value = mock_df
+
+            # Mock train_test_split
+            mock_X_test = MagicMock()
+            mock_X_test.head.return_value = mock_X_test
+            mock_X_test.to_dict.return_value = [{"temperature": 30, "humidity": 70, "precipitation": 0}]
+            mock_X_test.__len__ = MagicMock(return_value=1)
+            mock_row = MagicMock()
+            mock_row.to_dict.return_value = {"temperature": 30}
+            mock_X_test.iterrows.return_value = iter([(0, mock_row)])
+            mock_y_test = MagicMock()
+            mock_y_test.tolist.return_value = [0]
+            mock_split.return_value = (MagicMock(), mock_X_test, MagicMock(), mock_y_test)
+
+            # Mock predict_flood
+            mock_predict.return_value = {"prediction": 0}
+
+            with patch("pathlib.Path.exists", return_value=True):
+                report = evaluate_system_for_thesis()
+
+            assert report == expected_report
+            mock_evaluator.generate_evaluation_report.assert_called_once()

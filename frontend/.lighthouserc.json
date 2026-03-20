@@ -1,0 +1,18 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://localhost:4173/",
+        "http://localhost:4173/predict",
+        "http://localhost:4173/alerts"
+      ],
+      "startServerCommand": "npm run preview"
+    },
+    "assert": {
+      "budgetsFile": "lighthouse-budget.json"
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

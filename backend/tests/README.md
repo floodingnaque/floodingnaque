@@ -169,12 +169,12 @@ from app.module import function_to_test
 
 class TestComponent:
     """Test suite for component."""
-    
+
     def test_happy_path(self):
         """Test normal operation."""
         result = function_to_test(valid_input)
         assert result == expected_output
-    
+
     def test_error_handling(self):
         """Test error conditions."""
         with pytest.raises(ExpectedError):
@@ -190,7 +190,7 @@ from tests.strategies import valid_temperature
 
 class TestProperties:
     """Property-based test suite."""
-    
+
     @given(temp=valid_temperature())
     @settings(max_examples=100, deadline=None)
     def test_temperature_invariant(self, temp):
@@ -207,13 +207,13 @@ import pytest
 
 class TestContracts:
     """API contract test suite."""
-    
+
     @pytest.mark.contract
     def test_endpoint_response_schema(self, contract_client):
         """Contract: Endpoint returns expected schema."""
         response = contract_client.get('/api/endpoint')
         data = response.get_json()
-        
+
         assert 'required_field' in data
         assert isinstance(data['required_field'], expected_type)
 ```
@@ -226,7 +226,7 @@ from syrupy.assertion import SnapshotAssertion
 
 class TestSnapshots:
     """Snapshot test suite."""
-    
+
     @pytest.mark.snapshot
     def test_output_structure(self, snapshot: SnapshotAssertion):
         """Snapshot: Component output structure."""

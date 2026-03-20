@@ -20,7 +20,8 @@ Prerequisites:
 import logging
 import os
 import threading
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -723,9 +724,7 @@ class GoogleWeatherService:
             )
 
         if skipped:
-            logger.warning(
-                f"Skipped {skipped}/{len(chirps_data)} CHIRPS days with no ERA5 match"
-            )
+            logger.warning(f"Skipped {skipped}/{len(chirps_data)} CHIRPS days with no ERA5 match")
         logger.info(f"Prepared {len(results)} training records with real ERA5 features")
         return results
 

@@ -5,9 +5,11 @@
  * caching, and state management.
  */
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { type ReactNode, useState } from 'react';
+import { PERSIST_MAX_AGE, queryPersister } from "@/lib/query-persister";
+import { QueryClient } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { type ReactNode, useState } from "react";
 
 /**
  * Default query client configuration
@@ -24,8 +26,8 @@ const createQueryClient = () =>
         retry: 1,
         /** Don't refetch on window focus by default */
         refetchOnWindowFocus: false,
-        /** Refetch on reconnect */
-        refetchOnReconnect: true,
+        /** Don't refetch all queries on reconnect — SSE handles live updates */
+        refetchOnReconnect: false,
       },
       mutations: {
         /** Retry mutations once on failure */
@@ -52,7 +54,19 @@ export function QueryProvider({ children }: QueryProviderProps) {
   const [queryClient] = useState(() => createQueryClient());
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister,
+        maxAge: PERSIST_MAX_AGE,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            query.state.status === "success" &&
+            (query.meta as Record<string, unknown> | undefined)?.persist ===
+              true,
+        },
+      }}
+    >
       {children}
       {import.meta.env.DEV && (
         <ReactQueryDevtools
@@ -60,7 +74,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
           buttonPosition="bottom-left"
         />
       )}
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 

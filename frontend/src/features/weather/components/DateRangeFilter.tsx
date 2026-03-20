@@ -5,11 +5,11 @@
  * Provides quick presets and manual date input.
  */
 
-import { format, subDays } from 'date-fns';
-import { Calendar, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { format, subDays } from "date-fns";
+import { Calendar, X } from "lucide-react";
 
 export interface DateRange {
   start_date?: string;
@@ -33,39 +33,39 @@ interface Preset {
 
 const presets: Preset[] = [
   {
-    label: 'Today',
+    label: "Today",
     getValue: () => {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = format(new Date(), "yyyy-MM-dd");
       return { start_date: today, end_date: today };
     },
   },
   {
-    label: 'Last 7 days',
+    label: "Last 7 days",
     getValue: () => {
       const today = new Date();
       return {
-        start_date: format(subDays(today, 7), 'yyyy-MM-dd'),
-        end_date: format(today, 'yyyy-MM-dd'),
+        start_date: format(subDays(today, 7), "yyyy-MM-dd"),
+        end_date: format(today, "yyyy-MM-dd"),
       };
     },
   },
   {
-    label: 'Last 30 days',
+    label: "Last 30 days",
     getValue: () => {
       const today = new Date();
       return {
-        start_date: format(subDays(today, 30), 'yyyy-MM-dd'),
-        end_date: format(today, 'yyyy-MM-dd'),
+        start_date: format(subDays(today, 30), "yyyy-MM-dd"),
+        end_date: format(today, "yyyy-MM-dd"),
       };
     },
   },
   {
-    label: 'Last 90 days',
+    label: "Last 90 days",
     getValue: () => {
       const today = new Date();
       return {
-        start_date: format(subDays(today, 90), 'yyyy-MM-dd'),
-        end_date: format(today, 'yyyy-MM-dd'),
+        start_date: format(subDays(today, 90), "yyyy-MM-dd"),
+        end_date: format(today, "yyyy-MM-dd"),
       };
     },
   },
@@ -114,7 +114,7 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
     <div className="space-y-4">
       {/* Date inputs */}
       <div className="flex flex-wrap gap-4 items-end">
-        <div className="flex-1 min-w-[150px]">
+        <div className="flex-1 min-w-37.5">
           <Label htmlFor="start-date" className="text-sm font-medium">
             From
           </Label>
@@ -123,14 +123,15 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
             <Input
               id="start-date"
               type="date"
-              value={value.start_date || ''}
+              value={value.start_date || ""}
+              max={value.end_date || undefined}
               onChange={handleStartDateChange}
               className="pl-10"
             />
           </div>
         </div>
 
-        <div className="flex-1 min-w-[150px]">
+        <div className="flex-1 min-w-37.5">
           <Label htmlFor="end-date" className="text-sm font-medium">
             To
           </Label>
@@ -139,7 +140,8 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
             <Input
               id="end-date"
               type="date"
-              value={value.end_date || ''}
+              value={value.end_date || ""}
+              min={value.start_date || undefined}
               onChange={handleEndDateChange}
               className="pl-10"
             />
@@ -147,7 +149,12 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
         </div>
 
         {hasRange && (
-          <Button variant="ghost" size="icon" onClick={handleClear} title="Clear dates">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClear}
+            title="Clear dates"
+          >
             <X className="h-4 w-4" />
           </Button>
         )}

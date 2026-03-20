@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 
 logger = get_logger(__name__)
 

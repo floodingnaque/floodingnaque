@@ -141,7 +141,7 @@ test.describe('Authentication', () => {
       await page.getByLabel(/email/i).fill('test@example.com');
       await page.getByLabel(/^password$/i).fill('password123');
       await page.getByLabel(/confirm password/i).fill('different123');
-      
+
       await page.getByRole('button', { name: /create account|sign up|register/i }).click();
 
       await expect(page.getByText(/passwords must match|passwords don't match/i)).toBeVisible();
@@ -163,7 +163,7 @@ test.describe('Authentication', () => {
       await page.getByLabel(/email/i).fill('existing@example.com');
       await page.getByLabel(/^password$/i).fill('password123');
       await page.getByLabel(/confirm password/i).fill('password123');
-      
+
       await page.getByRole('button', { name: /create account|sign up|register/i }).click();
 
       await expect(page.getByRole('alert')).toBeVisible();
@@ -201,7 +201,7 @@ test.describe('Authentication', () => {
       await page.getByLabel(/email/i).fill('newuser@example.com');
       await page.getByLabel(/^password$/i).fill('password123');
       await page.getByLabel(/confirm password/i).fill('password123');
-      
+
       await page.getByRole('button', { name: /create account|sign up|register/i }).click();
 
       await expect(page).toHaveURL('/');
@@ -300,7 +300,7 @@ test.describe('Authentication - Mobile', () => {
     // Inputs should be large enough for touch
     const emailInput = page.getByLabel(/email/i);
     const box = await emailInput.boundingBox();
-    
+
     expect(box?.height).toBeGreaterThan(40);
   });
 });

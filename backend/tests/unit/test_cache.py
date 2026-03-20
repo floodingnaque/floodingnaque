@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Import cache module at top level for proper coverage tracking
-from app.utils import cache
-from app.utils.cache import (
+from app.utils.resilience import cache
+from app.utils.resilience.cache import (
     _make_cache_key,
     cache_clear_pattern,
     cache_delete,
@@ -29,8 +29,8 @@ from app.utils.cache import (
 class TestRedisClient:
     """Tests for Redis client initialization."""
 
-    @patch.dict("os.environ", {"REDIS_URL": ""})
-    def test_get_redis_client_no_url(self):
+    @patch("app.utils.resilience.cache.get_secret", return_value=None)
+    def test_get_redis_client_no_url(self, mock_get_secret):
         """Test Redis client returns None when URL not configured."""
         cache._redis_client = None
         cache._cache_enabled = None

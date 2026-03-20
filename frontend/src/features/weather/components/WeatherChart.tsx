@@ -3,24 +3,26 @@
  *
  * Interactive line/bar chart displaying weather data over time.
  * Shows temperature, humidity, and precipitation with dual Y-axes.
+ * Constrains Y-axes to realistic Parañaque ranges and flags outliers.
  */
 
-import { useMemo } from 'react';
-import { format } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { WeatherData } from "@/types";
+import { format } from "date-fns";
+import { AlertTriangle } from "lucide-react";
+import { useMemo } from "react";
 import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
   Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { WeatherData } from '@/types';
+} from "recharts";
 
 interface WeatherChartProps {
   /** Weather data to display */
@@ -45,15 +47,6 @@ interface TooltipProps {
   label?: string;
 }
 
-/**
- * Map data keys to color classes
- */
-const colorClasses: Record<string, string> = {
-  temperature: 'text-foreground',
-  humidity: 'text-muted-foreground',
-  precipitation: 'text-foreground/70',
-};
-
 function CustomTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null;
 
@@ -61,7 +54,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
     <div className="bg-background border rounded-lg shadow-lg p-3">
       <p className="font-medium text-sm mb-2">{label}</p>
       {payload.map((entry, index) => (
-        <p key={index} className={`text-sm ${colorClasses[entry.dataKey] || ''}`}>
+        <p key={index} className="text-sm" style={{ color: entry.color }}>
           {entry.name}: {formatValue(entry.dataKey, entry.value)}
         </p>
       ))}
@@ -74,15 +67,20 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
  */
 function formatValue(key: string, value: number): string {
   switch (key) {
-    case 'temperature':
+    case "temperature":
       return `${value.toFixed(1)}°C`;
-    case 'humidity':
+    case "humidity":
       return `${value.toFixed(1)}%`;
-    case 'precipitation':
+    case "precipitation":
       return `${value.toFixed(2)} mm`;
     default:
       return value.toString();
   }
+}
+
+/** Check if a Kelvin temperature is realistic for Parañaque (20–45 °C). */
+function isPlausibleTemp(kelvin: number): boolean {
+  return kelvin >= 293.15 && kelvin <= 318.15;
 }
 
 /**
@@ -91,17 +89,39 @@ function formatValue(key: string, value: number): string {
  * @example
  * <WeatherChart data={weatherData} isLoading={isLoading} />
  */
-export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: WeatherChartProps) {
-  // Transform data for the chart
-  const chartData = useMemo(() => {
-    return data.map((item) => ({
+const CHART_MARGIN = { top: 20, right: 30, left: 20, bottom: 5 } as const;
+
+export function WeatherChart({
+  data,
+  isLoading,
+  title = "Weather Trends",
+}: WeatherChartProps) {
+  // Transform data for the chart — filter out extreme outliers
+  const { chartData, outlierCount } = useMemo(() => {
+    let outliers = 0;
+    const filtered = data.filter((item) => {
+      if (!isPlausibleTemp(item.temperature)) {
+        outliers++;
+        return false;
+      }
+      return true;
+    });
+
+    const mapped = filtered.map((item) => ({
       ...item,
-      // Format timestamp for display
-      time: format(new Date(item.recorded_at), 'MMM dd HH:mm'),
-      // Convert Kelvin to Celsius for display
+      time: format(new Date(item.recorded_at), "MMM dd HH:mm"),
       temperature: item.temperature - 273.15,
     }));
+
+    return { chartData: mapped, outlierCount: outliers };
   }, [data]);
+
+  // Compute precipitation max for right Y-axis domain
+  const precipMax = useMemo(() => {
+    if (!chartData.length) return 20;
+    const max = Math.max(...chartData.map((d) => d.precipitation));
+    return Math.max(10, Math.ceil(max / 5) * 5 + 5);
+  }, [chartData]);
 
   if (isLoading) {
     return (
@@ -110,7 +130,7 @@ export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: Weat
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[400px] w-full" />
+          <Skeleton className="h-100 w-full" />
         </CardContent>
       </Card>
     );
@@ -123,7 +143,7 @@ export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: Weat
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[400px] flex items-center justify-center text-muted-foreground">
+          <div className="h-100 flex items-center justify-center text-muted-foreground">
             No weather data available for the selected period
           </div>
         </CardContent>
@@ -134,13 +154,21 @@ export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: Weat
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>{title}</CardTitle>
+          {outlierCount > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-risk-alert">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {outlierCount} outlier{outlierCount > 1 ? "s" : ""} excluded
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
-          <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <ComposedChart data={chartData} margin={CHART_MARGIN}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-            
+
             {/* X-Axis with timestamps */}
             <XAxis
               dataKey="time"
@@ -149,79 +177,84 @@ export function WeatherChart({ data, isLoading, title = 'Weather Trends' }: Weat
               axisLine={false}
               className="text-muted-foreground"
             />
-            
-            {/* Left Y-Axis for Temperature and Humidity */}
+
+            {/* Left Y-Axis for Temperature (20–40 °C) & Humidity (0–100%) */}
             <YAxis
               yAxisId="left"
+              domain={[15, 100]}
               tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
               className="text-muted-foreground"
               label={{
-                value: 'Temp (°C) / Humidity (%)',
+                value: "Temp (°C) / Humidity (%)",
                 angle: -90,
-                position: 'insideLeft',
-                style: { textAnchor: 'middle', fontSize: 12 },
+                position: "insideLeft",
+                style: { textAnchor: "middle", fontSize: 12 },
               }}
             />
-            
-            {/* Right Y-Axis for Precipitation */}
+
+            {/* Right Y-Axis for Precipitation (mm) */}
             <YAxis
               yAxisId="right"
               orientation="right"
+              domain={[0, precipMax]}
               tick={{ fontSize: 12 }}
               tickLine={false}
               axisLine={false}
               className="text-muted-foreground"
               label={{
-                value: 'Precipitation (mm)',
+                value: "Precipitation (mm)",
                 angle: 90,
-                position: 'insideRight',
-                style: { textAnchor: 'middle', fontSize: 12 },
+                position: "insideRight",
+                style: { textAnchor: "middle", fontSize: 12 },
               }}
             />
-            
+
             {/* Tooltip */}
             <Tooltip content={<CustomTooltip />} />
-            
-            {/* Legend */}
+
+            {/* Legend — click to toggle series visibility */}
             <Legend
-              wrapperStyle={{ paddingTop: '20px' }}
+              wrapperStyle={{ paddingTop: "20px" }}
               formatter={(value) => <span className="text-sm">{value}</span>}
             />
-            
+
             {/* Precipitation bars */}
             <Bar
               yAxisId="right"
               dataKey="precipitation"
               name="Precipitation"
-              fill="#64748b"
-              opacity={0.6}
+              fill="#3b82f6"
+              opacity={0.5}
               radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
             />
-            
+
             {/* Temperature line */}
             <Line
               yAxisId="left"
               type="monotone"
               dataKey="temperature"
               name="Temperature"
-              stroke="#1e293b"
+              stroke="#ef4444"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 6 }}
+              isAnimationActive={false}
             />
-            
+
             {/* Humidity line */}
             <Line
               yAxisId="left"
               type="monotone"
               dataKey="humidity"
               name="Humidity"
-              stroke="#94a3b8"
+              stroke="#22c55e"
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 6 }}
+              isAnimationActive={false}
             />
           </ComposedChart>
         </ResponsiveContainer>

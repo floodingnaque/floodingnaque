@@ -11,7 +11,7 @@ import time
 from functools import wraps
 from typing import Callable, Optional
 
-from app.utils.logging import get_logger
+from app.utils.observability.logging import get_logger
 from app.utils.rate_limit_tiers import (
     get_anonymous_limits,
     get_api_key_tier,
@@ -155,6 +155,23 @@ def init_rate_limiter(app):
         logger.info(
             f"Rate limiting enabled: {DEFAULT_LIMIT} requests per {WINDOW_SECONDS}s " f"(storage: {storage_type})"
         )
+
+        # Warn if using in-memory storage with multiple workers
+        if storage_type == "Memory":
+            gunicorn_workers = int(os.getenv("GUNICORN_WORKERS", "1"))
+            app_env = os.getenv("APP_ENV", "development")
+            if gunicorn_workers > 1:
+                logger.warning(
+                    f"Rate limiting uses in-memory storage with {gunicorn_workers} workers. "
+                    "Each worker tracks limits independently — effective limits are "
+                    f"{gunicorn_workers}x the configured value. Set RATE_LIMIT_STORAGE_URL "
+                    "to a Redis URL for shared rate limiting in production."
+                )
+            if app_env in ("production", "staging"):
+                logger.warning(
+                    "In-memory rate limit storage is not recommended for production. "
+                    "Set RATE_LIMIT_STORAGE_URL=redis://<host>:6379 for accurate limits."
+                )
     else:
         logger.info("Rate limiting is disabled")
 

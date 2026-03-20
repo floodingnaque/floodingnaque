@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -90,7 +90,7 @@ class LabelInconsistency:
 class ConsistencyReport:
     """Result of a full label-consistency audit."""
 
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     total_rows: int = 0
     consistent: bool = True
     inconsistencies: List[LabelInconsistency] = field(default_factory=list)
@@ -168,9 +168,7 @@ class LabelConsistencyChecker:
         report = ConsistencyReport(total_rows=len(df))
 
         if df.empty or "flood" not in df.columns:
-            report.recommendations.append(
-                "Dataset is empty or missing 'flood' column – nothing to check."
-            )
+            report.recommendations.append("Dataset is empty or missing 'flood' column – nothing to check.")
             return report
 
         self._check_meteorological_plausibility(df, report)
@@ -220,9 +218,7 @@ class LabelConsistencyChecker:
             join_on = [c for c in join_on if c in source_a.columns and c in source_b.columns]
 
         if not join_on:
-            report.recommendations.append(
-                "No common join columns found between the two sources."
-            )
+            report.recommendations.append("No common join columns found between the two sources.")
             return report
 
         merged = source_a.merge(
@@ -233,18 +229,14 @@ class LabelConsistencyChecker:
         )
 
         if merged.empty:
-            report.recommendations.append(
-                "No overlapping records between the two sources."
-            )
+            report.recommendations.append("No overlapping records between the two sources.")
             return report
 
         col_a = f"flood_{source_a_name}"
         col_b = f"flood_{source_b_name}"
 
         if col_a not in merged.columns or col_b not in merged.columns:
-            report.recommendations.append(
-                "Could not find flood columns after merge."
-            )
+            report.recommendations.append("Could not find flood columns after merge.")
             return report
 
         disagreements = merged[merged[col_a] != merged[col_b]]
@@ -254,14 +246,9 @@ class LabelConsistencyChecker:
             report.add(
                 LabelInconsistency(
                     inconsistency_type=InconsistencyType.CROSS_SOURCE,
-                    severity=(
-                        InconsistencySeverity.HIGH
-                        if pct > 10
-                        else InconsistencySeverity.MEDIUM
-                    ),
+                    severity=(InconsistencySeverity.HIGH if pct > 10 else InconsistencySeverity.MEDIUM),
                     message=(
-                        f"{n} label disagreements ({pct:.1f}%) between "
-                        f"'{source_a_name}' and '{source_b_name}'."
+                        f"{n} label disagreements ({pct:.1f}%) between " f"'{source_a_name}' and '{source_b_name}'."
                     ),
                     row_indices=disagreements.index.tolist()[:100],
                     details={
@@ -278,9 +265,7 @@ class LabelConsistencyChecker:
     # Individual checks
     # ------------------------------------------------------------------
 
-    def _check_meteorological_plausibility(
-        self, df: pd.DataFrame, report: ConsistencyReport
-    ) -> None:
+    def _check_meteorological_plausibility(self, df: pd.DataFrame, report: ConsistencyReport) -> None:
         """Flag flood=1 under dry, low-humidity conditions."""
         if "precipitation" not in df.columns:
             return
@@ -292,9 +277,7 @@ class LabelConsistencyChecker:
         antecedent_ok = True
 
         if "precip_3day_sum" in df.columns:
-            antecedent_mask = (
-                df["precip_3day_sum"] <= self.min_antecedent_precip
-            )
+            antecedent_mask = df["precip_3day_sum"] <= self.min_antecedent_precip
             suspicious = flood_mask & dry_mask & antecedent_mask
             antecedent_ok = False
         else:
@@ -302,10 +285,7 @@ class LabelConsistencyChecker:
 
         indices = df.index[suspicious].tolist()
         if indices:
-            msg = (
-                f"{len(indices)} flood labels on dry days "
-                f"(precipitation ≤ {self.dry_day_threshold} mm"
-            )
+            msg = f"{len(indices)} flood labels on dry days " f"(precipitation ≤ {self.dry_day_threshold} mm"
             if not antecedent_ok:
                 msg += f", 3-day sum ≤ {self.min_antecedent_precip} mm"
             msg += ")."
@@ -355,9 +335,7 @@ class LabelConsistencyChecker:
                     )
                 )
 
-    def _check_depth_label_mismatch(
-        self, df: pd.DataFrame, report: ConsistencyReport
-    ) -> None:
+    def _check_depth_label_mismatch(self, df: pd.DataFrame, report: ConsistencyReport) -> None:
         """Flag records where flood_depth > 0 but flood=0, or vice versa."""
         depth_col = None
         for candidate in ("flood_depth_cm", "flood_depth"):
@@ -378,8 +356,7 @@ class LabelConsistencyChecker:
                         inconsistency_type=InconsistencyType.DEPTH_LABEL_MISMATCH,
                         severity=InconsistencySeverity.HIGH,
                         message=(
-                            f"{len(idx_fn)} rows have {depth_col} > 0 but flood=0. "
-                            "These are likely mislabeled."
+                            f"{len(idx_fn)} rows have {depth_col} > 0 but flood=0. " "These are likely mislabeled."
                         ),
                         row_indices=idx_fn,
                     )
@@ -401,9 +378,7 @@ class LabelConsistencyChecker:
                     )
                 )
 
-    def _check_spatial_consistency(
-        self, df: pd.DataFrame, report: ConsistencyReport
-    ) -> None:
+    def _check_spatial_consistency(self, df: pd.DataFrame, report: ConsistencyReport) -> None:
         """Same date + same location → labels should agree."""
         loc_cols = [c for c in self.location_cols if c in df.columns]
         if not loc_cols or self.date_col not in df.columns:
@@ -424,16 +399,13 @@ class LabelConsistencyChecker:
                     inconsistency_type=InconsistencyType.SPATIAL,
                     severity=InconsistencySeverity.HIGH,
                     message=(
-                        f"{len(conflict_indices)} rows with conflicting flood "
-                        f"labels for the same date + location."
+                        f"{len(conflict_indices)} rows with conflicting flood " f"labels for the same date + location."
                     ),
                     row_indices=conflict_indices,
                 )
             )
 
-    def _check_temporal_consistency(
-        self, df: pd.DataFrame, report: ConsistencyReport
-    ) -> None:
+    def _check_temporal_consistency(self, df: pd.DataFrame, report: ConsistencyReport) -> None:
         """Flag sudden label flips for the same location (0→1→0 in 1 day
         without corresponding weather change)."""
         if self.date_col not in df.columns:
@@ -447,9 +419,7 @@ class LabelConsistencyChecker:
 
         df_sorted = df.copy()
         try:
-            df_sorted["_parsed_date"] = pd.to_datetime(
-                df_sorted[self.date_col], errors="coerce"
-            )
+            df_sorted["_parsed_date"] = pd.to_datetime(df_sorted[self.date_col], errors="coerce")
         except Exception:
             return
 
@@ -465,11 +435,7 @@ class LabelConsistencyChecker:
                 continue
             labels = grp["flood"].values
             dates = grp["_parsed_date"].values
-            precip = (
-                grp["precipitation"].values
-                if "precipitation" in grp.columns
-                else None
-            )
+            precip = grp["precipitation"].values if "precipitation" in grp.columns else None
 
             for i in range(1, len(labels) - 1):
                 # Check for 0→1→0 or 1→0→1 pattern
@@ -499,9 +465,7 @@ class LabelConsistencyChecker:
                 )
             )
 
-    def _check_temporal_global(
-        self, df: pd.DataFrame, report: ConsistencyReport
-    ) -> None:
+    def _check_temporal_global(self, df: pd.DataFrame, report: ConsistencyReport) -> None:
         """Simplified temporal check without location grouping."""
         try:
             dates = pd.to_datetime(df[self.date_col], errors="coerce")
@@ -532,15 +496,9 @@ class LabelConsistencyChecker:
                 )
             )
 
-    def _check_duplicate_conflicts(
-        self, df: pd.DataFrame, report: ConsistencyReport
-    ) -> None:
+    def _check_duplicate_conflicts(self, df: pd.DataFrame, report: ConsistencyReport) -> None:
         """Find near-duplicate rows with conflicting labels."""
-        feature_cols = [
-            c
-            for c in ["temperature", "humidity", "precipitation", "month"]
-            if c in df.columns
-        ]
+        feature_cols = [c for c in ["temperature", "humidity", "precipitation", "month"] if c in df.columns]
         if not feature_cols:
             return
 
@@ -559,10 +517,7 @@ class LabelConsistencyChecker:
                 LabelInconsistency(
                     inconsistency_type=InconsistencyType.DUPLICATE_CONFLICT,
                     severity=InconsistencySeverity.MEDIUM,
-                    message=(
-                        f"{len(conflict_indices)} rows with identical features but "
-                        "conflicting flood labels."
-                    ),
+                    message=(f"{len(conflict_indices)} rows with identical features but " "conflicting flood labels."),
                     row_indices=conflict_indices,
                 )
             )
@@ -579,8 +534,7 @@ class LabelConsistencyChecker:
 
         if type_counts.get("meteorological", 0) > 0:
             recs.append(
-                "Review flood labels on dry days – cross-reference with "
-                "official DRRMO records or satellite imagery."
+                "Review flood labels on dry days – cross-reference with " "official DRRMO records or satellite imagery."
             )
 
         if type_counts.get("depth_label_mismatch", 0) > 0:
@@ -591,15 +545,11 @@ class LabelConsistencyChecker:
 
         if type_counts.get("spatial", 0) > 0:
             recs.append(
-                "Resolve spatial conflicts (same date + location, different "
-                "labels). Prefer official DRRMO records."
+                "Resolve spatial conflicts (same date + location, different " "labels). Prefer official DRRMO records."
             )
 
         if type_counts.get("temporal", 0) > 0:
-            recs.append(
-                "Investigate rapid label flips – may indicate data entry "
-                "errors or time-zone mismatches."
-            )
+            recs.append("Investigate rapid label flips – may indicate data entry " "errors or time-zone mismatches.")
 
         if type_counts.get("cross_source", 0) > 0:
             recs.append(

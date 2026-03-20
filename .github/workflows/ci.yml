@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: '3.13'
+  PYTHON_VERSION: "3.13"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -36,39 +36,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Validate base compose.yaml
-      run: docker compose config > /dev/null
-      env:
-        POSTGRES_PASSWORD: validation-dummy
-        PGBOUNCER_ADMIN_PASSWORD: validation-dummy
-        PGBOUNCER_STATS_PASSWORD: validation-dummy
+      - name: Validate base compose.yaml
+        run: docker compose config > /dev/null
+        env:
+          POSTGRES_PASSWORD: validation-dummy
+          PGBOUNCER_ADMIN_PASSWORD: validation-dummy
+          PGBOUNCER_STATS_PASSWORD: validation-dummy
 
-    - name: Validate compose.development.yaml
-      run: docker compose -f compose.development.yaml config > /dev/null
+      - name: Validate compose.development.yaml
+        run: docker compose -f compose.development.yaml config > /dev/null
 
-    - name: Validate compose.staging.yaml
-      run: docker compose -f compose.staging.yaml config > /dev/null
-      env:
-        OWM_API_KEY: validation-dummy
+      - name: Validate compose.staging.yaml
+        run: docker compose -f compose.staging.yaml config > /dev/null
+        env:
+          OWM_API_KEY: validation-dummy
 
-    - name: Validate compose.production.yaml
-      run: docker compose -f compose.production.yaml config > /dev/null
-      env:
-        DD_API_KEY: validation-dummy
-        PGBOUNCER_DB_PASSWORD: validation-dummy
+      - name: Validate compose.production.yaml
+        run: docker compose -f compose.production.yaml config > /dev/null
+        env:
+          PGBOUNCER_DB_PASSWORD: validation-dummy
 
-    - name: Validate production with profiles
-      run: docker compose -f compose.production.yaml --profile nginx --profile monitoring config > /dev/null
-      env:
-        DD_API_KEY: validation-dummy
-        PGBOUNCER_DB_PASSWORD: validation-dummy
+      - name: Validate production with profiles
+        run: docker compose -f compose.production.yaml --profile nginx --profile monitoring config > /dev/null
+        env:
+          PGBOUNCER_DB_PASSWORD: validation-dummy
 
-    - name: Validate compose.mlflow.yaml
-      run: docker compose -f compose.mlflow.yaml config > /dev/null
+      - name: Validate compose.mlflow.yaml
+        run: docker compose -f compose.mlflow.yaml config > /dev/null
 
   # ==========================================================================
   # Container Image Security Scanning with Trivy
@@ -78,68 +76,68 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write  # Required for uploading SARIF results
+      security-events: write # Required for uploading SARIF results
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Build Docker image for scanning
-      uses: docker/build-push-action@v5
-      with:
-        context: ./backend
-        target: production
-        push: false
-        load: true
-        tags: floodingnaque-api:scan-${{ github.sha }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build Docker image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          target: production
+          push: false
+          load: true
+          tags: floodingnaque-api:scan-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.28.0
-      with:
-        image-ref: 'floodingnaque-api:scan-${{ github.sha }}'
-        format: 'table'
-        exit-code: '0'  # Don't fail build, report only
-        ignore-unfixed: true
-        vuln-type: 'os,library'
-        severity: 'CRITICAL,HIGH'
-        output: 'trivy-results.txt'
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "floodingnaque-api:scan-${{ github.sha }}"
+          format: "table"
+          exit-code: "0" # Don't fail build, report only
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+          output: "trivy-results.txt"
 
-    - name: Run Trivy scanner (SARIF output)
-      uses: aquasecurity/trivy-action@0.28.0
-      with:
-        image-ref: 'floodingnaque-api:scan-${{ github.sha }}'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        ignore-unfixed: true
-        vuln-type: 'os,library'
-        severity: 'CRITICAL,HIGH'
+      - name: Run Trivy scanner (SARIF output)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "floodingnaque-api:scan-${{ github.sha }}"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
 
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
 
-    - name: Display Trivy scan results
-      if: always()
-      run: |
-        echo "=== Trivy Scan Results ==="
-        cat trivy-results.txt || echo "No results file found"
+      - name: Display Trivy scan results
+        if: always()
+        run: |
+          echo "=== Trivy Scan Results ==="
+          cat trivy-results.txt || echo "No results file found"
 
-    - name: Check for critical vulnerabilities
-      run: |
-        # Fail if CRITICAL vulnerabilities found
-        if grep -q "CRITICAL" trivy-results.txt 2>/dev/null; then
-          echo "::error::Critical vulnerabilities found in container image!"
-          exit 1
-        fi
-      continue-on-error: false  # Enforce blocking on critical vulnerabilities
+      - name: Check for critical vulnerabilities
+        run: |
+          # Fail if CRITICAL vulnerabilities found
+          if grep -q "CRITICAL" trivy-results.txt 2>/dev/null; then
+            echo "::error::Critical vulnerabilities found in container image!"
+            exit 1
+          fi
+        continue-on-error: false # Enforce blocking on critical vulnerabilities
 
   # ==========================================================================
   # Code Quality & Testing
@@ -153,67 +151,67 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.13']
+        python-version: ["3.13"]
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-        cache-dependency-path: backend/requirements*.txt
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+          cache-dependency-path: backend/requirements*.txt
 
-    - name: Install dependencies
-      run: |
-        cd backend
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
-    - name: Lint with flake8
-      run: |
-        cd backend
-        # Stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Enforce style - max-complexity and line-length violations block CI
-        flake8 . --count --max-complexity=10 --max-line-length=120 --statistics
-      continue-on-error: false
+      - name: Lint with flake8
+        run: |
+          cd backend
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Enforce style - max-complexity and line-length violations block CI
+          flake8 . --count --max-complexity=10 --max-line-length=120 --statistics
+        continue-on-error: false
 
-    - name: Type check with mypy
-      run: |
-        cd backend
-        # Uses mypy.ini configuration for consistent type checking
-        mypy --config-file mypy.ini
-      continue-on-error: false  # Type errors block CI
+      - name: Type check with mypy
+        run: |
+          cd backend
+          # Uses mypy.ini configuration for consistent type checking
+          mypy --config-file mypy.ini
+        continue-on-error: false # Type errors block CI
 
-    - name: Validate Alembic migrations
-      run: |
-        cd backend
-        python -m alembic upgrade head
-        python -m alembic downgrade base
-        python -m alembic upgrade head
-      env:
-        DATABASE_URL: sqlite:///test_migrations.db
-        SECRET_KEY: ci-migration-test-key
+      - name: Validate Alembic migrations
+        run: |
+          cd backend
+          python -m alembic upgrade head
+          python -m alembic downgrade base
+          python -m alembic upgrade head
+        env:
+          DATABASE_URL: sqlite:///test_migrations.db
+          SECRET_KEY: ci-migration-test-key
 
-    - name: Test with pytest
-      run: |
-        cd backend
-        python -m pytest tests/ -v -m "not model and not slow" --cov=app --cov-branch --cov-report=xml --cov-report=html -o "addopts="
+      - name: Test with pytest
+        run: |
+          cd backend
+          python -m pytest tests/ -v -m "not model and not slow" --cov=app --cov-branch --cov-report=xml --cov-report=html -o "addopts="
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
-      if: always()
-      with:
-        files: ./backend/coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: true
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: always()
+        with:
+          files: ./backend/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
 
   # ==========================================================================
   # Frontend - Reuse dedicated workflow
@@ -236,59 +234,59 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-        cache: 'pip'
-        cache-dependency-path: backend/requirements*.txt
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: backend/requirements*.txt
 
-    - name: Install dependencies
-      run: |
-        cd backend
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install locust pytest
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install locust pytest
 
-    - name: Start API server
-      env:
-        SECRET_KEY: ci-load-test-key
-        APP_ENV: development
-        STARTUP_HEALTH_CHECK: 'false'
-        SCHEDULER_ENABLED: 'false'
-        ENV_VALIDATION_ENABLED: 'false'
-      run: |
-        cd backend
-        python -m gunicorn main:app --bind 0.0.0.0:5000 --workers 2 --timeout 60 &
-        # Wait for server to be ready with health poll (max 60 seconds)
-        for i in $(seq 1 30); do
-          if curl -sf http://localhost:5000/status > /dev/null 2>&1; then
-            echo "Server is ready after $((i * 2)) seconds"
-            break
-          fi
-          if [ $i -eq 30 ]; then
-            echo "Server failed to start within 60 seconds"
-            exit 1
-          fi
-          sleep 2
-        done
+      - name: Start API server
+        env:
+          SECRET_KEY: ci-load-test-key
+          APP_ENV: development
+          STARTUP_HEALTH_CHECK: "false"
+          SCHEDULER_ENABLED: "false"
+          ENV_VALIDATION_ENABLED: "false"
+        run: |
+          cd backend
+          python -m gunicorn main:app --bind 0.0.0.0:5000 --workers 2 --timeout 60 &
+          # Wait for server to be ready with health poll (max 60 seconds)
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/status > /dev/null 2>&1; then
+              echo "Server is ready after $((i * 2)) seconds"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Server failed to start within 60 seconds"
+              exit 1
+            fi
+            sleep 2
+          done
 
-    - name: Run smoke test
-      run: |
-        cd backend
-        python -m tests.load.load_test_suite --test-type smoke --host http://localhost:5000 --ci
+      - name: Run smoke test
+        run: |
+          cd backend
+          python -m tests.load.load_test_suite --test-type smoke --host http://localhost:5000 --ci
 
-    - name: Upload load test report
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: load-test-report
-        path: backend/reports/load_tests/
-        retention-days: 14
+      - name: Upload load test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-report
+          path: backend/reports/load_tests/
+          retention-days: 14
 
   # ==========================================================================
   # Full Load Test Suite (On main branch only)
@@ -302,59 +300,59 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-        cache: 'pip'
-        cache-dependency-path: backend/requirements*.txt
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: backend/requirements*.txt
 
-    - name: Install dependencies
-      run: |
-        cd backend
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install locust pytest
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install locust pytest
 
-    - name: Start API server
-      env:
-        SECRET_KEY: ci-load-test-key
-        APP_ENV: development
-        STARTUP_HEALTH_CHECK: 'false'
-        SCHEDULER_ENABLED: 'false'
-        ENV_VALIDATION_ENABLED: 'false'
-      run: |
-        cd backend
-        python -m gunicorn main:app --bind 0.0.0.0:5000 --workers 4 --timeout 120 &
-        # Wait for server to be ready with health poll (max 60 seconds)
-        for i in $(seq 1 30); do
-          if curl -sf http://localhost:5000/status > /dev/null 2>&1; then
-            echo "Server is ready after $((i * 2)) seconds"
-            break
-          fi
-          if [ $i -eq 30 ]; then
-            echo "Server failed to start within 60 seconds"
-            exit 1
-          fi
-          sleep 2
-        done
+      - name: Start API server
+        env:
+          SECRET_KEY: ci-load-test-key
+          APP_ENV: development
+          STARTUP_HEALTH_CHECK: "false"
+          SCHEDULER_ENABLED: "false"
+          ENV_VALIDATION_ENABLED: "false"
+        run: |
+          cd backend
+          python -m gunicorn main:app --bind 0.0.0.0:5000 --workers 4 --timeout 120 &
+          # Wait for server to be ready with health poll (max 60 seconds)
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/status > /dev/null 2>&1; then
+              echo "Server is ready after $((i * 2)) seconds"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Server failed to start within 60 seconds"
+              exit 1
+            fi
+            sleep 2
+          done
 
-    - name: Run load test
-      run: |
-        cd backend
-        python -m tests.load.load_test_suite --test-type load --host http://localhost:5000 --ci
+      - name: Run load test
+        run: |
+          cd backend
+          python -m tests.load.load_test_suite --test-type load --host http://localhost:5000 --ci
 
-    - name: Upload load test report
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: full-load-test-report
-        path: backend/reports/load_tests/
-        retention-days: 30
+      - name: Upload load test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-load-test-report
+          path: backend/reports/load_tests/
+          retention-days: 30
 
   # ==========================================================================
   # Build & Push Docker Image to GHCR
@@ -369,36 +367,36 @@ jobs:
       packages: write
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata (tags, labels)
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=sha,prefix=
-          type=raw,value=latest
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./backend
-        target: production
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

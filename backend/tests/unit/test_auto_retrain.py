@@ -2,11 +2,11 @@
 Tests for Automated Retraining Pipeline - drift detection, triggers, pipeline.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import numpy as np
 import pandas as pd
 import pytest
-from datetime import datetime, timezone, timedelta
-
 from app.services.auto_retrain import (
     AutoRetrainingPipeline,
     RetrainingConfig,
@@ -15,10 +15,10 @@ from app.services.auto_retrain import (
     detect_drift,
 )
 
-
 # ═════════════════════════════════════════════════════════════════════════════
 # PSI (Population Stability Index)
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestComputePSI:
     """Tests for PSI drift metric computation."""
@@ -54,28 +54,35 @@ class TestComputePSI:
 # Drift Detection
 # ═════════════════════════════════════════════════════════════════════════════
 
+
 class TestDetectDrift:
     """Tests for multi-feature drift detection."""
 
     def test_no_drift(self):
         np.random.seed(42)
-        ref = pd.DataFrame({
-            "temperature": np.random.normal(30, 2, 500),
-            "humidity": np.random.normal(70, 10, 500),
-        })
+        ref = pd.DataFrame(
+            {
+                "temperature": np.random.normal(30, 2, 500),
+                "humidity": np.random.normal(70, 10, 500),
+            }
+        )
         result = detect_drift(ref, ref)
         assert result["drift_detected"] is False
 
     def test_drift_detected(self):
         np.random.seed(42)
-        ref = pd.DataFrame({
-            "temperature": np.random.normal(30, 2, 500),
-            "humidity": np.random.normal(70, 10, 500),
-        })
-        cur = pd.DataFrame({
-            "temperature": np.random.normal(35, 3, 500),  # Shifted
-            "humidity": np.random.normal(70, 10, 500),
-        })
+        ref = pd.DataFrame(
+            {
+                "temperature": np.random.normal(30, 2, 500),
+                "humidity": np.random.normal(70, 10, 500),
+            }
+        )
+        cur = pd.DataFrame(
+            {
+                "temperature": np.random.normal(35, 3, 500),  # Shifted
+                "humidity": np.random.normal(70, 10, 500),
+            }
+        )
         result = detect_drift(ref, cur, monitored_features=["temperature", "humidity"])
         assert result["drift_detected"] is True
         assert "temperature" in result["drifted_features"]
@@ -90,6 +97,7 @@ class TestDetectDrift:
 # ═════════════════════════════════════════════════════════════════════════════
 # Trigger Checking
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestCheckTriggers:
     """Tests for retraining trigger evaluation."""
@@ -110,20 +118,22 @@ class TestCheckTriggers:
 
     def test_drift_trigger(self):
         np.random.seed(42)
-        ref = pd.DataFrame({
-            "temperature": np.random.normal(30, 2, 500),
-            "humidity": np.random.normal(70, 10, 500),
-            "precipitation": np.random.normal(5, 3, 500),
-        })
-        cur = pd.DataFrame({
-            "temperature": np.random.normal(38, 4, 500),  # Large shift
-            "humidity": np.random.normal(90, 5, 500),     # Large shift
-            "precipitation": np.random.normal(20, 8, 500),
-        })
-        pipeline = AutoRetrainingPipeline()
-        result = pipeline.check_triggers(
-            reference_data=ref, current_data=cur
+        ref = pd.DataFrame(
+            {
+                "temperature": np.random.normal(30, 2, 500),
+                "humidity": np.random.normal(70, 10, 500),
+                "precipitation": np.random.normal(5, 3, 500),
+            }
         )
+        cur = pd.DataFrame(
+            {
+                "temperature": np.random.normal(38, 4, 500),  # Large shift
+                "humidity": np.random.normal(90, 5, 500),  # Large shift
+                "precipitation": np.random.normal(20, 8, 500),
+            }
+        )
+        pipeline = AutoRetrainingPipeline()
+        result = pipeline.check_triggers(reference_data=ref, current_data=cur)
         assert result["should_retrain"] is True
         assert "drift" in result["triggered_by"]
 
@@ -131,6 +141,7 @@ class TestCheckTriggers:
 # ═════════════════════════════════════════════════════════════════════════════
 # Retraining Config
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestRetrainingConfig:
     """Tests for retraining configuration defaults."""
@@ -157,6 +168,7 @@ class TestRetrainingConfig:
 # ═════════════════════════════════════════════════════════════════════════════
 # Promotion Criteria
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestPromotionCriteria:
     """Tests for model promotion gating."""

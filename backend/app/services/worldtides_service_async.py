@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 from app.core.constants import DEFAULT_LATITUDE, DEFAULT_LONGITUDE
 from app.services.worldtides_types import TideData, TideExtreme
-from app.utils.correlation import inject_correlation_headers
+from app.utils.observability.correlation import inject_correlation_headers
 from app.utils.secrets import get_secret
 from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 

@@ -7,7 +7,13 @@ Provides endpoints for listing models and API documentation.
 import logging
 
 from app.api.middleware.rate_limit import get_endpoint_limit, limiter
-from app.services.predict import get_current_model_info, list_available_models
+from app.services.predict import (
+    _get_model_loader,
+    _load_model,
+    get_current_model_info,
+    get_model_metadata,
+    list_available_models,
+)
 from flask import Blueprint, jsonify, request
 
 logger = logging.getLogger(__name__)
@@ -244,3 +250,138 @@ def api_docs():
         "base_url": request.url_root.rstrip("/"),
     }
     return jsonify(docs), 200
+
+
+@models_bp.route("/api/models/history", methods=["GET"])
+def model_history():
+    """
+    Get training history for all model versions with real metrics.
+
+    Returns metrics read directly from model JSON metadata files,
+    not fabricated or assumed values.
+
+    Returns:
+        200: Array of model version metadata
+        500: Internal server error
+    """
+    try:
+        import os
+
+        models = list_available_models()
+        current_info = get_current_model_info()
+        current_version = None
+        if current_info and current_info.get("metadata"):
+            current_version = current_info["metadata"].get("version")
+
+        history = []
+        for model in models:
+            metadata = model.get("metadata", {})
+            if not metadata:
+                continue
+
+            # Compute file size and read checksum sidecar
+            model_path = model.get("path", "")
+            file_size_bytes = None
+            checksum = None
+            if model_path and os.path.isfile(model_path):
+                file_size_bytes = os.path.getsize(model_path)
+                sha_path = model_path.replace(".joblib", ".sha256")
+                if os.path.isfile(sha_path):
+                    try:
+                        with open(sha_path, "r") as f:
+                            checksum = f.read().strip().split()[0]
+                    except Exception:  # nosec B110 — checksum is optional
+                        pass
+
+            entry = {
+                "version": model["version"],
+                "name": metadata.get("name"),
+                "description": metadata.get("description"),
+                "model_type": metadata.get("model_type"),
+                "created_at": metadata.get("created_at"),
+                "is_active": model["version"] == current_version,
+                "training_data": metadata.get("training_data", {}),
+                "metrics": metadata.get("metrics", {}),
+                "cross_validation": metadata.get("cross_validation", {}),
+                "features": metadata.get("features", []),
+                "model_parameters": metadata.get("model_parameters", {}),
+                "file_size_bytes": file_size_bytes,
+                "checksum": checksum,
+            }
+            history.append(entry)
+
+        return jsonify({"models": history, "active_version": current_version}), 200
+    except Exception as e:
+        logger.error("Error fetching model history: %s", e)
+        return jsonify({"error": "Failed to fetch model history"}), 500
+
+
+@models_bp.route("/api/models/feature-importance", methods=["GET"])
+def model_feature_importance():
+    """
+    Get feature importances from the currently loaded model.
+
+    Extracts real feature_importances_ and feature_names_in_ from
+    the loaded scikit-learn model at request time.
+
+    Returns:
+        200: Sorted list of feature importances
+        500: Internal server error
+    """
+    try:
+        model = _load_model()
+        if not hasattr(model, "feature_importances_") or not hasattr(model, "feature_names_in_"):
+            return jsonify({"error": "Model does not expose feature importances"}), 400
+
+        importances = model.feature_importances_
+        feature_names = model.feature_names_in_
+
+        features = sorted(
+            [{"feature": name, "importance": float(imp)} for name, imp in zip(feature_names, importances)],
+            key=lambda x: x["importance"],
+            reverse=True,
+        )
+
+        loader = _get_model_loader()
+        version = loader.metadata.get("version") if loader.metadata else None
+
+        return jsonify({"features": features, "model_version": version}), 200
+    except Exception as e:
+        logger.error("Error fetching feature importance: %s", e)
+        return jsonify({"error": "Failed to compute feature importance"}), 500
+
+
+@models_bp.route("/api/models/calibration", methods=["GET"])
+def model_calibration():
+    """
+    Get model calibration and cross-validation data.
+
+    Returns cross-validation fold scores and calibration data
+    from model metadata (when available from calibrated training).
+
+    Returns:
+        200: Calibration and CV data
+        500: Internal server error
+    """
+    try:
+        loader = _get_model_loader()
+        if loader.model is None:
+            _load_model()
+
+        metadata = loader.metadata or {}
+        cv_data = metadata.get("cross_validation", {})
+        metrics = metadata.get("metrics", {})
+        calibration = metadata.get("calibration", {})
+
+        response = {
+            "model_version": metadata.get("version"),
+            "cross_validation": cv_data,
+            "metrics": metrics,
+        }
+        if calibration:
+            response["calibration"] = calibration
+
+        return jsonify(response), 200
+    except Exception as e:
+        logger.error("Error fetching calibration data: %s", e)
+        return jsonify({"error": "Failed to fetch calibration data"}), 500

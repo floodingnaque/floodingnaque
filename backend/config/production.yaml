@@ -25,7 +25,7 @@ data:
 # Model Settings - Full Production Training
 model:
   type: "RandomForestClassifier"
-  
+
   default_params:
     n_estimators: 200
     max_depth: 15
@@ -34,14 +34,14 @@ model:
     class_weight: "balanced_subsample"
     max_features: "sqrt"
     n_jobs: -1
-    
+
   optuna:
     enabled: true
     n_trials: 50
     timeout_minutes: 30
     sampler: "TPE"
     pruner: "MedianPruner"
-    
+
   calibration:
     enabled: true
     method: "isotonic"
@@ -51,7 +51,7 @@ model:
 cross_validation:
   folds: 10
   shuffle: true
-  
+
   temporal:
     enabled: true
     n_splits: 5
@@ -71,7 +71,7 @@ mlflow:
   experiment_name: "floodingnaque_production"
   auto_log: true
   log_models: true
-  
+
   tags:
     environment: "production"
     project: "floodingnaque"
@@ -86,7 +86,7 @@ registry:
     - development
     - staging
     - production
-    
+
   # Strict production promotion criteria
   promotion_criteria:
     staging:
@@ -99,7 +99,7 @@ registry:
       min_f1_score: 0.85
       min_roc_auc: 0.90
       max_cv_std: 0.03
-      
+
   retention:
     max_versions_per_stage: 5
     archive_old_models: true
@@ -107,17 +107,17 @@ registry:
 # Drift Detection - Strict Monitoring
 drift:
   enabled: true
-  
+
   psi:
     warning_threshold: 0.1
     alert_threshold: 0.2
-    
+
   monitored_features:
     - temperature
     - humidity
     - precipitation
     - precip_3day_sum
-    
+
   retrain_on:
     - psi_alert
     - performance_degradation

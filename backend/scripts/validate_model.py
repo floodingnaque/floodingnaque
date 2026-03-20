@@ -157,7 +157,7 @@ def test_model_predictions(model, test_data):
 def evaluate_model_performance(model, data_file=None):
     """Evaluate model performance on test data."""
     if data_file is None:
-        data_file = DATA_DIR / "synthetic_dataset.csv"
+        data_file = DATA_DIR / "processed" / "cumulative_v2_up_to_2025.csv"
     else:
         data_file = Path(data_file)
 
@@ -231,7 +231,7 @@ def validate_model(model_path=None, models_dir=None, data_file=None):
         models_dir = Path(models_dir)
 
     if data_file is None:
-        data_file = DATA_DIR / "synthetic_dataset.csv"
+        data_file = DATA_DIR / "processed" / "cumulative_v2_up_to_2025.csv"
     else:
         data_file = Path(data_file)
 
@@ -338,7 +338,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Validate flood prediction model")
     parser.add_argument("--model", type=str, help="Path to specific model file (defaults to latest)")
     parser.add_argument("--models-dir", type=str, default="models", help="Directory containing models")
-    parser.add_argument("--data", type=str, default="data/synthetic_dataset.csv", help="Path to test data")
+    parser.add_argument(
+        "--data", type=str, default="data/processed/cumulative_v2_up_to_2025.csv", help="Path to test data"
+    )
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
 
     args = parser.parse_args()

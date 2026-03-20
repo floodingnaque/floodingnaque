@@ -39,10 +39,12 @@ class TestExportWeather:
             record.precipitation = 5.0
             record.wind_speed = 10.0
             record.pressure = 1013.25
-            record.latitude = 14.4793
-            record.longitude = 121.0198
-            record.location = "Paranaque City"
+            record.location_lat = 14.4793
+            record.location_lon = 121.0198
+            record.source = "openweathermap"
+            record.is_deleted = False
             records.append(record)
+        return records
         return records
 
     def test_export_weather_json_format(self, client, api_headers, mock_db_session, mock_weather_data):
