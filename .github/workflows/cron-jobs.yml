@@ -132,7 +132,7 @@ jobs:
 
       - name: "Auto-open incident issue on failure"
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -189,7 +189,7 @@ jobs:
         ports: ["5433:5432"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -257,7 +257,7 @@ jobs:
 
       - name: "Report backup health"
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -306,7 +306,7 @@ jobs:
           echo "Raw usage data:"
           echo "$USAGE" | python3 -m json.tool || echo "$USAGE"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -370,11 +370,11 @@ jobs:
       (github.event_name == 'schedule' && github.event.schedule == '0 0 15 5 *')
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -484,7 +484,7 @@ jobs:
 
       - name: "Create readiness issue"
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -535,11 +535,11 @@ jobs:
       (github.event_name == 'schedule' && github.event.schedule == '0 23 * * 1')
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -656,7 +656,7 @@ jobs:
 
       - name: "Post benchmark results"
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
