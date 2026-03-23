@@ -18,9 +18,9 @@
 # ============================================================================
 # WEB FRAMEWORK & API
 # ============================================================================
-Flask==3.0.3
-flask-cors==6.0.0
-Werkzeug==3.1.5
+Flask==3.1.3
+flask-cors==6.0.2
+Werkzeug==3.1.6
 
 # Production Servers
 gunicorn==23.0.0
@@ -28,40 +28,40 @@ gunicorn==23.0.0
 # ============================================================================
 # HTTP & EXTERNAL APIs
 # ============================================================================
-requests==2.32.4
+requests==2.32.5
 urllib3==2.6.3
 aiohttp==3.13.3
 aiohttp[speedups]==3.13.3
-tenacity==9.1.2
+tenacity==9.1.4
 
 # ============================================================================
 # DATA PROCESSING (Runtime - model inference only)
 # ============================================================================
 # PINNED for ML model reproducibility - must match training environment
-numpy==2.1.3
+numpy==2.4.3
 pandas==2.2.3
 scikit-learn==1.8.0
-joblib==1.4.2
-scipy==1.14.1
+joblib==1.5.3
+scipy==1.17.1
 
 # ============================================================================
 # SCHEDULING & BACKGROUND TASKS
 # ============================================================================
-APScheduler==3.10.4
-celery==5.4.0
+APScheduler==3.11.2
+celery==5.6.2
 
 # ============================================================================
 # CONFIGURATION & ENVIRONMENT
 # ============================================================================
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # ============================================================================
 # DATABASE & ORM
 # ============================================================================
-SQLAlchemy==2.0.35
-alembic==1.13.3
+SQLAlchemy==2.0.48
+alembic==1.18.4
 pg8000==1.31.5
-psycopg2-binary==2.9.10
+psycopg2-binary==2.9.11
 
 # ============================================================================
 # SECURITY & AUTHENTICATION
@@ -69,14 +69,14 @@ psycopg2-binary==2.9.10
 cryptography==45.0.3
 itsdangerous==2.2.0
 bcrypt==4.3.0
-PyJWT[crypto]==2.10.1  # >=2.10.1 required by supabase-auth
+PyJWT[crypto]==2.12.1  # >=2.10.1 required by supabase-auth
 
 # ============================================================================
 # INPUT VALIDATION & SANITIZATION
 # ============================================================================
-validators==0.34.0
-bleach==6.2.0
-email-validator==2.2.0
+validators==0.35.0
+bleach==6.3.0
+email-validator==2.3.0
 
 # ============================================================================
 # RATE LIMITING & CACHING
@@ -90,26 +90,26 @@ packaging==24.2
 # ============================================================================
 # PERFORMANCE OPTIMIZATION
 # ============================================================================
-flask-compress==1.15
-Flask-Caching==2.3.0
+flask-compress==1.23
+Flask-Caching==2.3.1
 
 # ============================================================================
 # API DOCUMENTATION
 # ============================================================================
 flasgger==0.9.7.1
-PyYAML==6.0.2
+PyYAML==6.0.3
 
 # ============================================================================
 # MONITORING, LOGGING & ERROR TRACKING
 # ============================================================================
 python-json-logger==3.2.1
-prometheus-flask-exporter==0.23.1
-sentry-sdk[flask]==2.18.0
+prometheus-flask-exporter==0.23.2
+sentry-sdk[flask]==2.55.0
 
 # ============================================================================
 # PROGRESS TRACKING
 # ============================================================================
-tqdm==4.67.1
+tqdm==4.67.3
 
 # ============================================================================
 # WEATHER DATA SOURCES (used by runtime services)
@@ -117,15 +117,15 @@ tqdm==4.67.1
 meteostat==1.6.8
 
 # Open-Meteo
-openmeteo-requests==1.2.0
-requests-cache==1.2.1
+openmeteo-requests==1.7.5
+requests-cache==1.3.1
 retry-requests==2.0.0
 
 # ============================================================================
 # EXCEL & PDF (used by upload/export API routes)
 # ============================================================================
 openpyxl==3.1.5
-reportlab==4.2.5
+reportlab==4.4.10
 
 # ============================================================================
 # SERVER-SENT EVENTS (SSE)
@@ -138,15 +138,15 @@ flask-sse==1.0.0
 # ============================================================================
 graphene==3.4.3
 # graphql-server removed - unused (graphql-core provides graphql_sync directly)
-graphql-core==3.2.5
+graphql-core==3.2.8
 
 # ============================================================================
 # GOOGLE CLOUD / EARTH ENGINE (lazy-loaded in google_weather_service)
 # ============================================================================
-earthengine-api==1.4.3
-google-cloud-bigquery==3.27.0
-google-auth==2.37.0
-google-auth-oauthlib==1.2.1
-google-auth-httplib2==0.2.0
+earthengine-api==1.7.18
+google-cloud-bigquery==3.40.1
+google-auth==2.49.1
+google-auth-oauthlib==1.3.0
+google-auth-httplib2==0.3.0
 google-cloud-storage==2.19.0
 protobuf==5.29.5
