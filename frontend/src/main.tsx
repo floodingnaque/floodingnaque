@@ -17,7 +17,6 @@ import { useAlertStore } from "@/state/stores/alertStore";
 import { useAuthStore } from "@/state/stores/authStore";
 import { inject as injectAnalytics } from "@vercel/analytics";
 import { injectSpeedInsights } from "@vercel/speed-insights";
-import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 
 // Global styles
@@ -30,8 +29,18 @@ initSentry();
 injectSpeedInsights();
 injectAnalytics();
 
-// Register PWA service worker (auto-update when new SW is available)
-registerSW({ immediate: true });
+import { registerSW } from "virtual:pwa-register";
+
+// PWA service worker: only register in production to avoid stale cached
+// API responses during development.
+if (import.meta.env.PROD) {
+  registerSW({ immediate: true });
+} else {
+  // Unregister any leftover SW from a previous production build
+  navigator.serviceWorker
+    ?.getRegistrations()
+    .then((regs) => regs.forEach((r) => r.unregister()));
+}
 
 // Initialize cross-tab sync and leader election
 initTabSync({

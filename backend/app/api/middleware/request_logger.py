@@ -14,7 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from app.models.db import APIRequest, get_db_session
-from flask import current_app, g, request
+from flask import current_app, g, has_app_context, request
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +34,19 @@ def _is_logging_disabled():
     return False
 
 
-def _persist_request_log(log_data: dict):
+def _persist_request_log(log_data: dict, app=None):
     """Persist a request log entry to the database (runs in background thread)."""
     try:
-        api_request = APIRequest(**log_data)
-        with get_db_session() as session:
-            session.add(api_request)
+        ctx = app.app_context() if app is not None else None
+        if ctx is not None:
+            ctx.push()
+        try:
+            api_request = APIRequest(**log_data)
+            with get_db_session() as session:
+                session.add(api_request)
+        finally:
+            if ctx is not None:
+                ctx.pop()
     except Exception as e:
         err_str = str(e)
         # Duplicate-key errors (code 23505) are expected when SSE
@@ -94,7 +101,8 @@ def log_request_to_db():
             error_message=error_message,
         )
 
-        _log_executor.submit(_persist_request_log, log_data)
+        _app = current_app._get_current_object() if has_app_context() else None
+        _log_executor.submit(_persist_request_log, log_data, _app)
 
     except Exception as e:
         logger.warning("Failed to prepare request log data: %s", e)

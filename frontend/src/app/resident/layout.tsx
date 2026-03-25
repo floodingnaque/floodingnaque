@@ -20,6 +20,7 @@ import {
   LogOut,
   Map,
   Menu,
+  MessageSquare,
   Moon,
   Phone,
   Route,
@@ -121,6 +122,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: "/resident/report", icon: AlertTriangle, label: "Report Flood" },
       { to: "/resident/community", icon: Users, label: "Community Reports" },
       { to: "/resident/my-reports", icon: FileText, label: "My Reports" },
+      { to: "/resident/chat", icon: MessageSquare, label: "Barangay Chat" },
     ],
   },
   {
@@ -164,6 +166,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/resident/guide": "Flood Safety Guide",
   "/resident/plan": "My Evacuation Plan",
   "/resident/profile/household": "My Household Profile",
+  "/resident/chat": "Barangay Chat",
   "/resident/settings": "Settings",
 };
 

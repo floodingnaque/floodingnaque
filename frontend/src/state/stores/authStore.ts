@@ -7,6 +7,7 @@
  * in api-client.ts handles expired access tokens automatically.
  */
 
+import { getDefaultRoute } from "@/config/role-routes";
 import { initializeAuthStore } from "@/lib/api-client";
 import { postTabMessage } from "@/lib/tab-sync";
 import type { User } from "@/types";
@@ -55,6 +56,8 @@ interface AuthActions {
   setAccessTokenSilent: (accessToken: string) => void;
   /** Mark Zustand rehydration as complete */
   setHasHydrated: (v: boolean) => void;
+  /** Get the role-appropriate redirect route for the current user */
+  getRedirectRoute: () => string;
 }
 
 /**
@@ -128,6 +131,11 @@ export const useAuthStore = create<AuthStore>()(
         setHasHydrated: (v: boolean) => {
           set({ hasHydrated: v });
         },
+
+        getRedirectRoute: () => {
+          const role = useAuthStore.getState().user?.role;
+          return getDefaultRoute(role);
+        },
       }),
       {
         name: "auth-storage",
@@ -170,6 +178,26 @@ export const useAuthStore = create<AuthStore>()(
 // Initialize the API client with the auth store reference
 initializeAuthStore(useAuthStore);
 
+// Initialize Supabase Realtime auth sync — forwards the JWT so
+// RLS policies can identify the user across all roles.
+import { initSupabaseAuth } from "@/lib/supabase";
+
+{
+  let prevToken = useAuthStore.getState().accessToken;
+  initSupabaseAuth(
+    // subscribe: listen for accessToken changes
+    (cb) =>
+      useAuthStore.subscribe((state) => {
+        if (state.accessToken !== prevToken) {
+          prevToken = state.accessToken;
+          cb(state.accessToken);
+        }
+      }),
+    // getToken: read current token
+    () => useAuthStore.getState().accessToken,
+  );
+}
+
 /**
  * Selector hooks for common auth state
  */
@@ -187,6 +215,7 @@ export const useSetAuth = () => useAuthStore((state) => state.setAuth);
 export const useSetCsrfToken = () =>
   useAuthStore((state) => state.setCsrfToken);
 export const useClearAuth = () => useAuthStore((state) => state.clearAuth);
+export const useUserRole = () => useAuthStore((s) => s.user?.role);
 
 /**
  * Combined actions object - kept for backward compatibility but

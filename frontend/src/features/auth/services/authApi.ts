@@ -16,6 +16,7 @@ import type {
   PasswordResetResponse,
   RefreshTokenRequest,
   RegisterRequest,
+  ResidentRegistrationRequest,
   UpdateProfileRequest,
   User,
 } from "@/types";
@@ -45,6 +46,16 @@ export const authApi = {
    * The response is validated against AuthResponseSchema at runtime.
    */
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
+    const raw = await api.post<unknown>(endpoints.auth.register, data);
+    return AuthResponseSchema.parse(raw);
+  },
+
+  /**
+   * Register a resident with full onboarding data (all wizard steps).
+   */
+  registerResident: async (
+    data: ResidentRegistrationRequest,
+  ): Promise<AuthResponse> => {
     const raw = await api.post<unknown>(endpoints.auth.register, data);
     return AuthResponseSchema.parse(raw);
   },
@@ -86,7 +97,9 @@ export const authApi = {
    * Update the current user's profile
    */
   updateProfile: async (data: UpdateProfileRequest): Promise<User> => {
-    return api.patch<User>(endpoints.auth.me, data);
+    const raw = await api.patch<unknown>(endpoints.auth.me, data);
+    const parsed = MeResponseSchema.parse(raw);
+    return parsed.user;
   },
 
   /**

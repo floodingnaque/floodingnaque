@@ -16,7 +16,7 @@ from app.models.db import get_db_session
 from app.utils.api_constants import HTTP_OK
 from app.utils.api_responses import api_error
 from flask import Blueprint, g, jsonify, request
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def require_admin(f):
     @require_auth
     def decorated(*args, **kwargs):
         if getattr(g, "current_user_role", None) != "admin":
-            return api_error("Admin access required", 403, code="ADMIN_REQUIRED")
+            return api_error("ADMIN_REQUIRED", "Admin access required", 403)
         return f(*args, **kwargs)
 
     return decorated
@@ -185,66 +185,52 @@ def log_stats():
         with get_db_session() as session:
             today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
-            # Total today
-            total_today = (
-                session.query(func.count(APIRequest.id))
-                .filter(APIRequest.is_deleted == False, APIRequest.created_at >= today_start)  # noqa: E712
-                .scalar()
-                or 0
-            )
-
-            # Predictions today
-            predictions_today = (
-                session.query(func.count(APIRequest.id))
-                .filter(
-                    APIRequest.is_deleted == False,  # noqa: E712
-                    APIRequest.created_at >= today_start,
-                    APIRequest.endpoint.ilike("%predict%"),
+            # Single aggregation query for all today's stats (was 6 separate queries)
+            row = (
+                session.query(
+                    func.count(
+                        case((APIRequest.created_at >= today_start, APIRequest.id))
+                    ).label("total_today"),
+                    func.count(
+                        case(
+                            (
+                                (APIRequest.created_at >= today_start)
+                                & (APIRequest.endpoint.ilike("%predict%")),
+                                APIRequest.id,
+                            )
+                        )
+                    ).label("predictions_today"),
+                    func.count(
+                        case(
+                            (
+                                (APIRequest.created_at >= today_start)
+                                & (APIRequest.endpoint.ilike("%auth/login%")),
+                                APIRequest.id,
+                            )
+                        )
+                    ).label("login_attempts"),
+                    func.count(
+                        case(
+                            (
+                                (APIRequest.created_at >= today_start)
+                                & (APIRequest.endpoint.ilike("%upload%")),
+                                APIRequest.id,
+                            )
+                        )
+                    ).label("uploads_today"),
+                    func.count(
+                        case(
+                            (
+                                (APIRequest.created_at >= today_start)
+                                & (APIRequest.status_code >= 400),
+                                APIRequest.id,
+                            )
+                        )
+                    ).label("errors_today"),
+                    func.count(APIRequest.id).label("total_all"),
                 )
-                .scalar()
-                or 0
-            )
-
-            # Login attempts today
-            login_attempts = (
-                session.query(func.count(APIRequest.id))
-                .filter(
-                    APIRequest.is_deleted == False,  # noqa: E712
-                    APIRequest.created_at >= today_start,
-                    APIRequest.endpoint.ilike("%auth/login%"),
-                )
-                .scalar()
-                or 0
-            )
-
-            # Data uploads today
-            uploads_today = (
-                session.query(func.count(APIRequest.id))
-                .filter(
-                    APIRequest.is_deleted == False,  # noqa: E712
-                    APIRequest.created_at >= today_start,
-                    APIRequest.endpoint.ilike("%upload%"),
-                )
-                .scalar()
-                or 0
-            )
-
-            # Errors today (status >= 400)
-            errors_today = (
-                session.query(func.count(APIRequest.id))
-                .filter(
-                    APIRequest.is_deleted == False,  # noqa: E712
-                    APIRequest.created_at >= today_start,
-                    APIRequest.status_code >= 400,
-                )
-                .scalar()
-                or 0
-            )
-
-            # Total all time
-            total_all = (
-                session.query(func.count(APIRequest.id)).filter(APIRequest.is_deleted == False).scalar()  # noqa: E712
-                or 0
+                .filter(APIRequest.is_deleted == False)  # noqa: E712
+                .one()
             )
 
             return (
@@ -252,12 +238,12 @@ def log_stats():
                     {
                         "success": True,
                         "data": {
-                            "total_today": total_today,
-                            "predictions_today": predictions_today,
-                            "login_attempts": login_attempts,
-                            "uploads_today": uploads_today,
-                            "errors_today": errors_today,
-                            "total_all_time": total_all,
+                            "total_today": row.total_today,
+                            "predictions_today": row.predictions_today,
+                            "login_attempts": row.login_attempts,
+                            "uploads_today": row.uploads_today,
+                            "errors_today": row.errors_today,
+                            "total_all_time": row.total_all,
                         },
                     }
                 ),
@@ -290,7 +276,7 @@ def bulk_delete_logs():
         data = request.get_json() or {}
 
         if not data.get("confirm"):
-            return api_error("Bulk delete requires confirm=true", 400, code="CONFIRM_REQUIRED")
+            return api_error("CONFIRM_REQUIRED", "Bulk delete requires confirm=true", 400)
 
         older_than_days = data.get("older_than_days")
         status_min = data.get("status_code_min")
@@ -374,28 +360,37 @@ def storage_stats():
         from app.models.weather import WeatherData
 
         with get_db_session() as session:
-            tables = {
-                "api_requests": APIRequest,
-                "predictions": Prediction,
-                "weather_data": WeatherData,
-                "community_reports": CommunityReport,
-                "alert_history": AlertHistory,
-                "evacuation_centers": EvacuationCenter,
-            }
+            models = [
+                ("api_requests", APIRequest),
+                ("predictions", Prediction),
+                ("weather_data", WeatherData),
+                ("community_reports", CommunityReport),
+                ("alert_history", AlertHistory),
+                ("evacuation_centers", EvacuationCenter),
+            ]
 
+            # Each COUNT is O(index scan) with the is_deleted indexes.
+            # Still 6 queries but each is a single fast aggregate —
+            # down from 18 (3 per table in a loop).
             result = {}
             grand_total_rows = 0
             grand_total_bytes = 0
 
-            for name, model in tables.items():
-                total = session.query(func.count(model.id)).scalar() or 0
-                active = session.query(func.count(model.id)).filter(model.is_deleted.is_(False)).scalar() or 0
+            for name, model in models:
+                row = (
+                    session.query(
+                        func.count(model.id).label("total"),
+                        func.count(case((model.is_deleted.is_(False), model.id))).label("active"),
+                        func.max(model.created_at).label("last_record"),
+                    )
+                    .one()
+                )
+
+                total = row.total or 0
+                active = row.active or 0
                 soft_deleted = total - active
+                last_record = row.last_record
 
-                # Last record timestamp
-                last_record = session.query(func.max(model.created_at)).scalar()
-
-                # Estimated size
                 row_bytes = AVG_ROW_BYTES.get(name, 256)
                 est_bytes = total * row_bytes
 
@@ -522,7 +517,7 @@ def purge_deleted():
         data = request.get_json() or {}
 
         if not data.get("confirm"):
-            return api_error("Purge requires confirm=true", 400, code="CONFIRM_REQUIRED")
+            return api_error("CONFIRM_REQUIRED", "Purge requires confirm=true", 400)
 
         table_names = data.get("tables", [])
         if not table_names or not isinstance(table_names, list):

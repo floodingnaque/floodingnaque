@@ -126,8 +126,9 @@ class AlertSystem:
         """
         Get or create the singleton AlertSystem instance.
 
-        This provides a controlled way to access the alert system
-        instead of using a global mutable variable.
+        On first call, creates the instance with the supplied flags.
+        On subsequent calls, updates the channel-enabled flags on the
+        existing instance so that env-var changes are always reflected.
 
         Args:
             sms_enabled: Enable SMS notifications
@@ -151,6 +152,15 @@ class AlertSystem:
                 telegram_enabled=telegram_enabled,
                 siren_enabled=siren_enabled,
             )
+        else:
+            # Update flags on existing instance so env changes take effect
+            cls._instance.sms_enabled = sms_enabled
+            cls._instance.email_enabled = email_enabled
+            cls._instance.slack_enabled = slack_enabled
+            cls._instance.firebase_push_enabled = firebase_push_enabled
+            cls._instance.messenger_enabled = messenger_enabled
+            cls._instance.telegram_enabled = telegram_enabled
+            cls._instance.siren_enabled = siren_enabled
         return cls._instance
 
     @classmethod
@@ -235,6 +245,39 @@ class AlertSystem:
             except Exception as sse_exc:
                 logger.error(f"SSE broadcast failed: {sse_exc}")
                 alert_record["delivery_status"]["sse"] = "failed"
+
+        # Web Push notifications (VAPID) — send for Alert and Critical
+        if alert_type in ["web", "all"] and risk_data.get("risk_level", 0) >= 1:
+            try:
+                from app.api.routes.push_notifications import send_push_citywide, send_push_to_barangay
+
+                push_payload = {
+                    "title": _get_push_title(risk_data.get("risk_level", 1)),
+                    "message": message,
+                    "risk_level": risk_data.get("risk_level"),
+                    "url": "/dashboard",
+                }
+
+                # Targeted barangay push first, then citywide
+                barangay_id = risk_data.get("barangay_id")
+                if barangay_id:
+                    brgy_result = send_push_to_barangay(barangay_id, push_payload)
+                    logger.info(
+                        "Web push (barangay %s): %s for %s → %d delivered",
+                        barangay_id, risk_label, location, brgy_result.get("delivered", 0),
+                    )
+
+                push_result = send_push_citywide(push_payload)
+                alert_record["delivery_status"]["web_push"] = (
+                    f"delivered:{push_result.get('delivered', 0)}"
+                )
+                logger.info(
+                    "Web push (citywide): %s for %s → %d delivered",
+                    risk_label, location, push_result.get("delivered", 0),
+                )
+            except Exception as push_exc:
+                logger.error("Web push dispatch failed: %s", push_exc)
+                alert_record["delivery_status"]["web_push"] = "failed"
 
         if alert_type in ["sms", "all"] and self.sms_enabled and recipients:
             sms_status = self._send_sms(recipients, message)
@@ -329,6 +372,14 @@ class AlertSystem:
 
         # Store in history (persist to database)
         self._persist_alert(alert_record)
+
+        # Post alert-level events to the citywide community chat
+        try:
+            from app.api.routes.chat import post_alert_to_citywide_chat
+
+            post_alert_to_citywide_chat(alert_record)
+        except Exception as chat_exc:
+            logger.warning("Failed to post alert to citywide chat: %s", chat_exc)
 
         return alert_record
 
@@ -889,24 +940,29 @@ class AlertMessageBuilder:
         return "\n".join(lines)
 
 
+_SENTINEL = object()  # sentinel to distinguish "caller didn't pass" from explicit False
+
+
 def get_alert_system(
-    sms_enabled: bool = False,
-    email_enabled: bool = False,
-    slack_enabled: bool = False,
-    firebase_push_enabled: bool = False,
-    messenger_enabled: bool = False,
-    telegram_enabled: bool = False,
-    siren_enabled: bool = False,
+    sms_enabled: object = _SENTINEL,
+    email_enabled: object = _SENTINEL,
+    slack_enabled: object = _SENTINEL,
+    firebase_push_enabled: object = _SENTINEL,
+    messenger_enabled: object = _SENTINEL,
+    telegram_enabled: object = _SENTINEL,
+    siren_enabled: object = _SENTINEL,
 ) -> AlertSystem:
     """
     Get the alert system instance using dependency injection pattern.
 
-    This function provides controlled access to the AlertSystem singleton,
-    replacing direct access to global mutable state.
+    When callers don't explicitly pass a boolean, the value is read from
+    environment variables (SMS_ENABLED, EMAIL_ENABLED, etc.).  This allows
+    all existing call sites to pick up the env-based configuration
+    automatically.
 
     Args:
-        sms_enabled: Enable SMS notifications
-        email_enabled: Enable email notifications
+        sms_enabled: Enable SMS notifications (default: read SMS_ENABLED env)
+        email_enabled: Enable email notifications (default: read EMAIL_ENABLED env)
         slack_enabled: Enable Slack notifications
         firebase_push_enabled: Enable Firebase push notifications
         messenger_enabled: Enable Messenger chatbot
@@ -916,14 +972,28 @@ def get_alert_system(
     Returns:
         AlertSystem: The alert system instance
     """
+
+    def _env_bool(key: str, fallback: bool = False) -> bool:
+        return os.getenv(key, str(fallback)).lower() in ("true", "1", "yes")
+
+    resolved_sms = _env_bool("SMS_ENABLED") if sms_enabled is _SENTINEL else bool(sms_enabled)
+    resolved_email = _env_bool("EMAIL_ENABLED") if email_enabled is _SENTINEL else bool(email_enabled)
+    resolved_slack = _env_bool("SLACK_ENABLED") if slack_enabled is _SENTINEL else bool(slack_enabled)
+    resolved_firebase = (
+        _env_bool("FIREBASE_PUSH_ENABLED") if firebase_push_enabled is _SENTINEL else bool(firebase_push_enabled)
+    )
+    resolved_messenger = _env_bool("MESSENGER_ENABLED") if messenger_enabled is _SENTINEL else bool(messenger_enabled)
+    resolved_telegram = _env_bool("TELEGRAM_ENABLED") if telegram_enabled is _SENTINEL else bool(telegram_enabled)
+    resolved_siren = _env_bool("SIREN_ENABLED") if siren_enabled is _SENTINEL else bool(siren_enabled)
+
     return AlertSystem.get_instance(
-        sms_enabled=sms_enabled,
-        email_enabled=email_enabled,
-        slack_enabled=slack_enabled,
-        firebase_push_enabled=firebase_push_enabled,
-        messenger_enabled=messenger_enabled,
-        telegram_enabled=telegram_enabled,
-        siren_enabled=siren_enabled,
+        sms_enabled=resolved_sms,
+        email_enabled=resolved_email,
+        slack_enabled=resolved_slack,
+        firebase_push_enabled=resolved_firebase,
+        messenger_enabled=resolved_messenger,
+        telegram_enabled=resolved_telegram,
+        siren_enabled=resolved_siren,
     )
 
 
@@ -949,3 +1019,11 @@ def send_flood_alert(
     """
     alert_system = get_alert_system()
     return alert_system.send_alert(risk_data, location, recipients, alert_type, smart_decision)
+
+
+def _get_push_title(risk_level: int) -> str:
+    """Return a human-readable push notification title for a risk level."""
+    return {
+        1: "\u26a0\ufe0f Flood Alert \u2014 Monitor Conditions",
+        2: "\U0001f6a8 CRITICAL FLOOD RISK \u2014 Immediate Action Required",
+    }.get(risk_level, "Floodingnaque Update")

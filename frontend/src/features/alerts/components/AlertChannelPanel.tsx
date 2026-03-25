@@ -25,7 +25,9 @@ import {
   MessageSquare,
   Radio,
   Send,
+  Share2,
   Smartphone,
+  Volume2,
   Wifi,
 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -37,7 +39,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 const CHANNELS: AlertChannel[] = [
   {
     name: "SMS Gateway",
-    icon: "📱",
+    icon: Smartphone,
     status: "Primary",
     coverage: "—",
     cost: "—",
@@ -45,7 +47,7 @@ const CHANNELS: AlertChannel[] = [
   },
   {
     name: "Push Notification",
-    icon: "🔔",
+    icon: Bell,
     status: "Active",
     coverage: "—",
     cost: "Free",
@@ -53,7 +55,7 @@ const CHANNELS: AlertChannel[] = [
   },
   {
     name: "Radio Broadcast",
-    icon: "📻",
+    icon: Radio,
     status: "Fallback",
     coverage: "—",
     cost: "—",
@@ -61,7 +63,7 @@ const CHANNELS: AlertChannel[] = [
   },
   {
     name: "Social Media",
-    icon: "📲",
+    icon: Share2,
     status: "Active",
     coverage: "—",
     cost: "Free",
@@ -69,7 +71,7 @@ const CHANNELS: AlertChannel[] = [
   },
   {
     name: "Sirens / PA",
-    icon: "🔊",
+    icon: Volume2,
     status: "Fallback",
     coverage: "—",
     cost: "—",
@@ -77,7 +79,7 @@ const CHANNELS: AlertChannel[] = [
   },
   {
     name: "Mesh Radio",
-    icon: "📡",
+    icon: Wifi,
     status: "Planned",
     coverage: "TBD",
     cost: "TBD",
@@ -132,10 +134,12 @@ function ChannelRow({ ch }: { ch: AlertChannel }) {
           ? "text-risk-alert border-risk-alert/40 bg-risk-alert/10"
           : "text-muted-foreground border-border bg-muted";
 
+  const Icon = ch.icon;
+
   return (
     <div className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
       <div className="flex items-center gap-2 min-w-0">
-        <span className="text-base">{ch.icon}</span>
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
           <div className="text-[11px] font-mono font-medium truncate text-foreground">
             {ch.name}
@@ -344,7 +348,9 @@ export const AlertChannelPanel = memo(function AlertChannelPanel() {
             {CHANNELS.filter((c) => c.status !== "Planned").length} active
             channels
           </span>
-          <span>{history?.summary?.total ?? 0} alerts sent (all time)</span>
+          <span>
+            {history?.summary?.total_alerts ?? 0} alerts sent (all time)
+          </span>
         </div>
       </CardContent>
     </Card>

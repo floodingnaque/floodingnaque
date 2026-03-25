@@ -602,6 +602,7 @@ def validate_startup_health(
     check_redis_conn: bool = True,
     raise_on_failure: bool = False,
     log_results: bool = True,
+    app=None,
 ) -> StartupHealthReport:
     """
     Perform comprehensive startup health validation.
@@ -613,6 +614,7 @@ def validate_startup_health(
         check_redis_conn: Verify Redis connection (if configured)
         raise_on_failure: Raise RuntimeError if critical failures
         log_results: Log results to logger
+        app: Flask app instance (needed to push app context in worker threads)
 
     Returns:
         StartupHealthReport with all check results
@@ -644,9 +646,19 @@ def validate_startup_health(
     if check_redis_conn:
         parallel_checks.append(check_redis)
 
+    def _run_check_with_context(fn):
+        """Run a health check, pushing app context if available."""
+        if app is not None:
+            with app.app_context():
+                return fn()
+        return fn()
+
     if parallel_checks:
         with ThreadPoolExecutor(max_workers=len(parallel_checks)) as executor:
-            futures = {executor.submit(fn): getattr(fn, "__name__", str(fn)) for fn in parallel_checks}
+            futures = {
+                executor.submit(_run_check_with_context, fn): getattr(fn, "__name__", str(fn))
+                for fn in parallel_checks
+            }
             for future in as_completed(futures):
                 try:
                     report.checks.append(future.result())

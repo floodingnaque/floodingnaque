@@ -225,11 +225,17 @@ export const RiskDistribution = memo(function RiskDistribution({
   const data = useMemo(() => {
     const dist = statsResp?.stats?.risk_distribution;
     if (!dist) return [];
-    // Backend risk_distribution keys: "0" (low), "1" (moderate), "2" (high)
+    // Backend risk_distribution keys: "safe", "alert", "critical"
     return [
-      { name: "Low", value: dist["0"] ?? dist["low"] ?? 0 },
-      { name: "Moderate", value: dist["1"] ?? dist["moderate"] ?? 0 },
-      { name: "High", value: dist["2"] ?? dist["high"] ?? 0 },
+      { name: "Low", value: dist["safe"] ?? dist["0"] ?? dist["low"] ?? 0 },
+      {
+        name: "Moderate",
+        value: dist["alert"] ?? dist["1"] ?? dist["moderate"] ?? 0,
+      },
+      {
+        name: "High",
+        value: dist["critical"] ?? dist["2"] ?? dist["high"] ?? 0,
+      },
     ];
   }, [statsResp]);
 

@@ -181,10 +181,12 @@ export interface SmsLogEntry {
   rate: number;
 }
 
+import type { LucideIcon } from "lucide-react";
+
 /** Communication channel descriptor */
 export interface AlertChannel {
   name: string;
-  icon: string;
+  icon: LucideIcon;
   status: "Primary" | "Fallback" | "Active" | "Planned";
   coverage: string;
   cost: string;
@@ -205,14 +207,14 @@ export interface SmsTemplate {
 
 /** A single guide item (accordion entry) */
 export interface PreparednessItem {
-  icon: string;
+  icon: LucideIcon;
   title: string;
   desc: string;
 }
 
 /** A preparedness phase (before / during / after) */
 export interface PreparednessPhase {
-  icon: string;
+  icon: LucideIcon;
   label: string;
   color: string;
   items: PreparednessItem[];

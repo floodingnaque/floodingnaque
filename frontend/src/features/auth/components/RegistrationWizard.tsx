@@ -1082,6 +1082,18 @@ function Step4Review({
           <ReviewField label="Civil Status" value={step2Data.civil_status} />
           <ReviewField label="Contact" value={step2Data.contact_number} />
           <ReviewField
+            label="Alt. Contact"
+            value={
+              step2Data.alt_contact_name
+                ? `${step2Data.alt_contact_name} (${step2Data.alt_contact_relationship || "—"})`
+                : undefined
+            }
+          />
+          <ReviewField
+            label="Alt. Phone"
+            value={step2Data.alt_contact_number}
+          />
+          <ReviewField
             label="Household Members"
             value={step2Data.household_members}
           />
@@ -1089,7 +1101,9 @@ function Step4Review({
             label="Children (0-12)"
             value={step2Data.children_count}
           />
-          <ReviewField label="PWD" value={step2Data.is_pwd} />
+          <ReviewField label="Senior Citizens" value={step2Data.senior_count} />
+          <ReviewField label="PWDs" value={step2Data.pwd_count} />
+          <ReviewField label="Is PWD" value={step2Data.is_pwd} />
           <ReviewField
             label="Senior Citizen"
             value={step2Data.is_senior_citizen}
@@ -1102,13 +1116,28 @@ function Step4Review({
           <ReviewField label="Barangay" value={step3Data.barangay} />
           <ReviewField label="Zone Type" value={barangayInfo?.zoneType} />
           <ReviewField label="Flood Risk" value={barangayInfo?.floodRisk} />
+          <ReviewField
+            label="Evacuation Center"
+            value={barangayInfo?.evacuationCenter}
+          />
+          <ReviewField label="Purok / Zone" value={step3Data.purok} />
           <ReviewField label="Street" value={step3Data.street_address} />
+          <ReviewField
+            label="Nearest Landmark"
+            value={step3Data.nearest_landmark}
+          />
           <ReviewField label="Home Type" value={step3Data.home_type} />
           <ReviewField label="Floor Level" value={step3Data.floor_level} />
           <ReviewField
             label="Flood Experience"
             value={step3Data.has_flood_experience}
           />
+          {step3Data.has_flood_experience && (
+            <ReviewField
+              label="Last Flood Year"
+              value={step3Data.most_recent_flood_year}
+            />
+          )}
           <ReviewField
             label="Notifications"
             value={
@@ -1120,6 +1149,10 @@ function Step4Review({
                 .filter(Boolean)
                 .join(", ") || "None"
             }
+          />
+          <ReviewField
+            label="Alert Language"
+            value={step3Data.preferred_language}
           />
         </ReviewSection>
       </motion.div>
@@ -1235,11 +1268,41 @@ function RegistrationSuccess() {
 }
 
 /* ================================================================== */
+/*  Error Helpers                                                      */
+/* ================================================================== */
+
+/** Parse API error into a user-friendly registration error message */
+function getRegistrationErrorMessage(error: unknown): string {
+  const msg = (error as { message?: string })?.message ?? "";
+  const code = (error as { code?: string })?.code ?? "";
+  const lower = msg.toLowerCase();
+
+  if (
+    code === "EMAIL_EXISTS" ||
+    lower.includes("already exists") ||
+    lower.includes("already registered")
+  ) {
+    return "An account with this email already exists. Sign in or reset your password.";
+  }
+  if (code === "UNDERAGE" || lower.includes("18")) {
+    return "You must be at least 18 years old to register.";
+  }
+  if (code === "RATE_LIMITED" || lower.includes("too many")) {
+    return "Too many registration attempts. Please try again later.";
+  }
+  if (lower.includes("phone") || lower.includes("contact")) {
+    return "Please enter a valid Philippine mobile number (+63 9XX XXX XXXX).";
+  }
+  return msg || "Registration failed. Please try again.";
+}
+
+/* ================================================================== */
 /*  Main Wizard Component                                              */
 /* ================================================================== */
 
 export function RegistrationWizard() {
-  const { register: registerUser, isRegistering, registerError } = useAuth();
+  const { registerResident, isRegisteringResident, registerResidentError } =
+    useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(1);
@@ -1335,12 +1398,55 @@ export function RegistrationWizard() {
   const handleFinalSubmit = useCallback(() => {
     if (!step1Data || !step2Data || !step3Data) return;
 
-    registerUser(
+    registerResident(
       {
+        // Step 1 — Account
+        full_name: step1Data.full_name,
         email: step1Data.email,
         password: step1Data.password,
-        name: step1Data.full_name,
-        full_name: step1Data.full_name,
+
+        // Step 2 — Personal & Household
+        date_of_birth: step2Data.date_of_birth,
+        sex: step2Data.sex,
+        civil_status: step2Data.civil_status,
+        contact_number: step2Data.contact_number,
+        alt_contact_number: step2Data.alt_contact_number || undefined,
+        alt_contact_name: step2Data.alt_contact_name || undefined,
+        alt_contact_relationship:
+          step2Data.alt_contact_relationship || undefined,
+        is_pwd: step2Data.is_pwd,
+        is_senior_citizen: step2Data.is_senior_citizen,
+        household_members: step2Data.household_members,
+        children_count: Number.isNaN(step2Data.children_count)
+          ? undefined
+          : step2Data.children_count,
+        senior_count: Number.isNaN(step2Data.senior_count)
+          ? undefined
+          : step2Data.senior_count,
+        pwd_count: Number.isNaN(step2Data.pwd_count)
+          ? undefined
+          : step2Data.pwd_count,
+
+        // Step 3 — Address & Location
+        barangay: step3Data.barangay,
+        purok: step3Data.purok || undefined,
+        street_address: step3Data.street_address,
+        nearest_landmark: step3Data.nearest_landmark || undefined,
+        home_type: step3Data.home_type,
+        floor_level: step3Data.floor_level,
+        has_flood_experience: step3Data.has_flood_experience,
+        most_recent_flood_year: Number.isNaN(step3Data.most_recent_flood_year)
+          ? undefined
+          : step3Data.most_recent_flood_year,
+
+        // Notifications
+        sms_alerts: step3Data.sms_alerts,
+        email_alerts: step3Data.email_alerts,
+        push_notifications: step3Data.push_notifications,
+        preferred_language: step3Data.preferred_language,
+
+        // Consent
+        data_privacy_consent: true,
       },
       {
         onSuccess: () => {
@@ -1348,11 +1454,10 @@ export function RegistrationWizard() {
         },
       },
     );
-  }, [step1Data, step2Data, step3Data, registerUser]);
+  }, [step1Data, step2Data, step3Data, registerResident]);
 
-  const registrationError = registerError
-    ? ((registerError as { message?: string }).message ??
-      "Registration failed. Please try again.")
+  const registrationError = registerResidentError
+    ? getRegistrationErrorMessage(registerResidentError)
     : null;
 
   if (isComplete) {
@@ -1397,7 +1502,7 @@ export function RegistrationWizard() {
               <Step1Account
                 form={step1Form}
                 onNext={handleStep1Next}
-                isSubmitting={isRegistering}
+                isSubmitting={isRegisteringResident}
               />
             )}
             {currentStep === 2 && (
@@ -1405,7 +1510,7 @@ export function RegistrationWizard() {
                 form={step2Form}
                 onNext={handleStep2Next}
                 onBack={handleBack}
-                isSubmitting={isRegistering}
+                isSubmitting={isRegisteringResident}
               />
             )}
             {currentStep === 3 && (
@@ -1413,7 +1518,7 @@ export function RegistrationWizard() {
                 form={step3Form}
                 onNext={handleStep3Next}
                 onBack={handleBack}
-                isSubmitting={isRegistering}
+                isSubmitting={isRegisteringResident}
               />
             )}
             {currentStep === 4 && step1Data && step2Data && step3Data && (
@@ -1424,7 +1529,7 @@ export function RegistrationWizard() {
                 onBack={handleBack}
                 onEdit={goTo}
                 onSubmit={handleFinalSubmit}
-                isSubmitting={isRegistering}
+                isSubmitting={isRegisteringResident}
                 error={registrationError}
               />
             )}

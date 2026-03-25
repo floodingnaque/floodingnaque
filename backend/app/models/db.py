@@ -81,7 +81,7 @@ def _attach_pool_events(eng: Engine) -> None:
 
     # Statement timeout (ms) — kills queries exceeding this duration.
     # Guards against connection leaks caused by runaway queries.
-    _statement_timeout_ms = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "30000"))  # 30s default
+    _statement_timeout_ms = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "15000"))  # 15s default
     # Max connection age (seconds) — recycle connections older than this.
     _max_conn_age = int(os.getenv("DB_MAX_CONN_AGE_SECONDS", "3600"))  # 1h default
 
@@ -118,7 +118,8 @@ def _attach_pool_events(eng: Engine) -> None:
 
         pool = eng.pool
         active = pool.checkedout()
-        total = pool.size() + pool.overflow()
+        # Use configured capacity (pool_size + max_overflow), not dynamic overflow()
+        max_capacity = pool.size() + pool._max_overflow
         logger.debug(
             "Connection checked out (active: %s, idle: %s, overflow: %s)",
             active,
@@ -127,13 +128,13 @@ def _attach_pool_events(eng: Engine) -> None:
         )
 
         # Leak detection: warn when pool utilisation exceeds 80%
-        if total > 0 and (active / total) >= 0.8:
+        if max_capacity > 0 and (active / max_capacity) >= 0.8:
             _increment_metric("pool_exhausted_count")
             logger.warning(
                 "CONNECTION POOL HIGH UTILISATION: %d/%d connections in use (%.0f%%)",
                 active,
-                total,
-                (active / total) * 100,
+                max_capacity,
+                (active / max_capacity) * 100,
             )
 
     @event.listens_for(eng, "checkin")
@@ -283,9 +284,10 @@ def get_pool_status() -> Dict[str, Any]:
 
     pool = eng.pool
 
-    total_capacity = pool.size() + pool.overflow()
+    # Use configured max capacity, not dynamic overflow() which is negative when pool isn't full
+    max_capacity = pool.size() + pool._max_overflow
     active = pool.checkedout()
-    utilization = (active / max(total_capacity, 1)) * 100 if total_capacity > 0 else 0
+    utilization = (active / max(max_capacity, 1)) * 100 if max_capacity > 0 else 0
 
     if utilization >= 90:
         health = "critical"
@@ -358,6 +360,7 @@ db_session = _SessionProxy()  # type: ignore[assignment]
 from app.models.ab_test import ABTestRecord  # noqa: E402, F401
 from app.models.after_action_report import AfterActionReport  # noqa: E402, F401
 from app.models.alert import AlertHistory  # noqa: E402, F401
+from app.models.broadcast import Broadcast  # noqa: E402, F401
 from app.models.api_key import APIKey  # noqa: E402, F401
 from app.models.api_request import APIRequest, EarthEngineRequest  # noqa: E402, F401
 from app.models.cache import SatelliteWeatherCache, TideDataCache  # noqa: E402, F401
@@ -374,8 +377,11 @@ from app.models.user import User  # noqa: E402, F401
 # ---------------------------------------------------------------------------
 # Import model classes so they are registered with Base.metadata.
 # ---------------------------------------------------------------------------
+from app.models.chat_message import ChatMessage  # noqa: E402, F401
+from app.models.resident_profile import ResidentProfile  # noqa: E402, F401
 from app.models.weather import WeatherData  # noqa: E402, F401
 from app.models.webhook import Webhook  # noqa: E402, F401
+from app.models.push_subscription import PushSubscription  # noqa: E402, F401
 
 
 def init_db() -> bool:

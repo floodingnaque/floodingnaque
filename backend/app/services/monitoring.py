@@ -30,6 +30,7 @@ _health_lock = Lock()
 _service_checks: Dict[str, deque] = {}  # service_name → deque of check results
 _service_lock = Lock()
 _HEALTH_CHECK_INTERVAL = int(os.getenv("HEALTH_CHECK_INTERVAL_SECONDS", "30"))
+_DB_HEALTH_LATENCY_THRESHOLD_MS = int(os.getenv("DB_HEALTH_LATENCY_THRESHOLD_MS", "500"))
 _health_thread: Optional[Thread] = None
 _health_thread_running = False
 
@@ -108,7 +109,7 @@ def _probe_database() -> None:
         with get_db_session() as session:
             session.execute(text("SELECT 1"))
         latency = (time.perf_counter() - start) * 1000
-        status = "healthy" if latency < 500 else "degraded"
+        status = "healthy" if latency < _DB_HEALTH_LATENCY_THRESHOLD_MS else "degraded"
         _record_service_check("database", status, latency)
     except Exception as exc:
         latency = (time.perf_counter() - start) * 1000
@@ -186,7 +187,8 @@ def _probe_sentry() -> None:
         if is_sentry_enabled():
             _record_service_check("sentry", "healthy", latency, "Enabled")
         else:
-            _record_service_check("sentry", "degraded", latency, "Not configured")
+            # Sentry is optional — not configured is acceptable, not degraded
+            _record_service_check("sentry", "healthy", latency, "Not configured (optional)")
     except Exception as exc:
         latency = (time.perf_counter() - start) * 1000
         _record_service_check("sentry", "offline", latency, str(exc)[:120])
@@ -568,9 +570,9 @@ def get_alert_delivery_stats(hours: int = 24) -> Dict[str, Any]:
                 .all()
             )
 
-            # Success rate (decimal ratio 0–1)
+            # Success rate (decimal ratio 0–1, None when no alerts sent)
             delivered = status_counts.get("delivered", 0)
-            success_rate = round(delivered / total, 4) if total else 0
+            success_rate = round(delivered / total, 4) if total else None
 
             # Recent failures
             failures = (
@@ -611,7 +613,7 @@ def get_alert_delivery_stats(hours: int = 24) -> Dict[str, Any]:
             "total_alerts": 0,
             "status_breakdown": {},
             "channel_breakdown": {},
-            "success_rate": 0,
+            "success_rate": None,
             "recent_failures": [],
             "error": str(exc),
         }

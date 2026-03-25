@@ -1,11 +1,26 @@
 /**
  * Resident — Settings Page
+ *
+ * Notification preferences (synced to household profile), dark mode,
+ * change-password form with strength meter, preferred language.
  */
 
-import { Bell, Moon, Save, Shield, Sun, User } from "lucide-react";
-import { useState } from "react";
+import {
+  Bell,
+  Eye,
+  EyeOff,
+  Globe,
+  Loader2,
+  Lock,
+  Moon,
+  Save,
+  Sun,
+  User,
+} from "lucide-react";
+import { useCallback, useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,13 +31,61 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/features/auth";
+import {
+  useHouseholdProfile,
+  useUpdateHouseholdProfile,
+} from "@/features/resident";
+import { showToast } from "@/lib/toast";
 import { useTheme, useUIActions, useUser } from "@/state";
+
+function passwordStrength(pw: string): {
+  label: string;
+  color: string;
+  pct: number;
+} {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return { label: "Weak", color: "bg-red-500", pct: 20 };
+  if (score <= 2) return { label: "Fair", color: "bg-amber-500", pct: 40 };
+  if (score <= 3) return { label: "Good", color: "bg-yellow-500", pct: 60 };
+  if (score <= 4) return { label: "Strong", color: "bg-green-500", pct: 80 };
+  return { label: "Very Strong", color: "bg-emerald-500", pct: 100 };
+}
 
 export default function ResidentSettingsPage() {
   const user = useUser();
   const theme = useTheme();
   const { toggleTheme } = useUIActions();
-  const [pushEnabled, setPushEnabled] = useState(true);
+  const { data: household } = useHouseholdProfile();
+  const updateProfile = useUpdateHouseholdProfile();
+  const { changePassword, isChangingPassword } = useAuth();
+
+  // ── Notification prefs (synced to profile) ─────────────────────
+  const [smsAlerts, setSmsAlerts] = useState(household?.sms_alerts ?? true);
+  const [emailAlerts, setEmailAlerts] = useState(
+    household?.email_alerts ?? true,
+  );
+  const [pushAlerts, setPushAlerts] = useState(
+    household?.push_notifications ?? true,
+  );
+  const [prefLang, setPrefLang] = useState(
+    household?.preferred_language ?? "fil",
+  );
+
+  // ── Password change form ───────────────────────────────────────
+  const [showPwForm, setShowPwForm] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const strength = passwordStrength(newPw);
+  const pwMatch = newPw === confirmPw;
 
   const initials = user?.name
     ? user.name
@@ -33,14 +96,42 @@ export default function ResidentSettingsPage() {
         .slice(0, 2)
     : "?";
 
+  // ── Save notification prefs to server ──────────────────────────
+  const handleSavePrefs = useCallback(() => {
+    updateProfile.mutate({
+      sms_alerts: smsAlerts,
+      email_alerts: emailAlerts,
+      push_notifications: pushAlerts,
+      preferred_language: prefLang,
+    });
+  }, [smsAlerts, emailAlerts, pushAlerts, prefLang, updateProfile]);
+
+  const handlePasswordChange = useCallback(() => {
+    changePassword(
+      { current_password: currentPw, new_password: newPw },
+      {
+        onSuccess: () => {
+          showToast.success("Password changed successfully");
+          setShowPwForm(false);
+          setCurrentPw("");
+          setNewPw("");
+          setConfirmPw("");
+        },
+        onError: (err: Error) => {
+          showToast.error(err.message || "Failed to change password");
+        },
+      },
+    );
+  }, [changePassword, currentPw, newPw]);
+
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto pb-24 md:pb-6">
-      {/* Profile */}
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      {/* ── Profile ───────────────────────────────────────────────── */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <User className="h-4 w-4 text-primary" />
-            My Profile
+            Aking Account / My Account
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -53,31 +144,24 @@ export default function ResidentSettingsPage() {
               <p className="text-sm text-muted-foreground">
                 {user?.email ?? "—"}
               </p>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium">Name</p>
-              <Input defaultValue={user?.name ?? ""} readOnly />
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium">Email</p>
-              <Input defaultValue={user?.email ?? ""} readOnly />
+              <Badge variant="outline" className="mt-1 text-xs">
+                Resident
+              </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Theme */}
+      {/* ── Appearance ────────────────────────────────────────────── */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             {theme === "dark" ? (
               <Moon className="h-4 w-4" />
             ) : (
               <Sun className="h-4 w-4" />
             )}
-            Appearance
+            Anyo / Appearance
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -85,7 +169,7 @@ export default function ResidentSettingsPage() {
             <div>
               <p className="text-sm font-medium">Dark Mode</p>
               <p className="text-xs text-muted-foreground">
-                Toggle dark appearance
+                Gabi mode para sa mata
               </p>
             </div>
             <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
@@ -93,51 +177,198 @@ export default function ResidentSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Notifications */}
+      {/* ── Language ──────────────────────────────────────────────── */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Bell className="h-4 w-4 text-primary" />
-            Notifications
+            <Globe className="h-4 w-4 text-primary" />
+            Wika / Language
           </CardTitle>
-          <CardDescription>
-            Control how you receive flood alerts
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Push Notifications</p>
-              <p className="text-xs text-muted-foreground">
-                Receive critical alerts on your device
-              </p>
-            </div>
-            <Switch checked={pushEnabled} onCheckedChange={setPushEnabled} />
+          <div className="flex gap-3">
+            {[
+              { code: "fil", label: "Filipino" },
+              { code: "en", label: "English" },
+            ].map(({ code, label }) => (
+              <Button
+                key={code}
+                size="sm"
+                variant={prefLang === code ? "default" : "outline"}
+                onClick={() => setPrefLang(code)}
+              >
+                {label}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Security */}
+      {/* ── Notifications ─────────────────────────────────────────── */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" />
-            Security
+            <Bell className="h-4 w-4 text-primary" />
+            Mga Abiso / Notifications
           </CardTitle>
+          <CardDescription>
+            Paano mo gustong makatanggap ng flood alerts
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button variant="outline" size="sm">
-            Change Password
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Push Notifications</p>
+              <p className="text-xs text-muted-foreground">
+                Critical alerts on your device
+              </p>
+            </div>
+            <Switch checked={pushAlerts} onCheckedChange={setPushAlerts} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">SMS Alerts</p>
+              <p className="text-xs text-muted-foreground">
+                Text message flood warnings
+              </p>
+            </div>
+            <Switch checked={smsAlerts} onCheckedChange={setSmsAlerts} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Email Alerts</p>
+              <p className="text-xs text-muted-foreground">
+                Flood updates via email
+              </p>
+            </div>
+            <Switch checked={emailAlerts} onCheckedChange={setEmailAlerts} />
+          </div>
+
+          <Button
+            size="sm"
+            className="gap-2"
+            onClick={handleSavePrefs}
+            disabled={updateProfile.isPending}
+          >
+            {updateProfile.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save Preferences
           </Button>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button className="gap-2">
-          <Save className="h-4 w-4" />
-          Save Changes
-        </Button>
-      </div>
+      {/* ── Security ──────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lock className="h-4 w-4 text-primary" />
+            Seguridad / Security
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!showPwForm ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPwForm(true)}
+            >
+              Change Password
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium">Current Password</p>
+                <div className="relative">
+                  <Input
+                    type={showPw ? "text" : "password"}
+                    value={currentPw}
+                    onChange={(e) => setCurrentPw(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-0 right-0 h-full px-3"
+                    onClick={() => setShowPw((v) => !v)}
+                  >
+                    {showPw ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium">New Password</p>
+                <Input
+                  type={showPw ? "text" : "password"}
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                />
+                {newPw.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${strength.color}`}
+                        style={{ width: `${strength.pct}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {strength.label}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium">Confirm New Password</p>
+                <Input
+                  type={showPw ? "text" : "password"}
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                />
+                {confirmPw.length > 0 && !pwMatch && (
+                  <p className="text-xs text-destructive">
+                    Passwords do not match
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-3 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowPwForm(false);
+                    setCurrentPw("");
+                    setNewPw("");
+                    setConfirmPw("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={
+                    !currentPw ||
+                    newPw.length < 8 ||
+                    !pwMatch ||
+                    isChangingPassword
+                  }
+                  onClick={handlePasswordChange}
+                >
+                  {isChangingPassword ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  Update Password
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,14 +1,28 @@
 /**
  * Operator — Live Flood Map Page
+ *
+ * Full-page interactive Leaflet map with barangay hazard overlay,
+ * evacuation center markers, alert markers, community report layer,
+ * and layer toggle controls.
  */
 
-import { Layers, MapPin, RefreshCw } from "lucide-react";
+import { Layers, RefreshCw } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useAlerts } from "@/features/alerts";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
+import {
+  EvacuationMarkers,
+  FloodMap,
+  useHazardMap,
+  type FloodMapRef,
+} from "@/features/map";
+import { SafeRouteLayer } from "@/features/map/components/SafeRouteLayer";
+import { cn } from "@/lib/utils";
+import type { Alert } from "@/types/api/alert";
 import { RISK_CONFIGS, type RiskLevel } from "@/types/api/prediction";
 
 const RISK_BADGE: Record<RiskLevel, string> = {
@@ -17,15 +31,47 @@ const RISK_BADGE: Record<RiskLevel, string> = {
   2: "bg-red-500/10 text-red-700 border-red-500/30",
 };
 
+type OverlayMode = "hazard" | "elevation" | "drainage";
+
 export default function OperatorMapPage() {
-  const { data: prediction, isLoading, refetch } = useLivePrediction();
+  const mapRef = useRef<FloodMapRef>(null);
+  const { data: prediction, refetch } = useLivePrediction();
+  const { data: hazardData } = useHazardMap();
+  const { data: alertsData } = useAlerts();
+  const [overlayMode, setOverlayMode] = useState<OverlayMode>("hazard");
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
+
+  const alerts: Alert[] = (() => {
+    if (!alertsData) return [];
+    if (Array.isArray(alertsData)) return alertsData;
+    if ("data" in alertsData) return alertsData.data ?? [];
+    return [];
+  })();
+
+  const hazardFeatures = useMemo(
+    () => hazardData?.features ?? [],
+    [hazardData],
+  );
+
+  const handleBarangayClick = useCallback(
+    (key: string) => {
+      const feature = hazardFeatures.find((f) => f.properties.key === key);
+      if (feature) {
+        mapRef.current?.flyTo(
+          feature.properties.lat,
+          feature.properties.lon,
+          15,
+        );
+      }
+    },
+    [hazardFeatures],
+  );
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
       {/* Map controls bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="gap-1">
             <Layers className="h-3 w-3" />
             Flood Risk Overlay
@@ -35,6 +81,25 @@ export default function OperatorMapPage() {
               {RISK_CONFIGS[riskLevel].label}
             </Badge>
           )}
+          {/* Overlay mode toggles */}
+          <div className="flex items-center border rounded-lg overflow-hidden">
+            {(["hazard", "elevation", "drainage"] as OverlayMode[]).map(
+              (mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setOverlayMode(mode)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium transition-colors capitalize",
+                    overlayMode === mode
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card hover:bg-muted",
+                  )}
+                >
+                  {mode}
+                </button>
+              ),
+            )}
+          </div>
         </div>
         <Button
           variant="outline"
@@ -47,23 +112,21 @@ export default function OperatorMapPage() {
         </Button>
       </div>
 
-      {/* Map placeholder */}
+      {/* Full-page Map */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {isLoading ? (
-            <Skeleton className="w-full aspect-video" />
-          ) : (
-            <div className="w-full aspect-video bg-muted/50 flex flex-col items-center justify-center text-muted-foreground">
-              <MapPin className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-sm font-medium">Interactive Map</p>
-              <p className="text-xs mt-1">
-                Leaflet integration will render here
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Center: 14.4793°N, 121.0198°E (Parañaque City)
-              </p>
-            </div>
-          )}
+          <FloodMap
+            ref={mapRef}
+            height={600}
+            alerts={alerts}
+            hazardFeatures={hazardFeatures}
+            hazardMode={overlayMode}
+            hazardOpacity={0.35}
+            onBarangayClick={handleBarangayClick}
+          >
+            <EvacuationMarkers />
+            <SafeRouteLayer />
+          </FloodMap>
         </CardContent>
       </Card>
 
@@ -73,22 +136,77 @@ export default function OperatorMapPage() {
           <CardTitle className="text-sm">Legend</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-green-500" />
-              Safe
+          <div className="flex flex-wrap gap-x-6 gap-y-3 text-xs">
+            {/* Risk zone polygons */}
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-sm bg-green-500/50 border border-green-600/40" />
+              <span>Low Risk Zone</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-500" />
-              Alert
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-sm bg-amber-500/50 border border-amber-600/40" />
+              <span>Moderate Risk Zone</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-red-500" />
-              Critical
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-sm bg-red-500/50 border border-red-600/40" />
+              <span>High Risk Zone</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-blue-500" />
-              Evacuation Center
+
+            {/* Evacuation center marker */}
+            <div className="flex items-center gap-1.5">
+              <svg width="12" height="16" viewBox="0 0 24 36">
+                <path
+                  fill="#16a34a"
+                  stroke="#fff"
+                  strokeWidth="1.5"
+                  d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24C24 5.37 18.63 0 12 0z"
+                />
+                <path fill="#fff" d="M12 6.5l-5.5 6.5h2.5v4h6v-4h2.5L12 6.5z" />
+              </svg>
+              <span>Evacuation Center</span>
+            </div>
+
+            {/* Evacuation route lines */}
+            <div className="flex items-center gap-1.5">
+              <svg width="24" height="12" viewBox="0 0 24 6">
+                <line
+                  x1="0"
+                  y1="3"
+                  x2="24"
+                  y2="3"
+                  stroke="#ef4444"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span>High-Risk Route</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg width="24" height="12" viewBox="0 0 24 6">
+                <line
+                  x1="0"
+                  y1="3"
+                  x2="24"
+                  y2="3"
+                  stroke="#f59e0b"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span>Moderate-Risk Route</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg width="24" height="12" viewBox="0 0 24 6">
+                <line
+                  x1="0"
+                  y1="3"
+                  x2="24"
+                  y2="3"
+                  stroke="#22c55e"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span>Low-Risk Route</span>
             </div>
           </div>
         </CardContent>

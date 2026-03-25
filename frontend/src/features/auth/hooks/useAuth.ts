@@ -15,6 +15,7 @@ import type {
   PasswordResetRequest,
   PasswordResetResponse,
   RegisterRequest,
+  ResidentRegistrationRequest,
   UpdateProfileRequest,
   User,
 } from "@/types";
@@ -76,6 +77,14 @@ export function useAuth() {
         data.refresh_token,
       );
     },
+  });
+
+  /**
+   * Register resident mutation (full onboarding wizard data)
+   */
+  const registerResidentMutation = useMutation({
+    mutationFn: (data: ResidentRegistrationRequest) =>
+      authApi.registerResident(data),
   });
 
   /**
@@ -163,6 +172,11 @@ export function useAuth() {
     registerAsync: registerMutation.mutateAsync,
     isRegistering: registerMutation.isPending,
     registerError: registerMutation.error,
+
+    // Register resident (full wizard)
+    registerResident: registerResidentMutation.mutate,
+    isRegisteringResident: registerResidentMutation.isPending,
+    registerResidentError: registerResidentMutation.error,
 
     // Logout
     logout: logoutMutation.mutate,

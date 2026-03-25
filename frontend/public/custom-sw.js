@@ -2,7 +2,7 @@
  * Custom Service Worker - Push Notification Handler
  *
  * This file is loaded by the Workbox-generated SW via importScripts.
- * Handles push events and notification click actions.
+ * Handles push events and notification click actions for flood alerts.
  */
 
 // @ts-nocheck — runs in SW context, not module scope
@@ -19,28 +19,37 @@ self.addEventListener("push", function (event) {
 
   const riskLevel = payload.risk_level ?? 1;
   const isCritical = riskLevel === 2;
+  const barangayId = payload.barangay_id;
 
-  const title = isCritical
-    ? "CRITICAL FLOOD ALERT \u2014 Parañaque City"
-    : "Flood Alert \u2014 Parañaque City";
+  const title = payload.title
+    ? payload.title
+    : isCritical
+      ? "\u{1F6A8} CRITICAL FLOOD RISK \u2014 Immediate Action Required"
+      : "\u26A0\uFE0F Flood Alert \u2014 Monitor Conditions";
 
   const options = {
     body:
       payload.body || payload.message || "A new flood alert has been issued.",
     icon: "/icons/icon-192x192.png",
     badge: "/icons/icon-72x72.png",
-    tag: isCritical ? "critical-alert" : "alert-" + (payload.id || Date.now()),
+    tag: "flood-alert-" + (barangayId || "citywide"),
     renotify: isCritical,
     requireInteraction: isCritical,
-    vibrate: isCritical ? [200, 100, 200, 100, 200] : [200],
+    vibrate: isCritical ? [200, 100, 200, 100, 200] : [200, 100, 200],
     data: {
-      url: payload.url || "/alerts",
-      id: payload.id,
+      url: payload.url || "/dashboard",
+      barangay_id: barangayId,
+      risk_level: riskLevel,
     },
-    actions: [
-      { action: "view-map", title: "View Map" },
-      { action: "dismiss", title: "Dismiss" },
-    ],
+    actions: isCritical
+      ? [
+          { action: "evacuate", title: "\u{1F3C3} Find Evacuation Center" },
+          { action: "dismiss", title: "Dismiss" },
+        ]
+      : [
+          { action: "view", title: "View Status" },
+          { action: "dismiss", title: "Dismiss" },
+        ],
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -51,7 +60,13 @@ self.addEventListener("notificationclick", function (event) {
 
   if (event.action === "dismiss") return;
 
-  const url = event.notification.data?.url || "/alerts";
+  var url = event.notification.data?.url || "/dashboard";
+
+  if (event.action === "evacuate") {
+    url = "/resident/evacuation";
+  } else if (event.action === "view") {
+    url = "/dashboard";
+  }
 
   event.waitUntil(
     self.clients

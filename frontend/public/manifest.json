@@ -1,15 +1,15 @@
 {
-  "name": "Floodingnaque - Flood Prediction System",
+  "name": "Floodingnaque — Flood Early Warning",
   "short_name": "Floodingnaque",
-  "description": "Real-time flood prediction and alerts for Parañaque City",
+  "description": "Real-time flood detection and early warning system for Parañaque City",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#3B82F6",
+  "theme_color": "#0ea5e9",
   "background_color": "#ffffff",
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en-PH",
-  "categories": ["weather", "utilities"],
+  "categories": ["utilities", "weather", "public safety"],
   "icons": [
     {
       "src": "/favicon.svg",
@@ -46,7 +46,7 @@
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-384x384.png",
@@ -57,32 +57,61 @@
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "/screenshots/dashboard.png",
-      "sizes": "1280x720",
+      "src": "/screenshots/dashboard-mobile.png",
+      "sizes": "390x844",
       "type": "image/png",
-      "label": "Dashboard",
-      "form_factor": "wide"
+      "form_factor": "narrow",
+      "label": "Flood risk dashboard"
+    },
+    {
+      "src": "/screenshots/map-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Interactive flood map"
     }
   ],
   "shortcuts": [
     {
-      "name": "Predict Flood Risk",
-      "short_name": "Predict",
-      "description": "Make a new flood risk prediction",
-      "url": "/predict",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "name": "Check My Barangay Risk",
+      "short_name": "Risk Status",
+      "description": "View current flood risk for your barangay",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "View Alerts",
-      "short_name": "Alerts",
-      "description": "View current flood alerts",
-      "url": "/alerts",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "name": "Report a Flood",
+      "short_name": "Report Flood",
+      "description": "Submit a community flood report",
+      "url": "/resident/report",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Evacuation Centers",
+      "short_name": "Evacuate",
+      "description": "Find nearest evacuation centers",
+      "url": "/resident/evacuation",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/resident/report",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

@@ -5,6 +5,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { sensorApi } from "../services/sensorApi";
 import type { SensorSubmitPayload } from "../types";
 
@@ -21,6 +22,7 @@ export function useSensorSubmit() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: sensorQueryKeys.all });
     },
+    onError: () => toast.error("Failed to submit sensor reading"),
   });
 }
 

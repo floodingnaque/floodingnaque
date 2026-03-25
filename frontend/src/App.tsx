@@ -16,6 +16,7 @@ import {
   NotFoundFallback,
   RouteErrorBoundary,
 } from "@/components/feedback/RouteErrorBoundary";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { Toaster } from "@/components/ui/sonner";
 
 // Layout & Auth (loaded eagerly - always needed)
@@ -54,6 +55,7 @@ const AdminSensorPage = lazy(() => import("@/app/admin/sensor/page"));
 const LandingPage = lazy(() => import("@/app/landing/page"));
 const TermsPage = lazy(() => import("@/app/terms/page"));
 const PrivacyPage = lazy(() => import("@/app/privacy/page"));
+const OfflinePage = lazy(() => import("@/app/offline/page"));
 const CommunityPage = lazy(() => import("@/app/community/page"));
 const EvacuationPage = lazy(() => import("@/app/evacuation/page"));
 
@@ -83,6 +85,10 @@ const OperatorAnalyticsPage = lazy(
 );
 const OperatorAARPage = lazy(() => import("@/app/operator/aar/page"));
 const OperatorSettingsPage = lazy(() => import("@/app/operator/settings/page"));
+const OperatorChatPage = lazy(() => import("@/app/operator/chat/page"));
+const OperatorBarangaysPage = lazy(
+  () => import("@/app/operator/barangays/page"),
+);
 
 // Resident Dashboard
 const ResidentLayout = lazy(() => import("@/app/resident/layout"));
@@ -109,6 +115,7 @@ const ResidentHouseholdPage = lazy(
   () => import("@/app/resident/profile/household/page"),
 );
 const ResidentSettingsPage = lazy(() => import("@/app/resident/settings/page"));
+const ResidentChatPage = lazy(() => import("@/app/resident/chat/page"));
 
 /** Scrolls to top on pathname change (works with BrowserRouter) */
 function ScrollToTop() {
@@ -134,6 +141,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/offline" element={<OfflinePage />} />
 
           {/* Protected Routes with Layout */}
           <Route element={<ProtectedRoute />}>
@@ -359,6 +367,16 @@ function App() {
                   </RequireRole>
                 }
               />
+              <Route
+                path="/admin/chat"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <OperatorChatPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
             </Route>
           </Route>
 
@@ -366,7 +384,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route
               element={
-                <RequireRole requiredRole="operator">
+                <RequireRole requiredRole={["operator", "admin"]}>
                   <OperatorLayout />
                 </RequireRole>
               }
@@ -480,6 +498,22 @@ function App() {
                 element={
                   <RouteErrorBoundary>
                     <OperatorSettingsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/chat"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorChatPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/operator/barangays"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorBarangaysPage />
                   </RouteErrorBoundary>
                 }
               />
@@ -599,6 +633,14 @@ function App() {
                   </RouteErrorBoundary>
                 }
               />
+              <Route
+                path="/resident/chat"
+                element={
+                  <RouteErrorBoundary>
+                    <ResidentChatPage />
+                  </RouteErrorBoundary>
+                }
+              />
             </Route>
           </Route>
 
@@ -615,6 +657,9 @@ function App() {
 
       {/* Offline Indicator */}
       <OfflineBanner />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
 
       {/* Cookie Consent Banner */}
       <CookieConsent />

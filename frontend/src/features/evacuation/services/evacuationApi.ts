@@ -39,15 +39,15 @@ interface RouteResponse {
 }
 
 interface AlertPayload {
-  center_id: number;
-  message: string;
-  phone_numbers?: string[];
+  barangay: string;
+  risk_label: "Safe" | "Alert" | "Critical";
 }
 
 interface AlertResponse {
   success: boolean;
-  sent: number;
-  failed: number;
+  status: "queued" | "completed";
+  task_id?: string;
+  dispatched_count?: number;
 }
 
 interface CapacityPayload {
@@ -129,9 +129,10 @@ export const evacuationApi = {
   updateCapacity: async (
     payload: CapacityPayload,
   ): Promise<EvacuationCenter> => {
+    const { center_id, capacity_current } = payload;
     const response = await api.patch<CapacityResponse>(
-      API_ENDPOINTS.evacuation.centers,
-      payload,
+      `${API_ENDPOINTS.evacuation.centers}/${center_id}/capacity`,
+      { capacity_current },
     );
     return response.center;
   },

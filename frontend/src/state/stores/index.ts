@@ -22,6 +22,7 @@ export {
   useCsrfToken,
   useIsAuthenticated,
   useUser,
+  useUserRole,
 } from "./authStore";
 export {
   useCachedCenters,

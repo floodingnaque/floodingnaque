@@ -113,12 +113,13 @@ export function useUpdateCapacity() {
 export function useTriggerAlert() {
   return useMutation({
     mutationFn: (payload: {
-      center_id: number;
-      message: string;
-      phone_numbers?: string[];
+      barangay: string;
+      risk_label: "Safe" | "Alert" | "Critical";
     }) => evacuationApi.triggerAlert(payload),
     onSuccess: (data) => {
-      toast.success(`Alert sent to ${data.sent} recipient(s)`);
+      toast.success(
+        `Alert dispatched to ${data.dispatched_count ?? 0} recipient(s)`,
+      );
     },
     onError: () => {
       toast.error("Failed to send evacuation alert");

@@ -26,6 +26,7 @@ import {
   Map,
   MapPin,
   Menu,
+  MessageSquare,
   Moon,
   Scale,
   ScrollText,
@@ -93,109 +94,150 @@ interface NavItem {
   roles?: UserRole[];
 }
 
+interface NavSection {
+  title: string;
+  roles?: UserRole[];
+  items: NavItem[];
+}
+
 /**
- * Navigation items configuration
+ * Navigation sections configuration
  *
  * Role visibility follows the 3-tier architecture:
  *   user     → Resident  (Dashboard, Map, Prediction, Alerts)
  *   operator → LGU/MDRRMO (+ Analytics, Reports, Alert Management)
  *   admin    → Admin     (+ Model Mgmt, User Mgmt, System Settings, Logs)
  */
-const navItems: NavItem[] = [
-  // ── Resident tier (all roles) ──
-  { to: "/dashboard", icon: Home, label: "Dashboard" },
-  { to: "/map", icon: Map, label: "Flood Map" },
-  { to: "/predict", icon: Activity, label: "Prediction" },
-  { to: "/alerts", icon: Bell, label: "Alerts" },
-  { to: "/community", icon: Users2, label: "Community" },
-  { to: "/evacuation", icon: LifeBuoy, label: "Evacuation" },
-
-  // ── LGU / Operator tier ──
+const navSections: NavSection[] = [
   {
-    to: "/history",
-    icon: Cloud,
-    label: "Weather History",
+    title: "Situational Awareness",
+    items: [
+      { to: "/dashboard", icon: Home, label: "Dashboard" },
+      { to: "/map", icon: Map, label: "Flood Map" },
+      { to: "/predict", icon: Activity, label: "Prediction" },
+      { to: "/alerts", icon: Bell, label: "Alerts" },
+    ],
+  },
+  {
+    title: "Community",
+    items: [
+      { to: "/community", icon: Users2, label: "Community" },
+      { to: "/evacuation", icon: LifeBuoy, label: "Evacuation" },
+      { to: "/admin/chat", icon: MessageSquare, label: "Barangay Chat" },
+    ],
+  },
+  {
+    title: "Operations",
     roles: ["operator", "admin"],
+    items: [
+      {
+        to: "/incidents",
+        icon: ClipboardList,
+        label: "Incidents",
+        roles: ["operator", "admin"],
+      },
+      {
+        to: "/history",
+        icon: Cloud,
+        label: "Weather History",
+        roles: ["operator", "admin"],
+      },
+      {
+        to: "/analytics",
+        icon: BarChart3,
+        label: "Analytics",
+        roles: ["operator", "admin"],
+      },
+      {
+        to: "/reports",
+        icon: FileText,
+        label: "Reports",
+        roles: ["operator", "admin"],
+      },
+      {
+        to: "/compliance",
+        icon: Scale,
+        label: "Compliance",
+        roles: ["operator", "admin"],
+      },
+    ],
   },
   {
-    to: "/analytics",
-    icon: BarChart3,
-    label: "Analytics",
-    roles: ["operator", "admin"],
-  },
-  {
-    to: "/reports",
-    icon: FileText,
-    label: "Reports",
-    roles: ["operator", "admin"],
-  },
-  {
-    to: "/compliance",
-    icon: Scale,
-    label: "Compliance",
-    roles: ["operator", "admin"],
-  },
-  {
-    to: "/incidents",
-    icon: ClipboardList,
-    label: "Incidents",
-    roles: ["operator", "admin"],
-  },
-
-  // ── Settings (all roles – profile, password, preferences) ──
-  { to: "/settings", icon: Settings, label: "Settings" },
-
-  // ── Admin tier ──
-  { to: "/admin", icon: Shield, label: "Admin", roles: ["admin"] },
-  {
-    to: "/admin/users",
-    icon: Users,
-    label: "User Management",
+    title: "Administration",
     roles: ["admin"],
+    items: [
+      { to: "/admin", icon: Shield, label: "Admin Panel", roles: ["admin"] },
+      {
+        to: "/admin/users",
+        icon: Users,
+        label: "User Management",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/barangays",
+        icon: MapPin,
+        label: "Barangays",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/data",
+        icon: Database,
+        label: "Datasets",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/storage",
+        icon: HardDrive,
+        label: "Storage",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/models",
+        icon: Brain,
+        label: "AI Models",
+        roles: ["admin"],
+      },
+    ],
   },
   {
-    to: "/admin/barangays",
-    icon: MapPin,
-    label: "Barangays",
+    title: "System",
     roles: ["admin"],
-  },
-  { to: "/admin/data", icon: Database, label: "Datasets", roles: ["admin"] },
-  {
-    to: "/admin/storage",
-    icon: HardDrive,
-    label: "Storage",
-    roles: ["admin"],
-  },
-  { to: "/admin/models", icon: Brain, label: "AI Models", roles: ["admin"] },
-  {
-    to: "/admin/config",
-    icon: SlidersHorizontal,
-    label: "Configuration",
-    roles: ["admin"],
-  },
-  {
-    to: "/admin/logs",
-    icon: ScrollText,
-    label: "System Logs",
-    roles: ["admin"],
-  },
-  {
-    to: "/admin/security",
-    icon: ShieldCheck,
-    label: "Security",
-    roles: ["admin"],
-  },
-  {
-    to: "/admin/monitoring",
-    icon: HeartPulse,
-    label: "Monitoring",
-    roles: ["admin"],
+    items: [
+      {
+        to: "/admin/config",
+        icon: SlidersHorizontal,
+        label: "Configuration",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/logs",
+        icon: ScrollText,
+        label: "System Logs",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/security",
+        icon: ShieldCheck,
+        label: "Security",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/monitoring",
+        icon: HeartPulse,
+        label: "Monitoring",
+        roles: ["admin"],
+      },
+      {
+        to: "/admin/workflow",
+        icon: GitBranch,
+        label: "LGU Workflow",
+        roles: ["admin"],
+      },
+    ],
   },
   {
-    to: "/admin/workflow",
-    icon: GitBranch,
-    label: "LGU Workflow",
-    roles: ["admin"],
+    title: "Account",
+    items: [{ to: "/settings", icon: Settings, label: "Settings" }],
   },
 ];
 
@@ -302,64 +344,95 @@ function SidebarNav({
 
   return (
     <nav className="flex flex-col h-full" aria-label="Main navigation">
-      {/* Navigation Links */}
+      {/* Navigation Links — organized by section */}
       <div className="flex-1 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          // Role-based visibility: hide items the user's role can't access
-          if (item.roles && (!user?.role || !item.roles.includes(user.role))) {
+        {navSections.map((section) => {
+          // Section-level role filter
+          if (
+            section.roles &&
+            (!user?.role || !section.roles.includes(user.role))
+          ) {
             return null;
           }
 
-          const Icon = item.icon;
-          const badgeCount = item.to === "/alerts" ? unreadCount : item.badge;
+          const visibleItems = section.items.filter(
+            (item) =>
+              !item.roles || (user?.role && item.roles.includes(user.role)),
+          );
+          if (visibleItems.length === 0) return null;
 
           return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onNavClick}
-              onMouseEnter={() => prefetchRoute(item.to)}
-              onFocus={() => prefetchRoute(item.to)}
-              className={({ isActive }) =>
-                cn(
-                  "group relative flex items-center gap-3 px-3 py-2.5 mx-2 rounded-lg text-sm font-medium transition-all duration-200",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  isActive
-                    ? "bg-primary/10 text-primary font-semibold shadow-sm border border-primary/15"
-                    : "text-muted-foreground",
-                  collapsed && "justify-center px-2",
-                )
-              }
-            >
-              {/* Active indicator bar */}
+            <div key={section.title} className="mb-2">
               {!collapsed && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary opacity-0 group-[.active]:opacity-100 transition-opacity" />
+                <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  {section.title}
+                </p>
               )}
-              <Icon
-                className={cn(
-                  "h-5 w-5 shrink-0 transition-colors",
-                  collapsed && "h-5 w-5",
-                )}
-              />
-              {!collapsed && (
-                <>
-                  <span className="flex-1">{item.label}</span>
-                  {badgeCount && badgeCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="ml-auto h-5 min-w-5 flex items-center justify-center px-1.5 text-xs"
-                    >
-                      {badgeCount > 99 ? "99+" : badgeCount}
-                    </Badge>
-                  )}
-                </>
+              {collapsed && (
+                <div className="mx-3 my-1 border-t border-border/20" />
               )}
-              {collapsed && badgeCount && badgeCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-destructive-foreground flex items-center justify-center">
-                  {badgeCount > 9 ? "9+" : badgeCount}
-                </span>
-              )}
-            </NavLink>
+              {visibleItems.map((item) => {
+                // Resolve chat route per role so each role reaches their own chat layout
+                const to =
+                  item.to === "/admin/chat" && user?.role !== "admin"
+                    ? user?.role === "operator"
+                      ? "/operator/chat"
+                      : "/resident/chat"
+                    : item.to;
+
+                const Icon = item.icon;
+                const badgeCount = to === "/alerts" ? unreadCount : item.badge;
+
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={onNavClick}
+                    onMouseEnter={() => prefetchRoute(to)}
+                    onFocus={() => prefetchRoute(to)}
+                    className={({ isActive }) =>
+                      cn(
+                        "group relative flex items-center gap-3 px-3 py-2.5 mx-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        isActive
+                          ? "bg-primary/10 text-primary font-semibold shadow-sm border border-primary/15"
+                          : "text-muted-foreground",
+                        collapsed && "justify-center px-2",
+                      )
+                    }
+                  >
+                    {/* Active indicator bar */}
+                    {!collapsed && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary opacity-0 group-[.active]:opacity-100 transition-opacity" />
+                    )}
+                    <Icon
+                      className={cn(
+                        "h-5 w-5 shrink-0 transition-colors",
+                        collapsed && "h-5 w-5",
+                      )}
+                    />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1">{item.label}</span>
+                        {badgeCount && badgeCount > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="ml-auto h-5 min-w-5 flex items-center justify-center px-1.5 text-xs"
+                          >
+                            {badgeCount > 99 ? "99+" : badgeCount}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                    {collapsed && badgeCount && badgeCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-destructive-foreground flex items-center justify-center">
+                        {badgeCount > 9 ? "9+" : badgeCount}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
           );
         })}
       </div>

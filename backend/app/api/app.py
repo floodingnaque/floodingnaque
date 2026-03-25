@@ -28,7 +28,9 @@ from app.api.routes.alerts import alerts_bp
 from app.api.routes.api_keys import api_keys_bp
 from app.api.routes.batch import batch_bp
 from app.api.routes.celery import celery_bp
+from app.api.routes.chat import chat_bp
 from app.api.routes.community_reports import community_reports_bp
+from app.api.routes.config import config_bp
 from app.api.routes.csp_report import csp_report_bp
 from app.api.routes.dashboard import dashboard_bp
 from app.api.routes.data import data_bp
@@ -46,6 +48,7 @@ from app.api.routes.pagasa import pagasa_bp
 from app.api.routes.performance import performance_bp, setup_response_time_tracking
 from app.api.routes.predict import predict_bp
 from app.api.routes.predictions import predictions_bp
+from app.api.routes.push_notifications import push_notifications_bp
 from app.api.routes.rate_limits import rate_limits_bp
 from app.api.routes.security_txt import security_txt_bp
 from app.api.routes.sse import sse_bp
@@ -104,8 +107,15 @@ def create_app(config_override: dict = None) -> Flask:  # noqa: C901
     # Setup logging
     setup_logging()
 
-    # Create Flask app
-    app = Flask(__name__)
+    # Create Flask app – static_folder must point to backend/static/
+    # (default would be app/api/static/ since __name__ == app.api.app)
+    from pathlib import Path as _Path
+    _backend_dir = _Path(__file__).resolve().parent.parent.parent
+    app = Flask(
+        __name__,
+        static_folder=str(_backend_dir / "static"),
+        static_url_path="/static",
+    )
     app.url_map.strict_slashes = False
 
     # Get configuration
@@ -299,6 +309,11 @@ def create_app(config_override: dict = None) -> Flask:  # noqa: C901
     init_db()
     logger.info("Database initialized")
 
+    # Query counter middleware (dev only — logs N+1 anti-patterns)
+    from app.api.middleware.query_counter import init_query_counter
+
+    init_query_counter(app)
+
     # ==========================================
     # Register Blueprints
     # ==========================================
@@ -346,7 +361,10 @@ def create_app(config_override: dict = None) -> Flask:  # noqa: C901
     app.register_blueprint(gis_bp, url_prefix=f"{API_V1_PREFIX}/gis")
     app.register_blueprint(lgu_workflow_bp, url_prefix=f"{API_V1_PREFIX}/lgu")
     app.register_blueprint(community_reports_bp, url_prefix=f"{API_V1_PREFIX}/reports")
+    app.register_blueprint(chat_bp, url_prefix=f"{API_V1_PREFIX}/chat")
     app.register_blueprint(evacuation_bp, url_prefix=f"{API_V1_PREFIX}/evacuation")
+    app.register_blueprint(config_bp, url_prefix=f"{API_V1_PREFIX}/config")
+    app.register_blueprint(push_notifications_bp, url_prefix=f"{API_V1_PREFIX}/push")
 
     # Backward-compatible routes (shorter URL prefixes for legacy/test compatibility)
     # These register the same blueprints with different names and prefixes
@@ -636,6 +654,7 @@ def create_app(config_override: dict = None) -> Flask:  # noqa: C901
                     check_redis_conn=True,
                     raise_on_failure=is_production or env == "staging",  # Fail fast in production & staging
                     log_results=True,
+                    app=app,
                 )
 
                 if not health_report.is_healthy:

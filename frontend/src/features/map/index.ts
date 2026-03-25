@@ -34,9 +34,21 @@ export { RiskMarkers, type RiskMarkersProps } from "./components/RiskMarkers";
 
 // Hooks
 export {
+  evacuationRouteKeys,
+  useEvacuationRoutes,
+  type BarangayRoute,
+} from "./hooks/useEvacuationRoutes";
+export {
   hazardMapKeys,
   useHazardMap,
   type HazardFeature,
   type HazardFeatureProperties,
   type HazardMapData,
 } from "./hooks/useHazardMap";
+
+// Services
+export {
+  fetchMultipleRoutes,
+  fetchOSRMRoute,
+  type OSRMRoute,
+} from "./services/routingService";

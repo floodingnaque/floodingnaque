@@ -195,15 +195,15 @@ function useIncidentsAdmin() {
     setError(false);
     try {
       const [incRes, statsRes] = await Promise.all([
-        api.get<{ data?: { data?: Incident[] } }>(API_ENDPOINTS.lgu.incidents, {
+        api.get<{ data?: Incident[] }>(API_ENDPOINTS.lgu.incidents, {
           params: { limit: 100 },
         }),
-        api.get<{ data?: { data?: IncidentStats | null } }>(
+        api.get<{ data?: IncidentStats | null }>(
           API_ENDPOINTS.lgu.incidentStats,
         ),
       ]);
-      setIncidents(incRes.data?.data ?? []);
-      setStats(statsRes.data?.data ?? null);
+      setIncidents(Array.isArray(incRes.data) ? incRes.data : []);
+      setStats(statsRes.data ?? null);
       setLastUpdated(new Date());
     } catch {
       setError(true);
@@ -230,10 +230,10 @@ function useAARs(incidentId: number | null) {
     }
     setLoading(true);
     try {
-      const res = await api.get<{ data?: { data?: AfterActionReport[] } }>(
+      const res = await api.get<{ data?: AfterActionReport[] }>(
         `${API_ENDPOINTS.lgu.incidents}/${incidentId}/aar`,
       );
-      setAars(res.data?.data ?? []);
+      setAars(Array.isArray(res.data) ? res.data : []);
     } catch {
       setAars([]);
     } finally {
@@ -255,10 +255,10 @@ function useWorkflowAnalytics() {
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get<{ data?: { data?: WorkflowAnalytics | null } }>(
+      const res = await api.get<{ data?: WorkflowAnalytics | null }>(
         API_ENDPOINTS.lgu.incidentAnalytics,
       );
-      setAnalytics(res.data?.data ?? null);
+      setAnalytics(res.data ?? null);
     } catch {
       setAnalytics(null);
     } finally {

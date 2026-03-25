@@ -9,6 +9,7 @@ Usage:
 Idempotent: skips centres that already exist (matched on name + barangay).
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,7 +18,14 @@ backend_dir = Path(__file__).resolve().parent.parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-from app.core.config import load_env
+# Load .env BEFORE importing app modules (security.py validates JWT_SECRET_KEY at import)
+from dotenv import load_dotenv
+
+env_name = os.getenv("APP_ENV", "development")
+env_file = backend_dir / f".env.{env_name}"
+if env_file.exists():
+    load_dotenv(env_file, override=True)
+
 from app.models.db import get_db_session
 from app.models.evacuation_center import EvacuationCenter
 
@@ -176,7 +184,6 @@ CENTERS = [
 
 def seed_centers() -> int:
     """Insert evacuation centers (idempotent). Returns count of newly inserted."""
-    load_env()
     inserted = 0
 
     with get_db_session() as session:

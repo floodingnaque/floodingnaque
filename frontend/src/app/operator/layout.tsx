@@ -20,6 +20,7 @@ import {
   LogOut,
   Map,
   Menu,
+  MessageSquare,
   Moon,
   Radio,
   Send,
@@ -117,6 +118,7 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Evacuation Centers",
       },
       { to: "/operator/residents", icon: Users, label: "Resident Registry" },
+      { to: "/operator/chat", icon: MessageSquare, label: "Barangay Chat" },
     ],
   },
   {
@@ -165,6 +167,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/operator/predict": "Flood Prediction Tool",
   "/operator/analytics": "Analytics & Trends",
   "/operator/aar": "After-Action Reports",
+  "/operator/chat": "Barangay Chat",
   "/operator/settings": "Settings",
 };
 

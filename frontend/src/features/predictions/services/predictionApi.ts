@@ -49,10 +49,24 @@ export interface PredictionListResponse {
  * Prediction statistics
  */
 export interface PredictionStats {
-  total: number;
-  today: number;
-  avg_risk: number;
-  high_risk_count: number;
+  period_days: number;
+  total_predictions: number;
+  flood_predictions: number;
+  no_flood_predictions: number;
+  flood_percentage: number;
+  risk_distribution: {
+    safe: number;
+    alert: number;
+    critical: number;
+  };
+  average_confidence: number | null;
+}
+
+/** Raw backend response for /stats */
+interface StatsBackendResponse {
+  success: boolean;
+  stats: PredictionStats;
+  request_id: string;
 }
 
 /**
@@ -179,7 +193,10 @@ export const predictionApi = {
    * Get prediction statistics
    */
   getStats: async (): Promise<PredictionStats> => {
-    return api.get<PredictionStats>(endpoints.predictions.stats);
+    const raw = await api.get<StatsBackendResponse>(
+      endpoints.predictions.stats,
+    );
+    return raw.stats;
   },
 };
 

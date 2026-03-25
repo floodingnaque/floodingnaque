@@ -1,24 +1,85 @@
 /**
  * Resident — My Reports Page
+ *
+ * Personal report history with reference numbers, status badges,
+ * and detail view.
  */
 
-import { Clock, FileText, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Droplets,
+  FileText,
+  Flag,
+  MapPin,
+  Plus,
+  XCircle,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useMyReports } from "@/features/resident";
+import type { CommunityReport } from "@/types";
+
+const FALLBACK_STATUS = {
+  icon: Clock,
+  label: "Pending",
+  color: "bg-amber-500/10 text-amber-700 border-amber-500/30",
+};
+
+const STATUS_CONFIG: Record<
+  string,
+  { icon: React.ElementType; label: string; color: string }
+> = {
+  pending: FALLBACK_STATUS,
+  accepted: {
+    icon: CheckCircle,
+    label: "Verified",
+    color: "bg-green-500/10 text-green-700 border-green-500/30",
+  },
+  rejected: {
+    icon: XCircle,
+    label: "Dismissed",
+    color: "bg-muted text-muted-foreground border-border",
+  },
+  flagged: {
+    icon: Flag,
+    label: "Flagged",
+    color: "bg-red-500/10 text-red-700 border-red-500/30",
+  },
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 export default function ResidentMyReportsPage() {
+  const { data: reports, isLoading } = useMyReports({});
+
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto pb-24 md:pb-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      {/* ── Header ────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">My Reports</h2>
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Mga Ulat Ko / My Reports
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Track the status of your submitted flood reports
+          </p>
+        </div>
         <Button asChild className="gap-2">
           <Link to="/resident/report">
             <Plus className="h-4 w-4" />
@@ -27,26 +88,98 @@ export default function ResidentMyReportsPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            Report History
-          </CardTitle>
-          <CardDescription>
-            Track the status of your submitted flood reports
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <Clock className="h-10 w-10 mb-3 opacity-30" />
-            <p className="text-sm font-medium">No reports submitted yet</p>
-            <p className="text-xs mt-1">
-              Your flood reports and their verification status will appear here
+      {/* ── Report List ───────────────────────────────────────────── */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : reports && reports.reports.length > 0 ? (
+        <div className="space-y-3">
+          {reports.reports.map((report: CommunityReport) => {
+            const statusKey = report.verified
+              ? "accepted"
+              : (report.status ?? "pending");
+            const status = STATUS_CONFIG[statusKey] ?? FALLBACK_STATUS;
+            const StatusIcon = status.icon;
+
+            return (
+              <Card key={report.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    {report.photo_url ? (
+                      <img
+                        src={report.photo_url}
+                        alt="Submitted flood report"
+                        className="h-14 w-14 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono text-muted-foreground">
+                          #{String(report.id).padStart(4, "0")}
+                        </span>
+                        <Badge variant="outline" className={status.color}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {status.label}
+                        </Badge>
+                      </div>
+                      {report.barangay && (
+                        <p className="text-sm font-medium mt-1 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {report.barangay}
+                        </p>
+                      )}
+                      {report.description && (
+                        <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                          {report.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                        {report.flood_height_cm != null && (
+                          <span className="flex items-center gap-1">
+                            <Droplets className="h-3 w-3" />
+                            {report.flood_height_cm} cm
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {report.created_at
+                            ? timeAgo(report.created_at)
+                            : "Recently"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <FileText className="h-12 w-12 mb-3 opacity-30" />
+            <p className="text-sm font-medium">
+              Wala ka pang ulat / No reports yet
             </p>
-          </div>
-        </CardContent>
-      </Card>
+            <p className="text-xs mt-1">
+              Help your community — report flooding in your area
+            </p>
+            <Button asChild variant="outline" size="sm" className="mt-3 gap-2">
+              <Link to="/resident/report">
+                <Plus className="h-4 w-4" />
+                Report Flood
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

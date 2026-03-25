@@ -40,10 +40,12 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BARANGAYS } from "@/config/paranaque";
 import { SmsSubscriptionToggle, useRecentAlerts } from "@/features/alerts";
+import { PushPermissionPrompt } from "@/features/alerts/components/PushPermissionPrompt";
 import { useModelHistory } from "@/features/dashboard/hooks/useAnalytics";
 import { useDashboardStats } from "@/features/dashboard/hooks/useDashboard";
 import { EvacuationCapacityCard } from "@/features/evacuation";
 import { PersonalizedRiskBanner } from "@/features/flooding/components/PersonalizedRiskBanner";
+import { RiskBadge } from "@/features/flooding/components/RiskBadge";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
 import { useReportExport } from "@/features/reports/hooks/useReports";
 import { TidalRiskIndicator } from "@/features/weather/components/TidalRiskIndicator";
@@ -472,18 +474,6 @@ const AlertFeed = memo(function AlertFeed() {
     );
   }
 
-  const riskBadge = (level: number) => {
-    const cfg =
-      level === 2
-        ? { label: "Critical", cls: "bg-risk-critical text-white" }
-        : level === 1
-          ? { label: "Alert", cls: "bg-risk-alert text-black" }
-          : { label: "Safe", cls: "bg-risk-safe text-white" };
-    return (
-      <Badge className={cn("text-[10px] px-1.5", cfg.cls)}>{cfg.label}</Badge>
-    );
-  };
-
   return (
     <GlassCard className="hover:shadow-lg transition-all duration-300 overflow-hidden">
       <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
@@ -504,7 +494,7 @@ const AlertFeed = memo(function AlertFeed() {
             key={a.id}
             className="flex items-start gap-2 p-2.5 rounded-lg border border-border/50 text-sm hover:bg-accent/50 transition-colors"
           >
-            {riskBadge(a.risk_level)}
+            <RiskBadge level={a.risk_level} />
             <div className="flex-1 min-w-0">
               <p className="truncate font-medium">{a.message}</p>
               <p className="text-xs text-muted-foreground">
@@ -670,6 +660,11 @@ export function ResidentDashboard() {
       {/* ── Personalized Location Risk ── */}
       <div className="container mx-auto px-4 py-2">
         <PersonalizedRiskBanner />
+      </div>
+
+      {/* ── Push Permission Prompt (shown after Critical alert) ── */}
+      <div className="container mx-auto px-4 py-2">
+        <PushPermissionPrompt />
       </div>
 
       {/* ── Section 2: Animated Stats Row ── */}

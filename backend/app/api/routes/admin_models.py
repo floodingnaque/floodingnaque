@@ -26,7 +26,7 @@ def require_admin(f):
     @require_auth
     def decorated(*args, **kwargs):
         if getattr(g, "current_user_role", None) != "admin":
-            return api_error("Admin access required", 403, code="ADMIN_REQUIRED")
+            return api_error("ADMIN_REQUIRED", "Admin access required", 403)
         return f(*args, **kwargs)
 
     return decorated

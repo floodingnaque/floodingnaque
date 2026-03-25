@@ -211,11 +211,13 @@ def safe_route():
             )
 
         # Type narrowing after None check (all are guaranteed float at this point)
+        assert origin_lat is not None and origin_lon is not None
+        assert dest_lat is not None and dest_lon is not None
         route = get_safe_route(
-            float(origin_lat),  # type: ignore[arg-type]
-            float(origin_lon),  # type: ignore[arg-type]
-            float(dest_lat),  # type: ignore[arg-type]
-            float(dest_lon),  # type: ignore[arg-type]
+            origin_lat,
+            origin_lon,
+            dest_lat,
+            dest_lon,
             avoid_flooded=avoid_flooded,
         )
 

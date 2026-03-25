@@ -8,6 +8,7 @@ export { ChartErrorBoundary } from "./ChartErrorBoundary";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { ConnectionStatus } from "./ConnectionStatus";
 export { CookieConsent } from "./CookieConsent";
+export { DataSection } from "./DataSection";
 export { DataUnavailable } from "./DataUnavailable";
 export { EmptyState } from "./EmptyState";
 export { ErrorBoundary } from "./ErrorBoundary";

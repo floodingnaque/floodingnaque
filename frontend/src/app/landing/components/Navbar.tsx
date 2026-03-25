@@ -24,6 +24,7 @@ function scrollTo(id: string) {
 
 const NAV_LINKS = [
   { label: "Status", target: "live-status", group: "info" },
+  { label: "Live Status", target: "barangay-status", group: "info" },
   { label: "How It Works", target: "how-it-works", group: "info" },
   { label: "Features", target: "features", group: "product" },
   { label: "Barangays", target: "barangay-map", group: "product" },

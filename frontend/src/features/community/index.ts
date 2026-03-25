@@ -19,6 +19,7 @@ export {
   useCommunityReport,
   useCommunityReports,
   useFlagReport,
+  useReportRealtimeSync,
   useReportStats,
   useSubmitReport,
   useVerifyReport,

@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { getDefaultRoute } from "@/config/role-routes";
 import { AuthPageLayout } from "@/features/auth/components/AuthPageLayout";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 import { useAuthStore } from "@/state/stores/authStore";
@@ -25,12 +26,13 @@ const itemVariants = {
 export function LoginPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userRole = useAuthStore((state) => state.user?.role);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+      navigate(getDefaultRoute(userRole), { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, userRole, navigate]);
 
   if (isAuthenticated) return null;
 

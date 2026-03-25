@@ -264,9 +264,12 @@ def scheduled_smart_alert_check():
                     "risk_label": result.get("risk_label", "Alert"),
                     "confidence": result.get("confidence", 0.5),
                 }
+                # Critical (risk_level=2): dispatch via all channels (SMS + email)
+                # Alert (risk_level=1): web-only to conserve SMS credits
+                dispatch_type = "all" if risk_level >= 2 else "web"
                 send_flood_alert(
                     risk_data=risk_data,
-                    alert_type="web",
+                    alert_type=dispatch_type,
                     smart_decision=decision,
                 )
 

@@ -46,14 +46,14 @@ function useCountUp(
 
 const STATS = [
   {
-    target: 1182,
+    target: 901,
     suffix: "",
     label: "Official Flood Records",
     source: "Parañaque City DRRMO 2022–2025",
     decimals: 0,
   },
   {
-    target: 96.75,
+    target: 97.35,
     suffix: "%",
     label: "Model Accuracy",
     source: "Random Forest v6",
@@ -67,7 +67,7 @@ const STATS = [
     decimals: 0,
   },
   {
-    target: 13698,
+    target: 6570,
     suffix: "",
     label: "Training Samples",
     source: "Balanced flood/non-flood instances",
@@ -85,8 +85,8 @@ export function StatsRow() {
 
   return (
     <section id="stats" className="py-16 sm:py-20 bg-muted/30">
-      <div className="container mx-auto px-4" ref={ref}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
+      <div className="container px-4 mx-auto" ref={ref}>
+        <div className="grid grid-cols-2 gap-8 lg:grid-cols-4 sm:gap-12">
           {STATS.map((stat, i) => (
             <StatCard
               key={stat.label}
@@ -117,18 +117,18 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={isInView ? { opacity: 1, y: 0 } : undefined}
       transition={{ delay: index * 0.15, duration: 0.5 }}
-      className="text-center space-y-1"
+      className="space-y-1 text-center"
     >
-      <p className="text-4xl sm:text-5xl font-extrabold text-primary tabular-nums tracking-tight">
+      <p className="text-4xl font-extrabold tracking-tight sm:text-5xl text-primary tabular-nums">
         {stat.decimals > 0
           ? value.toFixed(stat.decimals)
           : Math.round(value).toLocaleString()}
         {stat.suffix}
       </p>
-      <p className="text-sm font-semibold text-foreground tracking-tight">
+      <p className="text-sm font-semibold tracking-tight text-foreground">
         {stat.label}
       </p>
-      <p className="text-xs text-muted-foreground font-medium">{stat.source}</p>
+      <p className="text-xs font-medium text-muted-foreground">{stat.source}</p>
     </motion.div>
   );
 }

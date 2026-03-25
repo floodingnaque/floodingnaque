@@ -6,14 +6,9 @@ import { Cloud, Droplets, RefreshCw, Thermometer, Wind } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ForecastPanel } from "@/features/dashboard";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
 
 export default function OperatorWeatherPage() {
@@ -135,22 +130,8 @@ export default function OperatorWeatherPage() {
         </Card>
       )}
 
-      {/* Forecast placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">24-Hour Forecast</CardTitle>
-          <CardDescription>
-            Hourly precipitation and temperature forecast
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground border border-dashed border-border/50 rounded-lg">
-            <Cloud className="h-10 w-10 mb-3 opacity-30" />
-            <p className="text-sm font-medium">Forecast Chart Coming Soon</p>
-            <p className="text-xs mt-1">Will show hourly weather trends</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Forecast Chart */}
+      <ForecastPanel hours={12} />
     </div>
   );
 }

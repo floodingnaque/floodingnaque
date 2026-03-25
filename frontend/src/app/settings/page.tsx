@@ -60,6 +60,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { BARANGAYS } from "@/config/paranaque";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import {
   useNotifications,
   useTheme,
@@ -132,6 +133,13 @@ export default function SettingsPage() {
   const { toggleTheme } = useUIActions();
   const notifications = useNotifications();
   const { toggleNotification } = useUIActions();
+  const {
+    subscribe: pushSubscribe,
+    unsubscribe: pushUnsubscribe,
+    isSubscribed: isPushSubscribed,
+    isSubscribing: isPushSubscribing,
+    isSupported: isPushSupported,
+  } = usePushNotifications();
   const {
     user,
     updateProfile,
@@ -289,7 +297,21 @@ export default function SettingsPage() {
 
   // Toggle notification preference
   const handleToggleNotification = useCallback(
-    (key: keyof NotificationPreferences) => {
+    async (key: keyof NotificationPreferences) => {
+      if (key === "pushNotifications" && isPushSupported) {
+        const newValue = !notifications[key];
+        if (newValue) {
+          const ok = await pushSubscribe();
+          if (!ok) {
+            toast.error("Push Notifications", {
+              description: "Permission denied or subscription failed.",
+            });
+            return;
+          }
+        } else {
+          await pushUnsubscribe();
+        }
+      }
       toggleNotification(key);
       const newValue = !notifications[key];
       const label = NOTIFICATION_LABELS[key] ?? key;
@@ -297,7 +319,13 @@ export default function SettingsPage() {
         description: `${label} has been ${newValue ? "enabled" : "disabled"}.`,
       });
     },
-    [toggleNotification, notifications],
+    [
+      toggleNotification,
+      notifications,
+      isPushSupported,
+      pushSubscribe,
+      pushUnsubscribe,
+    ],
   );
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -649,7 +677,15 @@ export default function SettingsPage() {
                             </p>
                           </div>
                           <Switch
-                            checked={notifications[notif.key]}
+                            checked={
+                              notif.key === "pushNotifications"
+                                ? isPushSubscribed
+                                : notifications[notif.key]
+                            }
+                            disabled={
+                              notif.key === "pushNotifications" &&
+                              isPushSubscribing
+                            }
                             onCheckedChange={() =>
                               handleToggleNotification(notif.key)
                             }
@@ -672,6 +708,13 @@ export default function SettingsPage() {
 
                     <div className="space-y-3 pl-6">
                       <div className="rounded-xl border border-border/50 bg-background/50 p-3.5 space-y-3">
+                        {import.meta.env.VITE_SMS_ENABLED !== "true" && (
+                          <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            SMS gateway not configured. Your number will be
+                            saved for when it goes live.
+                          </div>
+                        )}
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5">
                             <Label className="text-sm font-normal">

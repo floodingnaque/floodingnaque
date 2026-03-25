@@ -516,10 +516,11 @@ def _compute_rolling_features() -> Dict[str, Any]:
     """
     Compute rolling weather features from stored WeatherData records.
 
-    Queries the database for recent weather observations and computes:
+    Uses a single query with conditional aggregation to compute:
     - precip_3day_sum: total precipitation over last 3 days
     - precip_7day_sum: total precipitation over last 7 days
     - rain_streak: consecutive days with precipitation > 0.1mm (most recent)
+    - tide_height: most recent non-null tide reading
 
     Returns:
         Dict with computed rolling features and metadata about data availability.
@@ -535,18 +536,20 @@ def _compute_rolling_features() -> Dict[str, Any]:
     try:
         from app.models.db import get_db_session
         from app.models.weather import WeatherData
-        from sqlalchemy import func
+        from sqlalchemy import case, func
 
         now = datetime.datetime.now(datetime.timezone.utc)
+        three_days_ago = now - datetime.timedelta(days=3)
         seven_days_ago = now - datetime.timedelta(days=7)
 
         with get_db_session() as session:
-            # Get daily precipitation sums for last 7 days, grouped by date
+            # Single query: daily precipitation + tide in one pass
             daily_records = (
                 session.query(
                     func.date(WeatherData.timestamp).label("day"),
                     func.sum(WeatherData.precipitation).label("daily_precip"),
                     func.max(WeatherData.precipitation).label("max_precip"),
+                    func.max(WeatherData.tide_height).label("tide_height"),
                 )
                 .filter(
                     WeatherData.is_deleted.is_(False),
@@ -564,15 +567,12 @@ def _compute_rolling_features() -> Dict[str, Any]:
             result["_days_available"] = len(daily_records)
             result["_rolling_source"] = "database"
 
-            # Compute precip_7day_sum from all available days
+            # Compute precip sums
             precip_values = [float(r.daily_precip or 0.0) for r in daily_records]
             result["precip_7day_sum"] = sum(precip_values)
-
-            # Compute precip_3day_sum from most recent 3 days
             result["precip_3day_sum"] = sum(precip_values[:3])
 
             # Compute rain_streak: consecutive days with max_precip > 0.1mm
-            # starting from most recent day going backwards
             streak = 0
             for r in daily_records:
                 if (r.max_precip or 0.0) > 0.1:
@@ -581,19 +581,11 @@ def _compute_rolling_features() -> Dict[str, Any]:
                     break
             result["rain_streak"] = streak
 
-            # Get most recent tide_height if available
-            latest_tide = (
-                session.query(WeatherData.tide_height)
-                .filter(
-                    WeatherData.is_deleted.is_(False),
-                    WeatherData.tide_height.isnot(None),
-                    WeatherData.timestamp >= seven_days_ago,
-                )
-                .order_by(WeatherData.timestamp.desc())
-                .first()
-            )
-            if latest_tide and latest_tide.tide_height is not None:
-                result["tide_height"] = float(latest_tide.tide_height)
+            # Extract most recent non-null tide_height from the grouped results
+            for r in daily_records:
+                if r.tide_height is not None:
+                    result["tide_height"] = float(r.tide_height)
+                    break
 
     except Exception as e:
         logger.warning("Could not compute rolling features from database: %s", e)

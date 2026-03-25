@@ -72,6 +72,8 @@ export interface FloodMapProps {
   height?: string | number;
   /** Whether to show attribution */
   showAttribution?: boolean;
+  /** Extra layers to render inside the MapContainer */
+  children?: React.ReactNode;
 }
 
 export interface FloodMapRef {
@@ -129,6 +131,7 @@ export const FloodMap = memo(
         className,
         height = 400,
         showAttribution = true,
+        children,
       },
       ref,
     ) => {
@@ -236,6 +239,9 @@ export const FloodMap = memo(
               ) : (
                 <RiskMarkers alerts={alerts} />
               ))}
+
+            {/* Extra layers injected by parent */}
+            {children}
           </MapContainer>
         </div>
       );

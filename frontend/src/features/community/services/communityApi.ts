@@ -135,12 +135,12 @@ export const communityApi = {
   voteReport: async (
     id: number,
     vote: ReportVote,
-  ): Promise<CommunityReport> => {
-    const response = await api.post<ReportResponse>(
-      `${API_ENDPOINTS.communityReports.confirm}/${id}/confirm`,
-      { vote },
-    );
-    return response.report;
+  ): Promise<{ confirmation_count: number; dispute_count: number }> => {
+    return api.post<{
+      success: boolean;
+      confirmation_count: number;
+      dispute_count: number;
+    }>(`${API_ENDPOINTS.communityReports.confirm}/${id}/confirm`, { vote });
   },
 
   /**

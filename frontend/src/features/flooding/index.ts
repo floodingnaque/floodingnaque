@@ -9,9 +9,12 @@ export { ExplainabilityPanel } from "./components/ExplainabilityPanel";
 export { PersonalizedRiskBanner } from "./components/PersonalizedRiskBanner";
 export { PredictionForm } from "./components/PredictionForm";
 export { PredictionResult } from "./components/PredictionResult";
+export { RiskBadge } from "./components/RiskBadge";
 export { RiskDisplay } from "./components/RiskDisplay";
 
 // Hooks
+export { useFloodStatus } from "./hooks/useFloodStatus";
+export { useLivePrediction } from "./hooks/useLivePrediction";
 export {
   useLocationPrediction,
   type UseLocationPredictionOptions,

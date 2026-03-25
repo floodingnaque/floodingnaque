@@ -309,7 +309,12 @@ export default function AdminMonitoringPage() {
     );
   if (drift?.drift_detected)
     anomalies.push(`Model drift detected — PSI ${drift.psi?.toFixed(4)}`);
-  if (alertStats && alertStats.success_rate < 0.9)
+  if (
+    alertStats &&
+    alertStats.total_alerts > 0 &&
+    alertStats.success_rate != null &&
+    alertStats.success_rate < 0.9
+  )
     anomalies.push(
       `Alert delivery success rate ${formatPercent(alertStats.success_rate)} below 90%`,
     );
@@ -337,7 +342,22 @@ export default function AdminMonitoringPage() {
             </span>
             {/* Live mode toggle */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Live</span>
+              {liveMode && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-risk-safe opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-risk-safe" />
+                </span>
+              )}
+              <span
+                className={cn(
+                  "text-xs",
+                  liveMode
+                    ? "text-risk-safe font-medium"
+                    : "text-muted-foreground",
+                )}
+              >
+                {liveMode ? "Live" : "Paused"}
+              </span>
               <Switch
                 checked={liveMode}
                 onCheckedChange={setLiveMode}
@@ -514,13 +534,20 @@ export default function AdminMonitoringPage() {
                         label="Alert Success"
                         value={
                           alertStats
-                            ? formatPercent(alertStats.success_rate)
+                            ? alertStats.total_alerts > 0 &&
+                              alertStats.success_rate != null
+                              ? formatPercent(alertStats.success_rate)
+                              : "N/A"
                             : "—"
                         }
                         color={
-                          (alertStats?.success_rate ?? 1) >= 0.95
-                            ? "text-risk-safe"
-                            : "text-risk-critical"
+                          !alertStats ||
+                          alertStats.total_alerts === 0 ||
+                          alertStats.success_rate == null
+                            ? "text-muted-foreground"
+                            : (alertStats.success_rate ?? 1) >= 0.95
+                              ? "text-risk-safe"
+                              : "text-risk-critical"
                         }
                         iconColor="text-primary"
                       />
@@ -709,33 +736,55 @@ export default function AdminMonitoringPage() {
                   </motion.div>
 
                   {/* HTTP Status Distribution */}
-                  {apiStats?.status_breakdown && (
+                  {apiStats?.total_requests === 0 && (
                     <motion.div variants={fadeUp}>
-                      <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
-                        <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center">
-                              <Activity className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                            HTTP Status Distribution
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <DistributionBar
-                            data={apiStats.status_breakdown}
-                            total={apiStats.total_requests}
-                            colors={{
-                              "2xx": "bg-risk-safe",
-                              "3xx": "bg-blue-500",
-                              "4xx": "bg-risk-alert",
-                              "5xx": "bg-risk-critical",
-                            }}
-                          />
+                      <GlassCard className="overflow-hidden border-border/30">
+                        <div className="h-1 w-full bg-linear-to-r from-muted/60 via-muted to-muted/60" />
+                        <CardContent className="py-10 flex flex-col items-center gap-3 text-center">
+                          <Zap className="h-10 w-10 text-muted-foreground/30" />
+                          <div>
+                            <p className="font-semibold text-muted-foreground">
+                              No API Traffic Recorded
+                            </p>
+                            <p className="text-xs text-muted-foreground/70 mt-1 max-w-sm">
+                              API performance metrics will appear here once
+                              requests are made. Response times are tracked in a
+                              rolling {apiStats?.period_minutes ?? 60}-minute
+                              window.
+                            </p>
+                          </div>
                         </CardContent>
                       </GlassCard>
                     </motion.div>
                   )}
+                  {apiStats?.status_breakdown &&
+                    (apiStats?.total_requests ?? 0) > 0 && (
+                      <motion.div variants={fadeUp}>
+                        <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                          <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center">
+                                <Activity className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                              HTTP Status Distribution
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <DistributionBar
+                              data={apiStats.status_breakdown}
+                              total={apiStats.total_requests}
+                              colors={{
+                                "2xx": "bg-risk-safe",
+                                "3xx": "bg-blue-500",
+                                "4xx": "bg-risk-alert",
+                                "5xx": "bg-risk-critical",
+                              }}
+                            />
+                          </CardContent>
+                        </GlassCard>
+                      </motion.div>
+                    )}
 
                   {/* Slowest Endpoints (enhanced with p95/p99/errors/SLA) */}
                   {apiStats?.slowest_endpoints &&
@@ -1122,13 +1171,20 @@ export default function AdminMonitoringPage() {
                         label="Success Rate"
                         value={
                           alertStats
-                            ? formatPercent(alertStats.success_rate)
+                            ? alertStats.total_alerts > 0 &&
+                              alertStats.success_rate != null
+                              ? formatPercent(alertStats.success_rate)
+                              : "N/A"
                             : "—"
                         }
                         color={
-                          (alertStats?.success_rate ?? 1) >= 0.95
-                            ? "text-risk-safe"
-                            : "text-risk-critical"
+                          !alertStats ||
+                          alertStats.total_alerts === 0 ||
+                          alertStats.success_rate == null
+                            ? "text-muted-foreground"
+                            : (alertStats.success_rate ?? 1) >= 0.95
+                              ? "text-risk-safe"
+                              : "text-risk-critical"
                         }
                         iconColor="text-primary"
                       />
@@ -1156,37 +1212,60 @@ export default function AdminMonitoringPage() {
                     </div>
                   </motion.div>
 
-                  {/* Delivery Status */}
-                  {alertStats?.status_breakdown && (
+                  {/* Empty state when no alerts */}
+                  {(alertStats?.total_alerts ?? 0) === 0 && (
                     <motion.div variants={fadeUp}>
-                      <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
-                        <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center">
-                              <Bell className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                            Delivery Status
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <DistributionBar
-                            data={alertStats.status_breakdown}
-                            total={alertStats.total_alerts || 1}
-                            colors={{
-                              delivered: "bg-risk-safe",
-                              sent: "bg-risk-safe",
-                              success: "bg-risk-safe",
-                              pending: "bg-risk-alert",
-                              queued: "bg-blue-500",
-                              failed: "bg-risk-critical",
-                              error: "bg-risk-critical",
-                            }}
-                          />
+                      <GlassCard className="overflow-hidden border-border/30">
+                        <div className="h-1 w-full bg-linear-to-r from-muted/60 via-muted to-muted/60" />
+                        <CardContent className="py-10 flex flex-col items-center gap-3 text-center">
+                          <Bell className="h-10 w-10 text-muted-foreground/30" />
+                          <div>
+                            <p className="font-semibold text-muted-foreground">
+                              No Alerts Sent
+                            </p>
+                            <p className="text-xs text-muted-foreground/70 mt-1 max-w-sm">
+                              Alert delivery metrics will appear here once
+                              alerts are triggered. Tracking window: last{" "}
+                              {alertStats?.period_hours ?? 24} hours.
+                            </p>
+                          </div>
                         </CardContent>
                       </GlassCard>
                     </motion.div>
                   )}
+
+                  {/* Delivery Status */}
+                  {alertStats?.status_breakdown &&
+                    (alertStats?.total_alerts ?? 0) > 0 && (
+                      <motion.div variants={fadeUp}>
+                        <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                          <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center">
+                                <Bell className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                              Delivery Status
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <DistributionBar
+                              data={alertStats.status_breakdown}
+                              total={alertStats.total_alerts || 1}
+                              colors={{
+                                delivered: "bg-risk-safe",
+                                sent: "bg-risk-safe",
+                                success: "bg-risk-safe",
+                                pending: "bg-risk-alert",
+                                queued: "bg-blue-500",
+                                failed: "bg-risk-critical",
+                                error: "bg-risk-critical",
+                              }}
+                            />
+                          </CardContent>
+                        </GlassCard>
+                      </motion.div>
+                    )}
 
                   {/* Channel Breakdown */}
                   {alertStats?.channel_breakdown && (

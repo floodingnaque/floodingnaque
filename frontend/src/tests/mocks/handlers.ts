@@ -246,13 +246,15 @@ export const alertsHandlers = [
     );
 
     return HttpResponse.json({
+      success: true,
       alerts,
       summary: {
-        total: 100,
-        by_risk_level: { 0: 50, 1: 35, 2: 15 },
-        acknowledged: 75,
-        pending: 25,
+        total_alerts: 100,
+        days: 7,
+        risk_distribution: { safe: 50, alert: 35, critical: 15 },
+        status_distribution: { delivered: 75, pending: 20, failed: 5 },
       },
+      request_id: "test-request-id",
     });
   }),
 

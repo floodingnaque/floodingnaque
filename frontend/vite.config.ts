@@ -9,7 +9,13 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
+      // Enable SW in development for testing PWA features
+      devOptions: {
+        enabled: true,
+        type: "module",
+      },
       registerType: "autoUpdate",
+      injectRegister: "auto",
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "icons/*.png"],
       manifest: false, // Use the existing public/manifest.json
       workbox: {
@@ -19,7 +25,13 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         // Serve offline.html when navigation requests fail
         navigateFallback: "/offline.html",
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [
+          /^\/api/, // Never fallback API requests
+          /^\/admin/, // Admin requires live connection
+        ],
+        // Update SW immediately
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             // API calls - network-first so we get fresh data when online,
@@ -197,6 +209,10 @@ export default defineConfig(({ mode }) => ({
         timeout: 0,
       },
       "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+      "/static": {
         target: "http://localhost:5000",
         changeOrigin: true,
       },

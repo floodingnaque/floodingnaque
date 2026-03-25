@@ -6,33 +6,38 @@
  * by users who lack the required role.
  */
 
+import { getDefaultRoute } from "@/config/role-routes";
 import { useUser } from "@/state";
 import { Navigate } from "react-router-dom";
 
 interface RequireRoleProps {
-  /** The role required to render the children */
-  requiredRole: string;
+  /** The role(s) allowed to render the children. Accepts a single role or array. */
+  requiredRole: string | string[];
   /** Content to render when the user has the correct role */
   children: React.ReactNode;
-  /** Path to redirect to when the user lacks the role (default: /) */
+  /** Path to redirect to when the user lacks the role (default: user's own dashboard) */
   redirectTo?: string;
 }
 
 /**
  * RequireRole guards routes that require a specific user role.
  *
- * If the current user does not have the required role, they are
- * redirected to the specified path (default: home).
+ * Accepts a single role string or an array of roles. If the
+ * current user does not have one of the allowed roles, they are
+ * redirected to their own dashboard.
  */
 export function RequireRole({
   requiredRole,
   children,
-  redirectTo = "/",
+  redirectTo,
 }: RequireRoleProps) {
   const user = useUser();
+  const allowed = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
 
-  if (!user || user.role !== requiredRole) {
-    return <Navigate to={redirectTo} replace />;
+  if (!user || !allowed.includes(user.role)) {
+    // Redirect to the explicitly provided path, or the user's own dashboard
+    const target = redirectTo ?? getDefaultRoute(user?.role);
+    return <Navigate to={target} replace />;
   }
 
   return <>{children}</>;

@@ -34,6 +34,8 @@ import {
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
+import { FloodMap } from "@/features/map";
+import { DecisionEngine } from "@/features/operator/components/DecisionEngine";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { RiskLevel } from "@/types";
@@ -354,24 +356,15 @@ export default function OperatorOverviewPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="aspect-video rounded-lg bg-muted/50 border border-dashed border-border flex items-center justify-center">
-              <div className="text-center space-y-2 text-muted-foreground">
-                <MapPin className="h-12 w-12 mx-auto opacity-50" />
-                <p className="text-sm font-medium">Interactive Map</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate("/operator/map")}
-                >
-                  Open Full Map
-                </Button>
-              </div>
-            </div>
+            <FloodMap height={350} />
           </CardContent>
         </Card>
 
         {/* Side Panels */}
         <div className="space-y-6">
+          {/* Decision Engine */}
+          <DecisionEngine riskLevel={riskLevel} />
+
           {/* Active Incidents Panel */}
           <Card>
             <CardHeader className="pb-3">

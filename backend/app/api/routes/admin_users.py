@@ -52,17 +52,33 @@ def require_admin(f):
     @require_auth
     def decorated(*args, **kwargs):
         if getattr(g, "current_user_role", None) != "admin":
-            return api_error("Admin access required", HTTP_FORBIDDEN, code="ADMIN_REQUIRED")
+            return api_error("ADMIN_REQUIRED", "Admin access required", HTTP_FORBIDDEN)
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+def require_admin_or_operator(f):
+    """Decorator that requires admin or operator role after authentication."""
+
+    @wraps(f)
+    @require_auth
+    def decorated(*args, **kwargs):
+        if getattr(g, "current_user_role", None) not in ("admin", "operator"):
+            return api_error("ADMIN_REQUIRED", "Admin or operator access required", HTTP_FORBIDDEN)
         return f(*args, **kwargs)
 
     return decorated
 
 
 @admin_users_bp.route("/", methods=["GET"])
-@require_admin
+@require_admin_or_operator
 def list_users():
     """
     List all users with optional filtering and pagination.
+
+    Operators are restricted to viewing only role='user' records.
+    Admins can view all roles.
 
     Query Parameters:
         page (int): Page number (default 1)
@@ -85,6 +101,11 @@ def list_users():
             search = request.args.get("search", "").strip()
             sort_by = request.args.get("sort_by", "created_at")
             order = request.args.get("order", "desc")
+
+            # Operators can only see residents (role='user')
+            caller_role = getattr(g, "current_user_role", None)
+            if caller_role == "operator":
+                role_filter = "user"
 
             query = session.query(User).filter(User.is_deleted == False)  # noqa: E712
 

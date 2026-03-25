@@ -14,6 +14,7 @@ from typing import cast
 from app.api.middleware.auth import require_auth_or_api_key, require_scope
 from app.api.middleware.rate_limit import rate_limit_with_burst
 from app.core.constants import is_within_study_area
+from app.core.security import decode_token
 from app.models.community_report import CommunityReport
 from app.models.db import get_db_session
 from app.services.credibility_service import check_auto_verify, score_report
@@ -165,6 +166,14 @@ def create_report():
         if risk_label not in ("Safe", "Alert", "Critical"):
             return jsonify({"success": False, "error": "risk_label must be Safe, Alert, or Critical"}), 400
 
+        if flood_height_cm is not None:
+            try:
+                flood_height_cm = int(flood_height_cm)
+            except (TypeError, ValueError):
+                return jsonify({"success": False, "error": "flood_height_cm must be an integer"}), 400
+            if flood_height_cm < 0 or flood_height_cm > 500:
+                return jsonify({"success": False, "error": "flood_height_cm must be between 0 and 500"}), 400
+
         if description and len(description) > 280:
             return jsonify({"success": False, "error": "description must be at most 280 characters"}), 400
 
@@ -210,6 +219,47 @@ def create_report():
             cred_score = cast(float, report.credibility_score or 0)
 
         _post_create_tasks(report_id, report_data, risk_label, cred_score)
+
+        # Auto-post to barangay chat channel (non-fatal)
+        try:
+            from app.api.routes.chat import post_flood_report_to_chat_internal
+
+            user_id = _resolve_user_id()
+            if user_id:
+                with get_db_session() as sess:
+                    u = sess.query(CommunityReport).filter(CommunityReport.id == report_id).first()
+                    from app.models.user import User as UserModel
+
+                    author = sess.query(UserModel).filter(UserModel.id == user_id).first()
+                    author_name = (author.full_name or author.email) if author else "Anonymous"
+                    from app.models.resident_profile import ResidentProfile
+
+                    profile = sess.query(ResidentProfile).filter(ResidentProfile.user_id == user_id).first()
+                    brgy_raw = profile.barangay if profile else barangay
+                    # Normalize barangay display name to slug
+                    brgy_slug = None
+                    if brgy_raw:
+                        from app.core.chat_constants import BARANGAY_DISPLAY_NAMES
+
+                        for bid, dname in BARANGAY_DISPLAY_NAMES.items():
+                            if dname.lower() == brgy_raw.strip().lower():
+                                brgy_slug = bid
+                                break
+                        if not brgy_slug:
+                            brgy_slug = brgy_raw.strip().lower().replace(" ", "_")
+
+                    post_flood_report_to_chat_internal(
+                        user_id=user_id,
+                        user_name=author_name,
+                        user_role=author.role if author else "user",
+                        barangay_id=brgy_slug,
+                        report_id=report_id,
+                        flood_depth=f"{flood_height_cm} cm" if flood_height_cm else "Unknown depth",
+                        location=specific_location or barangay or "Location not specified",
+                    )
+        except Exception as e:
+            logger.warning("Failed to post flood report to chat: %s", e)
+
         return jsonify({"success": True, "report": report_data}), 201
 
     except Exception as exc:
@@ -230,27 +280,42 @@ def report_stats():
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         with get_db_session() as session:
-            base = session.query(CommunityReport).filter(
+            from sqlalchemy import case, func
+
+            filters = [
                 CommunityReport.is_deleted.is_(False),
                 CommunityReport.created_at >= cutoff,
-            )
+            ]
             if barangay:
-                base = base.filter(CommunityReport.barangay == barangay)
+                filters.append(CommunityReport.barangay == barangay)
 
-            total = base.count()
-            verified = base.filter(CommunityReport.verified.is_(True)).count()
-            pending = base.filter(CommunityReport.status == "pending").count()
-            critical = base.filter(CommunityReport.risk_label == "Critical").count()
+            # Single aggregation query (was 4 separate COUNT queries)
+            row = (
+                session.query(
+                    func.count(CommunityReport.id).label("total"),
+                    func.count(
+                        case((CommunityReport.verified.is_(True), CommunityReport.id))
+                    ).label("verified"),
+                    func.count(
+                        case((CommunityReport.status == "pending", CommunityReport.id))
+                    ).label("pending"),
+                    func.count(
+                        case((CommunityReport.risk_label == "Critical", CommunityReport.id))
+                    ).label("critical"),
+                )
+                .filter(*filters)
+                .one()
+            )
 
             return (
                 jsonify(
                     {
                         "success": True,
                         "stats": {
-                            "total": total,
-                            "verified": verified,
-                            "pending": pending,
-                            "critical": critical,
+                            "total": row.total,
+                            "verified": row.verified,
+                            "pending": row.pending,
+                            "critical": row.critical,
                         },
                     }
                 ),
@@ -274,6 +339,7 @@ def list_reports():
         hours = int(request.args.get("hours", 6))
         status = request.args.get("status")
         verified = request.args.get("verified")
+        mine = request.args.get("mine")
         limit = min(int(request.args.get("limit", 50)), 100)
         page = max(int(request.args.get("page", 1)), 1)
         offset = (page - 1) * limit
@@ -283,8 +349,25 @@ def list_reports():
         with get_db_session() as session:
             query = session.query(CommunityReport).filter(
                 CommunityReport.is_deleted.is_(False),
-                CommunityReport.created_at >= cutoff,
             )
+
+            # When filtering by user's own reports, skip the time cutoff
+            if mine and mine.lower() in ("true", "1", "yes"):
+                user_id = _get_current_user_id()
+                # If auth middleware didn't set user_id, try decoding the token directly
+                if not user_id:
+                    auth_header = request.headers.get("Authorization", "")
+                    if auth_header.startswith("Bearer "):
+                        token = auth_header.split(" ", 1)[1]
+                        payload, err = decode_token(token)
+                        if not err:
+                            user_id = int(payload.get("sub"))
+                if user_id:
+                    query = query.filter(CommunityReport.user_id == user_id)
+                else:
+                    return jsonify({"success": False, "error": "Authentication required for mine=true"}), 401
+            else:
+                query = query.filter(CommunityReport.created_at >= cutoff)
 
             if barangay:
                 query = query.filter(CommunityReport.barangay == barangay)
@@ -475,7 +558,18 @@ def verify_report(report_id: int):
             report.verified_at = datetime.now(timezone.utc)
             session.add(report)
 
-            return jsonify({"success": True, "report": _serialize_report(report)}), 200
+            serialized = _serialize_report(report)
+
+            # Broadcast status change via SSE for real-time updates
+            try:
+                from app.api.routes.sse import get_sse_manager
+
+                sse = get_sse_manager()
+                sse.broadcast("report_status_changed", {"report_id": report_id, "status": new_status, "report": serialized})
+            except Exception as exc:
+                logger.debug("SSE broadcast skipped for verify: %s", exc)
+
+            return jsonify({"success": True, "report": serialized}), 200
 
     except Exception as exc:
         logger.error("Failed to verify report %d: %s", report_id, exc, exc_info=True)
@@ -496,20 +590,31 @@ def confirm_report(report_id: int):
             return jsonify({"success": False, "error": "vote must be 'confirm' or 'dispute'"}), 400
 
         with get_db_session() as session:
-            report = (
-                session.query(CommunityReport)
-                .filter(CommunityReport.id == report_id, CommunityReport.is_deleted.is_(False))
-                .first()
-            )
-            if not report:
+            # Atomic increment via SQL UPDATE (avoids SELECT + UPDATE round-trip)
+            if vote == "confirm":
+                updated = (
+                    session.query(CommunityReport)
+                    .filter(CommunityReport.id == report_id, CommunityReport.is_deleted.is_(False))
+                    .update(
+                        {CommunityReport.confirmation_count: (CommunityReport.confirmation_count or 0) + 1},
+                        synchronize_session="fetch",
+                    )
+                )
+            else:
+                updated = (
+                    session.query(CommunityReport)
+                    .filter(CommunityReport.id == report_id, CommunityReport.is_deleted.is_(False))
+                    .update(
+                        {CommunityReport.dispute_count: (CommunityReport.dispute_count or 0) + 1},
+                        synchronize_session="fetch",
+                    )
+                )
+
+            if not updated:
                 return jsonify({"success": False, "error": "Report not found"}), 404
 
-            if vote == "confirm":
-                report.confirmation_count = (report.confirmation_count or 0) + 1
-            else:
-                report.dispute_count = (report.dispute_count or 0) + 1
-
-            session.add(report)
+            # Fetch updated counts for response
+            report = session.query(CommunityReport).filter(CommunityReport.id == report_id).first()
 
             # Re-check auto-verify after new confirmation
             if vote == "confirm":
@@ -560,16 +665,22 @@ def flag_report(report_id: int):
 
             session.add(report)
 
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "abuse_flag_count": report.abuse_flag_count,
-                        "status": report.status,
-                    }
-                ),
-                200,
-            )
+            response_data = {
+                "success": True,
+                "abuse_flag_count": report.abuse_flag_count,
+                "status": report.status,
+            }
+
+            # Broadcast flag event via SSE for real-time updates
+            try:
+                from app.api.routes.sse import get_sse_manager
+
+                sse = get_sse_manager()
+                sse.broadcast("report_status_changed", {"report_id": report_id, "status": report.status, "flagged": True})
+            except Exception as exc:
+                logger.debug("SSE broadcast skipped for flag: %s", exc)
+
+            return jsonify(response_data), 200
 
     except Exception as exc:
         logger.error("Failed to flag report %d: %s", report_id, exc, exc_info=True)

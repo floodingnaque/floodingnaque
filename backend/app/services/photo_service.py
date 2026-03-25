@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB (pre-compression upload limit)
 
 # ── Compression settings ────────────────────────────────────────────────
-MAX_DIMENSION: int = int(os.getenv("PHOTO_MAX_DIMENSION", "1920"))
+MAX_DIMENSION: int = int(os.getenv("PHOTO_MAX_DIMENSION", "1280"))
 """Longest edge in pixels — images larger than this are down-scaled
-proportionally.  1920 px is full-HD and plenty for flood evidence."""
+proportionally.  1280 px is sufficient for flood evidence."""
 
-JPEG_QUALITY: int = int(os.getenv("PHOTO_JPEG_QUALITY", "75"))
-"""JPEG encoder quality (1–95).  75 gives a good balance between visual
-fidelity and file size (~70-80 % smaller than quality-95 originals)."""
+JPEG_QUALITY: int = int(os.getenv("PHOTO_JPEG_QUALITY", "60"))
+"""JPEG encoder quality (1–95).  60 keeps flood evidence clearly
+visible while minimising database/storage footprint."""
 
 # ── Accepted magic bytes ────────────────────────────────────────────────
 _MAGIC_BYTES = {

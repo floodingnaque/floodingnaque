@@ -4,14 +4,56 @@
  * TanStack Query hooks for community flood report data.
  * Provides queries for listing/fetching reports and mutations
  * for submitting, voting, flagging, and verifying.
+ *
+ * Real-time: Uses BroadcastChannel to sync report changes across
+ * browser tabs instantly. SSE broadcast from the backend handles
+ * cross-user propagation; connected clients pick it up via polling.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { toast } from "sonner";
 import {
   communityApi,
   type ReportListParams,
   type ReportStatsParams,
 } from "../services/communityApi";
+
+// ---------------------------------------------------------------------------
+// Cross-tab real-time sync via BroadcastChannel
+// ---------------------------------------------------------------------------
+
+const CHANNEL_NAME = "community-reports-sync";
+
+function notifyCrossTabs() {
+  try {
+    const ch = new BroadcastChannel(CHANNEL_NAME);
+    ch.postMessage({ type: "report-updated", ts: Date.now() });
+    ch.close();
+  } catch {
+    // BroadcastChannel not supported — graceful no-op
+  }
+}
+
+/**
+ * Listens for cross-tab report changes and invalidates community queries.
+ * Mount once in any component that displays community report data.
+ */
+export function useReportRealtimeSync() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    let ch: BroadcastChannel | null = null;
+    try {
+      ch = new BroadcastChannel(CHANNEL_NAME);
+      ch.onmessage = () => {
+        qc.invalidateQueries({ queryKey: communityKeys.all });
+      };
+    } catch {
+      // BroadcastChannel not supported
+    }
+    return () => ch?.close();
+  }, [qc]);
+}
 
 /**
  * Query key factory for community reports
@@ -34,7 +76,8 @@ export function useCommunityReports(params?: ReportListParams) {
   return useQuery({
     queryKey: communityKeys.list(params),
     queryFn: () => communityApi.getReports(params),
-    refetchInterval: 120_000,
+    refetchInterval: (query) =>
+      query.state.status === "error" ? false : 30_000,
   });
 }
 
@@ -45,7 +88,8 @@ export function useReportStats(params?: ReportStatsParams) {
   return useQuery({
     queryKey: communityKeys.stats(params),
     queryFn: () => communityApi.getStats(params),
-    refetchInterval: 120_000,
+    refetchInterval: (query) =>
+      query.state.status === "error" ? false : 30_000,
   });
 }
 
@@ -69,9 +113,10 @@ export function useSubmitReport() {
   return useMutation({
     mutationFn: (formData: FormData) => communityApi.submitReport(formData),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: communityKeys.lists() });
       qc.invalidateQueries({ queryKey: communityKeys.all });
+      notifyCrossTabs();
     },
+    onError: () => toast.error("Failed to submit report"),
   });
 }
 
@@ -84,9 +129,10 @@ export function useVoteReport() {
     mutationFn: ({ id, vote }: { id: number; vote: "confirm" | "dispute" }) =>
       communityApi.voteReport(id, vote),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: communityKeys.lists() });
       qc.invalidateQueries({ queryKey: communityKeys.all });
+      notifyCrossTabs();
     },
+    onError: () => toast.error("Failed to submit vote"),
   });
 }
 
@@ -98,9 +144,10 @@ export function useFlagReport() {
   return useMutation({
     mutationFn: (id: number) => communityApi.flagReport(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: communityKeys.lists() });
       qc.invalidateQueries({ queryKey: communityKeys.all });
+      notifyCrossTabs();
     },
+    onError: () => toast.error("Failed to flag report"),
   });
 }
 
@@ -118,8 +165,9 @@ export function useVerifyReport() {
       status: "accepted" | "rejected";
     }) => communityApi.verifyReport(id, status),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: communityKeys.lists() });
       qc.invalidateQueries({ queryKey: communityKeys.all });
+      notifyCrossTabs();
     },
+    onError: () => toast.error("Failed to verify report"),
   });
 }

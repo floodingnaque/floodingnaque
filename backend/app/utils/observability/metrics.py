@@ -165,6 +165,19 @@ def _register_custom_metrics(metrics):
         "floodingnaque_alerts_sent_total", "Total alerts sent", ["risk_level", "channel"]
     )
 
+    # === Push Notification Metrics ===
+
+    # Push delivery counters
+    metrics.push_delivered_total = Counter(
+        "floodingnaque_push_delivered_total", "Total push notifications delivered successfully"
+    )
+    metrics.push_failed_total = Counter(
+        "floodingnaque_push_failed_total", "Total push notifications that failed to deliver"
+    )
+    metrics.push_expired_total = Counter(
+        "floodingnaque_push_expired_total", "Total push subscriptions expired (410 Gone)"
+    )
+
     # === Model Metrics ===
 
     # Model info

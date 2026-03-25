@@ -27,7 +27,7 @@ class TestClassifyRiskLevel:
         """No-flood prediction with low probability should return Safe."""
         result = classify_risk_level(
             prediction=0,
-            probability={"flood": 0.10, "no_flood": 0.90},
+            probability={"flood": 0.05, "no_flood": 0.95},
         )
         assert result["risk_level"] == 0
         assert result["risk_label"] == "Safe"
@@ -44,7 +44,7 @@ class TestClassifyRiskLevel:
         """Low precipitation should not escalate to Alert."""
         result = classify_risk_level(
             prediction=0,
-            probability={"flood": 0.10, "no_flood": 0.90},
+            probability={"flood": 0.05, "no_flood": 0.95},
             precipitation=5.0,
         )
         assert result["risk_level"] == 0
@@ -176,8 +176,9 @@ class TestRiskBoundaries:
         "flood_prob, expected_level",
         [
             (0.0, 0),
-            (0.29, 0),
-            (0.30, 1),  # boundary: 0.30 → Alert
+            (0.09, 0),
+            (0.10, 1),  # boundary: safe_max=0.10 → Alert
+            (0.40, 1),
             (0.74, 1),
             (1.0, 1),  # prediction=0, high prob → Alert (no Critical without prediction=1)
         ],
@@ -218,7 +219,7 @@ class TestFormatAlertMessage:
     def test_message_includes_label_and_description(self):
         risk_data = classify_risk_level(
             prediction=0,
-            probability={"flood": 0.10, "no_flood": 0.90},
+            probability={"flood": 0.05, "no_flood": 0.95},
         )
         msg = format_alert_message(risk_data)
         assert "Safe" in msg
@@ -261,8 +262,8 @@ class TestGetRiskThresholds:
 
     def test_threshold_values(self):
         thresholds = get_risk_thresholds()
-        assert thresholds["Safe"]["flood_probability_max"] == 0.30
-        assert thresholds["Alert"]["flood_probability_min"] == 0.30
+        assert thresholds["Safe"]["flood_probability_max"] == 0.10
+        assert thresholds["Alert"]["flood_probability_min"] == 0.10
         assert thresholds["Critical"]["flood_probability_min"] == 0.75
 
 

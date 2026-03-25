@@ -75,6 +75,7 @@ export const API_ENDPOINTS = {
     incidentStats: "/api/v1/lgu/incidents/stats",
     incidentAnalytics: "/api/v1/lgu/incidents/analytics",
     aar: "/api/v1/lgu/aar",
+    broadcasts: "/api/v1/lgu/broadcasts",
   },
   models: {
     list: "/api/models",
@@ -90,6 +91,8 @@ export const API_ENDPOINTS = {
     predictionsCount: "/api/v1/export/predictions/count",
     alerts: "/api/v1/export/alerts",
     alertsCount: "/api/v1/export/alerts/count",
+    modelMetrics: "/api/v1/export/model-metrics",
+    disasterPreparedness: "/api/v1/export/disaster-preparedness",
   },
   admin: {
     users: "/api/v1/admin/users",
@@ -138,6 +141,11 @@ export const API_ENDPOINTS = {
   aggregation: {
     riverReadings: "/api/v1/aggregation/river/readings",
     riverStation: "/api/v1/aggregation/river/stations",
+  },
+  push: {
+    vapidPublicKey: "/api/v1/push/vapid-public-key",
+    subscribe: "/api/v1/push/subscribe",
+    unsubscribe: "/api/v1/push/unsubscribe",
   },
 } as const;
 

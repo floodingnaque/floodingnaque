@@ -6,31 +6,39 @@
  * Redundant Sign In / LGU buttons removed - DualCTA handles role routing.
  */
 
-import { motion } from 'framer-motion';
-import { ShieldCheck, AlertTriangle, ShieldAlert, ArrowDown } from 'lucide-react';
-import { FloodIcon } from '@/components/icons/FloodIcon';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import { useLivePrediction } from '@/features/flooding/hooks/useLivePrediction';
-import type { RiskLevel } from '@/types';
+import { FloodIcon } from "@/components/icons/FloodIcon";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
+import { cn } from "@/lib/utils";
+import type { RiskLevel } from "@/types";
+import { motion } from "framer-motion";
+import {
+  AlertTriangle,
+  ArrowDown,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Risk badge config (mirrors dashboard RISK_THEME)
 // ---------------------------------------------------------------------------
 
-const RISK_CFG: Record<RiskLevel, { label: string; bg: string; icon: typeof ShieldCheck }> = {
-  0: { label: 'SAFE', bg: 'bg-risk-safe', icon: ShieldCheck },
-  1: { label: 'ALERT', bg: 'bg-risk-alert', icon: AlertTriangle },
-  2: { label: 'CRITICAL', bg: 'bg-risk-critical', icon: ShieldAlert },
+const RISK_CFG: Record<
+  RiskLevel,
+  { label: string; bg: string; icon: typeof ShieldCheck }
+> = {
+  0: { label: "SAFE", bg: "bg-risk-safe", icon: ShieldCheck },
+  1: { label: "ALERT", bg: "bg-risk-alert", icon: AlertTriangle },
+  2: { label: "CRITICAL", bg: "bg-risk-critical", icon: ShieldAlert },
 };
 
 // ---------------------------------------------------------------------------
 // Rain effect (shared component)
 // ---------------------------------------------------------------------------
 
-import { RainEffect } from '@/components/effects/RainEffect';
+import { RainEffect } from "@/components/effects/RainEffect";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -52,7 +60,7 @@ export function HeroSection() {
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
 
-      <div className="relative z-10 container mx-auto px-4 py-24 text-center">
+      <div className="container relative z-10 px-4 py-24 mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -61,8 +69,8 @@ export function HeroSection() {
         >
           {/* Logo */}
           <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center justify-center h-20 w-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
-              <FloodIcon className="h-10 w-10 text-white" />
+            <div className="flex items-center justify-center w-20 h-20 border rounded-2xl bg-white/10 backdrop-blur-sm border-white/10">
+              <FloodIcon className="w-10 h-10 text-white" />
             </div>
             <span className="text-xs font-semibold tracking-[0.35em] uppercase text-white/50">
               Floodingnaque
@@ -71,34 +79,35 @@ export function HeroSection() {
 
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-[1.08]">
-            Real-Time Flood Detection{' '}
+            Real-Time Flood Detection{" "}
             <span className="text-risk-safe">for Parañaque City</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-white/75 max-w-2xl mx-auto leading-relaxed font-light">
-            Machine learning-powered flood predictions for all 16 barangays, using live
-            weather data, tidal readings, and 4 years of official DRRMO flood records.
+          <p className="max-w-2xl mx-auto text-lg font-light leading-relaxed sm:text-xl text-white/75">
+            Random Forest Algorihm powered flood predictions for all 16
+            barangays, using historical weather data, tidal readings, 5 years of
+            PAGASA Stations, and 4 years of official DRRMO flood records.
           </p>
 
           {/* Live risk badge */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
+            transition={{ delay: 0.4, duration: 0.5, type: "spring" }}
             className="flex justify-center"
           >
             {isLoading ? (
-              <Skeleton className="h-12 w-48 rounded-full bg-white/20" />
+              <Skeleton className="w-48 h-12 rounded-full bg-white/20" />
             ) : risk ? (
               <Badge
                 className={cn(
-                  'text-lg px-6 py-2.5 font-bold gap-2 shadow-lg animate-pulse',
+                  "text-lg px-6 py-2.5 font-bold gap-2 shadow-lg animate-pulse",
                   risk.bg,
-                  prediction?.risk_level === 1 ? 'text-black' : 'text-white',
+                  prediction?.risk_level === 1 ? "text-black" : "text-white",
                 )}
               >
-                <RiskIcon className="h-5 w-5" />
+                <RiskIcon className="w-5 h-5" />
                 Current Status: {risk.label}
               </Badge>
             ) : (
@@ -109,31 +118,40 @@ export function HeroSection() {
           </motion.div>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+          <div className="flex flex-col justify-center gap-4 pt-2 sm:flex-row">
             <Button
               size="lg"
-              onClick={() => document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-risk-safe hover:bg-risk-safe/90 text-white text-base px-8 h-12 shadow-lg font-semibold"
+              onClick={() =>
+                document
+                  .getElementById("cta")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="h-12 px-8 text-base font-semibold text-white shadow-lg bg-risk-safe hover:bg-risk-safe/90"
             >
               Explore the System
             </Button>
             <Button
               size="lg"
-              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-white/10 border border-white/25 text-white hover:bg-white/20 text-base px-8 h-12 backdrop-blur-sm font-medium"
+              onClick={() =>
+                document
+                  .getElementById("how-it-works")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="h-12 px-8 text-base font-medium text-white border bg-white/10 border-white/25 hover:bg-white/20 backdrop-blur-sm"
             >
               Learn How It Works
             </Button>
           </div>
 
           {/* Trust line */}
-          <p className="text-sm text-white/50 pt-4">
-            Trained on <strong className="text-white/70">1,182</strong> official flood records
-            {' · '}
-            <strong className="text-white/70">13,698</strong> training samples
-            {' · '}
-            <strong className="text-white/70">96.75%</strong> model accuracy
-            {' · '}
+          <p className="pt-4 text-sm text-white/50">
+            Trained on <strong className="text-white/70">901</strong> official
+            flood records
+            {" · "}
+            <strong className="text-white/70">6,570</strong> training samples
+            {" · "}
+            <strong className="text-white/70">97.35%</strong> model accuracy
+            {" · "}
             Parañaque City DRRMO data
           </p>
 
@@ -145,11 +163,15 @@ export function HeroSection() {
             className="flex justify-center pt-4"
           >
             <button
-              onClick={() => document.getElementById('live-status')?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-white/30 hover:text-white/60 transition-colors"
+              onClick={() =>
+                document
+                  .getElementById("live-status")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+              className="transition-colors text-white/30 hover:text-white/60"
               aria-label="Scroll down"
             >
-              <ArrowDown className="h-5 w-5 animate-bounce" />
+              <ArrowDown className="w-5 h-5 animate-bounce" />
             </button>
           </motion.div>
         </motion.div>

@@ -12,7 +12,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EMERGENCY_CONTACTS } from "@/config/paranaque";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Phone, Search, ShieldCheck } from "lucide-react";
+import {
+  Ban,
+  Brain,
+  ChevronDown,
+  ClipboardList,
+  FileText,
+  HeartPulse,
+  Home,
+  MapPin,
+  PersonStanding,
+  Phone,
+  Radio,
+  Search,
+  ShieldCheck,
+  Siren,
+  Smartphone,
+  Sparkles,
+  Sun,
+  Users,
+  Waves,
+  Wrench,
+  Zap,
+} from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import type { PreparednessItem, PreparednessPhase } from "../types";
 
@@ -22,96 +44,96 @@ import type { PreparednessItem, PreparednessPhase } from "../types";
 
 const PHASES: PreparednessPhase[] = [
   {
-    icon: "🛡️",
+    icon: ShieldCheck,
     label: "Before",
     color: "text-risk-safe border-risk-safe/40 bg-risk-safe/10",
     items: [
       {
-        icon: "📋",
+        icon: ClipboardList,
         title: "Prepare go-bags",
         desc: "Pack water, food, medicine, documents, flashlight, phone charger, and first-aid kit for each family member.",
       },
       {
-        icon: "📍",
+        icon: MapPin,
         title: "Know your evacuation route",
         desc: "Identify the nearest evacuation center and practice the route with your household.",
       },
       {
-        icon: "📡",
+        icon: Radio,
         title: "Monitor official channels",
         desc: "Follow PAGASA bulletins, DRRMO announcements, and Parañaque City social media for early warnings.",
       },
       {
-        icon: "🔧",
+        icon: Wrench,
         title: "Secure your home",
         desc: "Clear drainage, elevate appliances, and reinforce doors and windows before the wet season.",
       },
       {
-        icon: "🤝",
+        icon: Users,
         title: "Coordinate with neighbors",
         desc: "Establish a buddy system, especially for elderly, PWD, and solo-parent households.",
       },
     ],
   },
   {
-    icon: "🌊",
+    icon: Waves,
     label: "During",
     color: "text-risk-alert border-risk-alert/40 bg-risk-alert/10",
     items: [
       {
-        icon: "🏃",
+        icon: PersonStanding,
         title: "Evacuate early",
         desc: "Do not wait for chest-high water. Move to higher ground or the nearest evacuation center immediately.",
       },
       {
-        icon: "⚡",
+        icon: Zap,
         title: "Turn off utilities",
         desc: "Switch off electricity at the main breaker and gas valves before evacuating.",
       },
       {
-        icon: "🚫",
+        icon: Ban,
         title: "Avoid floodwater contact",
         desc: "Floodwater carries sewage, chemicals, and sharp debris. Never wade through moving water.",
       },
       {
-        icon: "📱",
+        icon: Smartphone,
         title: "Stay connected",
         desc: "Keep your phone charged. Text — don't call — to keep lines free. Notify relatives of your status.",
       },
       {
-        icon: "🆘",
+        icon: Siren,
         title: "Signal for help",
         desc: "If trapped, move to the highest point, wave a cloth or flashlight, and call 911 / 8888.",
       },
     ],
   },
   {
-    icon: "☀️",
+    icon: Sun,
     label: "After",
     color: "text-blue-400 border-blue-400/40 bg-blue-400/10",
     items: [
       {
-        icon: "🏠",
+        icon: Home,
         title: "Return cautiously",
         desc: "Only go home when authorities declare it safe. Check for structural damage before entering.",
       },
       {
-        icon: "🧹",
+        icon: Sparkles,
         title: "Clean and disinfect",
         desc: "Hose down walls, mop with bleach solution, and discard contaminated food and medicine.",
       },
       {
-        icon: "🩺",
+        icon: HeartPulse,
         title: "Watch for illness",
         desc: "Leptospirosis, dengue, and skin infections are common post-flood. Seek medical attention for fever or wounds.",
       },
       {
-        icon: "📝",
+        icon: FileText,
         title: "Document & report damage",
         desc: "Take photos of property damage and report to your barangay for relief eligibility.",
       },
       {
-        icon: "🧠",
+        icon: Brain,
         title: "Mental health check",
         desc: "Flooding is traumatic. Check in on children/elders. Call Hopeline 8804-4673 for support.",
       },
@@ -134,6 +156,7 @@ function GuideItem({
   isOpen: boolean;
   onToggle: () => void;
 }) {
+  const Icon = item.icon;
   return (
     <div className="border-b border-border last:border-b-0">
       <button
@@ -142,7 +165,7 @@ function GuideItem({
         className="w-full flex items-center justify-between py-2.5 text-left"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-base shrink-0">{item.icon}</span>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="text-[11px] font-mono font-medium text-foreground truncate">
             {item.title}
           </span>
@@ -243,7 +266,8 @@ export const FloodPreparednessGuide = memo(function FloodPreparednessGuide() {
                   : "text-muted-foreground border-border bg-muted hover:bg-accent/50",
               )}
             >
-              {p.icon} {p.label}
+              <p.icon className="h-3.5 w-3.5 inline-block mr-1 align-text-bottom" />
+              {p.label}
             </button>
           ))}
         </div>

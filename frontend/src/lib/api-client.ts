@@ -236,19 +236,24 @@ axiosInstance.interceptors.response.use(undefined, (error: unknown) => {
 
   if (!status) {
     toast.error("Connection lost", {
-      description: "Unable to reach the server. Check your network connection.",
+      description:
+        "Unable to reach the server. This may be a temporary network issue — the app will retry automatically.",
       id: "network-error",
+      duration: 8000,
     });
   } else if (status === 429) {
     toast.warning("Too many requests", {
       description: "Please wait a moment before trying again.",
       id: "rate-limit",
+      duration: 5000,
     });
   } else if (status >= 500) {
     toast.error("Server error", {
       description:
-        apiError.message || "Something went wrong. Please try again later.",
+        apiError.message ||
+        "Something went wrong on our end. Please try again in a few moments.",
       id: `server-error-${status}`,
+      duration: 6000,
     });
   }
 

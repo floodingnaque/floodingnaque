@@ -8,8 +8,11 @@
 import { motion, useInView } from "framer-motion";
 import {
   AlertTriangle,
+  Camera,
   CheckCircle,
   Clock,
+  Droplets,
+  Eye,
   Filter,
   Flag,
   Loader2,
@@ -19,13 +22,19 @@ import {
   Users2,
   XCircle,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { GlassCard } from "@/components/ui/glass-card";
 import {
   Select,
@@ -39,12 +48,14 @@ import { ReportSubmitModal } from "@/features/community/components/ReportSubmitM
 import {
   useCommunityReports,
   useFlagReport,
+  useReportRealtimeSync,
   useReportStats,
   useVerifyReport,
 } from "@/features/community/hooks/useCommunityReports";
 import type { ReportListParams } from "@/features/community/services/communityApi";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { useUser } from "@/state";
+import type { CommunityReport } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,9 +110,19 @@ export default function CommunityPage() {
   const [barangay, setBarangay] = useState<string>("");
   const [hours, setHours] = useState<number>(24);
   const [status, setStatus] = useState<string>("");
+  const [selectedReport, setSelectedReport] = useState<CommunityReport | null>(
+    null,
+  );
 
   const user = useUser();
   const isAdmin = user?.role === "admin";
+
+  // Real-time sync: listen for cross-tab report changes
+  useReportRealtimeSync();
+
+  const openReport = useCallback((report: CommunityReport) => {
+    setSelectedReport(report);
+  }, []);
 
   const handleBarangayChange = (v: string) => setBarangay(v === "all" ? "" : v);
   const handleStatusChange = (v: string) => setStatus(v === "all" ? "" : v);
@@ -116,7 +137,12 @@ export default function CommunityPage() {
     [barangay, hours, status],
   );
 
-  const { data, isLoading, isError, refetch } = useCommunityReports(params);
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch: refetchReports,
+  } = useCommunityReports(params);
   const reports = useMemo(() => data?.reports ?? [], [data]);
 
   // Live stats from the dedicated stats endpoint
@@ -124,7 +150,8 @@ export default function CommunityPage() {
     () => ({ hours, ...(barangay && { barangay }) }),
     [hours, barangay],
   );
-  const { data: statsData } = useReportStats(statsParams);
+  const { data: statsData, refetch: refetchStats } =
+    useReportStats(statsParams);
   const stats = statsData?.stats ?? {
     total: 0,
     verified: 0,
@@ -140,7 +167,11 @@ export default function CommunityPage() {
     verifyMutation.mutate(
       { id, status: "accepted" },
       {
-        onSuccess: () => toast.success("Report verified"),
+        onSuccess: () => {
+          toast.success("Report verified");
+          refetchReports();
+          refetchStats();
+        },
         onError: () => toast.error("Failed to verify report"),
       },
     );
@@ -150,7 +181,11 @@ export default function CommunityPage() {
     verifyMutation.mutate(
       { id, status: "rejected" },
       {
-        onSuccess: () => toast.success("Report dismissed"),
+        onSuccess: () => {
+          toast.success("Report dismissed");
+          refetchReports();
+          refetchStats();
+        },
         onError: () => toast.error("Failed to dismiss report"),
       },
     );
@@ -158,7 +193,11 @@ export default function CommunityPage() {
 
   const handleFlag = (id: number) => {
     flagMutation.mutate(id, {
-      onSuccess: () => toast.success("Report flagged"),
+      onSuccess: () => {
+        toast.success("Report flagged");
+        refetchReports();
+        refetchStats();
+      },
       onError: () => toast.error("Failed to flag report"),
     });
   };
@@ -332,7 +371,7 @@ export default function CommunityPage() {
                     variant="outline"
                     size="sm"
                     className="mt-4 gap-2"
-                    onClick={() => refetch()}
+                    onClick={() => refetchReports()}
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                     Retry
@@ -391,17 +430,29 @@ export default function CommunityPage() {
                           </p>
                         )}
 
-                        {/* Photo thumbnail */}
+                        {/* Photo thumbnail — clickable */}
                         {report.photo_url && (
-                          <img
-                            src={report.photo_url}
-                            alt="Flood evidence"
-                            width={400}
-                            height={224}
-                            className="w-full h-28 object-cover rounded-lg"
-                            loading="lazy"
-                            decoding="async"
-                          />
+                          <button
+                            type="button"
+                            className="relative group w-full cursor-pointer"
+                            onClick={() => openReport(report)}
+                          >
+                            <img
+                              src={report.photo_url}
+                              alt="Flood evidence"
+                              width={400}
+                              height={224}
+                              className="w-full h-28 object-cover rounded-lg transition-opacity group-hover:opacity-80"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                            <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="bg-black/60 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <Eye className="h-3 w-3" />
+                                View Full
+                              </span>
+                            </span>
+                          </button>
                         )}
 
                         {/* Footer */}
@@ -439,6 +490,17 @@ export default function CommunityPage() {
                             )}
                           </div>
                         </div>
+
+                        {/* View Report button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                          onClick={() => openReport(report)}
+                        >
+                          <Eye className="h-3 w-3" />
+                          View Report
+                        </Button>
 
                         {/* Audit trail */}
                         {report.verified_at && (
@@ -504,6 +566,174 @@ export default function CommunityPage() {
 
       {/* Submit Modal */}
       <ReportSubmitModal open={submitOpen} onOpenChange={setSubmitOpen} />
+
+      {/* Report Detail Dialog */}
+      <Dialog
+        open={!!selectedReport}
+        onOpenChange={(open) => !open && setSelectedReport(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedReport &&
+            (() => {
+              const r = selectedReport;
+              const risk = (RISK_BADGE[r.risk_label] ?? RISK_BADGE.Safe)!;
+              const statusInfo = (STATUS_BADGE[r.status] ??
+                STATUS_BADGE.pending)!;
+              return (
+                <>
+                  <DialogHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <DialogTitle className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        {r.barangay ?? "Unknown"}
+                      </DialogTitle>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge className={statusInfo.className}>
+                          {statusInfo.label}
+                        </Badge>
+                        <Badge className={risk.className}>{risk.label}</Badge>
+                      </div>
+                    </div>
+                    {r.specific_location && (
+                      <p className="text-xs text-muted-foreground">
+                        Near: {r.specific_location}
+                      </p>
+                    )}
+                  </DialogHeader>
+
+                  {/* Full-size photo */}
+                  {r.photo_url && (
+                    <img
+                      src={r.photo_url}
+                      alt="Flood evidence"
+                      className="w-full max-h-96 object-contain rounded-lg bg-muted"
+                    />
+                  )}
+
+                  {/* Description */}
+                  {r.description && (
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {r.description}
+                    </p>
+                  )}
+
+                  {/* Details grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    {r.flood_height_cm && (
+                      <div className="rounded-lg border p-2.5">
+                        <Droplets className="h-4 w-4 mx-auto mb-1 text-primary" />
+                        <p className="text-sm font-semibold">
+                          {r.flood_height_cm} cm
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Flood Height
+                        </p>
+                      </div>
+                    )}
+                    <div className="rounded-lg border p-2.5">
+                      <Clock className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-sm font-semibold">
+                        {timeAgo(r.created_at)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Reported
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-2.5">
+                      <CheckCircle className="h-4 w-4 mx-auto mb-1 text-risk-safe" />
+                      <p className="text-sm font-semibold">
+                        {r.confirmation_count}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Confirmations
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-2.5">
+                      <AlertTriangle className="h-4 w-4 mx-auto mb-1 text-destructive" />
+                      <p className="text-sm font-semibold">{r.dispute_count}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Disputes
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <span>Report #{r.id}</span>
+                    <span>
+                      {r.user_id ? `User #${r.user_id}` : "Anonymous"}
+                    </span>
+                    {r.photo_url && (
+                      <span className="flex items-center gap-1">
+                        <Camera className="h-3 w-3" />
+                        Photo attached
+                      </span>
+                    )}
+                    {r.credibility_score !== null && (
+                      <span>
+                        Credibility: {Math.round(r.credibility_score * 100)}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Audit trail */}
+                  {r.verified_at && (
+                    <p className="text-xs text-muted-foreground/70 border-t pt-2">
+                      {r.status === "accepted" ? "Verified" : "Dismissed"}{" "}
+                      {r.verified_by ? `by Admin #${r.verified_by}` : ""}{" "}
+                      {timeAgo(r.verified_at)}
+                    </p>
+                  )}
+
+                  {/* Admin actions inside dialog */}
+                  {isAdmin && r.status === "pending" && (
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-risk-safe hover:bg-risk-safe/10"
+                        onClick={() => {
+                          handleVerify(r.id);
+                          setSelectedReport(null);
+                        }}
+                        disabled={verifyMutation.isPending}
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Verify
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-risk-alert hover:bg-risk-alert/10"
+                        onClick={() => {
+                          handleFlag(r.id);
+                          setSelectedReport(null);
+                        }}
+                        disabled={flagMutation.isPending}
+                      >
+                        <Flag className="h-3.5 w-3.5" />
+                        Flag
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          handleDismiss(r.id);
+                          setSelectedReport(null);
+                        }}
+                        disabled={verifyMutation.isPending}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Dismiss
+                      </Button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

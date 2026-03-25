@@ -116,7 +116,7 @@ def db_session(app, test_database_url):
     from sqlalchemy.orm import scoped_session, sessionmaker
 
     # Use test database URL
-    with patch.dict(os.environ, {"DATABASE_URL": test_database_url}):
+    with app.app_context(), patch.dict(os.environ, {"DATABASE_URL": test_database_url}):
         engine = create_engine(test_database_url, echo=False)
 
         # Import models to create tables

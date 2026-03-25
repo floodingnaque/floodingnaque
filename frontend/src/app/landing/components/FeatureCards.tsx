@@ -5,48 +5,53 @@
  * Each card has an icon, bold title, and short description.
  */
 
-import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
 import {
-  Map,
-  Brain,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { motion, useInView } from "framer-motion";
+import {
   Bell,
-  Waves,
-  History,
+  Brain,
   FileSpreadsheet,
-} from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+  History,
+  Map,
+  Waves,
+} from "lucide-react";
+import { useRef } from "react";
 
 const FEATURES = [
   {
     icon: Map,
-    title: 'Barangay Risk Map',
-    desc: 'Interactive Leaflet map with polygon overlays coloured by real-time risk level for all 16 barangays.',
+    title: "Barangay Risk Map",
+    desc: "Interactive Leaflet map with polygon overlays coloured by real-time risk level for all 16 barangays.",
   },
   {
     icon: Brain,
-    title: 'AI-Powered Prediction',
-    desc: 'Random Forest v6 model trained on 10 weather & tidal features with 96.75% accuracy on balanced test set.',
+    title: "AI-Powered Prediction",
+    desc: "Random Forest v6 model trained on 10 weather & tidal features with 96.75% accuracy on balanced test set.",
   },
   {
     icon: Bell,
-    title: 'Instant Flood Alerts',
-    desc: 'SSE push notifications and simulated SMS broadcasts provide immediate warnings when risk changes.',
+    title: "Instant Flood Alerts",
+    desc: "SSE push notifications and simulated SMS broadcasts provide immediate warnings when risk changes.",
   },
   {
     icon: Waves,
-    title: 'Tidal Risk Monitoring',
-    desc: 'Real-time tidal level indicators with configurable thresholds to flag dangerous storm surge conditions.',
+    title: "Tidal Risk Monitoring",
+    desc: "Real-time tidal level indicators with configurable thresholds to flag dangerous storm surge conditions.",
   },
   {
     icon: History,
-    title: '4-Year Flood History',
-    desc: 'Explore 1,182 official flood records from 2022–2025 with filterable charts and statistical breakdowns.',
+    title: "4-Year Flood History",
+    desc: "Explore 901 official flood records from 2022–2025 with filterable charts and statistical breakdowns.",
   },
   {
     icon: FileSpreadsheet,
-    title: 'LGU Report Generator',
-    desc: 'One-click DRRMO-formatted CSV & PDF export of flood events, sortable by barangay, date, and severity.',
+    title: "LGU Report Generator",
+    desc: "One-click DRRMO-formatted CSV & PDF export of flood events, sortable by barangay, date, and severity.",
   },
 ] as const;
 
@@ -68,17 +73,18 @@ export function FeatureCards() {
 
   return (
     <section id="features" className="py-20 sm:py-24 bg-muted/30">
-      <div className="container mx-auto px-4" ref={ref}>
+      <div className="container px-4 mx-auto" ref={ref}>
         {/* Heading */}
         <div className="text-center mb-14">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-risk-safe mb-3">
             Features
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">
             Everything You Need for Flood Preparedness
           </h2>
-          <p className="mt-3 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Purpose-built for Parañaque City - from real-time maps to DRRMO compliance reports.
+          <p className="max-w-xl mx-auto mt-3 leading-relaxed text-muted-foreground">
+            Purpose-built for Parañaque City - from real-time maps to DRRMO
+            compliance reports.
           </p>
         </div>
 
@@ -86,17 +92,17 @@ export function FeatureCards() {
         <motion.div
           variants={container}
           initial="hidden"
-          animate={isInView ? 'show' : undefined}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto"
+          animate={isInView ? "show" : undefined}
+          className="grid max-w-5xl grid-cols-1 gap-6 mx-auto sm:grid-cols-2 lg:grid-cols-3"
         >
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
               <motion.div key={f.title} variants={cardVariant}>
-                <Card className="h-full hover:shadow-md transition-all duration-300 border-border/50 hover:border-border">
+                <Card className="h-full transition-all duration-300 hover:shadow-md border-border/50 hover:border-border">
                   <CardHeader className="space-y-3">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Icon className="h-6 w-6 text-primary" />
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+                      <Icon className="w-6 h-6 text-primary" />
                     </div>
                     <CardTitle className="text-base">{f.title}</CardTitle>
                     <CardDescription className="text-sm leading-relaxed">

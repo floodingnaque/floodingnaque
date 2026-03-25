@@ -242,6 +242,7 @@ def get_alert_by_id(alert_id):
 
 @alerts_bp.route("/<int:alert_id>/acknowledge", methods=["PATCH"])
 @limiter.limit("30 per minute")
+@require_auth
 def acknowledge_alert(alert_id):
     """
     Acknowledge a single alert.
@@ -295,6 +296,7 @@ def acknowledge_alert(alert_id):
 
 @alerts_bp.route("/acknowledge-all", methods=["POST"])
 @limiter.limit("10 per minute")
+@require_auth
 def acknowledge_all_alerts():
     """
     Acknowledge all pending (unacknowledged) alerts.
@@ -482,6 +484,7 @@ def get_recent_alerts():
 
 @alerts_bp.route("/simulate-sms", methods=["POST"])
 @limiter.limit("10 per minute")
+@require_auth
 def simulate_sms():
     """
     Simulate an SMS alert (always runs in sandbox mode).

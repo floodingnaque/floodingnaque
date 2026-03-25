@@ -363,7 +363,7 @@ export interface AlertDeliveryStats {
   total_alerts: number;
   status_breakdown: Record<string, number>;
   channel_breakdown: Record<string, number>;
-  success_rate: number;
+  success_rate: number | null;
   recent_failures: {
     id: number;
     risk_label: string;

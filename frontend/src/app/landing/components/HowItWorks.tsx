@@ -5,28 +5,28 @@
  * Collect → Predict → Alert.
  */
 
-import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
-import { CloudRain, Brain, Bell } from 'lucide-react';
+import { motion, useInView } from "framer-motion";
+import { Bell, Brain, CloudRain } from "lucide-react";
+import { useRef } from "react";
 
 const STEPS = [
   {
     num: 1,
     icon: CloudRain,
-    title: 'Collect Weather Data',
-    desc: 'Real-time weather observations are gathered from PAGASA-Parañaque and OpenWeatherMap - rainfall, humidity, wind speed, cloud cover, tidal levels, and more.',
+    title: "Collect Weather Data",
+    desc: "Real-time weather observations are gathered from PAGASA-Parañaque and OpenWeatherMap - rainfall, humidity, wind speed, cloud cover, tidal levels, and more.",
   },
   {
     num: 2,
     icon: Brain,
-    title: 'Predict with ML (Random Forest v6)',
-    desc: 'A Random Forest classifier trained on 13,698 samples and 10 engineered features evaluates flood probability for each barangay with 96.75% accuracy.',
+    title: "Predict with ML (Random Forest v6)",
+    desc: "A Random Forest classifier trained on 6,570 samples and 13 engineered features evaluates flood probability for each barangay with 97.35% accuracy.",
   },
   {
     num: 3,
     icon: Bell,
-    title: 'Alert in Real-Time',
-    desc: 'Each barangay is assigned a risk level - SAFE, ALERT, or CRITICAL - delivered instantly via the dashboard, SSE push, and simulated SMS broadcast.',
+    title: "Alert in Real-Time",
+    desc: "Each barangay is assigned a risk level - SAFE, ALERT, or CRITICAL - delivered instantly via the dashboard, SSE push, and simulated SMS broadcast.",
   },
 ] as const;
 
@@ -48,17 +48,18 @@ export function HowItWorks() {
 
   return (
     <section id="how-it-works" className="py-20 sm:py-24 bg-background">
-      <div className="container mx-auto px-4" ref={ref}>
+      <div className="container px-4 mx-auto" ref={ref}>
         {/* Heading */}
         <div className="text-center mb-14">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-risk-safe mb-3">
             How It Works
           </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">
             From Raw Weather Data to Flood Alerts
           </h2>
-          <p className="mt-3 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Three automated steps power every prediction - no manual input required.
+          <p className="max-w-xl mx-auto mt-3 leading-relaxed text-muted-foreground">
+            Three automated steps power every prediction - no manual input
+            required.
           </p>
         </div>
 
@@ -66,8 +67,8 @@ export function HowItWorks() {
         <motion.div
           variants={container}
           initial="hidden"
-          animate={isInView ? 'show' : undefined}
-          className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-5xl mx-auto"
+          animate={isInView ? "show" : undefined}
+          className="grid max-w-5xl grid-cols-1 gap-10 mx-auto md:grid-cols-3"
         >
           {STEPS.map((s) => {
             const Icon = s.icon;
@@ -75,20 +76,22 @@ export function HowItWorks() {
               <motion.div
                 key={s.num}
                 variants={item}
-                className="flex flex-col items-center text-center space-y-4"
+                className="flex flex-col items-center space-y-4 text-center"
               >
                 {/* Numbered circle */}
                 <div className="relative">
-                  <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
                     <Icon className="h-9 w-9 text-primary" />
                   </div>
-                  <span className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shadow">
+                  <span className="absolute flex items-center justify-center text-xs font-bold text-white rounded-full shadow -top-1 -right-1 h-7 w-7 bg-primary">
                     {s.num}
                   </span>
                 </div>
 
-                <h3 className="text-lg font-semibold text-foreground">{s.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {s.title}
+                </h3>
+                <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
                   {s.desc}
                 </p>
               </motion.div>

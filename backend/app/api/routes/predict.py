@@ -16,6 +16,7 @@ from app.api.schemas.weather import parse_json_safely
 from app.core.constants import HTTP_BAD_REQUEST, HTTP_INTERNAL_ERROR, HTTP_NOT_FOUND, HTTP_OK
 from app.core.exceptions import ValidationError, api_error
 from app.services.predict import predict_flood
+from app.models import AlertHistory, Prediction, get_db_session
 from app.utils.resilience.cache import (
     cache_prediction_result,
     get_cached_prediction,
@@ -278,6 +279,35 @@ def predict():
             record_prediction_result(risk_label=str(_risk_label), confidence=float(_confidence))
         except Exception:  # nosec B110
             pass  # Non-critical — never break a prediction request
+
+        # Persist prediction to DB and create alert if risk >= 1
+        try:
+            with get_db_session() as session:
+                pred_record = Prediction(
+                    prediction=int(response.get("prediction", 0)),
+                    risk_level=response.get("risk_level", 0),
+                    risk_label=response.get("risk_label", "Safe"),
+                    confidence=float(response.get("confidence") or response.get("probability") or 0),
+                    model_version=response.get("model_version"),
+                )
+                session.add(pred_record)
+                session.flush()
+
+                # Log alert when risk is Alert (1) or Critical (2)
+                risk_lvl = response.get("risk_level", 0) or 0
+                if risk_lvl >= 1:
+                    alert = AlertHistory(
+                        prediction_id=pred_record.id,
+                        risk_level=risk_lvl,
+                        risk_label=response.get("risk_label", "Alert"),
+                        location="Parañaque City",
+                        message=response.get("risk_description", ""),
+                        delivery_status="pending",
+                        delivery_channel="web",
+                    )
+                    session.add(alert)
+        except Exception:  # nosec B110
+            logger.debug(f"Non-critical: failed to persist prediction [{request_id}]")
 
         response["cache_hit"] = False
         response.pop("cached_at", None)  # Don't expose raw timestamp on fresh responses

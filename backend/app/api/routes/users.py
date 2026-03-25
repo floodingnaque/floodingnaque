@@ -8,7 +8,7 @@ and password reset functionality.
 import logging
 import os
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.api.middleware.rate_limit import limiter
 from app.core.security import (
@@ -24,7 +24,7 @@ from app.core.security import (
     verify_password,
     verify_password_reset_token,
 )
-from app.models.db import User, get_db_session
+from app.models.db import ResidentProfile, User, get_db_session
 from app.services.email import send_password_reset_email
 from app.utils.api_constants import (
     HTTP_BAD_REQUEST,
@@ -135,7 +135,7 @@ def register():
         password = data.get("password", "")
         # Accept both 'full_name' and 'name' from the frontend
         full_name = (data.get("full_name") or data.get("name") or "").strip()
-        phone_number = data.get("phone_number", "").strip()
+        phone_number = (data.get("phone_number") or data.get("contact_number") or "").strip()
 
         # Validate email
         if not email or not validate_email(email):
@@ -169,6 +169,51 @@ def register():
 
             session.add(user)
             session.flush()  # Get the user ID
+
+            # Create resident profile if extended registration data is present
+            has_profile_data = any(
+                data.get(f) is not None
+                for f in ("date_of_birth", "barangay", "household_members", "sex", "civil_status")
+            )
+            if has_profile_data:
+                dob = None
+                raw_dob = data.get("date_of_birth")
+                if raw_dob:
+                    try:
+                        dob = date.fromisoformat(str(raw_dob)[:10])
+                    except (ValueError, TypeError):
+                        pass
+
+                profile = ResidentProfile(
+                    user_id=user.id,
+                    date_of_birth=dob,
+                    sex=data.get("sex"),
+                    civil_status=data.get("civil_status"),
+                    contact_number=data.get("contact_number", "").strip() or None,
+                    alt_contact_number=data.get("alt_contact_number", "").strip() if data.get("alt_contact_number") else None,
+                    alt_contact_name=data.get("alt_contact_name", "").strip() if data.get("alt_contact_name") else None,
+                    alt_contact_relationship=data.get("alt_contact_relationship"),
+                    is_pwd=bool(data.get("is_pwd", False)),
+                    is_senior_citizen=bool(data.get("is_senior_citizen", False)),
+                    household_members=data.get("household_members"),
+                    children_count=data.get("children_count", 0),
+                    senior_count=data.get("senior_count", 0),
+                    pwd_count=data.get("pwd_count", 0),
+                    barangay=data.get("barangay"),
+                    purok=data.get("purok"),
+                    street_address=data.get("street_address"),
+                    nearest_landmark=data.get("nearest_landmark"),
+                    home_type=data.get("home_type"),
+                    floor_level=data.get("floor_level"),
+                    has_flood_experience=bool(data.get("has_flood_experience", False)),
+                    most_recent_flood_year=data.get("most_recent_flood_year"),
+                    sms_alerts=bool(data.get("sms_alerts", True)),
+                    email_alerts=bool(data.get("email_alerts", True)),
+                    push_notifications=bool(data.get("push_notifications", False)),
+                    preferred_language=data.get("preferred_language", "Filipino"),
+                    data_privacy_consent=bool(data.get("data_privacy_consent", False)),
+                )
+                session.add(profile)
 
             # Auto-login: generate tokens so the user is signed in immediately
             access_token = create_access_token(user.id, user.email, user.role)
@@ -979,6 +1024,178 @@ def delete_current_user():
     except Exception as e:
         logger.error(f"Account deletion error [{request_id}]: {str(e)}", exc_info=True)
         return api_error("DeletionFailed", "Failed to delete account", HTTP_INTERNAL_ERROR, request_id)
+
+
+@users_bp.route("/me/profile", methods=["GET"])
+@limiter.limit("60 per minute")
+def get_resident_profile():
+    """
+    Get the current user's resident/household profile.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Returns:
+        200: Resident profile data
+        401: Not authenticated
+    ---
+    tags:
+      - Resident Profile
+    responses:
+      200:
+        description: Resident profile
+      401:
+        description: Not authenticated
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Authorization header required", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+
+        with get_db_session() as session:
+            user = session.query(User).filter(User.id == user_id, User.is_deleted.is_(False)).first()
+            if not user:
+                return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+            profile = session.query(ResidentProfile).filter(ResidentProfile.user_id == user_id).first()
+            if not profile:
+                # Auto-create an empty profile for the user
+                profile = ResidentProfile(user_id=user_id)
+                session.add(profile)
+                session.commit()
+                session.refresh(profile)
+
+            return jsonify({"success": True, "data": profile.to_dict(), "request_id": request_id}), HTTP_OK
+
+    except Exception as e:
+        logger.error(f"Get resident profile error [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("ProfileFetchFailed", "Failed to fetch resident profile", HTTP_INTERNAL_ERROR, request_id)
+
+
+@users_bp.route("/me/profile", methods=["PATCH"])
+@limiter.limit("20 per hour")
+def update_resident_profile():
+    """
+    Update the current user's resident/household profile.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Body (all optional):
+        contact_number, alt_contact_number, alt_contact_name,
+        alt_contact_relationship, is_pwd, is_senior_citizen,
+        household_members, children_count, senior_count, pwd_count,
+        barangay, purok, street_address, nearest_landmark,
+        home_type, floor_level, has_flood_experience,
+        most_recent_flood_year, sms_alerts, email_alerts,
+        push_notifications, preferred_language, date_of_birth,
+        sex, civil_status, data_privacy_consent
+
+    Returns:
+        200: Updated resident profile
+        400: Validation error
+        401: Not authenticated
+    ---
+    tags:
+      - Resident Profile
+    responses:
+      200:
+        description: Updated resident profile
+      400:
+        description: Validation error
+      401:
+        description: Not authenticated
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    ALLOWED_FIELDS = {
+        "date_of_birth", "sex", "civil_status",
+        "contact_number", "alt_contact_number", "alt_contact_name", "alt_contact_relationship",
+        "is_pwd", "is_senior_citizen",
+        "household_members", "children_count", "senior_count", "pwd_count",
+        "barangay", "purok", "street_address", "nearest_landmark",
+        "home_type", "floor_level",
+        "has_flood_experience", "most_recent_flood_year",
+        "sms_alerts", "email_alerts", "push_notifications", "preferred_language",
+        "data_privacy_consent",
+    }
+
+    VALID_SEX = {"Male", "Female", "Prefer not to say"}
+    VALID_CIVIL_STATUS = {"Single", "Married", "Widowed", "Separated"}
+    VALID_HOME_TYPE = {"Concrete", "Semi-Concrete", "Wood", "Makeshift"}
+    VALID_FLOOR_LEVEL = {"Ground Floor", "2nd Floor", "3rd Floor or higher"}
+    VALID_LANGUAGE = {"Filipino", "English"}
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Authorization header required", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+        data = request.get_json(silent=True) or {}
+
+        # Filter to allowed fields only
+        updates = {k: v for k, v in data.items() if k in ALLOWED_FIELDS}
+        if not updates:
+            return api_error("ValidationError", "No valid fields to update", HTTP_BAD_REQUEST, request_id)
+
+        # Validate enum fields
+        if "sex" in updates and updates["sex"] is not None and updates["sex"] not in VALID_SEX:
+            return api_error("ValidationError", f"sex must be one of: {', '.join(VALID_SEX)}", HTTP_BAD_REQUEST, request_id)
+        if "civil_status" in updates and updates["civil_status"] is not None and updates["civil_status"] not in VALID_CIVIL_STATUS:
+            return api_error("ValidationError", f"civil_status must be one of: {', '.join(VALID_CIVIL_STATUS)}", HTTP_BAD_REQUEST, request_id)
+        if "home_type" in updates and updates["home_type"] is not None and updates["home_type"] not in VALID_HOME_TYPE:
+            return api_error("ValidationError", f"home_type must be one of: {', '.join(VALID_HOME_TYPE)}", HTTP_BAD_REQUEST, request_id)
+        if "floor_level" in updates and updates["floor_level"] is not None and updates["floor_level"] not in VALID_FLOOR_LEVEL:
+            return api_error("ValidationError", f"floor_level must be one of: {', '.join(VALID_FLOOR_LEVEL)}", HTTP_BAD_REQUEST, request_id)
+        if "preferred_language" in updates and updates["preferred_language"] not in VALID_LANGUAGE:
+            return api_error("ValidationError", f"preferred_language must be one of: {', '.join(VALID_LANGUAGE)}", HTTP_BAD_REQUEST, request_id)
+
+        # Parse date_of_birth if provided as string
+        if "date_of_birth" in updates and isinstance(updates["date_of_birth"], str):
+            try:
+                updates["date_of_birth"] = date.fromisoformat(updates["date_of_birth"])
+            except ValueError:
+                return api_error("ValidationError", "date_of_birth must be ISO date (YYYY-MM-DD)", HTTP_BAD_REQUEST, request_id)
+
+        with get_db_session() as session:
+            user = session.query(User).filter(User.id == user_id, User.is_deleted.is_(False)).first()
+            if not user:
+                return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+            profile = session.query(ResidentProfile).filter(ResidentProfile.user_id == user_id).first()
+            if not profile:
+                profile = ResidentProfile(user_id=user_id)
+                session.add(profile)
+
+            for field, value in updates.items():
+                setattr(profile, field, value)
+
+            session.commit()
+            session.refresh(profile)
+
+            logger.info(f"Resident profile updated [{request_id}]: user_id={user_id}, fields={list(updates.keys())}")
+            return jsonify({"success": True, "data": profile.to_dict(), "request_id": request_id}), HTTP_OK
+
+    except Exception as e:
+        logger.error(f"Resident profile update error [{request_id}]: {str(e)}", exc_info=True)
+        return api_error("ProfileUpdateFailed", "Failed to update resident profile", HTTP_INTERNAL_ERROR, request_id)
 
 
 @users_bp.route("/me/export", methods=["GET"])

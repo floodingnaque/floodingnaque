@@ -317,6 +317,37 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
             baseMap={baseMap}
             onBaseMapChange={setBaseMap}
           />
+
+          {/* Floating color legend */}
+          {layers.floodZones && (
+            <div className="absolute bottom-3 left-3 z-1000 rounded-lg border border-border bg-background/90 backdrop-blur-sm px-3 py-2 shadow-md">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">
+                Risk Level
+              </div>
+              <div className="flex flex-col gap-1">
+                {(
+                  [
+                    ["low", "Low"],
+                    ["moderate", "Alert"],
+                    ["high", "High"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span
+                      className="inline-block h-3 w-5 rounded-sm border"
+                      style={{
+                        backgroundColor: RISK_COLORS[key].fill,
+                        borderColor: RISK_COLORS[key].stroke,
+                      }}
+                    />
+                    <span className="text-[10px] font-mono text-foreground">
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

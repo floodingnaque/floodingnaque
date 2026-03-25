@@ -59,11 +59,13 @@ const itemVariants = {
   },
 } as const;
 
-/** Map user role to display name and redirect path */
-const ROLE_CONFIG: Record<string, { label: string; path: string }> = {
-  admin: { label: "Admin", path: "/admin" },
-  operator: { label: "LGU Operator", path: "/operator" },
-  user: { label: "Resident", path: "/resident" },
+import { canAccessRoute, getDefaultRoute } from "@/config/role-routes";
+
+/** Map user role to display name */
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  operator: "LGU Operator",
+  user: "Resident",
 };
 
 /** Parse API error into a user-friendly message (security-conscious) */
@@ -99,16 +101,20 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps = {}) {
 
   const welcomeRole =
     isAuthenticated && user
-      ? ((ROLE_CONFIG[user.role] ?? ROLE_CONFIG.user)?.label ?? null)
+      ? (ROLE_LABELS[user.role] ?? ROLE_LABELS.user ?? null)
       : null;
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const config = ROLE_CONFIG[user.role] ?? ROLE_CONFIG.user;
+      const defaultRoute = getDefaultRoute(user.role);
 
+      // Check for intended destination from pre-login redirect
       const from = (location.state as { from?: { pathname: string } })?.from
         ?.pathname;
-      const destination = from ?? config?.path ?? "/dashboard";
+
+      // Only honour the saved path if the user's role can access it
+      const destination =
+        from && canAccessRoute(user.role, from) ? from : defaultRoute;
 
       const timer = setTimeout(() => {
         navigate(destination, { replace: true });
@@ -137,9 +143,9 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps = {}) {
 
   const onSubmit = useCallback(
     (data: LoginFormData) => {
-      login(data);
+      login({ ...data, remember_me: rememberMe });
     },
-    [login],
+    [login, rememberMe],
   );
 
   const errorMessage = loginError ? getLoginErrorMessage(loginError) : null;

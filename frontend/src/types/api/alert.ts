@@ -1,5 +1,5 @@
-import type { RiskLevel } from './prediction';
-import type { PaginationParams, DateRangeParams } from './common';
+import type { DateRangeParams, PaginationParams } from "./common";
+import type { RiskLevel } from "./prediction";
 
 export interface Alert {
   id: number;
@@ -16,12 +16,12 @@ export interface Alert {
   // Smart alert fields
   confidence_score?: number;
   rainfall_3h?: number;
-  escalation_state?: 'initial' | 'escalated' | 'auto_escalated' | 'suppressed';
+  escalation_state?: "initial" | "escalated" | "auto_escalated" | "suppressed";
   escalation_reason?: string;
   contributing_factors?: string[];
 }
 
-export type AlertDeliveryStatus = 'pending' | 'delivered' | 'failed';
+export type AlertDeliveryStatus = "pending" | "delivered" | "failed";
 
 export interface AlertParams extends PaginationParams, DateRangeParams {
   risk_level?: RiskLevel;
@@ -31,15 +31,23 @@ export interface AlertParams extends PaginationParams, DateRangeParams {
 export interface AlertHistory {
   alerts: Alert[];
   summary: {
-    total: number;
-    by_risk_level: Record<RiskLevel, number>;
-    acknowledged: number;
-    pending: number;
+    total_alerts: number;
+    days: number;
+    risk_distribution: {
+      safe: number;
+      alert: number;
+      critical: number;
+    };
+    status_distribution: {
+      delivered: number;
+      pending: number;
+      failed: number;
+    };
   };
 }
 
 export interface SSEAlertEvent {
-  type: 'alert' | 'heartbeat' | 'connection';
+  type: "alert" | "heartbeat" | "connection";
   data: SSEAlertData | SSEHeartbeatData | SSEConnectionData;
 }
 
@@ -54,6 +62,6 @@ export interface SSEHeartbeatData {
 }
 
 export interface SSEConnectionData {
-  status: 'connected' | 'disconnected';
+  status: "connected" | "disconnected";
   client_id: string;
 }

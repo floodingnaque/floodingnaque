@@ -356,6 +356,11 @@ class Config:
         default_factory=lambda: float(os.getenv("CREDIBILITY_VERIFY_THRESHOLD", "0.750"))
     )
 
+    # ── Push Notifications (VAPID / Web Push) ────────────────────────────
+    VAPID_PUBLIC_KEY: str = field(default_factory=lambda: get_secret("VAPID_PUBLIC_KEY", default=""))
+    VAPID_PRIVATE_KEY: str = field(default_factory=lambda: get_secret("VAPID_PRIVATE_KEY", default=""))
+    VAPID_EMAIL: str = field(default_factory=lambda: os.getenv("VAPID_EMAIL", "mailto:drrmo@paranaque.gov.ph"))
+
     def get_cors_origins_list(self) -> List[str]:
         """Get CORS origins as a list."""
         if not self.CORS_ORIGINS:

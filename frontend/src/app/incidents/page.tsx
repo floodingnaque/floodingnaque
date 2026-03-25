@@ -186,7 +186,7 @@ function useIncidents(params: {
     setIsError(false);
     try {
       const query = new URLSearchParams();
-      query.set("page", String(params.page));
+      query.set("offset", String((params.page - 1) * params.limit));
       query.set("limit", String(params.limit));
       if (params.status) query.set("status", params.status);
       if (params.risk_level !== undefined)
@@ -195,16 +195,15 @@ function useIncidents(params: {
       if (params.search) query.set("search", params.search);
 
       const res = await api.get<{
-        data?: { incidents: Incident[]; total: number; pages: number };
-        incidents?: Incident[];
-        total?: number;
-        pages?: number;
+        data?: Incident[];
+        pagination?: { total: number; limit: number; offset: number };
       }>(`${API_ENDPOINTS.lgu.incidents}?${query}`);
-      const payload = res.data ?? res;
+      const incidents = Array.isArray(res.data) ? res.data : [];
+      const total = res.pagination?.total ?? incidents.length;
       setData({
-        incidents: payload.incidents ?? [],
-        total: payload.total ?? 0,
-        pages: payload.pages ?? 1,
+        incidents,
+        total,
+        pages: Math.max(1, Math.ceil(total / params.limit)),
       });
       setLastUpdated(new Date());
     } catch {
@@ -241,10 +240,10 @@ function useIncidentStats() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await api.get<
-        { data?: IncidentStats } & Partial<IncidentStats>
-      >(API_ENDPOINTS.lgu.incidentStats);
-      setStats(res.data ?? (res as unknown as IncidentStats));
+      const res = await api.get<{
+        data?: IncidentStats;
+      }>(API_ENDPOINTS.lgu.incidentStats);
+      setStats(res.data ?? null);
       setLastUpdated(new Date());
     } catch {
       /* tolerate stats failure */

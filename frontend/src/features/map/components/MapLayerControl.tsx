@@ -109,7 +109,7 @@ export function MapLayerControl({
   onBaseMapChange,
   className,
 }: MapLayerControlProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const toggleLayer = useCallback(
     (key: keyof LayerVisibility) => {
@@ -123,7 +123,7 @@ export function MapLayerControl({
   return (
     <div
       className={cn(
-        "absolute top-3 right-3 z-1000 w-56",
+        "absolute top-3 right-3 z-500 w-56",
         "rounded-xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-md",
         "border border-gray-200/80 dark:border-gray-700/80 shadow-xl",
         "text-sm select-none transition-all duration-200",

@@ -25,7 +25,9 @@ export type ReportType =
   | "alerts"
   | "monthly-flood"
   | "barangay-risk"
-  | "incident-log";
+  | "incident-log"
+  | "ml-performance"
+  | "disaster-preparedness";
 
 /**
  * Parameters for generating reports
@@ -51,6 +53,8 @@ const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   "monthly-flood": "Monthly Flood Report",
   "barangay-risk": "Barangay Risk Assessment",
   "incident-log": "Flood Incident Log",
+  "ml-performance": "ML Model Performance",
+  "disaster-preparedness": "Disaster Preparedness",
 };
 
 export function getReportLabel(type: ReportType): string {
@@ -77,6 +81,12 @@ function getExportPath(
     case "alerts":
     case "incident-log":
       endpoint = API_ENDPOINTS.export.alerts;
+      break;
+    case "ml-performance":
+      endpoint = API_ENDPOINTS.export.modelMetrics;
+      break;
+    case "disaster-preparedness":
+      endpoint = API_ENDPOINTS.export.disasterPreparedness;
       break;
     default:
       endpoint = API_ENDPOINTS.export.predictions;
@@ -203,6 +213,10 @@ export const reportsApi = {
     status: "pending" | "running" | "completed" | "failed";
     downloadUrl?: string;
   }> => {
-    return api.get(`${"/api/v1/reports/status"}/${taskId}`);
+    try {
+      return await api.get(`${"/api/v1/reports/status"}/${taskId}`);
+    } catch {
+      return { status: "failed" };
+    }
   },
 };

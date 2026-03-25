@@ -86,7 +86,7 @@ export function useRecentAlerts(
  *
  * @example
  * const { data: history } = useAlertHistory();
- * console.log(history?.summary.total);
+ * console.log(history?.summary.total_alerts);
  */
 export function useAlertHistory(
   options?: Omit<

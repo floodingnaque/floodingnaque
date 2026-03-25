@@ -93,7 +93,7 @@ export const alertsApi = {
    *
    * @example
    * const history = await alertsApi.getAlertHistory();
-   * console.log(history.summary.total);
+   * console.log(history.summary.total_alerts);
    */
   getAlertHistory: async (
     config?: AxiosRequestConfig,

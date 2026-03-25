@@ -46,11 +46,17 @@ async function fetchAllPredictions(
       ),
     );
 
-    for (const outcome of settled) {
+    const successes = settled.filter((o) => o.status === "fulfilled");
+    for (const outcome of successes) {
       if (outcome.status === "fulfilled") {
         results[outcome.value.key] = outcome.value.result;
       }
-      // Silently skip failed individual predictions — partial data is OK
+    }
+
+    // If the entire first batch failed, the backend is likely down — bail early
+    // to avoid ~15 more wasted requests across remaining batches.
+    if (i === 0 && successes.length === 0) {
+      return results;
     }
 
     // Pause between batches (skip after the last one)
@@ -72,7 +78,9 @@ export function useAllBarangayPredictions(enabled = true) {
     queryFn: ({ signal }) => fetchAllPredictions(signal),
     enabled,
     staleTime: REFRESH_INTERVAL,
-    refetchInterval: REFRESH_INTERVAL,
+    // Pause polling while in error state to avoid flooding the console
+    refetchInterval: (query) =>
+      query.state.status === "error" ? false : REFRESH_INTERVAL,
     retry: 1,
     refetchOnWindowFocus: true,
   });

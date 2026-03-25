@@ -5,16 +5,18 @@
  * for the thesis defense. Composes all landing sections in order.
  */
 
-import { Navbar } from './components/Navbar';
-import { HeroSection } from './components/HeroSection';
-import { LiveStatusRibbon } from './components/LiveStatusRibbon';
-import { StatsRow } from './components/StatsRow';
-import { HowItWorks } from './components/HowItWorks';
-import { FeatureCards } from './components/FeatureCards';
-import { RiskExplainer } from './components/RiskExplainer';
-import { BarangayMapSection } from './components/BarangayMapSection';
-import { DualCTA } from './components/DualCTA';
-import { Footer } from './components/Footer';
+import { BarangayMapSection } from "./components/BarangayMapSection";
+import { BarangayStatusSection } from "./components/BarangayStatusSection";
+import { CityWideBroadcastSection } from "./components/CityWideBroadcastSection";
+import { DualCTA } from "./components/DualCTA";
+import { FeatureCards } from "./components/FeatureCards";
+import { Footer } from "./components/Footer";
+import { HeroSection } from "./components/HeroSection";
+import { HowItWorks } from "./components/HowItWorks";
+import { LiveStatusRibbon } from "./components/LiveStatusRibbon";
+import { Navbar } from "./components/Navbar";
+import { RiskExplainer } from "./components/RiskExplainer";
+import { StatsRow } from "./components/StatsRow";
 
 export default function LandingPage() {
   return (
@@ -27,7 +29,9 @@ export default function LandingPage() {
       <FeatureCards />
       <RiskExplainer />
       <BarangayMapSection />
+      <BarangayStatusSection />
       <DualCTA />
+      <CityWideBroadcastSection />
       <Footer />
     </div>
   );

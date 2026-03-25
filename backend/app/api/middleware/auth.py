@@ -615,6 +615,22 @@ def require_auth_or_api_key(f):
 
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Development auth bypass (same logic as require_api_key)
+        is_debug = is_debug_mode()
+        auth_bypass = os.getenv("AUTH_BYPASS_ENABLED", "False").lower() == "true"
+        if is_debug and auth_bypass:
+            auth_header = request.headers.get("Authorization", "")
+            api_key = request.headers.get("X-API-Key")
+            if not auth_header.startswith("Bearer ") and not api_key:
+                logger.warning(
+                    "AUTH BYPASS: No credentials provided and AUTH_BYPASS_ENABLED=true. "
+                    "This should NEVER happen in production!"
+                )
+                g.authenticated = False
+                g.bypass_mode = True
+                g.api_key_id = None
+                return f(*args, **kwargs)
+
         # Check IP lockout before attempting auth
         ip_address = request.remote_addr
         is_locked, remaining_seconds = _check_ip_lockout(ip_address)

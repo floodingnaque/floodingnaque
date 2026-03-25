@@ -15,6 +15,7 @@ from typing import Any
 from app.api.middleware.auth import require_auth_or_api_key, require_scope
 from app.api.middleware.rate_limit import limiter
 from app.models.db import AlertHistory, Prediction, WeatherData, get_db_session
+from app.models.evacuation_center import EvacuationCenter
 from flask import Blueprint, Response, g, jsonify, request
 
 logger = logging.getLogger(__name__)
@@ -1038,4 +1039,270 @@ def export_alerts():
             str(e),
         )
         logger.error(f"Error exporting alerts: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Model Metrics export
+# ---------------------------------------------------------------------------
+
+
+@export_bp.route("/model-metrics", methods=["GET"])
+@require_auth_or_api_key
+@require_scope("data")
+@limiter.limit("5 per minute")
+def export_model_metrics():
+    """
+    Export ML model performance metrics.
+
+    Returns model version, accuracy, precision, recall, F1, feature
+    importance, and progressive training history in CSV, JSON, or PDF.
+
+    Query Parameters:
+        format: csv, json, or pdf (default: json)
+    """
+    export_format = request.args.get("format", "json").lower()
+    if export_format not in ("csv", "json", "pdf"):
+        return jsonify({"error": "Invalid format. Must be csv, json, or pdf"}), 400
+
+    try:
+        from app.services.predict import get_model_metadata
+
+        metadata = get_model_metadata()
+        if not metadata:
+            _log_export("model-metrics", export_format, None, None, 0, "error", "No model metadata found")
+            return jsonify({"error": "No model metadata available"}), 404
+
+        # ── Assemble rows: one per metric + feature importance rows ────────
+        metrics = metadata.get("metrics", {})
+        version = metadata.get("version", "unknown")
+        trained_at = metadata.get("trained_at", metadata.get("date", "N/A"))
+        features = metadata.get("features", metadata.get("feature_names", []))
+        importance = metadata.get("feature_importance", {})
+
+        summary_rows: list[list[Any]] = [
+            ["Model Version", version, ""],
+            ["Trained At", trained_at, ""],
+            ["Accuracy", str(metrics.get("accuracy", "N/A")), ""],
+            ["Precision", str(metrics.get("precision", "N/A")), ""],
+            ["Recall", str(metrics.get("recall", "N/A")), ""],
+            ["F1 Score", str(metrics.get("f1_score", metrics.get("f1", "N/A"))), ""],
+            ["ROC AUC", str(metrics.get("roc_auc", "N/A")), ""],
+            ["Cross-validation Mean", str(metrics.get("cv_mean", "N/A")), ""],
+            ["Training Samples", str(metrics.get("training_samples", metadata.get("n_samples", "N/A"))), ""],
+        ]
+
+        # Add feature importance rows
+        if importance:
+            summary_rows.append(["", "", ""])
+            summary_rows.append(["FEATURE IMPORTANCE", "", ""])
+            for feat_name, feat_val in sorted(importance.items(), key=lambda x: -float(x[1]) if x[1] else 0):
+                summary_rows.append([feat_name, str(feat_val), "feature_importance"])
+        elif features:
+            summary_rows.append(["", "", ""])
+            summary_rows.append(["FEATURES USED", "", ""])
+            for feat in features:
+                summary_rows.append([feat, "", "feature"])
+
+        headers = ["Metric", "Value", "Category"]
+        record_count = len(summary_rows)
+
+        if export_format == "csv":
+            csv_data = _build_csv("ML Model Performance Report", headers, summary_rows)
+            _log_export("model-metrics", "csv", None, None, record_count, "success")
+            return Response(
+                csv_data,
+                mimetype="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": f'attachment; filename=model_metrics_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
+                },
+            )
+
+        if export_format == "pdf":
+            try:
+                pdf_bytes = _build_pdf(
+                    title="ML Model Performance Report",
+                    subtitle=f"Floodingnaque – Model {version} Evaluation Metrics",
+                    headers=headers,
+                    rows=summary_rows,
+                    report_type="ML Model Performance",
+                )
+                _log_export("model-metrics", "pdf", None, None, record_count, "success")
+                return Response(
+                    pdf_bytes,
+                    mimetype="application/pdf",
+                    headers={
+                        "Content-Disposition": f'attachment; filename=model_metrics_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.pdf',
+                        "Content-Length": str(len(pdf_bytes)),
+                    },
+                )
+            except ImportError:
+                _log_export("model-metrics", "pdf", None, None, 0, "error", "reportlab not installed")
+                return jsonify({"error": "PDF generation not available on this server"}), 503
+
+        # JSON default
+        _log_export("model-metrics", "json", None, None, record_count, "success")
+        return jsonify({
+            "data": {
+                "version": version,
+                "trained_at": trained_at,
+                "metrics": metrics,
+                "features": features,
+                "feature_importance": importance,
+            },
+            "format": "json",
+        }), 200
+
+    except Exception as e:
+        _log_export("model-metrics", export_format, None, None, 0, "error", str(e))
+        logger.error(f"Error exporting model metrics: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Disaster Preparedness export
+# ---------------------------------------------------------------------------
+
+
+@export_bp.route("/disaster-preparedness", methods=["GET"])
+@require_auth_or_api_key
+@require_scope("data")
+@limiter.limit("5 per minute")
+def export_disaster_preparedness():
+    """
+    Export disaster preparedness report based on evacuation center data.
+
+    Includes shelter capacity, current occupancy, barangay coverage, and
+    readiness status for all registered evacuation centers.
+
+    Query Parameters:
+        format: csv, json, or pdf (default: json)
+    """
+    export_format = request.args.get("format", "json").lower()
+    if export_format not in ("csv", "json", "pdf"):
+        return jsonify({"error": "Invalid format. Must be csv, json, or pdf"}), 400
+
+    try:
+        with get_db_session() as session:
+            centers = (
+                session.query(EvacuationCenter)
+                .filter(EvacuationCenter.is_deleted.is_(False))
+                .order_by(EvacuationCenter.barangay)
+                .all()
+            )
+            center_dicts = [c.to_dict() for c in centers]
+
+        if not center_dicts:
+            _log_export("disaster-preparedness", export_format, None, None, 0, "error", "No evacuation centers")
+            return jsonify({"error": "No evacuation center data available"}), 404
+
+        # ── Compute summary stats ─────────────────────────────────────────
+        total_centers = len(center_dicts)
+        active_centers = sum(1 for c in center_dicts if c["is_active"])
+        total_capacity = sum(c["capacity_total"] for c in center_dicts)
+        total_occupancy = sum(c["capacity_current"] for c in center_dicts)
+        total_available = sum(c["available_slots"] for c in center_dicts)
+        barangays_covered = len({c["barangay"] for c in center_dicts})
+        overall_occupancy_pct = round(total_occupancy / total_capacity * 100, 1) if total_capacity else 0
+
+        headers = [
+            "Center Name",
+            "Barangay",
+            "Address",
+            "Capacity",
+            "Current Occupancy",
+            "Available Slots",
+            "Occupancy %",
+            "Status",
+            "Contact",
+        ]
+        rows: list[list[Any]] = [
+            [
+                c["name"],
+                c["barangay"],
+                c["address"],
+                c["capacity_total"],
+                c["capacity_current"],
+                c["available_slots"],
+                f'{c["occupancy_pct"]}%',
+                "Active" if c["is_active"] else "Inactive",
+                c["contact_number"] or "",
+            ]
+            for c in center_dicts
+        ]
+
+        # Append summary section
+        rows.append([""] * len(headers))
+        rows.append(["SUMMARY", "", "", "", "", "", "", "", ""])
+        rows.append(["Total Centers", str(total_centers), "", "", "", "", "", "", ""])
+        rows.append(["Active Centers", str(active_centers), "", "", "", "", "", "", ""])
+        rows.append(["Barangays Covered", str(barangays_covered), "", "", "", "", "", "", ""])
+        rows.append(["Total Capacity", str(total_capacity), "", "", "", "", "", "", ""])
+        rows.append(["Current Occupancy", str(total_occupancy), "", "", "", "", "", "", ""])
+        rows.append(["Available Slots", str(total_available), "", "", "", "", "", "", ""])
+        rows.append(["Overall Occupancy", f"{overall_occupancy_pct}%", "", "", "", "", "", "", ""])
+
+        record_count = len(center_dicts)
+
+        if export_format == "csv":
+            csv_data = _build_csv("Disaster Preparedness Report", headers, rows)
+            _log_export("disaster-preparedness", "csv", None, None, record_count, "success")
+            return Response(
+                csv_data,
+                mimetype="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": (
+                        f"attachment; filename=disaster_preparedness_"
+                        f'{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
+                    )
+                },
+            )
+
+        if export_format == "pdf":
+            try:
+                pdf_bytes = _build_pdf(
+                    title="Disaster Preparedness Report",
+                    subtitle="Floodingnaque – Evacuation Center Readiness & Shelter Capacity",
+                    headers=headers,
+                    rows=rows,
+                    report_type="Disaster Preparedness",
+                )
+                _log_export("disaster-preparedness", "pdf", None, None, record_count, "success")
+                return Response(
+                    pdf_bytes,
+                    mimetype="application/pdf",
+                    headers={
+                        "Content-Disposition": (
+                            f"attachment; filename=disaster_preparedness_"
+                            f'{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.pdf'
+                        ),
+                        "Content-Length": str(len(pdf_bytes)),
+                    },
+                )
+            except ImportError:
+                _log_export("disaster-preparedness", "pdf", None, None, 0, "error", "reportlab not installed")
+                return jsonify({"error": "PDF generation not available on this server"}), 503
+
+        # JSON default
+        _log_export("disaster-preparedness", "json", None, None, record_count, "success")
+        return jsonify({
+            "data": {
+                "summary": {
+                    "total_centers": total_centers,
+                    "active_centers": active_centers,
+                    "barangays_covered": barangays_covered,
+                    "total_capacity": total_capacity,
+                    "total_occupancy": total_occupancy,
+                    "total_available": total_available,
+                    "overall_occupancy_pct": overall_occupancy_pct,
+                },
+                "centers": center_dicts,
+            },
+            "count": record_count,
+            "format": "json",
+        }), 200
+
+    except Exception as e:
+        _log_export("disaster-preparedness", export_format, None, None, 0, "error", str(e))
+        logger.error(f"Error exporting disaster preparedness data: {e}")
         return jsonify({"error": "Internal server error"}), 500

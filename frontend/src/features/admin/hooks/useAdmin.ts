@@ -6,8 +6,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
-  AuditLogListParams,
   CreateUserParams,
   LogListParams,
   UserListParams,
@@ -73,6 +73,7 @@ export function useCreateUser() {
   return useMutation({
     mutationFn: (params: CreateUserParams) => adminApi.createUser(params),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onError: () => toast.error("Failed to create user"),
   });
 }
 
@@ -82,6 +83,7 @@ export function useUpdateUserRole() {
     mutationFn: ({ id, role }: { id: string; role: string }) =>
       adminApi.updateUserRole(id, role),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onError: () => toast.error("Failed to update user role"),
   });
 }
 
@@ -91,12 +93,14 @@ export function useToggleUserStatus() {
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       adminApi.toggleUserStatus(id, isActive),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onError: () => toast.error("Failed to update user status"),
   });
 }
 
 export function useResetUserPassword() {
   return useMutation({
     mutationFn: (id: string) => adminApi.resetUserPassword(id),
+    onError: () => toast.error("Failed to reset password"),
   });
 }
 
@@ -105,6 +109,7 @@ export function useDeleteUser() {
   return useMutation({
     mutationFn: (id: string) => adminApi.deleteUser(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onError: () => toast.error("Failed to delete user"),
   });
 }
 
@@ -153,6 +158,7 @@ export function useTriggerRetrain() {
   return useMutation({
     mutationFn: (modelId?: string) => adminApi.triggerRetrain(modelId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "models"] }),
+    onError: () => toast.error("Failed to trigger model retrain"),
   });
 }
 
@@ -161,6 +167,7 @@ export function useRollbackModel() {
   return useMutation({
     mutationFn: (version: string) => adminApi.rollbackModel(version),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "models"] }),
+    onError: () => toast.error("Failed to rollback model"),
   });
 }
 
@@ -212,6 +219,7 @@ export function useUpdateFeatureFlag() {
       adminApi.updateFeatureFlag(flag, enabled),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ["admin", "featureFlags"] }),
+    onError: () => toast.error("Failed to update feature flag"),
   });
 }
 

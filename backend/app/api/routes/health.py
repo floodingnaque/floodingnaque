@@ -23,7 +23,7 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 
 # Health Check SLA Configuration
-HEALTH_CHECK_RESPONSE_TIME_SLA_MS = int(os.getenv("HEALTH_CHECK_RESPONSE_TIME_SLA_MS", "500"))
+HEALTH_CHECK_RESPONSE_TIME_SLA_MS = int(os.getenv("HEALTH_CHECK_RESPONSE_TIME_SLA_MS", "1000"))
 HEALTH_CHECK_DB_TIMEOUT_MS = int(os.getenv("HEALTH_CHECK_DB_TIMEOUT_SECONDS", "5")) * 1000
 
 

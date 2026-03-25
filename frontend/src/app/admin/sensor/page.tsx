@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSystemHealth } from "@/features/admin";
 import type { SensorFormValues } from "@/features/sensor";
 import { useRecentReadings, useSensorSubmit } from "@/features/sensor";
 import { fadeUp, staggerContainer } from "@/lib/motion";
@@ -42,7 +43,7 @@ import {
   Thermometer,
   Wind,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -55,44 +56,54 @@ import { toast } from "sonner";
 
 const SOURCES = ["Manual", "PAGASA", "IoT Sensor", "API", "Other"] as const;
 
-const DATA_SOURCES = [
-  {
-    name: "PAGASA Station (NAIA)",
-    icon: CloudRain,
-    status: "online" as const,
-    lastSync: "30s ago",
-  },
-  {
-    name: "GPM IMERG Satellite",
-    icon: Satellite,
-    status: "online" as const,
-    lastSync: "1m ago",
-  },
+type SourceStatus = "online" | "delayed" | "offline";
+
+interface DataSourceDef {
+  name: string;
+  icon: typeof CloudRain;
+  /** If set, status is read from health.checks.external_apis[apiKey] */
+  apiKey?: string;
+  /** Fallback static status when no apiKey or health check unavailable */
+  fallbackStatus: SourceStatus;
+}
+
+const DATA_SOURCE_DEFS: DataSourceDef[] = [
+  { name: "PAGASA Station (NAIA)", icon: CloudRain, fallbackStatus: "online" },
+  { name: "GPM IMERG Satellite", icon: Satellite, fallbackStatus: "online" },
   {
     name: "EFCOS River Gauge — San Juan",
     icon: Droplets,
-    status: "online" as const,
-    lastSync: "45s ago",
+    fallbackStatus: "online",
   },
-  {
-    name: "IoT Node — Baclaran",
-    icon: Radio,
-    status: "delayed" as const,
-    lastSync: "12m ago",
-  },
+  { name: "IoT Node — Baclaran", icon: Radio, fallbackStatus: "delayed" },
   {
     name: "OpenWeatherMap API",
     icon: Cloud,
-    status: "online" as const,
-    lastSync: "5m ago",
+    apiKey: "openweathermap",
+    fallbackStatus: "online",
   },
   {
     name: "Meteostat Historical",
     icon: Database,
-    status: "online" as const,
-    lastSync: "10m ago",
+    apiKey: "meteostat",
+    fallbackStatus: "online",
   },
 ];
+
+function circuitBreakerToStatus(cbStatus: unknown): SourceStatus {
+  if (typeof cbStatus === "string") {
+    if (cbStatus === "closed") return "online";
+    if (cbStatus === "half_open") return "delayed";
+    return "offline";
+  }
+  if (cbStatus && typeof cbStatus === "object" && "state" in cbStatus) {
+    const state = (cbStatus as { state: string }).state;
+    if (state === "closed") return "online";
+    if (state === "half_open") return "delayed";
+    return "offline";
+  }
+  return "online";
+}
 
 const STATUS_COLORS: Record<string, string> = {
   online: "bg-risk-safe/15 text-risk-safe border-risk-safe/30",
@@ -116,6 +127,20 @@ export default function AdminSensorPage() {
   const [form, setForm] = useState<SensorFormValues>(INITIAL_FORM);
   const submit = useSensorSubmit();
   const { data: hourlyData, isLoading: hourlyLoading } = useRecentReadings(1);
+  const { data: health } = useSystemHealth();
+
+  const dataSources = useMemo(() => {
+    const apis = health?.checks?.external_apis as
+      | Record<string, unknown>
+      | undefined;
+    return DATA_SOURCE_DEFS.map((def) => {
+      const status: SourceStatus =
+        def.apiKey && apis?.[def.apiKey]
+          ? circuitBreakerToStatus(apis[def.apiKey])
+          : def.fallbackStatus;
+      return { name: def.name, icon: def.icon, status };
+    });
+  }, [health]);
 
   const F =
     (key: keyof SensorFormValues) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -336,7 +361,7 @@ export default function AdminSensorPage() {
 
                 <TabsContent value="sources">
                   <div className="space-y-3">
-                    {DATA_SOURCES.map((src) => {
+                    {dataSources.map((src) => {
                       const Icon = src.icon;
                       return (
                         <GlassCard
@@ -349,9 +374,6 @@ export default function AdminSensorPage() {
                             </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium">{src.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Last sync: {src.lastSync}
-                              </p>
                             </div>
                             <div className="flex items-center gap-2">
                               {src.status === "online" && (

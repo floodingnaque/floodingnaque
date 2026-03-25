@@ -9,7 +9,7 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { subscribeToPushNotifications } from "@/lib/push-notifications";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useAlertStore } from "@/state";
 import type { Alert } from "@/types";
 import { Bell, X } from "lucide-react";
@@ -17,15 +17,12 @@ import { useState } from "react";
 
 export function PushPermissionPrompt() {
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isSubscribing, setIsSubscribing] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const { subscribe, isSubscribed, isSubscribing, permission, isSupported } =
+    usePushNotifications();
   const liveAlerts = useAlertStore((s) => s.liveAlerts);
 
-  // Only show if permission not yet asked
-  if (
-    typeof Notification === "undefined" ||
-    Notification.permission !== "default"
-  ) {
+  // Only show if push is supported and permission not yet asked
+  if (!isSupported || permission !== "default") {
     return null;
   }
 
@@ -36,12 +33,7 @@ export function PushPermissionPrompt() {
   if (isDismissed || isSubscribed) return null;
 
   const handleEnable = async () => {
-    setIsSubscribing(true);
-    const sub = await subscribeToPushNotifications("city-wide");
-    setIsSubscribing(false);
-    if (sub) {
-      setIsSubscribed(true);
-    }
+    await subscribe();
   };
 
   return (

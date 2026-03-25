@@ -71,14 +71,14 @@ compose.microservices.yaml  5-service decomposition (experimental)
 
 Progressive training demonstrates model evolution for the thesis:
 
-| Version | Data                     | Features Added                                 |
-| ------- | ------------------------ | ---------------------------------------------- |
-| v1      | 2022 only (~100 records) | 5 core: temp, humidity, precip, monsoon, month |
-| v2      | 2022–2023 (~270)         | + interactions: temp×humidity, saturation_risk |
-| v3      | 2022–2024 (~1,100)       | + all interaction features                     |
-| v4      | Full 2022–2025 (~3,700)  | + rolling features                             |
-| v5      | + PAGASA merged          | + PAGASA weather station data                  |
-| v6      | + external APIs          | All features combined (best model)             |
+| Version | Data                         | Features Added                                 |
+| ------- | ---------------------------- | ---------------------------------------------- |
+| v1      | 2022 only (209 records)      | 5 core: temp, humidity, precip, monsoon, month |
+| v2      | 2022–2023 (217 records)      | + interactions: temp×humidity, saturation_risk |
+| v3      | 2022–2024 (593 records)      | + all interaction features                     |
+| v4      | Full 2022–2025 (605 records) | + rolling features                             |
+| v5      | + PAGASA merged (5,549)      | + PAGASA weather station data                  |
+| v6      | + external APIs (6,570)      | All features combined (best model)             |
 
 Each version saves: `.joblib` model, `.json` metadata (date, params, metrics, feature importance), feature name list. Run `scripts/compare_models.py` for cross-version comparison.
 

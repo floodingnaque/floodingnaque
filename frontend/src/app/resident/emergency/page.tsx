@@ -1,9 +1,12 @@
 /**
  * Resident — Emergency Contacts Page
+ *
+ * All 8 key contacts with one-tap call, "Save All to Contacts" vCard export.
  */
 
-import { ExternalLink, Phone } from "lucide-react";
+import { Download, ExternalLink, Phone } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -20,58 +23,99 @@ interface Contact {
 
 const CONTACTS: Contact[] = [
   {
-    name: "Parañaque MDRRMO",
+    name: "Parañaque DRRMO",
     number: "(02) 8825-0907",
-    description: "Municipal Disaster Risk Reduction & Management Office",
+    description: "Disaster Risk Reduction & Management Office",
   },
   {
-    name: "National Emergency Hotline",
+    name: "National Emergency",
     number: "911",
-    description: "Philippine National Emergency Number",
-  },
-  {
-    name: "NDRRMC Operations Center",
-    number: "(02) 8911-5061",
-    description: "National Disaster Risk Reduction & Management Council",
-  },
-  {
-    name: "Philippine Red Cross",
-    number: "143",
-    description: "Red Cross emergency hotline",
-  },
-  {
-    name: "PNP Emergency Hotline",
-    number: "117",
-    description: "Philippine National Police",
+    description: "Philippine National Emergency Hotline",
   },
   {
     name: "Bureau of Fire Protection",
     number: "(02) 8426-0219",
-    description: "Fire and rescue services",
+    description: "Fire station and rescue services",
+  },
+  {
+    name: "PNP Emergency",
+    number: "117",
+    description: "Philippine National Police",
+  },
+  {
+    name: "Philippine Red Cross",
+    number: "143",
+    description: "Emergency humanitarian assistance",
+  },
+  {
+    name: "NDRRMC Operations",
+    number: "(02) 8911-5061",
+    description: "National Disaster Risk Reduction & Management Council",
+  },
+  {
+    name: "PAGASA",
+    number: "(02) 8927-1541",
+    description: "Weather forecasts and typhoon bulletins",
+  },
+  {
+    name: "DSWD Hotline",
+    number: "(02) 8931-8101",
+    description: "Dept. of Social Welfare & Development — relief assistance",
   },
 ];
 
+function generateVCard(): string {
+  return CONTACTS.map(
+    (c) =>
+      `BEGIN:VCARD\nVERSION:3.0\nFN:${c.name}\nTEL:${c.number}\nNOTE:${c.description}\nEND:VCARD`,
+  ).join("\n");
+}
+
+function downloadVCard() {
+  const blob = new Blob([generateVCard()], { type: "text/vcard" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "paranaque_emergency_contacts.vcf";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ResidentEmergencyPage() {
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto pb-24 md:pb-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      {/* ── Header ────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Phone className="h-4 w-4 text-red-500" />
-            Emergency Contacts
-          </CardTitle>
-          <CardDescription>
-            Tap a number to call directly. Save these numbers in your phone.
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Phone className="h-4 w-4 text-red-500" />
+                Mga Emergency Number / Emergency Contacts
+              </CardTitle>
+              <CardDescription>
+                Tap a number to call directly. Save to your phone.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 self-start"
+              onClick={downloadVCard}
+            >
+              <Download className="h-4 w-4" />
+              Save All to Contacts
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2">
           {CONTACTS.map((c) => (
             <a
               key={c.number}
               href={`tel:${c.number.replace(/[^0-9+]/g, "")}`}
-              className="flex items-center gap-4 p-4 rounded-lg border border-border/50 hover:bg-accent/50 transition-colors"
+              className="flex items-center gap-4 p-4 rounded-xl border border-border/50 hover:bg-accent/50 transition-colors"
             >
-              <div className="h-10 w-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+              <div className="h-11 w-11 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
                 <Phone className="h-5 w-5 text-red-500" />
               </div>
               <div className="flex-1 min-w-0">

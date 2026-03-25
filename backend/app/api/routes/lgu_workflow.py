@@ -17,6 +17,7 @@ from app.api.middleware.rate_limit import rate_limit_with_burst
 from app.core.constants import HTTP_BAD_REQUEST, HTTP_CREATED, HTTP_INTERNAL_ERROR, HTTP_NOT_FOUND, HTTP_OK
 from app.core.exceptions import api_error
 from app.models.after_action_report import AfterActionReport
+from app.models.broadcast import Broadcast
 from app.models.db import get_db_session
 from app.models.incident import Incident
 from app.utils.validation import validate_request_size
@@ -345,84 +346,95 @@ def incident_analytics():
 
     try:
         with get_db_session() as session:
-            # Average times: confirmation, broadcast, resolution
-            avg_confirm = (
-                session.query(func.avg(extract("epoch", Incident.confirmed_at) - extract("epoch", Incident.created_at)))
-                .filter(
-                    Incident.is_deleted.is_(False),
-                    Incident.confirmed_at.isnot(None),
-                )
-                .scalar()
-            )
-            avg_broadcast = (
+            # ── Query 1: All incident aggregates in a single query ───────
+            # (was 7 separate COUNT + 3 AVG queries)
+            stall_threshold = datetime.now(timezone.utc).timestamp() - 86400
+
+            incident_agg = (
                 session.query(
-                    func.avg(extract("epoch", Incident.broadcast_sent_at) - extract("epoch", Incident.confirmed_at))
+                    func.count(Incident.id).label("total"),
+                    func.count(
+                        case((Incident.status.in_(["resolved", "closed"]), Incident.id))
+                    ).label("resolved_count"),
+                    func.count(
+                        case((Incident.status == "closed", Incident.id))
+                    ).label("closed_count"),
+                    func.count(
+                        case(
+                            (
+                                Incident.status.in_(["resolved", "closed"])
+                                & (Incident.affected_families == 0)
+                                & (Incident.casualties == 0),
+                                Incident.id,
+                            )
+                        )
+                    ).label("false_alarms"),
+                    func.count(
+                        case(
+                            (
+                                Incident.status.in_(["alert_raised", "lgu_confirmed"])
+                                & (extract("epoch", Incident.created_at) < stall_threshold),
+                                Incident.id,
+                            )
+                        )
+                    ).label("stalled"),
+                    func.avg(
+                        case(
+                            (
+                                Incident.confirmed_at.isnot(None),
+                                extract("epoch", Incident.confirmed_at) - extract("epoch", Incident.created_at),
+                            )
+                        )
+                    ).label("avg_confirm"),
+                    func.avg(
+                        case(
+                            (
+                                Incident.broadcast_sent_at.isnot(None) & Incident.confirmed_at.isnot(None),
+                                extract("epoch", Incident.broadcast_sent_at) - extract("epoch", Incident.confirmed_at),
+                            )
+                        )
+                    ).label("avg_broadcast"),
+                    func.avg(
+                        case(
+                            (
+                                Incident.resolved_at.isnot(None),
+                                extract("epoch", Incident.resolved_at) - extract("epoch", Incident.created_at),
+                            )
+                        )
+                    ).label("avg_resolve"),
                 )
-                .filter(
-                    Incident.is_deleted.is_(False),
-                    Incident.broadcast_sent_at.isnot(None),
-                    Incident.confirmed_at.isnot(None),
-                )
-                .scalar()
-            )
-            avg_resolve = (
-                session.query(func.avg(extract("epoch", Incident.resolved_at) - extract("epoch", Incident.created_at)))
-                .filter(
-                    Incident.is_deleted.is_(False),
-                    Incident.resolved_at.isnot(None),
-                )
-                .scalar()
+                .filter(Incident.is_deleted.is_(False))
+                .one()
             )
 
-            # Counts
-            total = session.query(func.count(Incident.id)).filter(Incident.is_deleted.is_(False)).scalar() or 0
-            resolved_count = (
-                session.query(func.count(Incident.id))
-                .filter(Incident.is_deleted.is_(False), Incident.status.in_(["resolved", "closed"]))
-                .scalar()
-                or 0
-            )
-            closed_count = (
-                session.query(func.count(Incident.id))
-                .filter(Incident.is_deleted.is_(False), Incident.status == "closed")
-                .scalar()
-                or 0
-            )
-
-            # False alarm rate: resolved with 0 affected families / total resolved
-            false_alarms = (
-                session.query(func.count(Incident.id))
-                .filter(
-                    Incident.is_deleted.is_(False),
-                    Incident.status.in_(["resolved", "closed"]),
-                    Incident.affected_families == 0,
-                    Incident.casualties == 0,
-                )
-                .scalar()
-                or 0
-            )
+            total = incident_agg.total or 0
+            resolved_count = incident_agg.resolved_count or 0
+            closed_count = incident_agg.closed_count or 0
+            false_alarms = incident_agg.false_alarms or 0
             false_alarm_rate = (false_alarms / resolved_count) if resolved_count > 0 else 0
 
-            # AAR metrics
-            total_aars = (
-                session.query(func.count(AfterActionReport.id)).filter(AfterActionReport.is_deleted.is_(False)).scalar()
-                or 0
+            # ── Query 2: AAR aggregates in a single query ────────────────
+            # (was 3 separate COUNT queries)
+            aar_agg = (
+                session.query(
+                    func.count(AfterActionReport.id).label("total_aars"),
+                    func.count(
+                        case((AfterActionReport.status == "approved", AfterActionReport.id))
+                    ).label("approved_aars"),
+                    func.count(
+                        case((AfterActionReport.ra10121_compliant.is_(True), AfterActionReport.id))
+                    ).label("compliant_aars"),
+                )
+                .filter(AfterActionReport.is_deleted.is_(False))
+                .one()
             )
-            approved_aars = (
-                session.query(func.count(AfterActionReport.id))
-                .filter(AfterActionReport.is_deleted.is_(False), AfterActionReport.status == "approved")
-                .scalar()
-                or 0
-            )
-            compliant_aars = (
-                session.query(func.count(AfterActionReport.id))
-                .filter(AfterActionReport.is_deleted.is_(False), AfterActionReport.ra10121_compliant.is_(True))
-                .scalar()
-                or 0
-            )
+
+            total_aars = aar_agg.total_aars or 0
+            approved_aars = aar_agg.approved_aars or 0
+            compliant_aars = aar_agg.compliant_aars or 0
             aar_completion_rate = (total_aars / closed_count) if closed_count > 0 else 0
 
-            # Monthly incident frequency (last 12 months)
+            # ── Query 3: Monthly frequency (already efficient) ───────────
             monthly = (
                 session.query(
                     extract("year", Incident.created_at).label("year"),
@@ -437,23 +449,10 @@ def incident_analytics():
             )
             monthly_frequency = [{"year": int(r.year), "month": int(r.month), "count": r.count} for r in monthly]
 
-            # Stalled incidents: in alert_raised or lgu_confirmed for > 24h
-            stall_threshold = datetime.now(timezone.utc).timestamp() - 86400  # 24h ago
-            stalled = (
-                session.query(func.count(Incident.id))
-                .filter(
-                    Incident.is_deleted.is_(False),
-                    Incident.status.in_(["alert_raised", "lgu_confirmed"]),
-                    extract("epoch", Incident.created_at) < stall_threshold,
-                )
-                .scalar()
-                or 0
-            )
-
             analytics = {
-                "avg_confirm_minutes": round(avg_confirm / 60, 1) if avg_confirm else None,
-                "avg_broadcast_minutes": round(avg_broadcast / 60, 1) if avg_broadcast else None,
-                "avg_resolve_minutes": round(avg_resolve / 60, 1) if avg_resolve else None,
+                "avg_confirm_minutes": round(incident_agg.avg_confirm / 60, 1) if incident_agg.avg_confirm else None,
+                "avg_broadcast_minutes": round(incident_agg.avg_broadcast / 60, 1) if incident_agg.avg_broadcast else None,
+                "avg_resolve_minutes": round(incident_agg.avg_resolve / 60, 1) if incident_agg.avg_resolve else None,
                 "total_incidents": total,
                 "resolved_incidents": resolved_count,
                 "closed_incidents": closed_count,
@@ -464,7 +463,7 @@ def incident_analytics():
                 "compliant_aars": compliant_aars,
                 "aar_completion_rate": round(min(aar_completion_rate, 1.0), 3),
                 "monthly_frequency": monthly_frequency,
-                "stalled_incidents": stalled,
+                "stalled_incidents": incident_agg.stalled or 0,
             }
 
         return jsonify({"success": True, "data": analytics, "request_id": request_id}), HTTP_OK
@@ -688,4 +687,394 @@ def _serialize_aar(r: AfterActionReport) -> dict:
         "status": r.status,
         "created_at": _isoformat(r.created_at),
         "updated_at": _isoformat(r.updated_at),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Advance (auto-detect next status alias for /transition)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@lgu_workflow_bp.route("/incidents/<int:incident_id>/advance", methods=["POST"])
+@rate_limit_with_burst("60 per hour")
+@require_auth_or_api_key
+def advance_incident(incident_id: int):
+    """Auto-advance an incident to the next workflow stage.
+
+    Unlike /transition, this does not require `next_status` in the body —
+    it picks the single valid next state automatically.
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+
+        with get_db_session() as session:
+            incident = (
+                session.query(Incident)
+                .filter(Incident.id == incident_id, Incident.is_deleted.is_(False))  # type: ignore[union-attr]
+                .first()
+            )
+            if not incident:
+                return api_error("NotFound", f"Incident {incident_id} not found", HTTP_NOT_FOUND, request_id)
+
+            current = cast(str, incident.status)
+            valid = Incident.VALID_TRANSITIONS.get(current, [])
+            if not valid:
+                return api_error(
+                    "InvalidTransition",
+                    f"Incident is in terminal state '{current}' — cannot advance",
+                    HTTP_BAD_REQUEST,
+                    request_id,
+                )
+
+            next_status = valid[0]
+            actor = data.get("actor")
+
+            # Stage-specific field handling (same as transition)
+            if next_status == "broadcast_sent":
+                channels = data.get("broadcast_channels")
+                if channels:
+                    incident.broadcast_channels = channels
+            if next_status == "resolved":
+                for field in ("affected_families", "evacuated_families", "casualties"):
+                    if field in data:
+                        setattr(incident, field, int(data[field]))
+                if "estimated_damage" in data and data["estimated_damage"] is not None:
+                    incident.estimated_damage = float(data["estimated_damage"])
+
+            incident.transition_to(next_status, actor=actor)
+            session.flush()
+            result = _serialize_incident(incident)
+            session.commit()
+
+        logger.info("Incident %d advanced to %s [%s]", incident_id, next_status, request_id)
+        return jsonify({"success": True, "data": result, "request_id": request_id}), HTTP_OK
+
+    except ValueError as e:
+        return api_error("InvalidTransition", str(e), HTTP_BAD_REQUEST, request_id)
+    except Exception as e:
+        logger.error("advance_incident failed [%s]: %s", request_id, e, exc_info=True)
+        return api_error("InternalError", "Failed to advance incident", HTTP_INTERNAL_ERROR, request_id)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Standalone After-Action Report routes (GET/POST /aar)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@lgu_workflow_bp.route("/aar", methods=["GET"])
+@rate_limit_with_burst("120 per hour")
+@require_auth_or_api_key
+def list_all_aar():
+    """List all after-action reports with optional filters."""
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        limit = min(int(request.args.get("limit", 25)), 100)
+        offset = int(request.args.get("offset", 0))
+        status = request.args.get("status")
+        search = request.args.get("search")
+
+        with get_db_session() as session:
+            q = session.query(AfterActionReport).filter(AfterActionReport.is_deleted.is_(False))  # type: ignore[union-attr]
+
+            if status:
+                q = q.filter(AfterActionReport.status == status)
+            if search:
+                q = q.filter(AfterActionReport.title.ilike(f"%{search}%"))
+
+            total = q.count()
+            reports = q.order_by(AfterActionReport.created_at.desc()).offset(offset).limit(limit).all()
+
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "data": [_serialize_aar(r) for r in reports],
+                        "pagination": {"total": total, "limit": limit, "offset": offset},
+                        "request_id": request_id,
+                    }
+                ),
+                HTTP_OK,
+            )
+    except Exception as e:
+        logger.error("list_all_aar failed [%s]: %s", request_id, e, exc_info=True)
+        return api_error("InternalError", "Failed to list reports", HTTP_INTERNAL_ERROR, request_id)
+
+
+@lgu_workflow_bp.route("/aar", methods=["POST"])
+@rate_limit_with_burst("30 per hour")
+@validate_request_size(endpoint_name="lgu_workflow")
+@require_auth_or_api_key
+def create_standalone_aar():
+    """Create an after-action report (incident_id in body)."""
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return api_error("NoInput", "No input data provided", HTTP_BAD_REQUEST, request_id)
+
+        title = data.get("title")
+        summary = data.get("summary")
+        incident_id = data.get("incident_id")
+        if not title or not summary or not incident_id:
+            return api_error(
+                "ValidationError",
+                "'title', 'summary', and 'incident_id' are required",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        with get_db_session() as session:
+            incident = session.query(Incident).filter(Incident.id == incident_id, Incident.is_deleted.is_(False)).first()  # type: ignore[union-attr]
+            if not incident:
+                return api_error("NotFound", f"Incident {incident_id} not found", HTTP_NOT_FOUND, request_id)
+
+            aar = AfterActionReport(
+                incident_id=incident_id,
+                title=title,
+                summary=summary,
+                timeline=data.get("timeline"),
+                response_actions=data.get("response_actions"),
+                resources_deployed=data.get("resources_deployed"),
+                response_time_minutes=data.get("response_time_minutes"),
+                evacuation_time_minutes=data.get("evacuation_time_minutes"),
+                warning_lead_time_minutes=data.get("warning_lead_time_minutes"),
+                prediction_accuracy=data.get("prediction_accuracy"),
+                lessons_learned=data.get("lessons_learned"),
+                recommendations=data.get("recommendations"),
+                follow_up_actions=data.get("follow_up_actions"),
+                prepared_by=data.get("prepared_by"),
+                reviewed_by=data.get("reviewed_by"),
+            )
+            session.add(aar)
+            session.flush()
+            result = _serialize_aar(aar)
+            session.commit()
+
+        return jsonify({"success": True, "data": result, "request_id": request_id}), HTTP_CREATED
+
+    except Exception as e:
+        logger.error("create_standalone_aar failed [%s]: %s", request_id, e, exc_info=True)
+        return api_error("InternalError", "Failed to create report", HTTP_INTERNAL_ERROR, request_id)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Broadcasts CRUD
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@lgu_workflow_bp.route("/broadcasts", methods=["GET"])
+@rate_limit_with_burst("120 per hour")
+@require_auth_or_api_key
+def list_broadcasts():
+    """List broadcasts with optional filters."""
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        limit = min(int(request.args.get("limit", 25)), 100)
+        offset = int(request.args.get("offset", 0))
+        priority = request.args.get("priority")
+
+        with get_db_session() as session:
+            q = session.query(Broadcast).filter(Broadcast.is_deleted.is_(False))  # type: ignore[union-attr]
+
+            if priority:
+                q = q.filter(Broadcast.priority == priority)
+
+            total = q.count()
+            broadcasts = q.order_by(Broadcast.created_at.desc()).offset(offset).limit(limit).all()
+
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "data": [_serialize_broadcast(b) for b in broadcasts],
+                        "pagination": {"total": total, "limit": limit, "offset": offset},
+                        "request_id": request_id,
+                    }
+                ),
+                HTTP_OK,
+            )
+
+    except Exception as e:
+        logger.error("list_broadcasts failed [%s]: %s", request_id, e, exc_info=True)
+        return api_error("InternalError", "Failed to list broadcasts", HTTP_INTERNAL_ERROR, request_id)
+
+
+@lgu_workflow_bp.route("/broadcasts", methods=["POST"])
+@rate_limit_with_burst("30 per hour")
+@validate_request_size(endpoint_name="lgu_workflow")
+@require_auth_or_api_key
+def create_broadcast():
+    """Send a public broadcast to targeted barangays with real SMS/email dispatch."""
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return api_error("NoInput", "No input data provided", HTTP_BAD_REQUEST, request_id)
+
+        message = data.get("message")
+        target_barangays = data.get("target_barangays")
+        channels = data.get("channels")
+        if not message or not target_barangays or not channels:
+            return api_error(
+                "ValidationError",
+                "'message', 'target_barangays', and 'channels' are required",
+                HTTP_BAD_REQUEST,
+                request_id,
+            )
+
+        # Validate lists
+        if isinstance(target_barangays, list):
+            target_barangays_str = ",".join(target_barangays)
+        else:
+            target_barangays_str = str(target_barangays)
+
+        if isinstance(channels, list):
+            channels_list = channels
+            channels_str = ",".join(channels)
+        else:
+            channels_list = [c.strip() for c in str(channels).split(",")]
+            channels_str = str(channels)
+
+        # Get sender identity from auth context
+        user = getattr(g, "current_user", None)
+        sent_by = getattr(user, "full_name", None) or getattr(user, "email", "system")
+
+        # ── Dispatch to real channels ────────────────────────────────────
+        from app.models.user import User
+
+        delivery_results: dict = {}
+        actual_recipients = 0
+
+        with get_db_session() as session:
+            # SMS dispatch
+            if "sms" in channels_list:
+                sms_users = (
+                    session.query(User.phone_number)
+                    .filter(
+                        User.is_deleted.is_(False),
+                        User.is_active.is_(True),
+                        User.phone_number.isnot(None),
+                        User.phone_number != "",
+                    )
+                    .all()
+                )
+                phone_numbers = [u.phone_number for u in sms_users]
+                if phone_numbers:
+                    from app.services.alerts import get_alert_system
+
+                    alert_sys = get_alert_system()
+                    sms_status = alert_sys._send_sms(phone_numbers, message)
+                    delivery_results["sms"] = sms_status
+                    if sms_status in ("delivered", "partial", "sandbox"):
+                        actual_recipients += len(phone_numbers)
+                    logger.info("Broadcast SMS dispatched to %d numbers: %s", len(phone_numbers), sms_status)
+                else:
+                    delivery_results["sms"] = "no_recipients"
+
+            # Email dispatch
+            if "email" in channels_list:
+                email_users = (
+                    session.query(User.email)
+                    .filter(
+                        User.is_deleted.is_(False),
+                        User.is_active.is_(True),
+                    )
+                    .all()
+                )
+                email_addrs = [u.email for u in email_users]
+                if email_addrs:
+                    from app.services.alerts import get_alert_system
+
+                    alert_sys = get_alert_system()
+                    title = data.get("title", "Flood Alert Broadcast")
+                    email_status = alert_sys._send_email(email_addrs, title, message)
+                    delivery_results["email"] = email_status
+                    if email_status in ("delivered", "partial", "sandbox"):
+                        actual_recipients += len(email_addrs)
+                    logger.info("Broadcast email dispatched to %d addresses: %s", len(email_addrs), email_status)
+                else:
+                    delivery_results["email"] = "no_recipients"
+
+            # SSE / In-App broadcast
+            if "sse" in channels_list or "web" in channels_list:
+                try:
+                    from app.api.routes.sse import broadcast_alert
+
+                    sse_record = {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "risk_label": data.get("priority", "normal").capitalize(),
+                        "message": message,
+                        "location": target_barangays_str,
+                        "delivery_status": {"sse": "delivered"},
+                    }
+                    client_count = broadcast_alert(sse_record)
+                    delivery_results["sse"] = f"delivered ({client_count} clients)"
+                except Exception as sse_exc:
+                    logger.warning("SSE broadcast failed: %s", sse_exc)
+                    delivery_results["sse"] = "failed"
+
+        # ── Persist broadcast record ─────────────────────────────────────
+        with get_db_session() as session:
+            broadcast = Broadcast(
+                title=data.get("title"),
+                message=message,
+                priority=data.get("priority", "normal"),
+                target_barangays=target_barangays_str,
+                channels=channels_str,
+                recipients=actual_recipients,
+                sent_by=sent_by,
+                incident_id=data.get("incident_id"),
+            )
+            session.add(broadcast)
+            session.flush()
+            result = _serialize_broadcast(broadcast)
+            result["delivery_results"] = delivery_results
+            session.commit()
+
+        logger.info(
+            "Broadcast %d sent to %s via %s — %d recipients [%s]",
+            result["id"],
+            target_barangays_str,
+            channels_str,
+            actual_recipients,
+            request_id,
+        )
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "data": {
+                        "broadcast_id": result["id"],
+                        "recipients": actual_recipients,
+                        "delivery_results": delivery_results,
+                    },
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_CREATED,
+        )
+
+    except Exception as e:
+        logger.error("create_broadcast failed [%s]: %s", request_id, e, exc_info=True)
+        return api_error("InternalError", "Failed to send broadcast", HTTP_INTERNAL_ERROR, request_id)
+
+
+def _serialize_broadcast(b: Broadcast) -> dict:
+    return {
+        "id": b.id,
+        "title": b.title,
+        "message": b.message,
+        "priority": b.priority,
+        "target_barangays": b.target_barangays.split(",") if b.target_barangays else [],
+        "channels": b.channels.split(",") if b.channels else [],
+        "recipients": b.recipients,
+        "sent_by": b.sent_by,
+        "incident_id": b.incident_id,
+        "sent_at": _isoformat(b.created_at),
     }

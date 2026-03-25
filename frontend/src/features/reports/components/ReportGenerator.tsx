@@ -70,6 +70,18 @@ const REPORT_TYPES: {
     description: "Alert history, severity, and response audit",
     available: true,
   },
+  {
+    value: "ml-performance",
+    label: "ML Model Performance",
+    description: "Accuracy, precision, recall, F1, and feature importance",
+    available: true,
+  },
+  {
+    value: "disaster-preparedness",
+    label: "Disaster Preparedness",
+    description: "Evacuation center readiness and shelter capacity",
+    available: true,
+  },
 ];
 
 /**
@@ -96,6 +108,8 @@ const reportFormSchema = z
       "predictions",
       "weather",
       "alerts",
+      "ml-performance",
+      "disaster-preparedness",
     ]),
     format: z.enum(["pdf", "csv"]),
     startDate: z.string().min(1, "Start date is required"),
