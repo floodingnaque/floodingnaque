@@ -1,5 +1,5 @@
 /**
- * useUnreadCount — lightweight unread counter for an inactive channel.
+ * useUnreadCount - lightweight unread counter for an inactive channel.
  *
  * Subscribes to Supabase Realtime INSERT events on a single barangay and
  * increments a counter.  Counter resets automatically when the
@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { isRealtimeEnabled, supabase } from "@/lib/supabase";
 
 export function useUnreadCount(barangayId: string | null): number {
-  // Keyed counts — each barangay gets its own counter so we never
+  // Keyed counts - each barangay gets its own counter so we never
   // need a synchronous reset inside the effect body.
   const [counts, setCounts] = useState<Record<string, number>>({});
 

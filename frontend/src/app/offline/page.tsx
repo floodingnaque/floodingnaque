@@ -29,7 +29,7 @@ export default function OfflinePage() {
           </p>
         </div>
 
-        {/* Emergency contacts — always cached */}
+        {/* Emergency contacts - always cached */}
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-left dark:border-red-800 dark:bg-red-950/30">
           <h2 className="mb-3 flex items-center gap-2 font-semibold text-red-700 dark:text-red-400">
             <Phone className="h-4 w-4" />
@@ -56,7 +56,7 @@ export default function OfflinePage() {
           </div>
         </div>
 
-        {/* Nearest evacuation centers — cached from last session */}
+        {/* Nearest evacuation centers - cached from last session */}
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-left dark:border-blue-800 dark:bg-blue-950/30">
           <h2 className="mb-2 flex items-center gap-2 font-semibold text-blue-700 dark:text-blue-400">
             <MapPin className="h-4 w-4" />
@@ -143,7 +143,7 @@ function EvacuationCenterOfflineList() {
       {centers.slice(0, 3).map((c) => (
         <div key={c.id} className="text-sm">
           <span className="font-medium">{c.name}</span>
-          <span className="text-muted-foreground"> — {c.address}</span>
+          <span className="text-muted-foreground"> - {c.address}</span>
         </div>
       ))}
     </div>

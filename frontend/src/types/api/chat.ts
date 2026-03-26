@@ -1,4 +1,4 @@
-/** Chat API types — shared between hooks and components. */
+/** Chat API types - shared between hooks and components. */
 
 export interface ChatMessage {
   id: string;

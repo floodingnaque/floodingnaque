@@ -3,7 +3,7 @@
  *
  * Bridges async errors (useEffect, event handlers, promises) to the
  * nearest React ErrorBoundary.  Class-based error boundaries only catch
- * synchronous render errors — this hook fills the gap.
+ * synchronous render errors - this hook fills the gap.
  *
  * @example
  * ```tsx

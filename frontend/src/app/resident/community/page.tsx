@@ -1,5 +1,5 @@
 /**
- * Resident — Community Reports Page
+ * Resident - Community Reports Page
  *
  * Submitted and verified flood reports from other residents, with
  * severity badges, status indicators, filter by barangay, and
@@ -228,7 +228,7 @@ export default function ResidentCommunityPage() {
             <p className="text-xs mt-1">
               {search
                 ? "Try a different search term"
-                : "Be the first to report — help others stay safe"}
+                : "Be the first to report - help others stay safe"}
             </p>
             {!search && (
               <Button

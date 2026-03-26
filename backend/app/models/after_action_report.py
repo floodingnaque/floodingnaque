@@ -1,4 +1,4 @@
-"""AfterActionReport ORM model — Post-incident review documentation.
+"""AfterActionReport ORM model - Post-incident review documentation.
 
 Part of the RA 10121–compliant LGU workflow. Each closed incident
 can have one or more after-action reports that document timeline,

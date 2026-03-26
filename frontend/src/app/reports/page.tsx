@@ -1,5 +1,5 @@
 /**
- * Reports Page — Accessible, plain-language report generation.
+ * Reports Page - Accessible, plain-language report generation.
  *
  * Provides a catalog of downloadable flood monitoring reports and
  * a form to configure, generate, and export them in PDF or CSV.
@@ -81,7 +81,7 @@ const DISASTER_REPORTS: ReportCard[] = [
     icon: MapPin,
     title: "Barangay Risk Assessment",
     description:
-      "A detailed look at each barangay's flood risk — how often it floods, how many residents are affected, and its risk classification.",
+      "A detailed look at each barangay's flood risk - how often it floods, how many residents are affected, and its risk classification.",
     hint: "Shows risk profiles, historical flood frequency, population exposure, and vulnerability scores per barangay.",
     sheets: ["Risk Profiles", "Flood History", "Population Data"],
     formats: [
@@ -95,7 +95,7 @@ const DISASTER_REPORTS: ReportCard[] = [
     icon: Bell,
     title: "Flood Incident Log",
     description:
-      "A timeline of every flood alert — when it was triggered, which areas were affected, and how quickly it was handled.",
+      "A timeline of every flood alert - when it was triggered, which areas were affected, and how quickly it was handled.",
     hint: "Contains triggered timestamps, severity levels, acknowledgment status, and response time metrics.",
     sheets: ["Alerts", "Severity Timeline", "Response Audit"],
     formats: [
@@ -109,7 +109,7 @@ const DISASTER_REPORTS: ReportCard[] = [
     icon: Brain,
     title: "ML Model Performance",
     description:
-      "How well the flood prediction model is performing — its accuracy, how it has improved over time, and which factors matter most.",
+      "How well the flood prediction model is performing - its accuracy, how it has improved over time, and which factors matter most.",
     hint: "Reports accuracy, precision, recall, F1 score, progressive training history (v1–v6), and feature importance rankings.",
     sheets: ["Metrics Summary", "Version Comparison", "Feature Importance"],
     formats: [
@@ -136,7 +136,7 @@ const DISASTER_REPORTS: ReportCard[] = [
 ];
 
 /**
- * ReportsPage — Main page for report generation and export.
+ * ReportsPage - Main page for report generation and export.
  *
  * Flow: pick a report card → form auto-selects it → choose format & dates → download.
  */
@@ -237,7 +237,7 @@ export default function ReportsPage() {
                     tabIndex={isAvailable ? 0 : -1}
                     aria-selected={isSelected}
                     aria-disabled={!isAvailable}
-                    aria-label={`${report.title}${isSelected ? " (selected)" : ""}${!isAvailable ? " — coming soon" : ""}`}
+                    aria-label={`${report.title}${isSelected ? " (selected)" : ""}${!isAvailable ? " - coming soon" : ""}`}
                     className={cn(
                       "overflow-hidden transition-all duration-300 h-full flex flex-col outline-none",
                       "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
@@ -337,7 +337,7 @@ export default function ReportsPage() {
                             )}
                           >
                             {fmt.label}
-                            {!fmt.available && " — soon"}
+                            {!fmt.available && " - soon"}
                           </Badge>
                         ))}
                       </div>
@@ -443,19 +443,19 @@ export default function ReportsPage() {
                     <div className="px-5 pb-5">
                       <ol className="list-inside list-decimal space-y-2.5 text-xs text-muted-foreground">
                         <li>
-                          <strong>Pick a report</strong> — click one of the
+                          <strong>Pick a report</strong> - click one of the
                           cards above, or choose from the dropdown in the form.
                         </li>
                         <li>
-                          <strong>Choose a format</strong> — PDF for printing or
+                          <strong>Choose a format</strong> - PDF for printing or
                           sharing; CSV for opening in Excel or Google Sheets.
                         </li>
                         <li>
-                          <strong>Set dates</strong> — use a quick preset (7,
+                          <strong>Set dates</strong> - use a quick preset (7,
                           30, or 90 days) or enter custom start and end dates.
                         </li>
                         <li>
-                          <strong>Download</strong> — click &quot;Generate &amp;
+                          <strong>Download</strong> - click &quot;Generate &amp;
                           Download&quot; and the file saves automatically.
                         </li>
                       </ol>
@@ -531,7 +531,7 @@ export default function ReportsPage() {
                         </li>
                         <li>
                           If a download fails, click <strong>Retry</strong> in
-                          the error message — the system will try again.
+                          the error message - the system will try again.
                         </li>
                         <li>
                           Date ranges up to <strong>90 days</strong> are

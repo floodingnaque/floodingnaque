@@ -1,5 +1,5 @@
 /**
- * Resident — My Reports Page
+ * Resident - My Reports Page
  *
  * Personal report history with reference numbers, status badges,
  * and detail view.
@@ -60,7 +60,7 @@ export default function ResidentMyReportsPage() {
               Wala ka pang ulat / No reports yet
             </p>
             <p className="text-xs mt-1">
-              Help your community — report flooding in your area
+              Help your community - report flooding in your area
             </p>
             <Button asChild variant="outline" size="sm" className="mt-3 gap-2">
               <Link to="/resident/report">

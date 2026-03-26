@@ -1,5 +1,5 @@
 /**
- * PredictionForm Component — Web 3.0 Edition
+ * PredictionForm Component - Web 3.0 Edition
  *
  * Modern flood risk prediction form with glassmorphism cards,
  * animated mode toggle, icon-enhanced fields with unit badges,

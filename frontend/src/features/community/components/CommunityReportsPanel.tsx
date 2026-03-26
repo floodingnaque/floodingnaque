@@ -17,7 +17,17 @@ import {
 } from "@/features/community/hooks/useCommunityReports";
 import { cn } from "@/lib/utils";
 import type { CommunityReport } from "@/types";
-import { Camera, CheckCircle2, ClipboardList, Upload } from "lucide-react";
+import {
+  Camera,
+  CheckCircle2,
+  ClipboardList,
+  Construction,
+  FileText,
+  CarFront,
+  TrendingUp,
+  Upload,
+  Waves,
+} from "lucide-react";
 import { memo, useCallback, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
@@ -28,31 +38,31 @@ const INCIDENT_TYPES = [
   {
     value: "flooding",
     label: "Flooding",
-    icon: "🌊",
+    icon: <Waves className="h-3.5 w-3.5 inline" />,
     color: "text-blue-400 border-blue-400/40 bg-blue-400/10",
   },
   {
     value: "blocked_drainage",
     label: "Blocked Drainage",
-    icon: "🚧",
+    icon: <Construction className="h-3.5 w-3.5 inline" />,
     color: "text-risk-alert border-risk-alert/40 bg-risk-alert/10",
   },
   {
     value: "rising_water",
     label: "Rising Water",
-    icon: "📈",
+    icon: <TrendingUp className="h-3.5 w-3.5 inline" />,
     color: "text-cyan-400 border-cyan-400/40 bg-cyan-400/10",
   },
   {
     value: "road_closure",
     label: "Road Impassable",
-    icon: "🚗",
+    icon: <CarFront className="h-3.5 w-3.5 inline" />,
     color: "text-risk-critical border-risk-critical/40 bg-risk-critical/10",
   },
   {
     value: "other",
     label: "Other",
-    icon: "📝",
+    icon: <FileText className="h-3.5 w-3.5 inline" />,
     color: "text-muted-foreground border-border bg-muted",
   },
 ] as const;
@@ -70,10 +80,10 @@ const BARANGAY_NAMES = BARANGAYS.map((b) => b.name).sort();
 function ReportRow({ report }: { report: CommunityReport }) {
   const typeIcon =
     report.risk_label === "Critical"
-      ? "🌊"
+      ? <Waves className="h-4 w-4" />
       : report.risk_label === "Alert"
-        ? "🚧"
-        : "📈";
+        ? <Construction className="h-4 w-4" />
+        : <TrendingUp className="h-4 w-4" />;
 
   const credibility = report.credibility_score ?? 0;
 
@@ -314,7 +324,7 @@ export const CommunityReportsPanel = memo(function CommunityReportsPanel() {
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value.slice(0, MAX_DESC))}
-            placeholder="Describe the flood condition — water depth, location landmarks, duration…"
+            placeholder="Describe the flood condition - water depth, location landmarks, duration…"
             rows={3}
             className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground outline-none resize-y box-border"
           />

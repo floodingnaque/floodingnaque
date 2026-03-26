@@ -1,5 +1,5 @@
 /**
- * AuthPageLayout — Shared layout wrapper for all auth pages
+ * AuthPageLayout - Shared layout wrapper for all auth pages
  *
  * Provides consistent branding, rain effect background, navigation,
  * and city status badge across Login, Register, and Forgot Password pages.
@@ -138,7 +138,7 @@ export function AuthPageLayout({
         </Link>
       </motion.div>
 
-      {/* Left branding panel — desktop only */}
+      {/* Left branding panel - desktop only */}
       {showBrandingPanel && (
         <div className="relative z-10 hidden lg:flex lg:w-5/12 xl:w-1/2 items-center justify-center">
           <BrandingPanel />

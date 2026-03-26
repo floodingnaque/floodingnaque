@@ -187,7 +187,7 @@ def _probe_sentry() -> None:
         if is_sentry_enabled():
             _record_service_check("sentry", "healthy", latency, "Enabled")
         else:
-            # Sentry is optional — not configured is acceptable, not degraded
+            # Sentry is optional - not configured is acceptable, not degraded
             _record_service_check("sentry", "healthy", latency, "Not configured (optional)")
     except Exception as exc:
         latency = (time.perf_counter() - start) * 1000

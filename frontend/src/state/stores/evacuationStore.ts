@@ -12,7 +12,7 @@ import { persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 
 // ---------------------------------------------------------------------------
-// Haversine distance (km) — client-side fallback
+// Haversine distance (km) - client-side fallback
 // ---------------------------------------------------------------------------
 
 function haversineKm(

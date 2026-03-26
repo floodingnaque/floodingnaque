@@ -1,5 +1,5 @@
 /**
- * LGUDashboard Component — Landing-Page-Inspired Overhaul
+ * LGUDashboard Component - Landing-Page-Inspired Overhaul
  *
  * Operational dashboard for LGU / MDRRMO operators, redesigned with
  * the same design language as the public landing page:
@@ -687,10 +687,10 @@ export function LGUDashboard() {
               isInView={kpiInView}
               staticValue={
                 predLoading
-                  ? "—"
+                  ? "-"
                   : prediction?.weather_data
                     ? `${prediction.weather_data.precipitation.toFixed(1)} mm`
-                    : "—"
+                    : "-"
               }
             />
             <KPIStatCard
@@ -703,7 +703,7 @@ export function LGUDashboard() {
               iconRing="ring-primary/20"
               isInView={kpiInView}
               staticValue={
-                statsLoading ? "—" : String(stats?.active_alerts ?? 0)
+                statsLoading ? "-" : String(stats?.active_alerts ?? 0)
               }
             />
             <KPIStatCard
@@ -715,7 +715,7 @@ export function LGUDashboard() {
               iconRing="ring-primary/20"
               isInView={kpiInView}
               staticValue={
-                statsLoading ? "—" : String(stats?.predictions_today ?? 0)
+                statsLoading ? "-" : String(stats?.predictions_today ?? 0)
               }
             />
             <KPIStatCard
@@ -730,10 +730,10 @@ export function LGUDashboard() {
               isInView={kpiInView}
               staticValue={
                 statsLoading
-                  ? "—"
+                  ? "-"
                   : stats?.avg_risk_level != null
                     ? stats.avg_risk_level.toFixed(2)
-                    : "—"
+                    : "-"
               }
             />
           </motion.div>

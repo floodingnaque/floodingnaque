@@ -1,10 +1,10 @@
 /**
- * CityWideBroadcastSection — Read-only live feed of city-wide broadcast
+ * CityWideBroadcastSection - Read-only live feed of city-wide broadcast
  * messages on the landing page.
  *
  * Subscribes to the "citywide" chat channel via Supabase Realtime for
  * live updates, with initial history loaded from the Flask REST API.
- * No message input — completely read-only for all visitors.
+ * No message input - completely read-only for all visitors.
  */
 
 import { Badge } from "@/components/ui/badge";
@@ -153,7 +153,7 @@ export function CityWideBroadcastSection() {
             City-Wide Broadcast
           </h2>
           <p className="mt-3 text-muted-foreground max-w-lg mx-auto leading-relaxed">
-            Real-time announcements and alerts from Parañaque DRRMO operators —
+            Real-time announcements and alerts from Parañaque DRRMO operators -
             visible to everyone, no login required.
           </p>
         </div>

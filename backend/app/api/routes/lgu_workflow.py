@@ -1,5 +1,5 @@
 """
-LGU Workflow Routes — Incident Management & After-Action Reporting.
+LGU Workflow Routes - Incident Management & After-Action Reporting.
 
 Endpoints for the official RA 10121–compliant LGU workflow:
   Alert → LGU Confirmation → Public Broadcast → Resolution → AAR
@@ -701,7 +701,7 @@ def _serialize_aar(r: AfterActionReport) -> dict:
 def advance_incident(incident_id: int):
     """Auto-advance an incident to the next workflow stage.
 
-    Unlike /transition, this does not require `next_status` in the body —
+    Unlike /transition, this does not require `next_status` in the body -
     it picks the single valid next state automatically.
     """
     request_id = getattr(g, "request_id", "unknown")
@@ -723,7 +723,7 @@ def advance_incident(incident_id: int):
             if not valid:
                 return api_error(
                     "InvalidTransition",
-                    f"Incident is in terminal state '{current}' — cannot advance",
+                    f"Incident is in terminal state '{current}' - cannot advance",
                     HTTP_BAD_REQUEST,
                     request_id,
                 )
@@ -1038,7 +1038,7 @@ def create_broadcast():
             session.commit()
 
         logger.info(
-            "Broadcast %d sent to %s via %s — %d recipients [%s]",
+            "Broadcast %d sent to %s via %s - %d recipients [%s]",
             result["id"],
             target_barangays_str,
             channels_str,

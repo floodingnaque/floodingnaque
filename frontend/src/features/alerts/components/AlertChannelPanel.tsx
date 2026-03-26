@@ -33,7 +33,7 @@ import {
 import { memo, useCallback, useMemo, useState } from "react";
 
 // ---------------------------------------------------------------------------
-// Static data  — alert channels & templates
+// Static data  - alert channels & templates
 // ---------------------------------------------------------------------------
 
 const CHANNELS: AlertChannel[] = [
@@ -41,41 +41,41 @@ const CHANNELS: AlertChannel[] = [
     name: "SMS Gateway",
     icon: Smartphone,
     status: "Primary",
-    coverage: "—",
-    cost: "—",
-    latency: "—",
+    coverage: "-",
+    cost: "-",
+    latency: "-",
   },
   {
     name: "Push Notification",
     icon: Bell,
     status: "Active",
-    coverage: "—",
+    coverage: "-",
     cost: "Free",
-    latency: "—",
+    latency: "-",
   },
   {
     name: "Radio Broadcast",
     icon: Radio,
     status: "Fallback",
-    coverage: "—",
-    cost: "—",
-    latency: "—",
+    coverage: "-",
+    cost: "-",
+    latency: "-",
   },
   {
     name: "Social Media",
     icon: Share2,
     status: "Active",
-    coverage: "—",
+    coverage: "-",
     cost: "Free",
-    latency: "—",
+    latency: "-",
   },
   {
     name: "Sirens / PA",
     icon: Volume2,
     status: "Fallback",
-    coverage: "—",
-    cost: "—",
-    latency: "—",
+    coverage: "-",
+    cost: "-",
+    latency: "-",
   },
   {
     name: "Mesh Radio",

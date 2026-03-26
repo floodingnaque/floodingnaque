@@ -1,5 +1,5 @@
 /**
- * Operator — Active Incidents Page
+ * Operator - Active Incidents Page
  *
  * Full-page incident management with Kanban pipeline,
  * searchable incident list, and new incident form.
@@ -448,7 +448,7 @@ export default function OperatorIncidentsPage() {
               <p className="text-sm mt-1">
                 {search || statusFilter !== "all"
                   ? "No incidents match your filters."
-                  : "No active incidents — the city is currently safe."}
+                  : "No active incidents - the city is currently safe."}
               </p>
             </div>
           ) : (

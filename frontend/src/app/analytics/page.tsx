@@ -1,5 +1,5 @@
 /**
- * Analytics Page — Landing-page-inspired overhaul
+ * Analytics Page - Landing-page-inspired overhaul
  *
  * Data visualization dashboard for LGU operators and admins.
  * Shows rainfall trends, risk distribution, alert frequency,

@@ -52,7 +52,7 @@ function stopHeartbeat(): void {
 function resetElectionTimer(): void {
   if (electionTimer) clearTimeout(electionTimer);
   electionTimer = setTimeout(() => {
-    // No heartbeat received — claim leadership
+    // No heartbeat received - claim leadership
     claimLeadership();
   }, ELECTION_TIMEOUT_MS);
 }
@@ -87,7 +87,7 @@ function handleMessage(event: MessageEvent<LeaderMessage>): void {
     case "LEADER_HEARTBEAT":
     case "LEADER_CLAIM":
       if (msg.tabId !== tabId) {
-        // Another tab is leader — become follower
+        // Another tab is leader - become follower
         if (_isLeader) {
           _isLeader = false;
           stopHeartbeat();
@@ -99,7 +99,7 @@ function handleMessage(event: MessageEvent<LeaderMessage>): void {
 
     case "LEADER_RESIGN":
       if (msg.tabId !== tabId) {
-        // Leader resigned — start election
+        // Leader resigned - start election
         resetElectionTimer();
       }
       break;
@@ -123,7 +123,7 @@ export function onLeaderChange(cb: (isLeader: boolean) => void): () => void {
 
 export function initLeaderElection(): () => void {
   if (typeof BroadcastChannel === "undefined") {
-    // No BroadcastChannel support — this tab is always leader
+    // No BroadcastChannel support - this tab is always leader
     _isLeader = true;
     notifyListeners();
     return () => {};
@@ -133,7 +133,7 @@ export function initLeaderElection(): () => void {
   channel = new BroadcastChannel(CHANNEL_NAME);
   channel.addEventListener("message", handleMessage);
 
-  // Start election timeout — if no leader responds, we become leader
+  // Start election timeout - if no leader responds, we become leader
   resetElectionTimer();
 
   const handleUnload = () => resign();

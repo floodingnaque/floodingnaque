@@ -1,5 +1,5 @@
 /**
- * Resident — Flood Safety Guide Page
+ * Resident - Flood Safety Guide Page
  *
  * Interactive tick-off checklists for Before/During/After flood
  * and Go-Bag checklist with progress saved to localStorage.
@@ -87,7 +87,7 @@ const CHECKLISTS: ChecklistSection[] = [
         fil: "Kapag na-trap, pumunta sa pinakamataas at mag-signal ng tulong.",
       },
       {
-        en: "Listen to official advisories — follow MDRRMO instructions.",
+        en: "Listen to official advisories - follow MDRRMO instructions.",
         fil: "Sumunod sa mga opisyal na advisory at MDRRMO.",
       },
       {
@@ -112,8 +112,8 @@ const CHECKLISTS: ChecklistSection[] = [
         fil: "Suriin ang sira sa bahay bago pumasok.",
       },
       {
-        en: "Avoid contact with floodwater — it may be contaminated.",
-        fil: "Iwasan ang pagdikit sa baha — maaaring kontaminado ito.",
+        en: "Avoid contact with floodwater - it may be contaminated.",
+        fil: "Iwasan ang pagdikit sa baha - maaaring kontaminado ito.",
       },
       {
         en: "Clean and disinfect everything that got wet.",
@@ -201,7 +201,7 @@ export default function ResidentGuidePage() {
           Gabay sa Kaligtasan / Flood Safety Guide
         </h2>
         <p className="text-sm text-muted-foreground">
-          Interactive checklist — tap items to mark them done
+          Interactive checklist - tap items to mark them done
         </p>
       </div>
 

@@ -1,5 +1,5 @@
 /**
- * Operator — Community Reports Page
+ * Operator - Community Reports Page
  *
  * Verification queue for citizen-submitted flood reports.
  * Shows report stats, filterable list with verify/flag actions.

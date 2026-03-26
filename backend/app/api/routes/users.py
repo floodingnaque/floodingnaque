@@ -514,10 +514,10 @@ def logout():
 
                 logger.info(f"User logged out: {payload.get('email')} [{request_id}]")
             else:
-                # Token expired or invalid — still succeed (user is logging out)
+                # Token expired or invalid - still succeed (user is logging out)
                 logger.debug(f"Logout with invalid/expired token [{request_id}]: {error}")
         else:
-            # No Authorization header — still succeed (client-side already cleared)
+            # No Authorization header - still succeed (client-side already cleared)
             logger.debug(f"Logout without token [{request_id}]")
 
         return jsonify({"success": True, "message": "Logged out successfully", "request_id": request_id}), HTTP_OK
@@ -878,8 +878,8 @@ def update_current_user():
         Authorization: Bearer <access_token>
 
     Body (all optional):
-        name: str — Full name (2-255 chars)
-        email: str — Valid email address
+        name: str - Full name (2-255 chars)
+        email: str - Valid email address
 
     Returns:
         200: Updated user profile

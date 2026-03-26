@@ -1,5 +1,5 @@
 /**
- * Resident — Emergency Contacts Page
+ * Resident - Emergency Contacts Page
  *
  * All 8 key contacts with one-tap call, "Save All to Contacts" vCard export.
  */
@@ -60,7 +60,7 @@ const CONTACTS: Contact[] = [
   {
     name: "DSWD Hotline",
     number: "(02) 8931-8101",
-    description: "Dept. of Social Welfare & Development — relief assistance",
+    description: "Dept. of Social Welfare & Development - relief assistance",
   },
 ];
 

@@ -1,5 +1,5 @@
 /**
- * CityStatusBadge — Live flood risk status indicator
+ * CityStatusBadge - Live flood risk status indicator
  *
  * Shows current city-wide flood risk level so even unauthenticated
  * users are immediately informed. Displayed on all auth pages.

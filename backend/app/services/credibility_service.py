@@ -1,4 +1,4 @@
-"""Credibility service — 6-signal weighted scoring for community reports.
+"""Credibility service - 6-signal weighted scoring for community reports.
 
 Computes a 0–1 credibility score for each :class:`CommunityReport` and
 handles automatic verification when thresholds are met.

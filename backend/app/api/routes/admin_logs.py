@@ -370,7 +370,7 @@ def storage_stats():
             ]
 
             # Each COUNT is O(index scan) with the is_deleted indexes.
-            # Still 6 queries but each is a single fast aggregate —
+            # Still 6 queries but each is a single fast aggregate -
             # down from 18 (3 per table in a loop).
             result = {}
             grand_total_rows = 0

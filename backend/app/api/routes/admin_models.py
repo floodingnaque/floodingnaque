@@ -169,7 +169,7 @@ def rollback_model():
             candidate = joblib.load(model_path)
             load_time = time.perf_counter() - start
 
-            # Smoke test — verify model has predict method
+            # Smoke test - verify model has predict method
             if not hasattr(candidate, "predict") and not hasattr(candidate, "predict_proba"):
                 return api_error(f"Model {version} is invalid (no predict method)", HTTP_BAD_REQUEST)
 

@@ -1,5 +1,5 @@
 /**
- * LoginForm Component — Professional & Industrial Grade
+ * LoginForm Component - Professional & Industrial Grade
  *
  * Enhanced login form with Remember Me, role-based welcome message,
  * security-conscious error handling, and glassmorphism styling.

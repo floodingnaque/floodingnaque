@@ -1,9 +1,9 @@
 /**
- * Operator — Barangays Overview Page (Read-only)
+ * Operator - Barangays Overview Page (Read-only)
  *
  * Displays all 16 Parañaque barangays with flood risk status,
  * population, zone, and evacuation center info. Operators use this
- * for situational awareness — admin handles edits.
+ * for situational awareness - admin handles edits.
  */
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -82,7 +82,7 @@ export default function OperatorBarangaysPage() {
         <PageHeader
           icon={MapPin}
           title="Barangays"
-          subtitle="Overview of all 16 Parañaque barangays — flood risk, population, and evacuation centers"
+          subtitle="Overview of all 16 Parañaque barangays - flood risk, population, and evacuation centers"
           badge="Read-Only"
         />
       </div>

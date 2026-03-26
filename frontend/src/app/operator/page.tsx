@@ -1,5 +1,5 @@
 /**
- * Operator Overview Page — /operator/
+ * Operator Overview Page - /operator/
  *
  * Real-time situational dashboard for MDRRMO staff.
  * Status banner, key metrics, live map, incidents, and weather.
@@ -334,7 +334,7 @@ export default function OperatorOverviewPage() {
             value={
               prediction?.timestamp
                 ? new Date(prediction.timestamp).toLocaleTimeString()
-                : "—"
+                : "-"
             }
             description="RF v6"
             onClick={() => navigate("/operator/predict")}

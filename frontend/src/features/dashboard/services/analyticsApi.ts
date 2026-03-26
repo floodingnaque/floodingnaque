@@ -154,7 +154,7 @@ export const analyticsApi = {
           barangay: inc.barangay,
           depth: inc.flood_depth ?? depthLabel(inc.risk_level),
           disturbance: inc.weather_disturbance ?? "Unknown",
-          duration: inc.duration ?? "—",
+          duration: inc.duration ?? "-",
         }));
 
         // Most affected barangay
@@ -177,7 +177,7 @@ export const analyticsApi = {
       // Fall through to unavailable state
     }
 
-    // Backend unavailable or no incidents — fall back to static DRRMO data
+    // Backend unavailable or no incidents - fall back to static DRRMO data
     // from the BARANGAYS config which contains verified 2022-2025 flood event counts.
     const frequency: FloodFrequencyItem[] = BARANGAYS.filter(
       (b) => b.floodEvents > 0,
@@ -187,7 +187,7 @@ export const analyticsApi = {
 
     const totalEvents = BARANGAYS.reduce((sum, b) => sum + b.floodEvents, 0);
     const barangaysHit = frequency.length;
-    const mostAffected = frequency[0]?.barangay ?? "—";
+    const mostAffected = frequency[0]?.barangay ?? "-";
 
     // Yearly breakdown from DRRMO records (approximate counts by year)
     const yearly: YearlyFloodTrend[] = [
@@ -244,7 +244,7 @@ export const analyticsApi = {
       // Fall through to unavailable state
     }
 
-    // Backend unavailable — return empty metrics instead of fabricated data
+    // Backend unavailable - return empty metrics instead of fabricated data
     return {
       available: false,
       metrics: {
@@ -260,7 +260,7 @@ export const analyticsApi = {
       },
       cvFolds: [],
       calibration: [],
-      modelVersion: "—",
+      modelVersion: "-",
       modelName: "Unavailable",
     };
   },

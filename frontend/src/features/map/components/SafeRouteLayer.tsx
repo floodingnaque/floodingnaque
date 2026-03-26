@@ -14,9 +14,9 @@ import {
 
 // Risk-based route colors
 const ROUTE_COLORS: Record<string, string> = {
-  high: "#ef4444", // red-500  — high-risk evacuation
-  moderate: "#f59e0b", // amber-500 — moderate-risk
-  low: "#22c55e", // green-500 — low-risk
+  high: "#ef4444", // red-500  - high-risk evacuation
+  moderate: "#f59e0b", // amber-500 - moderate-risk
+  low: "#22c55e", // green-500 - low-risk
 };
 
 function formatDistance(meters: number): string {

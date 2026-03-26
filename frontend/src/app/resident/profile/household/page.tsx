@@ -1,5 +1,5 @@
 /**
- * Resident — My Household Page
+ * Resident - My Household Page
  *
  * Real API integration via useHouseholdProfile & useUpdateHouseholdProfile.
  * Section-based editing with profile completeness indicator.

@@ -4,7 +4,7 @@
  * Displays the complete prediction result including risk level,
  * model details, and action buttons.
  *
- * Web 3.0 design — glassmorphism cards, gradient accent bars,
+ * Web 3.0 design - glassmorphism cards, gradient accent bars,
  * icon boxes, and risk-level colour theming.
  */
 
@@ -31,7 +31,7 @@ import { ExplainabilityPanel } from "./ExplainabilityPanel";
 import { RiskDisplay } from "./RiskDisplay";
 
 // ---------------------------------------------------------------------------
-// Risk-level gradient palettes (Tailwind v4 — bg-linear-to-*)
+// Risk-level gradient palettes (Tailwind v4 - bg-linear-to-*)
 // ---------------------------------------------------------------------------
 
 const GRADIENT_ACCENT: Record<RiskLevel, string> = {
@@ -86,7 +86,7 @@ export function PredictionResult({ result, onReset }: PredictionResultProps) {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6 animate-in fade-in duration-300">
-      {/* Risk Display — prominent hero */}
+      {/* Risk Display - prominent hero */}
       <RiskDisplay
         riskLevel={risk}
         probability={result.probability}
@@ -105,7 +105,7 @@ export function PredictionResult({ result, onReset }: PredictionResultProps) {
         </Alert>
       )}
 
-      {/* Defaulted features warning — shown when model ran with incomplete data */}
+      {/* Defaulted features warning - shown when model ran with incomplete data */}
       {result.feature_completeness &&
         result.feature_completeness.confidence_impact !== "none" && (
           <Alert
@@ -136,7 +136,7 @@ export function PredictionResult({ result, onReset }: PredictionResultProps) {
           </Alert>
         )}
 
-      {/* ── Explainability — XAI ── */}
+      {/* ── Explainability - XAI ── */}
       <ExplainabilityPanel
         explanation={result.explanation}
         riskLevel={risk}

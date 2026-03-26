@@ -1,10 +1,10 @@
 /**
- * ExplainabilityPanel — XAI Visualization
+ * ExplainabilityPanel - XAI Visualization
  *
  * Renders Explainable AI output for a single prediction:
- *  1. Why-Alert summary — natural language explanation + factor badges
- *  2. Feature Importance — horizontal bar chart (global model importances)
- *  3. Prediction Contributions — waterfall chart (per-prediction SHAP-like values)
+ *  1. Why-Alert summary - natural language explanation + factor badges
+ *  2. Feature Importance - horizontal bar chart (global model importances)
+ *  3. Prediction Contributions - waterfall chart (per-prediction SHAP-like values)
  *
  * Design: glassmorphism cards, risk-level colour theming, Recharts 3, Tailwind v4.
  */

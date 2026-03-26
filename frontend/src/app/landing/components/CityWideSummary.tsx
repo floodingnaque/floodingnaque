@@ -143,21 +143,21 @@ export function CityWideSummary({
         icon={<ShieldCheck className="h-5 w-5 text-risk-safe" />}
         label="Safe"
         value={String(summary.safe.length)}
-        sub={summary.safe.slice(0, 3).join(", ") || "—"}
+        sub={summary.safe.slice(0, 3).join(", ") || "-"}
         className="border-risk-safe/20"
       />
       <StatCard
         icon={<AlertTriangle className="h-5 w-5 text-risk-alert" />}
         label="Alert"
         value={String(summary.alert.length)}
-        sub={summary.alert.slice(0, 3).join(", ") || "—"}
+        sub={summary.alert.slice(0, 3).join(", ") || "-"}
         className="border-risk-alert/20"
       />
       <StatCard
         icon={<XCircle className="h-5 w-5 text-risk-critical" />}
         label="Critical"
         value={String(summary.critical.length)}
-        sub={summary.critical.slice(0, 3).join(", ") || "—"}
+        sub={summary.critical.slice(0, 3).join(", ") || "-"}
         className="border-risk-critical/20"
       />
       <StatCard
@@ -166,14 +166,14 @@ export function CityWideSummary({
         value={
           summary.avgRainfall !== null
             ? `${summary.avgRainfall.toFixed(1)} mm`
-            : "—"
+            : "-"
         }
       />
       <StatCard
         icon={<Thermometer className="h-5 w-5 text-orange-500" />}
         label="Avg Temp"
         value={
-          summary.avgTemp !== null ? `${summary.avgTemp.toFixed(1)}°C` : "—"
+          summary.avgTemp !== null ? `${summary.avgTemp.toFixed(1)}°C` : "-"
         }
       />
       <StatCard
@@ -182,7 +182,7 @@ export function CityWideSummary({
         value={
           summary.avgHumidity !== null
             ? `${summary.avgHumidity.toFixed(0)}%`
-            : "—"
+            : "-"
         }
       />
     </div>

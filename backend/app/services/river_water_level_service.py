@@ -345,7 +345,7 @@ class RiverWaterLevelService:
             fallback_count = sum(1 for r in readings if r.source == "fallback")
             if fallback_count == len(readings) and readings:
                 result["status"] = "degraded"
-                result["message"] = "All data sources (EFCOS/DPWH) unreachable — values are estimated"
+                result["message"] = "All data sources (EFCOS/DPWH) unreachable - values are estimated"
             elif fallback_count > 0:
                 result["partial_fallback"] = True
                 result["fallback_stations"] = fallback_count

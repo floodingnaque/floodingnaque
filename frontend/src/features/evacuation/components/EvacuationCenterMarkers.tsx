@@ -8,6 +8,7 @@
  */
 
 import type { EvacuationCenter } from "@/types";
+import { Home } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import L from "leaflet";
 import { useCallback, useEffect, useMemo } from "react";
@@ -137,7 +138,7 @@ export function EvacuationCenterMarkers({
           <Popup maxWidth={300}>
             <div className="min-w-56 space-y-2 text-sm">
               <p className="font-semibold text-risk-safe flex items-center gap-1.5">
-                <span className="text-base">🏠</span> Evacuation Center
+                <Home className="h-4 w-4" /> Evacuation Center
               </p>
               <p className="font-medium text-gray-900 dark:text-gray-100">
                 {c.name}

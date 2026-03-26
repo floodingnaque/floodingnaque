@@ -60,7 +60,7 @@ export function useEvacuationRoutes(enabled = true) {
       return results;
     },
     enabled,
-    staleTime: 60 * 60 * 1000, // 1 hour — fixed-point routes
+    staleTime: 60 * 60 * 1000, // 1 hour - fixed-point routes
     gcTime: 2 * 60 * 60 * 1000, // keep in cache 2 hours
     retry: 2,
     refetchOnWindowFocus: false,

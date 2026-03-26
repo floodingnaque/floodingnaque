@@ -29,7 +29,7 @@ import type {
 import { HazardOverlay } from "./HazardOverlay";
 import { RiskMarkers } from "./RiskMarkers";
 
-// Lazy-load deck.gl WebGL overlay — only fetched when WebGL is available
+// Lazy-load deck.gl WebGL overlay - only fetched when WebGL is available
 const FloodDensityMap = isWebGLAvailable
   ? lazy(() => import("./FloodDensityMap"))
   : null;
@@ -230,7 +230,7 @@ export const FloodMap = memo(
               />
             )}
 
-            {/* Alert markers — WebGL heatmap (if available) or SVG fallback */}
+            {/* Alert markers - WebGL heatmap (if available) or SVG fallback */}
             {alerts.length > 0 &&
               (FloodDensityMap ? (
                 <Suspense fallback={null}>

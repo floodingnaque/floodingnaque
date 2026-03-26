@@ -35,7 +35,7 @@ def require_admin(f):
 
 
 # ---------------------------------------------------------------------------
-# GET /audit-logs  —  paginated audit trail
+# GET /audit-logs  -  paginated audit trail
 # ---------------------------------------------------------------------------
 
 
@@ -105,7 +105,7 @@ def get_audit_logs():
 
 
 # ---------------------------------------------------------------------------
-# GET /audit-stats  —  audit event statistics
+# GET /audit-stats  -  audit event statistics
 # ---------------------------------------------------------------------------
 
 
@@ -188,7 +188,7 @@ def get_audit_stats():
 
 
 # ---------------------------------------------------------------------------
-# GET /security-posture  —  overall security summary
+# GET /security-posture  -  overall security summary
 # ---------------------------------------------------------------------------
 
 
@@ -316,7 +316,7 @@ def get_security_posture():
                 "name": "RBAC Enforced",
                 "status": "pass",
                 "category": "authorization",
-                "detail": f"All routes protected — {admin_count} admin(s), 3 role tiers",
+                "detail": f"All routes protected - {admin_count} admin(s), 3 role tiers",
                 "remediation": "Role-based access control is active",
             },
             {
@@ -364,7 +364,7 @@ def get_security_posture():
                 "status": "pass",
                 "category": "data",
                 "detail": "SQLAlchemy ORM with parameterized queries throughout",
-                "remediation": "Already protected — maintain ORM usage",
+                "remediation": "Already protected - maintain ORM usage",
             },
             {
                 "name": "XSS Protection Headers",
@@ -382,7 +382,7 @@ def get_security_posture():
                 "status": "pass",
                 "category": "data",
                 "detail": "PII and credentials masked in logs and API responses",
-                "remediation": "Already configured — maintain masking rules",
+                "remediation": "Already configured - maintain masking rules",
             },
             {
                 "name": "Audit Logging Active",

@@ -44,7 +44,7 @@ import { useReportExport } from "../hooks/useReports";
 import type { ReportType } from "../services/reportsApi";
 
 /**
- * Report type options — matches the Disaster Report Catalog cards.
+ * Report type options - matches the Disaster Report Catalog cards.
  */
 const REPORT_TYPES: {
   value: ReportType;

@@ -26,7 +26,7 @@ class WeatherFetchError(Exception):
     pass
 
 
-# Placeholder values that ship in .env templates — treat as "not configured"
+# Placeholder values that ship in .env templates - treat as "not configured"
 _OWM_PLACEHOLDER_KEYS = {"", "your_openweathermap_api_key_here", "changeme", "CHANGE_ME"}
 
 
@@ -96,7 +96,7 @@ def fetch_weather_by_coordinates(lat: float, lon: float) -> dict:
         # Only allow simulated weather in test environments (TESTING=true)
         is_testing = os.getenv("TESTING", "").lower() in ("1", "true", "yes")
         if is_testing:
-            logger.warning("OWM_API_KEY not configured — returning simulated weather (test mode).")
+            logger.warning("OWM_API_KEY not configured - returning simulated weather (test mode).")
             return _generate_simulated_weather(lat, lon)
         raise WeatherFetchError("OWM_API_KEY is not configured on the server.")
 

@@ -400,7 +400,7 @@ export function ResidentLayout() {
   useEffect(() => {
     document.title =
       pageTitle === "Home"
-        ? "Floodingnaque — My Safety Dashboard"
+        ? "Floodingnaque - My Safety Dashboard"
         : `${pageTitle} | Floodingnaque`;
   }, [pageTitle]);
 

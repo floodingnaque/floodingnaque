@@ -246,7 +246,7 @@ class AlertSystem:
                 logger.error(f"SSE broadcast failed: {sse_exc}")
                 alert_record["delivery_status"]["sse"] = "failed"
 
-        # Web Push notifications (VAPID) — send for Alert and Critical
+        # Web Push notifications (VAPID) - send for Alert and Critical
         if alert_type in ["web", "all"] and risk_data.get("risk_level", 0) >= 1:
             try:
                 from app.api.routes.push_notifications import send_push_citywide, send_push_to_barangay
@@ -829,7 +829,7 @@ class AlertSystem:
 
 
 # ---------------------------------------------------------------------------
-# AlertContext — typed input for the alert dispatch pipeline
+# AlertContext - typed input for the alert dispatch pipeline
 # ---------------------------------------------------------------------------
 
 
@@ -863,7 +863,7 @@ class AlertContext:
 
 
 # ---------------------------------------------------------------------------
-# AlertMessageBuilder — role-aware message formatting
+# AlertMessageBuilder - role-aware message formatting
 # ---------------------------------------------------------------------------
 
 
@@ -915,7 +915,7 @@ class AlertMessageBuilder:
         return f"""
         <div style="border-left: 4px solid {color}; padding: 12px; margin: 8px 0;">
             <strong style="color: {color};">{ctx.risk_label.upper()}</strong>
-            — {ctx.location}{f' ({ctx.barangay})' if ctx.barangay else ''}
+            - {ctx.location}{f' ({ctx.barangay})' if ctx.barangay else ''}
             <br>Confidence: {ctx.confidence:.0%}
             | Rainfall 3h: {ctx.rainfall_3h:.1f}mm
             | Tide: {ctx.tide_height:.2f}m
@@ -930,7 +930,7 @@ class AlertMessageBuilder:
         emoji = {"Safe": "🟢", "Alert": "🟡", "Critical": "🔴"}.get(ctx.risk_label, "⚪")
 
         lines = [
-            f"{emoji} *Flood Alert — {ctx.risk_label}*",
+            f"{emoji} *Flood Alert - {ctx.risk_label}*",
             f"📍 {ctx.location}{f' ({ctx.barangay})' if ctx.barangay else ''}",
             f"🌧 Rainfall 3h: {ctx.rainfall_3h:.1f}mm",
             f"🌊 Tide: {ctx.tide_height:.2f}m",

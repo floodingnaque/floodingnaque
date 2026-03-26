@@ -1,4 +1,4 @@
-"""CommunityReport ORM model — crowdsourced flood reporting.
+"""CommunityReport ORM model - crowdsourced flood reporting.
 
 Allows residents to submit geolocated flood observations with optional
 photo evidence.  Reports accumulate community votes (confirm/dispute)
@@ -26,7 +26,7 @@ class CommunityReport(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        info={"description": "FK to users.id — NULL for anonymous reports"},
+        info={"description": "FK to users.id - NULL for anonymous reports"},
     )
     user = relationship("User", foreign_keys=[user_id], lazy="select")
 

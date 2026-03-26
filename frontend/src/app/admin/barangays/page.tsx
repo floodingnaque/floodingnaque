@@ -502,7 +502,7 @@ function BarangayDetailPanel({
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-lg font-bold">
-                      {detailData.elevation.mean_elevation_m ?? "—"}m
+                      {detailData.elevation.mean_elevation_m ?? "-"}m
                     </p>
                     <p className="text-[10px] text-muted-foreground">
                       Mean Elev.
@@ -510,7 +510,7 @@ function BarangayDetailPanel({
                   </div>
                   <div>
                     <p className="text-lg font-bold">
-                      {detailData.elevation.min_elevation_m ?? "—"}m
+                      {detailData.elevation.min_elevation_m ?? "-"}m
                     </p>
                     <p className="text-[10px] text-muted-foreground">
                       Min Elev.
@@ -518,7 +518,7 @@ function BarangayDetailPanel({
                   </div>
                   <div>
                     <p className="text-lg font-bold">
-                      {detailData.elevation.slope_pct ?? "—"}%
+                      {detailData.elevation.slope_pct ?? "-"}%
                     </p>
                     <p className="text-[10px] text-muted-foreground">Slope</p>
                   </div>
@@ -546,7 +546,7 @@ function BarangayDetailPanel({
                     </span>
                     <span>
                       {String(
-                        detailData.drainage.distance_to_waterway_m ?? "—",
+                        detailData.drainage.distance_to_waterway_m ?? "-",
                       )}
                       m
                     </span>
@@ -577,7 +577,7 @@ function BarangayDetailPanel({
                     </span>
                     <span>
                       {String(
-                        detailData.drainage.impervious_surface_pct ?? "—",
+                        detailData.drainage.impervious_surface_pct ?? "-",
                       )}
                       %
                     </span>

@@ -17,7 +17,7 @@ import { Radio } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 
 // ---------------------------------------------------------------------------
-// Per-barangay pill (pure display — no data fetching)
+// Per-barangay pill (pure display - no data fetching)
 // ---------------------------------------------------------------------------
 
 const DOT: Record<RiskLevel, { cls: string; label: string }> = {
@@ -61,7 +61,7 @@ function BarangayPill({
 }
 
 // ---------------------------------------------------------------------------
-// Memoized clock — 60s interval only re-renders this component, not the
+// Memoized clock - 60s interval only re-renders this component, not the
 // entire ribbon.
 // ---------------------------------------------------------------------------
 

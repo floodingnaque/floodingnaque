@@ -46,7 +46,7 @@ function riskColor(precip: number): string {
   return "hsl(var(--risk-safe))"; // Safe
 }
 
-// Meteostat hourly API returns temperature in Celsius — no conversion needed
+// Meteostat hourly API returns temperature in Celsius - no conversion needed
 
 // ---------------------------------------------------------------------------
 // Component

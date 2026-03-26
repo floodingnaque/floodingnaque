@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_MODELS_DIR = _BACKEND_DIR / "models"
 
-# V6 feature names — single source of truth via DataBundle
+# V6 feature names - single source of truth via DataBundle
 FEATURE_NAMES: List[str] = DataBundle.feature_names()
 
 RANDOM_STATE = 42
@@ -258,7 +258,7 @@ class EnsembleTrainer:
                 n_jobs=-1,
             )
         else:
-            # Only RF available — use it directly
+            # Only RF available - use it directly
             ensemble = estimators[0][1]
 
         # Fit on training split
@@ -340,7 +340,7 @@ class EnsembleTrainer:
             )
             estimators.append(("xgb", xgb))
         except ImportError:
-            logger.info("XGBoost not installed — skipping")
+            logger.info("XGBoost not installed - skipping")
 
         # LightGBM (optional)
         try:
@@ -359,7 +359,7 @@ class EnsembleTrainer:
             )
             estimators.append(("lgbm", lgbm))
         except ImportError:
-            logger.info("LightGBM not installed — skipping")
+            logger.info("LightGBM not installed - skipping")
 
         return estimators
 

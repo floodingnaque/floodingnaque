@@ -2,7 +2,7 @@
  * GraphQL Client (urql)
  *
  * Lightweight GraphQL client for selective queries (health, weather_data).
- * Gated behind GRAPHQL_ENABLED feature flag — zero cost when disabled.
+ * Gated behind GRAPHQL_ENABLED feature flag - zero cost when disabled.
  *
  * REST remains the primary data transport. GraphQL is opt-in for
  * queries that benefit from selective field fetching.

@@ -116,7 +116,7 @@ def _fetch_dashboard_summary() -> dict:
             .one()
         )
 
-        # Risk level distribution (last 30 days) — kept as GROUP BY
+        # Risk level distribution (last 30 days) - kept as GROUP BY
         risk_distribution = (
             session.query(Prediction.risk_level, func.count(Prediction.id))
             .filter(Prediction.is_deleted.is_(False), Prediction.created_at >= month_ago)
@@ -267,7 +267,7 @@ def _fetch_statistics(period: str, metric: str | None) -> dict:
     }
 
     with get_db_session() as session:
-        # Prediction statistics — SQL GROUP BY
+        # Prediction statistics - SQL GROUP BY
         if not metric or metric == "predictions":
             pred_groups = (
                 session.query(
@@ -298,7 +298,7 @@ def _fetch_statistics(period: str, metric: str | None) -> dict:
                 total += row.count
                 flood_count += row.flood
 
-            # Risk timeline — last 50 data points only
+            # Risk timeline - last 50 data points only
             risk_over_time_rows = (
                 session.query(
                     Prediction.created_at,
@@ -327,7 +327,7 @@ def _fetch_statistics(period: str, metric: str | None) -> dict:
                 "risk_timeline": risk_over_time,
             }
 
-        # Alert statistics — SQL GROUP BY
+        # Alert statistics - SQL GROUP BY
         if not metric or metric == "alerts":
             alert_groups = (
                 session.query(
@@ -360,7 +360,7 @@ def _fetch_statistics(period: str, metric: str | None) -> dict:
                 "critical_count": critical_count,
             }
 
-        # Weather statistics — SQL aggregation + limited timeline query
+        # Weather statistics - SQL aggregation + limited timeline query
         if not metric or metric == "weather":
             weather_agg = (
                 session.query(

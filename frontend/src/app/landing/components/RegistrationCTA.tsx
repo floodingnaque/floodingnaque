@@ -42,7 +42,7 @@ export function RegistrationCTA({ predictions }: RegistrationCTAProps) {
         <div>
           <p className="font-semibold text-sm text-foreground">
             {elevated
-              ? "Elevated flood risk detected — stay informed"
+              ? "Elevated flood risk detected - stay informed"
               : "Get personalized flood alerts for your barangay"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">

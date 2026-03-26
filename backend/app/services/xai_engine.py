@@ -293,9 +293,9 @@ def generate_why_alert(
 
     if not factors:
         if risk_label == "Safe":
-            summary = f"Safe — all weather parameters are within normal ranges ({confidence_pct}% confidence)."
+            summary = f"Safe - all weather parameters are within normal ranges ({confidence_pct}% confidence)."
         else:
-            summary = f"{risk_label} — elevated risk detected ({confidence_pct}% confidence)."
+            summary = f"{risk_label} - elevated risk detected ({confidence_pct}% confidence)."
     else:
         # Take top 2-3 factors for the summary
         top_texts = [f["text"] for f in factors[:3]]
@@ -311,7 +311,7 @@ def generate_why_alert(
 
 
 # ---------------------------------------------------------------------------
-# Public entry point — combine everything
+# Public entry point - combine everything
 # ---------------------------------------------------------------------------
 
 

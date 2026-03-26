@@ -699,7 +699,7 @@ function IncidentDetail({
             <p className="font-semibold">
               {incident.estimated_damage
                 ? `₱${incident.estimated_damage.toLocaleString()}`
-                : "—"}
+                : "-"}
             </p>
           </div>
         </div>
@@ -865,7 +865,7 @@ function TransitionDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Actor / Officer — always required */}
+          {/* Actor / Officer - always required */}
           <div className="space-y-2">
             <Label htmlFor="tx-actor">MDRRMO Officer *</Label>
             <Input
@@ -1222,7 +1222,7 @@ function CreateAARDialog({
               <Label htmlFor="aar-title">Report Title *</Label>
               <Input
                 id="aar-title"
-                placeholder="e.g. After-Action Report — Flash Flood October 2024"
+                placeholder="e.g. After-Action Report - Flash Flood October 2024"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -1525,7 +1525,7 @@ function AnalyticsPanel({
       value:
         analytics.avg_confirm_minutes != null
           ? `${analytics.avg_confirm_minutes} min`
-          : "—",
+          : "-",
       icon: Timer,
       color: RISK_HEX.alert,
     },
@@ -1534,7 +1534,7 @@ function AnalyticsPanel({
       value:
         analytics.avg_resolve_minutes != null
           ? `${analytics.avg_resolve_minutes} min`
-          : "—",
+          : "-",
       icon: Clock,
       color: RISK_HEX.safe,
     },

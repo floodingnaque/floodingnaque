@@ -153,7 +153,7 @@ export function useHazardMap(
       throw new Error("Failed to load GIS data");
     },
     enabled,
-    staleTime: 5 * 60 * 1000, // 5 min — GIS data changes slowly
+    staleTime: 5 * 60 * 1000, // 5 min - GIS data changes slowly
     gcTime: 10 * 60 * 1000, // Keep unused cache for 10 min
     refetchInterval: refreshInterval > 0 ? refreshInterval : false,
     retry: 2,

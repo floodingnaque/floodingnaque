@@ -860,10 +860,10 @@ def reliability_snapshot() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# DataBundle — typed, model-ready output
+# DataBundle - typed, model-ready output
 # ---------------------------------------------------------------------------
 
-# V6 feature order — must match backend/scripts/train_progressive_v6.py
+# V6 feature order - must match backend/scripts/train_progressive_v6.py
 _V6_FEATURE_NAMES: List[str] = [
     "temperature",
     "humidity",

@@ -150,7 +150,7 @@ def send_push_to_barangay(barangay_id: str, payload: dict) -> dict:
 
     private_key, _, claims = _get_vapid_config()
     if not private_key:
-        logger.warning("VAPID_PRIVATE_KEY not set — push notifications disabled")
+        logger.warning("VAPID_PRIVATE_KEY not set - push notifications disabled")
         return {"delivered": 0, "failed": 0, "reason": "not_configured"}
 
     with get_db_session() as session:
@@ -203,7 +203,7 @@ def send_push_citywide(payload: dict) -> dict:
 
     private_key, _, claims = _get_vapid_config()
     if not private_key:
-        logger.warning("VAPID_PRIVATE_KEY not set — push notifications disabled")
+        logger.warning("VAPID_PRIVATE_KEY not set - push notifications disabled")
         return {"delivered": 0, "failed": 0, "reason": "not_configured"}
 
     with get_db_session() as session:

@@ -1,4 +1,4 @@
-"""Incident ORM model — LGU flood incident tracking.
+"""Incident ORM model - LGU flood incident tracking.
 
 Supports the official alert → LGU confirmation → public broadcast
 workflow required by RA 10121 and local DRRM protocols.

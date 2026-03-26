@@ -1,5 +1,5 @@
 /**
- * Worker Manager — Singleton lazy-loader for all Web Workers.
+ * Worker Manager - Singleton lazy-loader for all Web Workers.
  *
  * Uses comlink to wrap each worker in a type-safe async proxy.
  * Workers are created lazily on first access and reused across the app.
@@ -20,7 +20,7 @@ import type { StatsWorkerApi } from "@/workers/stats-worker";
 import type { ValidationWorkerApi } from "@/workers/validation-worker";
 import { wrap, type Remote } from "comlink";
 
-// Singleton proxies — created lazily
+// Singleton proxies - created lazily
 let chartProxy: Remote<ChartWorkerApi> | null = null;
 let geoProxy: Remote<GeoWorkerApi> | null = null;
 let riskProxy: Remote<RiskWorkerApi> | null = null;

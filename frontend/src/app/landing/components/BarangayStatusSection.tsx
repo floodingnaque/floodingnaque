@@ -9,7 +9,7 @@
  *   BarangayDetailDrawer, RecentPublicAlerts, DataTransparency,
  *   RegistrationCTA.
  *
- * Data: useAllBarangayPredictions() — batched live risk per barangay.
+ * Data: useAllBarangayPredictions() - batched live risk per barangay.
  */
 
 import { BARANGAYS, type BarangayData } from "@/config/paranaque";
@@ -110,7 +110,7 @@ export function BarangayStatusSection() {
 
           {/* Two-column layout: Map + Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-            {/* Map panel — 3/5 width on desktop */}
+            {/* Map panel - 3/5 width on desktop */}
             <div className="lg:col-span-3">
               <Suspense
                 fallback={
@@ -126,7 +126,7 @@ export function BarangayStatusSection() {
               </Suspense>
             </div>
 
-            {/* Barangay cards — 2/5 width, scrollable */}
+            {/* Barangay cards - 2/5 width, scrollable */}
             <div className="lg:col-span-2 max-h-130 overflow-y-auto pr-1 space-y-3 scrollbar-thin">
               {sortedBarangays.map((b) => (
                 <BarangayCard

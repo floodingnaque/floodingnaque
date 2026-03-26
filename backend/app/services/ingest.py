@@ -182,7 +182,7 @@ def ingest_data(lat=None, lon=None):
             if weatherstack_breaker.is_open:
                 logger.warning("Weatherstack circuit breaker is open, skipping to fallback")
             else:
-                # Check Weatherstack cache first (10-min TTL — conserves 250 req/month quota)
+                # Check Weatherstack cache first (10-min TTL - conserves 250 req/month quota)
                 ws_cache_key = f"weatherstack:precip:{lat}:{lon}"
                 cached_ws = cache_get(ws_cache_key)
                 if cached_ws is not None:

@@ -80,7 +80,7 @@ const FILTER_COLORS: Record<FilterValue, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// PulseRing — small animated status dot
+// PulseRing - small animated status dot
 // ---------------------------------------------------------------------------
 
 function PulseRing({ className }: { className?: string }) {

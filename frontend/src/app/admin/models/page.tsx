@@ -584,7 +584,7 @@ export default function AdminModelsPage() {
                             )}
                             {isPerfect && (
                               <p className="text-[10px] text-risk-alert">
-                                Suspiciously high — verify no data leakage
+                                Suspiciously high - verify no data leakage
                               </p>
                             )}
                           </div>
@@ -774,7 +774,7 @@ export default function AdminModelsPage() {
                               ? "Evaluating performance…"
                               : retrainStatusValue === "completed"
                                 ? "Complete!"
-                                : "Queued — waiting for worker"}
+                                : "Queued - waiting for worker"}
                         </span>
                       </div>
                     </div>
@@ -1179,7 +1179,7 @@ function VersionRow({
           {mv.training_data.total_records.toLocaleString()}
         </TableCell>
         <TableCell className="text-right text-xs text-muted-foreground">
-          {mv.file_size_bytes ? formatBytes(mv.file_size_bytes) : "—"}
+          {mv.file_size_bytes ? formatBytes(mv.file_size_bytes) : "-"}
         </TableCell>
         <TableCell className="text-center">
           <div className="flex items-center justify-center gap-1">
@@ -1316,7 +1316,7 @@ function VersionDetail({
             <div className="flex justify-between">
               <span className="text-muted-foreground">File Size</span>
               <span>
-                {mv.file_size_bytes ? formatBytes(mv.file_size_bytes) : "—"}
+                {mv.file_size_bytes ? formatBytes(mv.file_size_bytes) : "-"}
               </span>
             </div>
             {mv.checksum && (

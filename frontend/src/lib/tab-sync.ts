@@ -42,7 +42,7 @@ export function postTabMessage(message: TabSyncMessage): void {
 }
 
 // ---------------------------------------------------------------------------
-// Init — wire up listeners
+// Init - wire up listeners
 // ---------------------------------------------------------------------------
 
 type StoreRefs = {

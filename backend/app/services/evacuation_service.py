@@ -1,4 +1,4 @@
-"""Evacuation service — nearest-center finder and safe routing.
+"""Evacuation service - nearest-center finder and safe routing.
 
 Provides Haversine distance calculation, nearest active evacuation
 center lookup, and safe route generation via OSRM (with simulation
@@ -52,7 +52,7 @@ def get_nearest_centers(lat: float, lon: float, limit: int = 3) -> List[Dict[str
         results: List[Dict[str, Any]] = []
         for c in centers:
             if c.capacity_current >= c.capacity_total:
-                continue  # full — skip
+                continue  # full - skip
 
             dist = haversine_km(lat, lon, c.latitude, c.longitude)
             google_url = (
@@ -128,7 +128,7 @@ def get_safe_route(
                 "flood_segments_avoided": flood_count,
             }
     except Exception as exc:
-        logger.info("OSRM request failed (%s) — using simulation fallback", exc)
+        logger.info("OSRM request failed (%s) - using simulation fallback", exc)
 
     # ── Simulation fallback: direct line ────────────────────────────────
     direct_km = haversine_km(origin_lat, origin_lon, dest_lat, dest_lon)

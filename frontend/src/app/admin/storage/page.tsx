@@ -1023,7 +1023,7 @@ export default function AdminStoragePage() {
         </div>
       </section>
 
-      {/* ── Danger Zone — Permanent Purge ── */}
+      {/* ── Danger Zone - Permanent Purge ── */}
       <section className="py-10 bg-muted/30">
         <div className="w-full px-6">
           <SectionHeading

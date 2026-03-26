@@ -26,7 +26,7 @@ const createQueryClient = () =>
         retry: 1,
         /** Don't refetch on window focus by default */
         refetchOnWindowFocus: false,
-        /** Don't refetch all queries on reconnect — SSE handles live updates */
+        /** Don't refetch all queries on reconnect - SSE handles live updates */
         refetchOnReconnect: false,
       },
       mutations: {

@@ -1,5 +1,5 @@
 /**
- * ChannelSidebar — operator sidebar listing all 17 barangay channels
+ * ChannelSidebar - operator sidebar listing all 17 barangay channels
  * with unread counts, alert indicators, and channel switching.
  */
 

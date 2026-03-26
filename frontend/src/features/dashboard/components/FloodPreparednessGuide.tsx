@@ -98,7 +98,7 @@ const PHASES: PreparednessPhase[] = [
       {
         icon: Smartphone,
         title: "Stay connected",
-        desc: "Keep your phone charged. Text — don't call — to keep lines free. Notify relatives of your status.",
+        desc: "Keep your phone charged. Text - don't call - to keep lines free. Notify relatives of your status.",
       },
       {
         icon: Siren,
@@ -246,7 +246,7 @@ export const FloodPreparednessGuide = memo(function FloodPreparednessGuide() {
                   : "text-risk-safe border-risk-safe/40",
             )}
           >
-            {prediction.risk_label} — auto-phase
+            {prediction.risk_label} - auto-phase
           </Badge>
         )}
       </CardHeader>

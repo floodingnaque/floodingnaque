@@ -1,5 +1,5 @@
 /**
- * PasswordRequirements — Real-time password validation checklist
+ * PasswordRequirements - Real-time password validation checklist
  *
  * Displays a list of password criteria that check off in real-time
  * as the user types. Used in registration and password reset forms.

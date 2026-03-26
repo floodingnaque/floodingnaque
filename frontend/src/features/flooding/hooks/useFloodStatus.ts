@@ -21,7 +21,7 @@ interface FloodStatusOptions {
 
 /**
  * Single hook for flood status used across all role dashboards.
- * Returns the same shape regardless of role — components decide
+ * Returns the same shape regardless of role - components decide
  * how to display based on the data.
  */
 export function useFloodStatus(options: FloodStatusOptions = {}) {

@@ -48,7 +48,7 @@ class WorldTidesService:
     DEFAULT_LAT = DEFAULT_LATITUDE
     DEFAULT_LON = 120.9822  # Slightly adjusted for Manila Bay coastline
 
-    # Placeholder values that ship in .env templates — treat as "not configured"
+    # Placeholder values that ship in .env templates - treat as "not configured"
     _PLACEHOLDER_KEYS = {"", "your_worldtides_api_key_here", "changeme", "CHANGE_ME"}
 
     def __init__(self):

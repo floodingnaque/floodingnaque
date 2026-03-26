@@ -1,5 +1,5 @@
 /**
- * RegistrationWizard — Multi-step resident onboarding form
+ * RegistrationWizard - Multi-step resident onboarding form
  *
  * 4-step registration process:
  *   Step 1: Account Information (name, email, password)
@@ -290,7 +290,7 @@ function SelectField({
 }
 
 /* ================================================================== */
-/*  Step 1 — Account Information                                       */
+/*  Step 1 - Account Information                                       */
 /* ================================================================== */
 
 function Step1Account({
@@ -420,7 +420,7 @@ function Step1Account({
 }
 
 /* ================================================================== */
-/*  Step 2 — Personal & Household Information                          */
+/*  Step 2 - Personal & Household Information                          */
 /* ================================================================== */
 
 function Step2Personal({
@@ -655,7 +655,7 @@ function Step2Personal({
 }
 
 /* ================================================================== */
-/*  Step 3 — Address, Location & Notifications                         */
+/*  Step 3 - Address, Location & Notifications                         */
 /* ================================================================== */
 
 function Step3Address({
@@ -770,7 +770,7 @@ function Step3Address({
           id="reg-landmark"
           label="Nearest Landmark"
           type="text"
-          placeholder="Optional — helps responders locate your household"
+          placeholder="Optional - helps responders locate your household"
           disabled={isSubmitting}
           {...form.register("nearest_landmark")}
         />
@@ -958,7 +958,7 @@ function Step3Address({
 }
 
 /* ================================================================== */
-/*  Step 4 — Review & Submit                                           */
+/*  Step 4 - Review & Submit                                           */
 /* ================================================================== */
 
 function ReviewSection({
@@ -1009,7 +1009,7 @@ function ReviewField({
             value === null ||
             value === "" ||
             Number.isNaN(value)
-          ? "—"
+          ? "-"
           : String(value);
 
   return (
@@ -1085,7 +1085,7 @@ function Step4Review({
             label="Alt. Contact"
             value={
               step2Data.alt_contact_name
-                ? `${step2Data.alt_contact_name} (${step2Data.alt_contact_relationship || "—"})`
+                ? `${step2Data.alt_contact_name} (${step2Data.alt_contact_relationship || "-"})`
                 : undefined
             }
           />
@@ -1400,12 +1400,12 @@ export function RegistrationWizard() {
 
     registerResident(
       {
-        // Step 1 — Account
+        // Step 1 - Account
         full_name: step1Data.full_name,
         email: step1Data.email,
         password: step1Data.password,
 
-        // Step 2 — Personal & Household
+        // Step 2 - Personal & Household
         date_of_birth: step2Data.date_of_birth,
         sex: step2Data.sex,
         civil_status: step2Data.civil_status,
@@ -1427,7 +1427,7 @@ export function RegistrationWizard() {
           ? undefined
           : step2Data.pwd_count,
 
-        // Step 3 — Address & Location
+        // Step 3 - Address & Location
         barangay: step3Data.barangay,
         purok: step3Data.purok || undefined,
         street_address: step3Data.street_address,

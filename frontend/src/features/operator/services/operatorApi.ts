@@ -1,7 +1,7 @@
 /**
  * Operator API Service
  *
- * API calls for the LGU operator dashboard — incidents, broadcasts,
+ * API calls for the LGU operator dashboard - incidents, broadcasts,
  * resident registry, and after-action reports.
  */
 

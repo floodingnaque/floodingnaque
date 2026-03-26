@@ -83,7 +83,7 @@ def query_cache_get(cache_key: str) -> Optional[Any]:
                 return val
             _cache_stats["misses"] += 1
             return None
-        except Exception:  # nosec B110 — fall through to in-memory cache
+        except Exception:  # nosec B110 - fall through to in-memory cache
             pass
 
     _evict_expired_cache()
@@ -106,7 +106,7 @@ def query_cache_set(cache_key: str, value: Any, ttl: int = DEFAULT_CACHE_TTL) ->
 
             cache_set(f"floodingnaque:qcache:{cache_key}", value, ttl=ttl)
             return
-        except Exception:  # nosec B110 — fall through to in-memory cache
+        except Exception:  # nosec B110 - fall through to in-memory cache
             pass
 
     global _query_cache

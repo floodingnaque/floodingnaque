@@ -231,7 +231,7 @@ export default function CommunityPage() {
             animate={inView ? "show" : undefined}
             className="space-y-6"
           >
-            {/* Stats Row — live from /stats endpoint */}
+            {/* Stats Row - live from /stats endpoint */}
             <motion.div
               variants={fadeUp}
               className="grid grid-cols-2 md:grid-cols-4 gap-4"
@@ -430,7 +430,7 @@ export default function CommunityPage() {
                           </p>
                         )}
 
-                        {/* Photo thumbnail — clickable */}
+                        {/* Photo thumbnail - clickable */}
                         {report.photo_url && (
                           <button
                             type="button"

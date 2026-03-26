@@ -8,6 +8,7 @@
  */
 
 import { BARANGAYS } from "@/config/paranaque";
+import { Home } from "lucide-react";
 import L from "leaflet";
 import { useMemo } from "react";
 import { Marker, Popup, Tooltip } from "react-leaflet";
@@ -52,7 +53,7 @@ export interface EvacuationMarkersProps {
 }
 
 /**
- * EvacuationMarkers — Green shelter-pin markers for every barangay
+ * EvacuationMarkers - Green shelter-pin markers for every barangay
  *
  * @example
  * <MapContainer>
@@ -87,7 +88,7 @@ export function EvacuationMarkers({
           <Popup maxWidth={280}>
             <div className="min-w-50 space-y-1.5 text-sm">
               <p className="font-semibold text-risk-safe flex items-center gap-1.5">
-                <span className="text-base">🏠</span> Evacuation Center
+                <Home className="h-4 w-4" /> Evacuation Center
               </p>
               <p className="font-medium text-gray-900 dark:text-gray-100">
                 {m.center}

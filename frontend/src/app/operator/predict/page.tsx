@@ -1,5 +1,5 @@
 /**
- * Operator — Flood Prediction Tool Page
+ * Operator - Flood Prediction Tool Page
  */
 
 import { Cloud, Droplets, MapPin, Thermometer, Zap } from "lucide-react";
@@ -87,7 +87,7 @@ export default function OperatorPredictPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Temperature</p>
                     <p className="text-sm font-medium">
-                      {tempC !== null ? `${tempC}°C` : "—"}
+                      {tempC !== null ? `${tempC}°C` : "-"}
                     </p>
                   </div>
                 </div>
@@ -96,7 +96,7 @@ export default function OperatorPredictPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Humidity</p>
                     <p className="text-sm font-medium">
-                      {weather?.humidity != null ? `${weather.humidity}%` : "—"}
+                      {weather?.humidity != null ? `${weather.humidity}%` : "-"}
                     </p>
                   </div>
                 </div>
@@ -109,7 +109,7 @@ export default function OperatorPredictPage() {
                     <p className="text-sm font-medium">
                       {weather?.precipitation != null
                         ? `${weather.precipitation} mm`
-                        : "—"}
+                        : "-"}
                     </p>
                   </div>
                 </div>

@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# Prometheus gauges — lazily registered so the module can be imported
+# Prometheus gauges - lazily registered so the module can be imported
 # even when prometheus_client is not installed.
 _drift_gauges_registered = False
 

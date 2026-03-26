@@ -57,7 +57,7 @@ import { useCallback, useRef, useState } from "react";
 // ── Helpers ──
 
 function formatMs(ms: number): string {
-  if (!Number.isFinite(ms)) return "—";
+  if (!Number.isFinite(ms)) return "-";
   if (ms < 1) return "<1ms";
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(2)}s`;
@@ -76,7 +76,7 @@ function formatUptime(seconds: number): string {
 
 /** Formats a decimal ratio (0-1) as a percentage string */
 function formatPercent(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return `${(value * 100).toFixed(1)}%`;
 }
 
@@ -260,7 +260,7 @@ export default function AdminMonitoringPage() {
   const [liveMode, setLiveMode] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
-  // Queries — all auto-poll when liveMode is true
+  // Queries - all auto-poll when liveMode is true
   const {
     data: uptimeResponse,
     isLoading: uptimeLoading,
@@ -308,7 +308,7 @@ export default function AdminMonitoringPage() {
       `Error rate ${formatPercent(apiStats.error_rate)} exceeds 10% threshold`,
     );
   if (drift?.drift_detected)
-    anomalies.push(`Model drift detected — PSI ${drift.psi?.toFixed(4)}`);
+    anomalies.push(`Model drift detected - PSI ${drift.psi?.toFixed(4)}`);
   if (
     alertStats &&
     alertStats.total_alerts > 0 &&
@@ -424,7 +424,7 @@ export default function AdminMonitoringPage() {
           </TabsList>
 
           {/* ══════════════════════════════════════ */}
-          {/*  TAB 1 — Overview & Service Health    */}
+          {/*  TAB 1 - Overview & Service Health    */}
           {/* ══════════════════════════════════════ */}
           <TabsContent value="overview">
             <motion.div
@@ -446,7 +446,7 @@ export default function AdminMonitoringPage() {
                         value={
                           uptime
                             ? `${uptime.uptime_percentage.toFixed(2)}%`
-                            : "—"
+                            : "-"
                         }
                         subValue={
                           uptime
@@ -459,7 +459,7 @@ export default function AdminMonitoringPage() {
                       <StatCard
                         icon={Gauge}
                         label="Avg Health Check"
-                        value={uptime ? formatMs(uptime.avg_response_ms) : "—"}
+                        value={uptime ? formatMs(uptime.avg_response_ms) : "-"}
                         iconColor="text-primary"
                       />
                       <StatCard
@@ -506,7 +506,7 @@ export default function AdminMonitoringPage() {
                         icon={AlertTriangle}
                         label="Error Rate"
                         value={
-                          apiStats ? formatPercent(apiStats.error_rate) : "—"
+                          apiStats ? formatPercent(apiStats.error_rate) : "-"
                         }
                         color={
                           (apiStats?.error_rate ?? 0) > 0.05
@@ -538,7 +538,7 @@ export default function AdminMonitoringPage() {
                               alertStats.success_rate != null
                               ? formatPercent(alertStats.success_rate)
                               : "N/A"
-                            : "—"
+                            : "-"
                         }
                         color={
                           !alertStats ||
@@ -600,7 +600,7 @@ export default function AdminMonitoringPage() {
                                   <TableCell className="text-right">
                                     {svc.uptime_pct_24h != null
                                       ? `${svc.uptime_pct_24h.toFixed(1)}%`
-                                      : "—"}
+                                      : "-"}
                                   </TableCell>
                                   <TableCell className="text-muted-foreground font-mono text-[11px]">
                                     {svc.last_checked
@@ -611,10 +611,10 @@ export default function AdminMonitoringPage() {
                                           minute: "2-digit",
                                           second: "2-digit",
                                         })
-                                      : "—"}
+                                      : "-"}
                                   </TableCell>
                                   <TableCell className="text-muted-foreground truncate max-w-48">
-                                    {svc.detail || "—"}
+                                    {svc.detail || "-"}
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -675,7 +675,7 @@ export default function AdminMonitoringPage() {
           </TabsContent>
 
           {/* ══════════════════════════════════════ */}
-          {/*  TAB 2 — API Performance              */}
+          {/*  TAB 2 - API Performance              */}
           {/* ══════════════════════════════════════ */}
           <TabsContent value="api">
             <motion.div
@@ -702,7 +702,7 @@ export default function AdminMonitoringPage() {
                         icon={Hourglass}
                         label="Avg Response"
                         value={
-                          apiStats ? formatMs(apiStats.avg_response_ms) : "—"
+                          apiStats ? formatMs(apiStats.avg_response_ms) : "-"
                         }
                         iconColor="text-primary"
                       />
@@ -710,7 +710,7 @@ export default function AdminMonitoringPage() {
                         icon={TrendingUp}
                         label="P95 Latency"
                         value={
-                          apiStats ? formatMs(apiStats.p95_response_ms) : "—"
+                          apiStats ? formatMs(apiStats.p95_response_ms) : "-"
                         }
                         subValue={
                           apiStats
@@ -723,7 +723,7 @@ export default function AdminMonitoringPage() {
                         icon={AlertTriangle}
                         label="Error Rate"
                         value={
-                          apiStats ? formatPercent(apiStats.error_rate) : "—"
+                          apiStats ? formatPercent(apiStats.error_rate) : "-"
                         }
                         color={
                           (apiStats?.error_rate ?? 0) > 0.05
@@ -888,7 +888,7 @@ export default function AdminMonitoringPage() {
           </TabsContent>
 
           {/* ══════════════════════════════════════ */}
-          {/*  TAB 3 — Model Prediction Drift       */}
+          {/*  TAB 3 - Model Prediction Drift       */}
           {/* ══════════════════════════════════════ */}
           <TabsContent value="drift">
             <motion.div
@@ -930,7 +930,7 @@ export default function AdminMonitoringPage() {
                         value={
                           drift && Number.isFinite(drift.avg_confidence)
                             ? `${(drift.avg_confidence * 100).toFixed(1)}%`
-                            : "—"
+                            : "-"
                         }
                         subValue={
                           drift?.confidence_stats?.p50 != null &&
@@ -1094,7 +1094,7 @@ export default function AdminMonitoringPage() {
                                 <p className="text-lg font-bold">
                                   {drift.confidence_stats.min != null
                                     ? `${(drift.confidence_stats.min * 100).toFixed(1)}%`
-                                    : "—"}
+                                    : "-"}
                                 </p>
                                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                                   <ArrowDown className="h-3 w-3 text-risk-critical" />
@@ -1105,7 +1105,7 @@ export default function AdminMonitoringPage() {
                                 <p className="text-lg font-bold">
                                   {drift.confidence_stats.p50 != null
                                     ? `${(drift.confidence_stats.p50 * 100).toFixed(1)}%`
-                                    : "—"}
+                                    : "-"}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   Median (P50)
@@ -1115,7 +1115,7 @@ export default function AdminMonitoringPage() {
                                 <p className="text-lg font-bold">
                                   {drift.confidence_stats.p95 != null
                                     ? `${(drift.confidence_stats.p95 * 100).toFixed(1)}%`
-                                    : "—"}
+                                    : "-"}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   P95
@@ -1125,7 +1125,7 @@ export default function AdminMonitoringPage() {
                                 <p className="text-lg font-bold">
                                   {drift.confidence_stats.max != null
                                     ? `${(drift.confidence_stats.max * 100).toFixed(1)}%`
-                                    : "—"}
+                                    : "-"}
                                 </p>
                                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                                   <ArrowUp className="h-3 w-3 text-risk-safe" />
@@ -1143,7 +1143,7 @@ export default function AdminMonitoringPage() {
           </TabsContent>
 
           {/* ══════════════════════════════════════ */}
-          {/*  TAB 4 — Alert Delivery               */}
+          {/*  TAB 4 - Alert Delivery               */}
           {/* ══════════════════════════════════════ */}
           <TabsContent value="alerts">
             <motion.div
@@ -1175,7 +1175,7 @@ export default function AdminMonitoringPage() {
                               alertStats.success_rate != null
                               ? formatPercent(alertStats.success_rate)
                               : "N/A"
-                            : "—"
+                            : "-"
                         }
                         color={
                           !alertStats ||

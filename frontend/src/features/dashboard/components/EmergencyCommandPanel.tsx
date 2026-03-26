@@ -31,7 +31,7 @@ import {
 import type { BarangayStatus, IncidentTimelineEntry } from "../types";
 
 // ---------------------------------------------------------------------------
-// Demo / fallback data — shown while APIs load or on error
+// Demo / fallback data - shown while APIs load or on error
 // ---------------------------------------------------------------------------
 
 const DEMO_BARANGAYS: BarangayStatus[] = [
@@ -145,7 +145,7 @@ const DEMO_TIMELINE: IncidentTimelineEntry[] = [
   },
   {
     time: "06:40",
-    event: "Rainfall exceeds 30 mm/hr in Baclaran — Alert triggered",
+    event: "Rainfall exceeds 30 mm/hr in Baclaran - Alert triggered",
     level: "Alert",
   },
   {
@@ -160,7 +160,7 @@ const DEMO_TIMELINE: IncidentTimelineEntry[] = [
   },
   {
     time: "07:35",
-    event: "Evacuation center opened — Parañaque City Hall Gym",
+    event: "Evacuation center opened - Parañaque City Hall Gym",
     level: "info",
   },
   {

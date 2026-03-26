@@ -1,5 +1,5 @@
 /**
- * useChat — core hook for a single barangay chat channel.
+ * useChat - core hook for a single barangay chat channel.
  *
  * Loads history from Flask, subscribes to Supabase Realtime for
  * live INSERT/UPDATE delivery, presence tracking, and typing indicators.
@@ -327,7 +327,7 @@ export function useChat(barangayId: string | null) {
           } satisfies TypingPayload,
         });
       } catch {
-        // Typing is best-effort — swallow send failures
+        // Typing is best-effort - swallow send failures
       }
     },
     [user],

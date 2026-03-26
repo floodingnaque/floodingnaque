@@ -1,5 +1,5 @@
 /**
- * Operator — Alert Management Page
+ * Operator - Alert Management Page
  *
  * Real-time alert feed with acknowledge/escalate actions,
  * search, filters, and smart alert evaluator status.

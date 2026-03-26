@@ -31,7 +31,7 @@ function notifyCrossTabs() {
     ch.postMessage({ type: "report-updated", ts: Date.now() });
     ch.close();
   } catch {
-    // BroadcastChannel not supported — graceful no-op
+    // BroadcastChannel not supported - graceful no-op
   }
 }
 

@@ -53,7 +53,7 @@ async function fetchAllPredictions(
       }
     }
 
-    // If the entire first batch failed, the backend is likely down — bail early
+    // If the entire first batch failed, the backend is likely down - bail early
     // to avoid ~15 more wasted requests across remaining batches.
     if (i === 0 && successes.length === 0) {
       return results;

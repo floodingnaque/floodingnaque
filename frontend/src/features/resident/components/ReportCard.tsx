@@ -1,5 +1,5 @@
 /**
- * ReportCard — Displays a single community flood report
+ * ReportCard - Displays a single community flood report
  *
  * Renders status badge, location, description, flood height, and timestamp.
  * Used in My Reports list and potentially in community reports views.

@@ -129,7 +129,7 @@ def setup_request_logging_middleware(app):
         """Log request even if there was an exception."""
         if exception and hasattr(g, "request_id"):
             # GeneratorExit is the normal signal when an SSE client
-            # disconnects — not an error worth recording as 500.
+            # disconnects - not an error worth recording as 500.
             if isinstance(exception, GeneratorExit):
                 return
             g.response_status_code = 500

@@ -39,7 +39,7 @@ export function useFloodHistory() {
 
 /**
  * Hook for fetching model confidence metrics (precision, recall, F1, etc.).
- * Metrics change rarely — stale for 30 minutes.
+ * Metrics change rarely - stale for 30 minutes.
  */
 export function useModelMetrics() {
   return useQuery<ModelMetricsData>({
@@ -97,7 +97,7 @@ export function useModelHistory() {
       );
       return res;
     },
-    staleTime: 1000 * 60 * 60, // 1 hour — model versions change rarely
+    staleTime: 1000 * 60 * 60, // 1 hour - model versions change rarely
     refetchInterval: 60 * 1000, // auto-refresh every 60s for analytics dashboard
   });
 }

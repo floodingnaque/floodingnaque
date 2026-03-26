@@ -103,7 +103,7 @@ const TILE_LAYERS: Record<
   },
 };
 
-/** Road-network label overlay — renders on top of any base map */
+/** Road-network label overlay - renders on top of any base map */
 const ROAD_OVERLAY_URL =
   "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png";
 
@@ -235,7 +235,7 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
               />
             )}
 
-            {/* Barangay polygons — boundaries & flood-zone shading */}
+            {/* Barangay polygons - boundaries & flood-zone shading */}
             {(layers.boundaries || layers.floodZones) &&
               BARANGAYS.map((brgy) => {
                 const risk = riskForBarangay(brgy, livePredictions);

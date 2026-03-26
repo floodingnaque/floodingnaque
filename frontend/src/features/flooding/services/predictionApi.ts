@@ -67,7 +67,7 @@ function toFrontendResponse(raw: BackendPredictResponse): PredictionResponse {
     explanation: raw.explanation,
   };
 
-  // Runtime validation — log but don't crash on schema mismatch
+  // Runtime validation - log but don't crash on schema mismatch
   const result = PredictionResponseSchema.safeParse(normalized);
   if (!result.success) {
     console.warn(

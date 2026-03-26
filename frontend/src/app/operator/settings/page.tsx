@@ -1,5 +1,5 @@
 /**
- * Operator — Settings Page (Full Parity with Resident)
+ * Operator - Settings Page (Full Parity with Resident)
  *
  * Mirrors the resident settings layout with GlassCard sections,
  * PageHeader, SectionHeading, and FormField patterns.
@@ -284,7 +284,7 @@ export default function OperatorSettingsPage() {
                   <div className="space-y-1">
                     <p className="font-medium">{user?.name ?? "Operator"}</p>
                     <p className="text-sm text-muted-foreground">
-                      {user?.email ?? "—"}
+                      {user?.email ?? "-"}
                     </p>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export default function OperatorSettingsPage() {
                         id="assignedArea"
                         value={assignedArea}
                         onChange={(e) => setAssignedArea(e.target.value)}
-                        placeholder="e.g. Zone A — San Dionisio Cluster"
+                        placeholder="e.g. Zone A - San Dionisio Cluster"
                         className="border-0 bg-transparent focus-visible:ring-0 pl-2"
                       />
                     </div>

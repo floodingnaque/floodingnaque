@@ -16,12 +16,12 @@ export interface RegisterRequest {
  * Captures detailed info for DRRM emergency management.
  */
 export interface ResidentRegistrationRequest {
-  // Step 1 — Account
+  // Step 1 - Account
   full_name: string;
   email: string;
   password: string;
 
-  // Step 2 — Personal & Household
+  // Step 2 - Personal & Household
   date_of_birth: string;
   sex: "Male" | "Female" | "Prefer not to say";
   civil_status: "Single" | "Married" | "Widowed" | "Separated";
@@ -36,7 +36,7 @@ export interface ResidentRegistrationRequest {
   senior_count?: number;
   pwd_count?: number;
 
-  // Step 3 — Address & Location
+  // Step 3 - Address & Location
   barangay: string;
   purok?: string;
   street_address: string;

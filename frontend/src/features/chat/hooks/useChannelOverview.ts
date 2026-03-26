@@ -1,5 +1,5 @@
 /**
- * useChannelOverview — operator sidebar showing all 16 barangay channels
+ * useChannelOverview - operator sidebar showing all 16 barangay channels
  * with unread counts and alert indicators.
  *
  * Uses a single Supabase Realtime subscription (chat:overview) so

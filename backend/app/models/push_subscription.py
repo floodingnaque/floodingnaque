@@ -1,4 +1,4 @@
-"""PushSubscription ORM model — Web Push notification subscriptions."""
+"""PushSubscription ORM model - Web Push notification subscriptions."""
 
 from datetime import datetime, timezone
 

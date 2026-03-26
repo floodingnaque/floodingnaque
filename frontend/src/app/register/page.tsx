@@ -1,5 +1,5 @@
 /**
- * Registration Page — Multi-step Resident Onboarding
+ * Registration Page - Multi-step Resident Onboarding
  *
  * Uses a split-panel layout (branding left, form right on desktop).
  * Redirects authenticated users.

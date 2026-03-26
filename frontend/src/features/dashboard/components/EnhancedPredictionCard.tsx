@@ -1,5 +1,5 @@
 /**
- * EnhancedPredictionCard — AI Flood Prediction Display
+ * EnhancedPredictionCard - AI Flood Prediction Display
  *
  * Shows risk level, probability donut, confidence/horizon/updated pills,
  * feature contribution bars, and data source tags.

@@ -60,7 +60,7 @@ function evictOne(alerts: Alert[]): Alert[] {
       return [...alerts.slice(0, i), ...alerts.slice(i + 1)];
     }
   }
-  // All Critical — drop the oldest
+  // All Critical - drop the oldest
   return alerts.slice(0, -1);
 }
 
@@ -73,7 +73,7 @@ function persistAlerts(alerts: Alert[]): void {
     const subset = alerts.slice(0, PERSIST_LIMIT);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(subset));
   } catch {
-    // localStorage full or unavailable — silently ignore
+    // localStorage full or unavailable - silently ignore
   }
 }
 
@@ -84,7 +84,7 @@ function loadPersistedAlerts(): Alert[] {
     const parsed: unknown = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed as Alert[];
   } catch {
-    // Corrupt data — clear it
+    // Corrupt data - clear it
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -99,7 +99,7 @@ function loadPersistedAlerts(): Alert[] {
 // ---------------------------------------------------------------------------
 
 interface AlertState {
-  /** Live alerts, newest first — hard cap at MAX_LIVE_ALERTS */
+  /** Live alerts, newest first - hard cap at MAX_LIVE_ALERTS */
   liveAlerts: Alert[];
   /** Set of acknowledged alert IDs (used to derive unreadCount) */
   acknowledgedIds: Set<number>;
@@ -276,7 +276,7 @@ export const useAlertStore = create<AlertStore>()(
 
 export const useLiveAlerts = () => useAlertStore((state) => state.liveAlerts);
 
-/** Derived unread count — never stored, always computed */
+/** Derived unread count - never stored, always computed */
 export const useUnreadCount = () =>
   useAlertStore(
     (state) =>

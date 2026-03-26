@@ -1,5 +1,5 @@
 /**
- * Login Page — Professional & Industrial Grade
+ * Login Page - Professional & Industrial Grade
  *
  * Split-panel layout: left branding panel (desktop) + right login form.
  * Redirects authenticated users. Consistent emergency management theme.

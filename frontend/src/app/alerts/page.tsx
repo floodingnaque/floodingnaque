@@ -98,7 +98,7 @@ export default function AlertsPage() {
 
   useEffect(() => {
     if (liveAlerts.length > prevAlertsLenRef.current) {
-      // New alert pushed via SSE — refetch paginated list
+      // New alert pushed via SSE - refetch paginated list
       refetch();
     }
     prevAlertsLenRef.current = liveAlerts.length;
@@ -397,7 +397,7 @@ export default function AlertsPage() {
                 emptyMessage={
                   hasFilters
                     ? "No alerts match your current filters"
-                    : "All clear — no flood alerts have been recorded"
+                    : "All clear - no flood alerts have been recorded"
                 }
               />
             </motion.div>

@@ -1,7 +1,7 @@
-"""EvacuationAlertLog ORM model — immutable audit trail for SMS/push alerts.
+"""EvacuationAlertLog ORM model - immutable audit trail for SMS/push alerts.
 
 Each row records a single alert dispatch attempt.  Rows are never
-soft-deleted — this table is an append-only audit log.
+soft-deleted - this table is an append-only audit log.
 """
 
 from datetime import datetime, timezone
@@ -53,7 +53,7 @@ class EvacuationAlertLog(Base):
     risk_label = Column(String(10), nullable=True, info={"description": "Safe / Alert / Critical"})
     message_text = Column(Text, nullable=True, info={"description": "Full message body"})
 
-    # ── Timestamp (audit logs are immutable — created_at only) ───────────
+    # ── Timestamp (audit logs are immutable - created_at only) ───────────
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

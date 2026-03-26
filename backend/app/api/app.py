@@ -197,10 +197,10 @@ def create_app(config_override: dict = None) -> Flask:  # noqa: C901
         if hasattr(g, "span_id"):
             response.headers["X-Span-ID"] = g.span_id
 
-        # API versioning headers — add to all /api/v1/ responses
+        # API versioning headers - add to all /api/v1/ responses
         if request.path.startswith("/api/v1/"):
             response.headers["API-Version"] = "v1"
-            # Sunset header signals eventual deprecation (no date set yet — informational)
+            # Sunset header signals eventual deprecation (no date set yet - informational)
             response.headers["Deprecation"] = "false"
             # When v2 is released, set:
             #   response.headers["Deprecation"] = "true"
@@ -289,7 +289,7 @@ def create_app(config_override: dict = None) -> Flask:  # noqa: C901
     setup_security_headers(app)
 
     # Request logging middleware (DB persistence for analytics)
-    # Note: setup_request_logging() removed — it duplicated request ID
+    # Note: setup_request_logging() removed - it duplicated request ID
     # generation and timing already handled by setup_request_tracing().
     setup_request_logging_middleware(app)
 
@@ -309,7 +309,7 @@ def create_app(config_override: dict = None) -> Flask:  # noqa: C901
     init_db()
     logger.info("Database initialized")
 
-    # Query counter middleware (dev only — logs N+1 anti-patterns)
+    # Query counter middleware (dev only - logs N+1 anti-patterns)
     from app.api.middleware.query_counter import init_query_counter
 
     init_query_counter(app)

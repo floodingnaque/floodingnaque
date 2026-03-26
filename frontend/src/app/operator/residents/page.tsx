@@ -1,5 +1,5 @@
 /**
- * Operator — Resident Registry Page
+ * Operator - Resident Registry Page
  *
  * Directory of registered residents with search, barangay filtering,
  * and summary stats.

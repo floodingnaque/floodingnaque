@@ -1,4 +1,4 @@
-"""Community Reports Routes — crowdsourced flood reporting endpoints.
+"""Community Reports Routes - crowdsourced flood reporting endpoints.
 
 Blueprint: /api/v1/reports
 
@@ -102,7 +102,7 @@ def _resolve_user_id():
             sub = payload.get("sub")
             if sub is not None:
                 return int(sub)
-    except Exception:  # nosec B110 — intentional fallback for JWT decode
+    except Exception:  # nosec B110 - intentional fallback for JWT decode
         pass
     return None
 
@@ -135,7 +135,7 @@ def _post_create_tasks(report_id: int, report_data: dict, risk_label: str, cred_
         logger.debug("SSE broadcast skipped: %s", exc)
 
 
-# ── POST / — Submit a new report ────────────────────────────────────────
+# ── POST / - Submit a new report ────────────────────────────────────────
 
 
 @community_reports_bp.route("/", methods=["POST"])
@@ -267,7 +267,7 @@ def create_report():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── GET /stats — Aggregate stats ────────────────────────────────────────
+# ── GET /stats - Aggregate stats ────────────────────────────────────────
 
 
 @community_reports_bp.route("/stats", methods=["GET"])
@@ -327,7 +327,7 @@ def report_stats():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── GET / — List reports (paginated) ────────────────────────────────────
+# ── GET / - List reports (paginated) ────────────────────────────────────
 
 
 @community_reports_bp.route("/", methods=["GET"])
@@ -403,7 +403,7 @@ def list_reports():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── GET /<id> — Single report detail ────────────────────────────────────
+# ── GET /<id> - Single report detail ────────────────────────────────────
 
 
 @community_reports_bp.route("/<int:report_id>", methods=["GET"])
@@ -427,7 +427,7 @@ def get_report(report_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── PATCH /<id> — Edit own report (within 10 minutes) ──────────────────
+# ── PATCH /<id> - Edit own report (within 10 minutes) ──────────────────
 
 
 @community_reports_bp.route("/<int:report_id>", methods=["PATCH"])
@@ -484,7 +484,7 @@ def edit_report(report_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── DELETE /<id> — Soft-delete own report ───────────────────────────────
+# ── DELETE /<id> - Soft-delete own report ───────────────────────────────
 
 
 @community_reports_bp.route("/<int:report_id>", methods=["DELETE"])
@@ -526,7 +526,7 @@ def delete_report(report_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── PATCH /<id>/verify — Admin verify/reject ───────────────────────────
+# ── PATCH /<id>/verify - Admin verify/reject ───────────────────────────
 
 
 @community_reports_bp.route("/<int:report_id>/verify", methods=["PATCH"])
@@ -579,7 +579,7 @@ def verify_report(report_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── POST /<id>/confirm — Community vote ─────────────────────────────────
+# ── POST /<id>/confirm - Community vote ─────────────────────────────────
 
 
 @community_reports_bp.route("/<int:report_id>/confirm", methods=["POST"])
@@ -623,7 +623,7 @@ def confirm_report(report_id: int):
             if vote == "confirm":
                 try:
                     check_auto_verify(report_id)
-                except Exception:  # nosec B110 — non-critical post-vote task
+                except Exception:  # nosec B110 - non-critical post-vote task
                     pass
 
             return (
@@ -642,7 +642,7 @@ def confirm_report(report_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── POST /<id>/flag — Abuse flagging ────────────────────────────────────
+# ── POST /<id>/flag - Abuse flagging ────────────────────────────────────
 
 
 @community_reports_bp.route("/<int:report_id>/flag", methods=["POST"])
@@ -690,7 +690,7 @@ def flag_report(report_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── POST /admin/bulk-delete — Admin bulk soft-delete ────────────────────
+# ── POST /admin/bulk-delete - Admin bulk soft-delete ────────────────────
 
 
 @community_reports_bp.route("/admin/bulk-delete", methods=["POST"])

@@ -59,7 +59,7 @@ export function useCapacityStream(
   const onUpdateRef = useRef(onUpdate);
   // Generation counter: incremented on each createConnection call and on
   // cleanup.  After an async gap (e.g. ticket POST) the counter is re-checked
-  // — if it changed, a newer connection attempt (or cleanup) has started and
+  // - if it changed, a newer connection attempt (or cleanup) has started and
   // the stale call bails out.  This prevents orphaned EventSource connections
   // that can exhaust the browser's 6-connection HTTP/1.1 limit per origin.
   const connectionIdRef = useRef(0);
@@ -132,13 +132,13 @@ export function useCapacityStream(
     }
     if (!enabled) return;
 
-    // Claim a connection generation — checked after every async gap
+    // Claim a connection generation - checked after every async gap
     const myId = ++connectionIdRef.current;
 
     try {
       const url = await getSseUrl();
 
-      // A newer createConnection or cleanup ran while we awaited — bail out
+      // A newer createConnection or cleanup ran while we awaited - bail out
       if (myId !== connectionIdRef.current) return;
 
       const es = new EventSource(url);
@@ -167,7 +167,7 @@ export function useCapacityStream(
 
       // Heartbeat keep-alive
       es.addEventListener("heartbeat", () => {
-        /* keep alive — no-op */
+        /* keep alive - no-op */
       });
 
       // Error → reconnect

@@ -1,5 +1,5 @@
 """
-Open-Meteo Marine Service — Free Fallback for Tide Data.
+Open-Meteo Marine Service - Free Fallback for Tide Data.
 
 Provides estimated tidal data using a simple harmonic model calibrated
 for Manila Bay when WorldTides API credits are exhausted.  Also fetches

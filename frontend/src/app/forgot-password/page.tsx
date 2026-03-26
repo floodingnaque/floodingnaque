@@ -1,5 +1,5 @@
 /**
- * Forgot Password Page — Professional & Industrial Grade
+ * Forgot Password Page - Professional & Industrial Grade
  *
  * Public page for resetting a forgotten password.
  * Uses shared AuthPageLayout with branding panel.

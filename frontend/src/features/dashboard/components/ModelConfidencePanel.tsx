@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { useModelMetrics } from "../hooks/useAnalytics";
 
 // ---------------------------------------------------------------------------
-// ConfArc — SVG semi-circle gauge
+// ConfArc - SVG semi-circle gauge
 // ---------------------------------------------------------------------------
 
 function ConfArc({
@@ -101,7 +101,7 @@ function ConfArc({
 }
 
 // ---------------------------------------------------------------------------
-// MiniMetric — small labeled stat block
+// MiniMetric - small labeled stat block
 // ---------------------------------------------------------------------------
 
 function MiniMetric({

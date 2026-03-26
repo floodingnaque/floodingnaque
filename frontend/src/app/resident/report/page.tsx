@@ -1,5 +1,5 @@
 /**
- * Resident — Report Flood Page
+ * Resident - Report Flood Page
  *
  * Large tappable severity tiles, location input, description,
  * photo upload with preview, "people in danger" toggle,
@@ -166,7 +166,7 @@ export default function ResidentReportPage() {
             Mag-ulat ng Baha / Report Flooding
           </CardTitle>
           <CardDescription>
-            Help your community — your report will be verified by MDRRMO
+            Help your community - your report will be verified by MDRRMO
             operators.
           </CardDescription>
         </CardHeader>
@@ -234,7 +234,7 @@ export default function ResidentReportPage() {
           <div className="space-y-1.5">
             <p className="text-sm font-medium">Deskripsyon / Description *</p>
             <Textarea
-              placeholder="Describe the flood — is water rising fast? Are people stranded? Is the road passable?"
+              placeholder="Describe the flood - is water rising fast? Are people stranded? Is the road passable?"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}

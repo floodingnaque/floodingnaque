@@ -1,5 +1,5 @@
 /**
- * FloodDensityMap — deck.gl WebGL Overlay
+ * FloodDensityMap - deck.gl WebGL Overlay
  *
  * Renders flood alert data as a heatmap (HeatmapLayer) and individual
  * scatter markers (ScatterplotLayer, visible at zoom >= 14).
@@ -33,9 +33,9 @@ interface FloodDensityMapProps {
 // ---------------------------------------------------------------------------
 
 const RISK_COLORS: Record<number, [number, number, number]> = {
-  0: [52, 211, 153], // green — Safe
-  1: [251, 191, 36], // amber — Alert
-  2: [239, 68, 68], // red   — Critical
+  0: [52, 211, 153], // green - Safe
+  1: [251, 191, 36], // amber - Alert
+  2: [239, 68, 68], // red   - Critical
 };
 
 // ---------------------------------------------------------------------------
@@ -133,7 +133,7 @@ export function FloodDensityMap({
         getTooltip={({ object }: { object?: Alert }) =>
           object
             ? {
-                text: `${object.location ?? "Unknown"} — Risk Level ${object.risk_level}`,
+                text: `${object.location ?? "Unknown"} - Risk Level ${object.risk_level}`,
               }
             : null
         }

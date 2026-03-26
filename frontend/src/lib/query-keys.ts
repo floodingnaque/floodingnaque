@@ -3,7 +3,7 @@
  *
  * Re-exports all per-feature query key factories for easy discovery
  * and consistent cache invalidation across roles. Each feature owns
- * its own keys — this file simply aggregates them.
+ * its own keys - this file simply aggregates them.
  */
 
 export { alertKeys } from "@/features/alerts/hooks/useAlerts";

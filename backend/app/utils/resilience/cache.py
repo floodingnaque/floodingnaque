@@ -34,7 +34,7 @@ def init_redis():
     if client:
         logger.info("Redis connection pre-warmed at startup")
     else:
-        logger.info("Redis not available — caching disabled")
+        logger.info("Redis not available - caching disabled")
     return client
 
 
@@ -269,7 +269,7 @@ def cached(prefix: str, ttl: Union[int, timedelta] = 300, key_builder: Optional[
             # Execute function
             result = func(*args, **kwargs)
 
-            # Cache result — handle Flask response tuples (Response, status_code)
+            # Cache result - handle Flask response tuples (Response, status_code)
             if result is not None:
                 to_cache = result
                 if isinstance(result, tuple) and len(result) == 2:

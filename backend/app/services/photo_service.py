@@ -1,4 +1,4 @@
-"""Photo service — image validation, EXIF stripping, compression, and upload.
+"""Photo service - image validation, EXIF stripping, compression, and upload.
 
 Supports Supabase Storage in production and local file storage in
 development (simulation mode when ``SUPABASE_URL`` is unset).
@@ -25,7 +25,7 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB (pre-compression upload limit)
 
 # ── Compression settings ────────────────────────────────────────────────
 MAX_DIMENSION: int = int(os.getenv("PHOTO_MAX_DIMENSION", "1280"))
-"""Longest edge in pixels — images larger than this are down-scaled
+"""Longest edge in pixels - images larger than this are down-scaled
 proportionally.  1280 px is sufficient for flood evidence."""
 
 JPEG_QUALITY: int = int(os.getenv("PHOTO_JPEG_QUALITY", "60"))
@@ -49,7 +49,7 @@ def validate_image(file_storage) -> Tuple[bool, str]:  # type: ignore[no-untyped
             with ``.read()`` and ``.seek()``).
 
     Returns:
-        (valid, error_message) — ``error_message`` is empty on success.
+        (valid, error_message) - ``error_message`` is empty on success.
     """
     try:
         # Read header bytes without consuming the entire stream
@@ -64,7 +64,7 @@ def validate_image(file_storage) -> Tuple[bool, str]:  # type: ignore[no-untyped
         is_webp = header[:4] == _MAGIC_BYTES["webp_riff"] and header[8:12] == _WEBP_MARKER
 
         if not (is_jpeg or is_png or is_webp):
-            return False, "Unsupported image format — only JPEG, PNG, and WebP are accepted"
+            return False, "Unsupported image format - only JPEG, PNG, and WebP are accepted"
 
         # Check size
         file_storage.seek(0, os.SEEK_END)
@@ -92,11 +92,11 @@ def compress_image(
     This is the single entry-point that replaces the old ``strip_exif``
     function.  It performs three operations in order:
 
-    1. **EXIF removal** — copies pixel data to a fresh ``Image`` so no
+    1. **EXIF removal** - copies pixel data to a fresh ``Image`` so no
        metadata (GPS, camera serial, timestamps) survives.
-    2. **Down-scale** — if either dimension exceeds *max_dimension* the
+    2. **Down-scale** - if either dimension exceeds *max_dimension* the
        image is proportionally resized using Lanczos resampling.
-    3. **JPEG re-encode** — saved at *jpeg_quality* (default 75).
+    3. **JPEG re-encode** - saved at *jpeg_quality* (default 75).
 
     Args:
         image_bytes: Raw image bytes (JPEG, PNG, or WebP).
@@ -115,7 +115,7 @@ def compress_image(
         src = Image.open(io.BytesIO(image_bytes))
         original_size = len(image_bytes)
 
-        # ── 1. Strip EXIF — copy pixel data into a clean image ──────────
+        # ── 1. Strip EXIF - copy pixel data into a clean image ──────────
         clean = Image.new(src.mode, src.size)
         clean.putdata(list(src.getdata()))
 
@@ -156,10 +156,10 @@ def compress_image(
         return compressed
 
     except ImportError:
-        logger.warning("Pillow not installed — returning image without compression")
+        logger.warning("Pillow not installed - returning image without compression")
         return image_bytes
     except Exception as exc:
-        logger.warning("Image compression failed: %s — returning original bytes", exc)
+        logger.warning("Image compression failed: %s - returning original bytes", exc)
         return image_bytes
 
 
@@ -206,7 +206,7 @@ def upload_photo(image_bytes: bytes, report_id: int) -> str:
             return public_url
 
         except Exception as exc:
-            logger.warning("Supabase upload failed (%s) — falling back to local storage", exc)
+            logger.warning("Supabase upload failed (%s) - falling back to local storage", exc)
 
     # ── Simulation / local mode ──────────────────────────────────────────
     base_dir = Path(__file__).resolve().parent.parent.parent  # backend/

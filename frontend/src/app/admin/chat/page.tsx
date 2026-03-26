@@ -1,5 +1,5 @@
 /**
- * Admin Chat Page — /admin/chat
+ * Admin Chat Page - /admin/chat
  *
  * Multi-channel view with sidebar listing all 17 barangay channels
  * with unread indicators.  Admin-specific: broadcast to citywide,
@@ -28,7 +28,7 @@ export default function AdminChatPage() {
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            Community Chat — Admin Console
+            Community Chat - Admin Console
           </h2>
           <p className="text-sm text-muted-foreground">
             Monitor, moderate, and broadcast across all 17 barangay channels
@@ -36,7 +36,7 @@ export default function AdminChatPage() {
         </div>
         <Badge variant="outline" className="gap-1 text-xs">
           <Shield className="h-3 w-3" />
-          Admin — full access
+          Admin - full access
         </Badge>
       </div>
 

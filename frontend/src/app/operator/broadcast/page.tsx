@@ -1,5 +1,5 @@
 /**
- * Operator — Broadcast Center Page
+ * Operator - Broadcast Center Page
  *
  * Functional broadcast page with real SMS/email dispatch via the
  * POST /api/v1/lgu/broadcasts endpoint.
@@ -223,7 +223,7 @@ export default function OperatorBroadcastPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Flood Alert — Heavy Rainfall Warning"
+              placeholder="e.g. Flood Alert - Heavy Rainfall Warning"
               className="w-full p-2 rounded-lg border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
@@ -430,7 +430,7 @@ export default function OperatorBroadcastPage() {
                               dateStyle: "short",
                               timeStyle: "short",
                             })
-                          : "—"}
+                          : "-"}
                       </span>
                     </div>
                   </div>

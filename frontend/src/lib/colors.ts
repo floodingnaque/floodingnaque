@@ -1,5 +1,5 @@
 /**
- * Centralized risk color constants — single source of truth.
+ * Centralized risk color constants - single source of truth.
  *
  * Tailwind classes reference CSS custom properties (--risk-safe, etc.).
  * This module provides the **computed hex values** needed by chart libraries,
@@ -19,7 +19,7 @@ export const RISK_HEX = {
 /**
  * WCAG AA-compliant text colors for use on top of the risk backgrounds.
  * Alert yellow (#FFC107) only achieves 1.3:1 with white text.
- * Dark brown (#713f12) on yellow gives 7.1:1 — well above the AA minimum.
+ * Dark brown (#713f12) on yellow gives 7.1:1 - well above the AA minimum.
  */
 export const RISK_TEXT_HEX = {
   safe: "#ffffff",

@@ -256,7 +256,7 @@ function FileDropZone({
         <span className="text-primary underline">browse</span>
       </p>
       <p className="text-xs text-muted-foreground mt-1">
-        CSV, Excel (.xlsx, .xls) — max {MAX_FILE_SIZE_MB}MB
+        CSV, Excel (.xlsx, .xls) - max {MAX_FILE_SIZE_MB}MB
       </p>
     </div>
   );
@@ -523,7 +523,7 @@ export default function AdminDataPage() {
         // Refresh dataset stats after successful upload
         queryClient.invalidateQueries({ queryKey: datasetQueryKeys.all });
       } else {
-        toast.error("Upload failed — see details below");
+        toast.error("Upload failed - see details below");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -696,7 +696,7 @@ export default function AdminDataPage() {
             {[
               {
                 label: "Total Records",
-                value: stats?.total_records?.toLocaleString() ?? "—",
+                value: stats?.total_records?.toLocaleString() ?? "-",
                 icon: Database,
                 health: "neutral" as AccentLevel,
               },
@@ -704,13 +704,13 @@ export default function AdminDataPage() {
                 label: "Date Coverage",
                 value: stats?.date_range?.earliest
                   ? `${format(new Date(stats.date_range.earliest), "MMM yyyy")} – ${stats.date_range.latest ? format(new Date(stats.date_range.latest), "MMM yyyy") : "now"}`
-                  : "—",
+                  : "-",
                 icon: Calendar,
                 health: "neutral" as AccentLevel,
               },
               {
                 label: "Data Sources",
-                value: stats?.sources?.length ?? "—",
+                value: stats?.sources?.length ?? "-",
                 icon: Server,
                 health: "neutral" as AccentLevel,
                 description: stats?.sources?.join(", "),
@@ -721,13 +721,13 @@ export default function AdminDataPage() {
                   ? formatDistanceToNow(new Date(stats.last_ingestion), {
                       addSuffix: true,
                     })
-                  : "—",
+                  : "-",
                 icon: Upload,
                 health: "good" as AccentLevel,
               },
               {
                 label: "Records This Month",
-                value: stats?.records_this_month?.toLocaleString() ?? "—",
+                value: stats?.records_this_month?.toLocaleString() ?? "-",
                 icon: CloudRain,
                 health: "warn" as AccentLevel,
               },
@@ -927,7 +927,7 @@ export default function AdminDataPage() {
                           <div className="rounded-lg border border-risk-critical/20 bg-risk-critical/5 p-3 space-y-1">
                             <p className="text-sm font-medium text-risk-critical flex items-center gap-1">
                               <XCircle className="h-3.5 w-3.5" />
-                              {validationErrors.length} error(s) — must be
+                              {validationErrors.length} error(s) - must be
                               resolved before ingestion
                             </p>
                             <ul className="text-xs text-risk-critical space-y-0.5 max-h-40 overflow-y-auto">
@@ -943,7 +943,7 @@ export default function AdminDataPage() {
                           <div className="rounded-lg border border-risk-alert/20 bg-risk-alert/5 p-3 space-y-1">
                             <p className="text-sm font-medium text-risk-alert flex items-center gap-1">
                               <AlertTriangle className="h-3.5 w-3.5" />
-                              {validationWarnings.length} warning(s) —
+                              {validationWarnings.length} warning(s) -
                               non-blocking
                             </p>
                             <ul className="text-xs text-risk-alert space-y-0.5 max-h-40 overflow-y-auto">

@@ -161,7 +161,7 @@ DANGEROUS_FLAGS = {
     "AUTH_BYPASS_ENABLED": {
         "forbidden_values": ["true", "1", "yes"],
         "allowed_envs": ["development", "dev"],
-        "message": "AUTH_BYPASS_ENABLED is active — password verification is completely disabled!",
+        "message": "AUTH_BYPASS_ENABLED is active - password verification is completely disabled!",
     },
 }
 
@@ -197,7 +197,7 @@ def check_environment_variables() -> HealthCheckResult:
                 dangerous_flags_active.append(f"{flag_name}: {flag_cfg['message']}")
             else:
                 logger.warning(
-                    "SECURITY: %s is enabled in %s environment — "
+                    "SECURITY: %s is enabled in %s environment - "
                     "ensure this is intentional for local development only",
                     flag_name,
                     app_env,
@@ -350,7 +350,7 @@ def check_ml_model() -> HealthCheckResult:
             if version_num and isinstance(version_num, (int, float)) and version_num >= 5:
                 if metrics.get("accuracy") == 1.0 and metrics.get("f1_score") == 1.0:
                     metadata_warnings.append(
-                        "Model reports perfect 1.0 accuracy and F1 — likely not trained on real data"
+                        "Model reports perfect 1.0 accuracy and F1 - likely not trained on real data"
                     )
 
                 total_records = meta.get("total_records") or meta.get("training_data", {}).get("total_records", 0)

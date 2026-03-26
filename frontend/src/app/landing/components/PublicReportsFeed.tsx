@@ -286,7 +286,7 @@ export function PublicReportsFeed() {
               No flood reports in the last 24 hours
             </p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              This is a good sign — no active flooding reported
+              This is a good sign - no active flooding reported
             </p>
           </div>
         ) : (

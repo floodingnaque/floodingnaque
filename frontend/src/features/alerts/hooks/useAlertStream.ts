@@ -131,7 +131,7 @@ export function useAlertStream(
           onAlertRef.current?.(alert);
         }
       } catch {
-        // Polling failure — silently retry next cycle
+        // Polling failure - silently retry next cycle
       }
     };
 
@@ -241,7 +241,7 @@ export function useAlertStream(
 
     if (!enabled) return;
 
-    // Claim a connection generation — checked after async ticket fetch
+    // Claim a connection generation - checked after async ticket fetch
     const myId = ++connectionIdRef.current;
 
     setConnectionState("CONNECTING");
@@ -249,7 +249,7 @@ export function useAlertStream(
     try {
       const url = await getSseUrl();
 
-      // A newer createConnection or cleanup ran while we awaited — bail out
+      // A newer createConnection or cleanup ran while we awaited - bail out
       if (myId !== connectionIdRef.current) return;
 
       const eventSource = new EventSource(url);

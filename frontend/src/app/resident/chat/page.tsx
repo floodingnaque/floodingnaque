@@ -1,5 +1,5 @@
 /**
- * Resident Chat Page — /resident/chat
+ * Resident Chat Page - /resident/chat
  *
  * Shows the user's barangay channel + citywide channel.
  * Fetches the user's barangay from their profile via the API,

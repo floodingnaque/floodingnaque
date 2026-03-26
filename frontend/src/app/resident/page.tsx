@@ -1,5 +1,5 @@
 /**
- * Resident — Home / Overview Page
+ * Resident - Home / Overview Page
  *
  * Primary screen answering "Am I safe right now?" within 3 seconds.
  * Full-width, mobile-first, bilingual (EN/FIL), real-time via SSE.
@@ -180,7 +180,7 @@ export default function ResidentOverviewPage() {
             </p>
             <p className="text-base text-muted-foreground">
               Parañaque City
-              {user?.name ? ` — ${user.name}` : ""}
+              {user?.name ? ` - ${user.name}` : ""}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               <span className="font-semibold">{probability}%</span> flood
@@ -244,7 +244,7 @@ export default function ResidentOverviewPage() {
                   <p className="text-lg font-bold">
                     {weather?.precipitation != null
                       ? `${weather.precipitation} mm/h`
-                      : "—"}
+                      : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {weather?.precipitation != null
@@ -259,7 +259,7 @@ export default function ResidentOverviewPage() {
                 <Thermometer className="h-6 w-6 text-orange-500 shrink-0" />
                 <div>
                   <p className="text-lg font-bold">
-                    {tempC !== null ? `${tempC}°C` : "—"}
+                    {tempC !== null ? `${tempC}°C` : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground">Temperature</p>
                 </div>
@@ -270,7 +270,7 @@ export default function ResidentOverviewPage() {
                 <Droplets className="h-6 w-6 text-blue-500 shrink-0" />
                 <div>
                   <p className="text-lg font-bold">
-                    {weather?.humidity != null ? `${weather.humidity}%` : "—"}
+                    {weather?.humidity != null ? `${weather.humidity}%` : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground">Humidity</p>
                 </div>
@@ -283,7 +283,7 @@ export default function ResidentOverviewPage() {
                   <p className="text-lg font-bold">
                     {weather?.wind_speed != null
                       ? `${weather.wind_speed} m/s`
-                      : "—"}
+                      : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground">Wind</p>
                 </div>
@@ -317,7 +317,7 @@ export default function ResidentOverviewPage() {
                       <p className="text-xs text-muted-foreground mt-1">
                         {new Date(alert.triggered_at).toLocaleString()}
                         {alert.escalation_state &&
-                          ` — ${alert.escalation_state}`}
+                          ` - ${alert.escalation_state}`}
                       </p>
                     </div>
                     <Badge
@@ -339,7 +339,7 @@ export default function ResidentOverviewPage() {
             !prediction.smart_alert.was_suppressed ? (
             <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
               <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                Flood alert — {prediction.smart_alert.escalation_state}
+                Flood alert - {prediction.smart_alert.escalation_state}
               </p>
               {prediction.smart_alert.contributing_factors.length > 0 && (
                 <p className="text-xs text-amber-600 dark:text-amber-400/80 mt-1">
@@ -351,7 +351,7 @@ export default function ResidentOverviewPage() {
             <div className="flex items-center gap-2 py-4 text-muted-foreground">
               <ShieldCheck className="h-5 w-5 text-green-500" />
               <p className="text-sm">
-                Walang aktibong alerto — No active alerts. Your area is safe.
+                Walang aktibong alerto - No active alerts. Your area is safe.
               </p>
             </div>
           )}

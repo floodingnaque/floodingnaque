@@ -1,4 +1,4 @@
-"""SMS service — evacuation alert dispatch with simulation fallback.
+"""SMS service - evacuation alert dispatch with simulation fallback.
 
 Supports Semaphore (primary) and Vonage (fallback) APIs.  When no API
 keys are configured, runs in simulation mode: logs the message and
@@ -47,7 +47,7 @@ def _is_on_cooldown(user_id: int) -> bool:
             r.setex(key, timedelta(minutes=_get_cooldown_minutes()), "1")
             return False
         except Exception as exc:
-            logger.debug("Redis cooldown check failed: %s — using in-memory", exc)
+            logger.debug("Redis cooldown check failed: %s - using in-memory", exc)
 
     # In-memory fallback
     now = datetime.now(timezone.utc)
@@ -76,7 +76,7 @@ def send_sms(phone_number: str, message: str) -> Dict[str, Any]:
             logger.info("SMS sent via Semaphore to %s", phone_number)
             return {"status": "sent", "provider": "semaphore", "phone": phone_number}
         except Exception as exc:
-            logger.warning("Semaphore SMS failed: %s — trying Vonage", exc)
+            logger.warning("Semaphore SMS failed: %s - trying Vonage", exc)
 
     # ── Vonage (fallback) ────────────────────────────────────────────────
     vonage_key = os.getenv("VONAGE_API_KEY", "")
@@ -98,7 +98,7 @@ def send_sms(phone_number: str, message: str) -> Dict[str, Any]:
             logger.info("SMS sent via Vonage to %s", phone_number)
             return {"status": "sent", "provider": "vonage", "phone": phone_number}
         except Exception as exc:
-            logger.warning("Vonage SMS failed: %s — falling back to simulation", exc)
+            logger.warning("Vonage SMS failed: %s - falling back to simulation", exc)
 
     # ── Simulation mode ──────────────────────────────────────────────────
     logger.info("[SMS SIMULATION] To: %s | Message: %s", phone_number, message[:100])
@@ -183,7 +183,7 @@ def dispatch_evacuation_sms(barangay: str, risk_label: str) -> int:
 
         for user in users:
             if _is_on_cooldown(user.id):
-                logger.debug("Skipping user %d — on SMS cooldown", user.id)
+                logger.debug("Skipping user %d - on SMS cooldown", user.id)
                 continue
 
             result = send_sms(user.phone_number, message)

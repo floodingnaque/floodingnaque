@@ -21,6 +21,7 @@ import {
   Phone,
   Plus,
   RefreshCw,
+  Star,
   WifiOff,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -247,7 +248,7 @@ export default function EvacuationPage() {
         setGeoError(false);
       },
       () => {
-        toast.error("Unable to get your location — select a barangay instead");
+        toast.error("Unable to get your location - select a barangay instead");
         setGeoError(true);
       },
       { enableHighAccuracy: true, timeout: 10_000 },
@@ -347,7 +348,7 @@ export default function EvacuationPage() {
         <div className="w-full px-6 mt-4">
           <div className="flex items-center gap-2 rounded-lg bg-risk-alert/10 dark:bg-risk-alert/15 px-4 py-2 text-xs text-risk-alert">
             <WifiOff className="h-4 w-4 shrink-0" />
-            Live capacity updates unavailable — data may not be current.
+            Live capacity updates unavailable - data may not be current.
           </div>
         </div>
       )}
@@ -557,7 +558,7 @@ export default function EvacuationPage() {
                         >
                           <Tooltip direction="top" offset={[0, -47]}>
                             <strong>{c.name}</strong>
-                            {nearestIds.has(c.id) && " ⭐ Nearest"}
+                            {nearestIds.has(c.id) && <> <Star className="h-3 w-3 inline" /> Nearest</>}
                           </Tooltip>
                           <Popup maxWidth={280}>
                             <div className="min-w-48 space-y-2 text-sm">

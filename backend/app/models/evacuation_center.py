@@ -1,4 +1,4 @@
-"""EvacuationCenter ORM model — evacuation facility tracking.
+"""EvacuationCenter ORM model - evacuation facility tracking.
 
 Stores designated evacuation centers in Parañaque City with real-time
 capacity tracking for the evacuation assistance module.

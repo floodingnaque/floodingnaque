@@ -1,5 +1,5 @@
 /**
- * Operator — Evacuation Centers Page
+ * Operator - Evacuation Centers Page
  *
  * Displays real-time evacuation center data from the API.
  * Uses useEvacuationCenters() hook with auto-refetch.

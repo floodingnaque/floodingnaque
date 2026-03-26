@@ -1,4 +1,4 @@
-"""Broadcast ORM model — LGU public warning broadcasts.
+"""Broadcast ORM model - LGU public warning broadcasts.
 
 Stores records of mass notifications sent to residents during
 flood incidents. Part of the RA 10121–compliant LGU workflow

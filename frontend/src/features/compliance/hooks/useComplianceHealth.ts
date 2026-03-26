@@ -67,7 +67,7 @@ export function useComplianceHealth(): ComplianceHealthResult {
     const checks = new Map<string, ComplianceCheck>();
 
     if (!health) {
-      // No data yet — everything unknown, treat as partial
+      // No data yet - everything unknown, treat as partial
       const sections = [
         "Sec. 2(a)",
         "Sec. 2(c)",
@@ -97,7 +97,7 @@ export function useComplianceHealth(): ComplianceHealthResult {
     const hasExternalApis = !!health.checks.external_apis;
     const modelVersion = health.model?.version;
 
-    // Sec. 2(a) — 3-level risk classification requires model + DB
+    // Sec. 2(a) - 3-level risk classification requires model + DB
     checks.set("Sec. 2(a)", {
       section: "Sec. 2(a)",
       status: deriveStatus(modelLoaded && db, modelLoaded || db),
@@ -105,29 +105,29 @@ export function useComplianceHealth(): ComplianceHealthResult {
         modelLoaded && db
           ? "Alert system active with 3-level risk classification"
           : !modelLoaded
-            ? "ML model not loaded — risk classification unavailable"
-            : "Database offline — cannot evaluate alerts",
+            ? "ML model not loaded - risk classification unavailable"
+            : "Database offline - cannot evaluate alerts",
     });
 
-    // Sec. 2(c) — ML model trained on DRRMO records
+    // Sec. 2(c) - ML model trained on DRRMO records
     checks.set("Sec. 2(c)", {
       section: "Sec. 2(c)",
       status: deriveStatus(modelLoaded && !!modelVersion, modelLoaded),
       reason: modelLoaded
         ? `Model ${modelVersion || "unknown"} loaded with ${health.model?.features_count ?? "N/A"} features`
-        : "ML model not available — training data integration inactive",
+        : "ML model not available - training data integration inactive",
     });
 
-    // Sec. 2(f) — Role-based dashboards require DB
+    // Sec. 2(f) - Role-based dashboards require DB
     checks.set("Sec. 2(f)", {
       section: "Sec. 2(f)",
       status: deriveStatus(db, true),
       reason: db
         ? "Role-based dashboards (resident, operator, LGU) operational"
-        : "Database offline — dashboards partially degraded",
+        : "Database offline - dashboards partially degraded",
     });
 
-    // Sec. 6(k) — Real-time SSE alerts + SMS requires Redis + scheduler
+    // Sec. 6(k) - Real-time SSE alerts + SMS requires Redis + scheduler
     checks.set("Sec. 6(k)", {
       section: "Sec. 6(k)",
       status: deriveStatus(
@@ -138,38 +138,38 @@ export function useComplianceHealth(): ComplianceHealthResult {
         redis && schedulerRunning
           ? "Real-time SSE alerts and SMS simulation active"
           : !redis
-            ? "Redis offline — SSE delivery degraded"
-            : "Scheduler stopped — alert evaluation paused",
+            ? "Redis offline - SSE delivery degraded"
+            : "Scheduler stopped - alert evaluation paused",
     });
 
-    // Sec. 6(l) — LGU workflow pipeline requires DB
+    // Sec. 6(l) - LGU workflow pipeline requires DB
     checks.set("Sec. 6(l)", {
       section: "Sec. 6(l)",
       status: deriveStatus(db),
       reason: db
         ? "LGU workflow pipeline (Alert → Resolution → AAR) operational"
-        : "Database offline — workflow pipeline unavailable",
+        : "Database offline - workflow pipeline unavailable",
     });
 
-    // Sec. 12 — Incident logging requires DB
+    // Sec. 12 - Incident logging requires DB
     checks.set("Sec. 12", {
       section: "Sec. 12",
       status: deriveStatus(db),
       reason: db
         ? "Incident logging and MDRRMO officer tracking active"
-        : "Database offline — incident logging unavailable",
+        : "Database offline - incident logging unavailable",
     });
 
-    // Sec. 12(c) — After-action reports require DB
+    // Sec. 12(c) - After-action reports require DB
     checks.set("Sec. 12(c)", {
       section: "Sec. 12(c)",
       status: deriveStatus(db),
       reason: db
         ? "After-action report module with NDRRMC/DILG submission tracking operational"
-        : "Database offline — AAR module unavailable",
+        : "Database offline - AAR module unavailable",
     });
 
-    // Sec. 14 — Barangay-level risk mapping requires DB + model
+    // Sec. 14 - Barangay-level risk mapping requires DB + model
     checks.set("Sec. 14", {
       section: "Sec. 14",
       status: deriveStatus(db && modelLoaded, db),
@@ -177,11 +177,11 @@ export function useComplianceHealth(): ComplianceHealthResult {
         db && modelLoaded
           ? "Barangay-level risk mapping and incident tracking operational"
           : !db
-            ? "Database offline — barangay data unavailable"
-            : "Model not loaded — risk mapping degraded",
+            ? "Database offline - barangay data unavailable"
+            : "Model not loaded - risk mapping degraded",
     });
 
-    // IRR Rule 8.2 — GPS predictions + weather station integration
+    // IRR Rule 8.2 - GPS predictions + weather station integration
     checks.set("IRR Rule 8.2", {
       section: "IRR Rule 8.2",
       status: deriveStatus(modelLoaded && hasExternalApis, modelLoaded),
@@ -189,17 +189,17 @@ export function useComplianceHealth(): ComplianceHealthResult {
         modelLoaded && hasExternalApis
           ? "GPS predictions and weather station integrations (PAGASA, OWM, Meteostat) active"
           : !modelLoaded
-            ? "Model offline — prediction capability unavailable"
+            ? "Model offline - prediction capability unavailable"
             : "External API status unknown",
     });
 
-    // IRR Rule 10 — Post-disaster needs assessment requires DB
+    // IRR Rule 10 - Post-disaster needs assessment requires DB
     checks.set("IRR Rule 10", {
       section: "IRR Rule 10",
       status: deriveStatus(db),
       reason: db
         ? "Impact tracking fields (affected/evacuated families, casualties) operational"
-        : "Database offline — impact tracking unavailable",
+        : "Database offline - impact tracking unavailable",
     });
 
     return checks;
@@ -220,34 +220,34 @@ export function useComplianceHealth(): ComplianceHealthResult {
     const redis = health.checks.redis?.connected ?? false;
     const apis = !!health.checks.external_apis;
 
-    // Step 1: Detection & Monitoring — needs scheduler + external APIs
+    // Step 1: Detection & Monitoring - needs scheduler + external APIs
     const s1 = scheduler && apis;
     statuses.set(1, {
       step: 1,
       status: s1 ? "active" : scheduler || apis ? "degraded" : "inactive",
     });
 
-    // Step 2: Risk Assessment — needs model
+    // Step 2: Risk Assessment - needs model
     statuses.set(2, { step: 2, status: model ? "active" : "inactive" });
 
-    // Step 3: Warning Formulation — needs model + scheduler
+    // Step 3: Warning Formulation - needs model + scheduler
     const s3 = model && scheduler;
     statuses.set(3, {
       step: 3,
       status: s3 ? "active" : model || scheduler ? "degraded" : "inactive",
     });
 
-    // Step 4: Warning Dissemination — needs Redis + scheduler
+    // Step 4: Warning Dissemination - needs Redis + scheduler
     const s4 = redis && scheduler;
     statuses.set(4, {
       step: 4,
       status: s4 ? "active" : redis || scheduler ? "degraded" : "inactive",
     });
 
-    // Step 5: Community Response — needs DB
+    // Step 5: Community Response - needs DB
     statuses.set(5, { step: 5, status: db ? "active" : "inactive" });
 
-    // Step 6: Post-Event Review — needs DB
+    // Step 6: Post-Event Review - needs DB
     statuses.set(6, { step: 6, status: db ? "active" : "inactive" });
 
     return statuses;

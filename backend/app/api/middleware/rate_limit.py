@@ -163,7 +163,7 @@ def init_rate_limiter(app):
             if gunicorn_workers > 1:
                 logger.warning(
                     f"Rate limiting uses in-memory storage with {gunicorn_workers} workers. "
-                    "Each worker tracks limits independently — effective limits are "
+                    "Each worker tracks limits independently - effective limits are "
                     f"{gunicorn_workers}x the configured value. Set RATE_LIMIT_STORAGE_URL "
                     "to a Redis URL for shared rate limiting in production."
                 )

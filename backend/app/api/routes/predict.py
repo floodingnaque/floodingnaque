@@ -278,7 +278,7 @@ def predict():
             _confidence = response.get("confidence") or 0.0
             record_prediction_result(risk_label=str(_risk_label), confidence=float(_confidence))
         except Exception:  # nosec B110
-            pass  # Non-critical — never break a prediction request
+            pass  # Non-critical - never break a prediction request
 
         # Persist prediction to DB and create alert if risk >= 1
         try:

@@ -1,5 +1,5 @@
 /**
- * Compliance Page — RA 10121 & National DRRM Framework Alignment
+ * Compliance Page - RA 10121 & National DRRM Framework Alignment
  *
  * Displays how the Floodingnaque system aligns with:
  *   - Republic Act No. 10121 (Philippine DRRM Act of 2010)
@@ -45,7 +45,7 @@ import { fadeUp, staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// RA 10121 Compliance Matrix (static descriptions — status derived live)
+// RA 10121 Compliance Matrix (static descriptions - status derived live)
 // ---------------------------------------------------------------------------
 
 interface ComplianceItem {
@@ -169,7 +169,7 @@ const LOCAL_PROTOCOLS: Protocol[] = [
     icon: Megaphone,
     title: "Multi-Channel Broadcast",
     healthKey: "Sec. 6(k)",
-    body: "Alert dissemination via SMS, siren activation, social media, radio, megaphone — all tracked with delivery status and timestamp logging.",
+    body: "Alert dissemination via SMS, siren activation, social media, radio, megaphone - all tracked with delivery status and timestamp logging.",
   },
   {
     icon: Building2,
@@ -395,7 +395,7 @@ export default function CompliancePage() {
                   {score.compliant} of {score.total} sections compliant
                   {!isLoading && (
                     <span className="ml-1 text-muted-foreground font-normal">
-                      — {score.percentage}%
+                      - {score.percentage}%
                     </span>
                   )}
                 </p>

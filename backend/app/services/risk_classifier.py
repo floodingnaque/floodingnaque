@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# Calibrated defaults — kept in sync with training_config.yaml risk_classification.
+# Calibrated defaults - kept in sync with training_config.yaml risk_classification.
 # Data provenance: v6 model on 1,660 flood / 3,889 non-flood records (2022-2025).
 _thresholds: Dict[str, Any] = {
     "flood_probability": {"critical": 0.75, "alert": 0.40, "safe_max": 0.10},
@@ -233,8 +233,8 @@ def format_alert_message(risk_data: Dict, location: Optional[str] = None) -> str
     message += f"Confidence: {confidence*100:.1f}%"
 
     if risk_label == "Critical":
-        message += "\n\n⚠️ TAKE IMMEDIATE ACTION"
+        message += "\n\n[!] TAKE IMMEDIATE ACTION"
     elif risk_label == "Alert":
-        message += "\n\n⚠️ MONITOR CONDITIONS"
+        message += "\n\n[!] MONITOR CONDITIONS"
 
     return message

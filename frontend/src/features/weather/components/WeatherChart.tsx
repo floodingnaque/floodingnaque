@@ -96,7 +96,7 @@ export function WeatherChart({
   isLoading,
   title = "Weather Trends",
 }: WeatherChartProps) {
-  // Transform data for the chart — filter out extreme outliers
+  // Transform data for the chart - filter out extreme outliers
   const { chartData, outlierCount } = useMemo(() => {
     let outliers = 0;
     const filtered = data.filter((item) => {
@@ -214,7 +214,7 @@ export function WeatherChart({
             {/* Tooltip */}
             <Tooltip content={<CustomTooltip />} />
 
-            {/* Legend — click to toggle series visibility */}
+            {/* Legend - click to toggle series visibility */}
             <Legend
               wrapperStyle={{ paddingTop: "20px" }}
               formatter={(value) => <span className="text-sm">{value}</span>}

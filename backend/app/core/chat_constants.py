@@ -1,4 +1,4 @@
-"""Chat feature constants — single source of truth for channel validation."""
+"""Chat feature constants - single source of truth for channel validation."""
 
 VALID_BARANGAY_IDS = frozenset({
     "baclaran", "bf_homes", "don_bosco", "don_galo", "la_huerta",

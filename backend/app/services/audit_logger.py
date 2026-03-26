@@ -30,7 +30,7 @@ class AuditAction(str, Enum):
     LOGIN_SUCCESS = "login_success"
     LOGIN_FAILED = "login_failed"
     LOGOUT = "logout"
-    TOKEN_REFRESH = "token_refresh"  # nosec B105 — enum label, not a password
+    TOKEN_REFRESH = "token_refresh"  # nosec B105 - enum label, not a password
     TOKEN_REVOKED = "token_revoked"  # nosec B105
 
     # Account lifecycle
@@ -42,7 +42,7 @@ class AuditAction(str, Enum):
     ACCOUNT_DELETED = "account_deleted"
 
     # Password management
-    PASSWORD_CHANGED = "password_changed"  # nosec B105 — enum label, not a password
+    PASSWORD_CHANGED = "password_changed"  # nosec B105 - enum label, not a password
     PASSWORD_RESET_REQUESTED = "password_reset_requested"  # nosec B105
     PASSWORD_RESET_COMPLETED = "password_reset_completed"  # nosec B105
 
@@ -65,7 +65,7 @@ class AuditAction(str, Enum):
     # Security incidents
     SUSPICIOUS_ACTIVITY = "suspicious_activity"
     CSRF_VIOLATION = "csrf_violation"
-    INVALID_TOKEN = "invalid_token"  # nosec B105 — enum label, not a password
+    INVALID_TOKEN = "invalid_token"  # nosec B105 - enum label, not a password
 
 
 class AuditSeverity(str, Enum):

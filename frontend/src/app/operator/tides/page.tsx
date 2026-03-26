@@ -1,5 +1,5 @@
 /**
- * Operator — Tidal & River Level Monitoring Page
+ * Operator - Tidal & River Level Monitoring Page
  *
  * Real-time tidal data, river level readings, and trend indicators
  * powered by WorldTides + PAGASA aggregation APIs.
@@ -28,12 +28,12 @@ import {
 import type { TideDataPoint } from "@/features/weather/services/tidesApi";
 
 function fmtHeight(val: number | null | undefined): string {
-  if (val == null) return "—";
+  if (val == null) return "-";
   return `${val.toFixed(2)} m`;
 }
 
 function fmtTime(iso: string | undefined | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleTimeString("en-PH", {
     hour: "2-digit",
     minute: "2-digit",
@@ -154,7 +154,7 @@ export default function OperatorTidesPage() {
                 <p className="text-xl font-bold">
                   {riverData.length > 0
                     ? fmtHeight(riverData[0]?.water_level)
-                    : "—"}
+                    : "-"}
                 </p>
               )}
               <p className="text-xs text-muted-foreground">River Level</p>
@@ -285,7 +285,7 @@ export default function OperatorTidesPage() {
           <CardHeader>
             <CardTitle className="text-base">Upcoming Tidal Extremes</CardTitle>
             <CardDescription>
-              High and low tide schedule — Station: {extremes.station}, Datum:{" "}
+              High and low tide schedule - Station: {extremes.station}, Datum:{" "}
               {extremes.datum}
             </CardDescription>
           </CardHeader>

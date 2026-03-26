@@ -147,7 +147,7 @@ class DatasetValidator:
             return
         counts = df["flood_occurred"].value_counts()
         if len(counts) < 2:
-            result.warnings.append("Target variable has only one class — model cannot learn")
+            result.warnings.append("Target variable has only one class - model cannot learn")
             return
         minority_pct = counts.min() / counts.sum()
         if minority_pct < 0.05:

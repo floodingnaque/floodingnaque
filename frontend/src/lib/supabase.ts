@@ -21,7 +21,7 @@ export const isRealtimeEnabled = Boolean(supabaseUrl && supabaseAnonKey);
 
 if (!isRealtimeEnabled) {
   console.warn(
-    "[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not set — Realtime features disabled.",
+    "[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not set - Realtime features disabled.",
   );
 }
 
@@ -42,7 +42,7 @@ let _authSyncInitialized = false;
 
 /**
  * Bind Supabase Realtime auth to the Zustand auth store.
- * Safe to call multiple times — only subscribes once.
+ * Safe to call multiple times - only subscribes once.
  */
 export function initSupabaseAuth(
   subscribe: (cb: (token: string | null) => void) => () => void,

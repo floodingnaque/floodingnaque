@@ -71,11 +71,11 @@ const DATA_SOURCE_DEFS: DataSourceDef[] = [
   { name: "PAGASA Station (NAIA)", icon: CloudRain, fallbackStatus: "online" },
   { name: "GPM IMERG Satellite", icon: Satellite, fallbackStatus: "online" },
   {
-    name: "EFCOS River Gauge — San Juan",
+    name: "EFCOS River Gauge - San Juan",
     icon: Droplets,
     fallbackStatus: "online",
   },
-  { name: "IoT Node — Baclaran", icon: Radio, fallbackStatus: "delayed" },
+  { name: "IoT Node - Baclaran", icon: Radio, fallbackStatus: "delayed" },
   {
     name: "OpenWeatherMap API",
     icon: Cloud,

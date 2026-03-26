@@ -201,7 +201,7 @@ export function ReportSubmitModal({
         setSubmitted(true);
       },
       onError: () => {
-        toast.error("Failed to submit report — please try again");
+        toast.error("Failed to submit report - please try again");
       },
     });
   }, [
@@ -351,7 +351,7 @@ export function ReportSubmitModal({
                   <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}{" "}
                     <span className="text-muted-foreground">
-                      — {opt.description}
+                      - {opt.description}
                     </span>
                   </SelectItem>
                 ))}

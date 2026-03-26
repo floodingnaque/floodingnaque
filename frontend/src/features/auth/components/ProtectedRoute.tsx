@@ -35,7 +35,7 @@ export function ProtectedRoute() {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Enforce route access — prevent cross-role navigation
+  // Enforce route access - prevent cross-role navigation
   // e.g. a resident manually typing /admin in the URL
   const currentPath = location.pathname;
   if (!canAccessRoute(user.role, currentPath)) {

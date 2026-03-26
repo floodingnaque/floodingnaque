@@ -25,7 +25,7 @@ export interface PredictionResponse {
   features_used: string[];
   timestamp: string;
   request_id: string;
-  /** Feature completeness tracking — indicates data quality of this prediction */
+  /** Feature completeness tracking - indicates data quality of this prediction */
   feature_completeness?: {
     features_available: number;
     features_total: number;

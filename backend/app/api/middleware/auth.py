@@ -717,7 +717,7 @@ def require_scope(*required_scopes: str):
             # JWT-authenticated users bypass scope checks
             api_key_scopes = getattr(g, "api_key_scopes", None)
             if api_key_scopes is None:
-                # Authenticated via JWT or static env key — no scope restriction
+                # Authenticated via JWT or static env key - no scope restriction
                 return f(*args, **kwargs)
 
             # Parse CSV scopes from the DB key

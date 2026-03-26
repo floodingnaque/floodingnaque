@@ -204,7 +204,7 @@ export function WeatherStatsCards({
         <div className="flex items-center gap-2 rounded-lg bg-risk-alert/10 px-3 py-2 text-xs text-risk-alert">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           {stats.flagged_count} record{stats.flagged_count! > 1 ? "s" : ""}{" "}
-          excluded from stats — values outside realistic Parañaque thresholds
+          excluded from stats - values outside realistic Parañaque thresholds
           (20–45 °C, 0–100% RH, ≥0 mm).
         </div>
       )}

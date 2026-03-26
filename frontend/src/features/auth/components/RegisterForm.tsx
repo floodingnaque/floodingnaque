@@ -1,5 +1,5 @@
 /**
- * RegisterForm Component — Web 3.0 Edition
+ * RegisterForm Component - Web 3.0 Edition
  *
  * Glass-morphism registration form with animated fields, icon-enhanced inputs,
  * password strength meter, gradient accents, and smooth micro-interactions.

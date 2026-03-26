@@ -1,5 +1,5 @@
 /**
- * Admin — Alert Management & Notification Center
+ * Admin - Alert Management & Notification Center
  *
  * Full alert lifecycle management with bulk actions, SMS dispatch,
  * channel monitoring, and delivery analytics.

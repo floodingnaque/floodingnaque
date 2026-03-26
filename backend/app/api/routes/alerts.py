@@ -77,7 +77,7 @@ def get_alerts():
     request_id = getattr(g, "request_id", "unknown")
 
     try:
-        # Parse query parameters — page-based pagination
+        # Parse query parameters - page-based pagination
         page = max(request.args.get("page", 1, type=int), 1)
         limit = min(max(request.args.get("limit", 20, type=int), 1), 500)
         offset = (page - 1) * limit
@@ -685,7 +685,7 @@ def _require_admin(f):
     return decorated
 
 
-# ── POST /admin/bulk-delete — Admin bulk soft-delete alerts ─────────────
+# ── POST /admin/bulk-delete - Admin bulk soft-delete alerts ─────────────
 
 
 @alerts_bp.route("/admin/bulk-delete", methods=["POST"])

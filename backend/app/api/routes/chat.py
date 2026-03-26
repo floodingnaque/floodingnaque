@@ -1,4 +1,4 @@
-"""Community Chat Routes — barangay-scoped real-time chat.
+"""Community Chat Routes - barangay-scoped real-time chat.
 
 Blueprint: /api/v1/chat
 
@@ -352,7 +352,7 @@ def post_flood_report_to_chat(report_id: int):
         return jsonify({"success": False, "error": "User barangay not set or invalid"}), 400
 
     data = request.get_json(silent=True) or {}
-    content = data.get("content", f"🌊 Flood report submitted by {user_info['name']}")
+    content = data.get("content", f"[Flood Report] Flood report submitted by {user_info['name']}")
 
     with get_db_session() as session:
         message = ChatMessage(
@@ -381,11 +381,11 @@ def post_flood_report_to_chat_internal(
     flood_depth: str,
     location: str,
 ):
-    """Insert a flood_report chat message — called internally, no request context."""
+    """Insert a flood_report chat message - called internally, no request context."""
     if not barangay_id or barangay_id not in VALID_BARANGAY_IDS:
         return
 
-    content = f"🌊 Flood report: {flood_depth} at {location}"
+    content = f"[Flood Report] Flood report: {flood_depth} at {location}"
 
     with get_db_session() as session:
         message = ChatMessage(
@@ -410,7 +410,7 @@ def post_alert_to_citywide_chat(alert_data: dict):
                 user_name="DRRMO Alert System",
                 user_role="admin",
                 content=(
-                    f"⚠️ {alert_data.get('risk_label', 'Alert')}: "
+                    f"[{alert_data.get('risk_label', 'Alert')}]: "
                     f"{alert_data.get('message', 'Flood risk elevated.')}"
                 )[:MAX_MESSAGE_LENGTH],
                 message_type="alert",

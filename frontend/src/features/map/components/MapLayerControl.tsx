@@ -17,7 +17,7 @@
  */
 
 import { cn } from "@/lib/cn";
-import { ChevronDown, ChevronUp, Eye, EyeOff, Layers, Map } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff, Layers, Map, Mountain, Satellite } from "lucide-react";
 import { useCallback, useState } from "react";
 
 // ---------------------------------------------------------------------------
@@ -47,11 +47,11 @@ export interface MapLayerControlProps {
 // Option descriptors
 // ---------------------------------------------------------------------------
 
-const BASE_MAP_OPTIONS: { value: BaseMapType; label: string; icon: string }[] =
+const BASE_MAP_OPTIONS: { value: BaseMapType; label: string; icon: React.ReactNode }[] =
   [
-    { value: "standard", label: "Standard", icon: "🗺️" },
-    { value: "satellite", label: "Satellite", icon: "🛰️" },
-    { value: "topo", label: "Topo", icon: "⛰️" },
+    { value: "standard", label: "Standard", icon: <Map className="h-4 w-4" /> },
+    { value: "satellite", label: "Satellite", icon: <Satellite className="h-4 w-4" /> },
+    { value: "topo", label: "Topo", icon: <Mountain className="h-4 w-4" /> },
   ];
 
 const LAYER_OPTIONS: {

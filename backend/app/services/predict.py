@@ -682,7 +682,7 @@ def predict_flood(
 
         # Compute rolling features from weather history in database.
         # These features (precip_3day_sum, precip_7day_sum, rain_streak, tide_height)
-        # are trained with real historical data — defaulting to 0.0 degrades accuracy.
+        # are trained with real historical data - defaulting to 0.0 degrades accuracy.
         rolling = _compute_rolling_features()
         rolling_source = rolling.pop("_rolling_source", "unavailable")
         days_available = rolling.pop("_days_available", 0)
@@ -803,7 +803,7 @@ def predict_flood(
             if fill_values:
                 response["imputed_defaults"] = fill_values
 
-            # Feature completeness tracking — indicates data quality of this prediction
+            # Feature completeness tracking - indicates data quality of this prediction
             if hasattr(model, "feature_names_in_"):
                 total_features = len(model.feature_names_in_)
                 defaulted_count = len(fill_values)
@@ -819,7 +819,7 @@ def predict_flood(
                 }
                 if defaulted_count > 2:
                     logger.warning(
-                        "Prediction made with %d/%d features defaulted (%s) — confidence may be reduced",
+                        "Prediction made with %d/%d features defaulted (%s) - confidence may be reduced",
                         defaulted_count,
                         total_features,
                         ", ".join(fill_values.keys()),

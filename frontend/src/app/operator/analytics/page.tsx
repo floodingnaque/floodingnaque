@@ -1,5 +1,5 @@
 /**
- * Operator — Analytics & Trends Page
+ * Operator - Analytics & Trends Page
  *
  * Workflow metrics, incident frequency chart, and response-time stats
  * powered by the /api/v1/lgu/incidents/analytics endpoint.
@@ -52,13 +52,13 @@ const MONTH_LABELS = [
 ];
 
 function fmtMinutes(val: number | null): string {
-  if (val == null) return "—";
+  if (val == null) return "-";
   if (val < 60) return `${Math.round(val)}m`;
   return `${(val / 60).toFixed(1)}h`;
 }
 
 function pct(val: number | null): string {
-  if (val == null) return "—";
+  if (val == null) return "-";
   return `${(val * 100).toFixed(1)}%`;
 }
 

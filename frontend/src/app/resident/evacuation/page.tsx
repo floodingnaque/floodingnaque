@@ -1,5 +1,5 @@
 /**
- * Resident — Evacuation Centers Page
+ * Resident - Evacuation Centers Page
  *
  * Real API data, capacity bars, GPS-nearest sorting,
  * directions link, and evacuation reminders.
@@ -274,7 +274,7 @@ export default function ResidentEvacuationPage() {
           </p>
           <p>2. Turn off electricity and gas before leaving your home.</p>
           <p>
-            3. Avoid walking through floodwaters — they may be deeper than they
+            3. Avoid walking through floodwaters - they may be deeper than they
             appear.
           </p>
           <p>4. Register at the evacuation center upon arrival.</p>

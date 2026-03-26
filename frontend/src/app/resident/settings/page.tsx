@@ -1,5 +1,5 @@
 /**
- * Resident — Settings Page
+ * Resident - Settings Page
  *
  * Notification preferences (synced to household profile), dark mode,
  * change-password form with strength meter, preferred language.
@@ -142,7 +142,7 @@ export default function ResidentSettingsPage() {
             <div>
               <p className="font-medium">{user?.name ?? "Resident"}</p>
               <p className="text-sm text-muted-foreground">
-                {user?.email ?? "—"}
+                {user?.email ?? "-"}
               </p>
               <Badge variant="outline" className="mt-1 text-xs">
                 Resident

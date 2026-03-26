@@ -1,5 +1,5 @@
 /**
- * ResidentDashboard Component — Landing-Page-Inspired Overhaul
+ * ResidentDashboard Component - Landing-Page-Inspired Overhaul
  *
  * Design language from the public landing page applied to the
  * authenticated resident dashboard:
@@ -471,7 +471,7 @@ const AlertFeed = memo(function AlertFeed() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-6">
-            No recent alerts — all clear
+            No recent alerts - all clear
           </p>
         </CardContent>
       </GlassCard>
@@ -808,7 +808,7 @@ export function ResidentDashboard() {
           <SectionHeading
             label="Emergency Preparedness"
             title="Hotlines & Evacuation Centers"
-            subtitle="Always keep these emergency contacts accessible — especially during heavy rainfall."
+            subtitle="Always keep these emergency contacts accessible - especially during heavy rainfall."
           />
 
           <div className="space-y-6">

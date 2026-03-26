@@ -344,7 +344,7 @@ function SidebarNav({
 
   return (
     <nav className="flex flex-col h-full" aria-label="Main navigation">
-      {/* Navigation Links — organized by section */}
+      {/* Navigation Links - organized by section */}
       <div className="flex-1 py-4 space-y-1 overflow-y-auto">
         {navSections.map((section) => {
           // Section-level role filter

@@ -199,7 +199,7 @@ export const reportsApi = {
         { ...params, format },
       );
     } catch {
-      // Backend doesn't support async reports — caller falls back to sync
+      // Backend doesn't support async reports - caller falls back to sync
       return null;
     }
   },

@@ -113,7 +113,7 @@ export function BarangayDetailDrawer({
           </TabsList>
 
           {/* ----------------------------------------------------------------
-           * TAB 1: Overview — risk explanation + weather + factors
+           * TAB 1: Overview - risk explanation + weather + factors
            * -------------------------------------------------------------- */}
           <TabsContent value="overview" className="space-y-5 mt-4">
             {/* Risk explanation */}
@@ -241,7 +241,7 @@ export function BarangayDetailDrawer({
           </TabsContent>
 
           {/* ----------------------------------------------------------------
-           * TAB 2: Profile — demographics + historical
+           * TAB 2: Profile - demographics + historical
            * -------------------------------------------------------------- */}
           <TabsContent value="profile" className="space-y-5 mt-4">
             <div className="rounded-lg border p-4 space-y-3">
@@ -309,7 +309,7 @@ export function BarangayDetailDrawer({
           </TabsContent>
 
           {/* ----------------------------------------------------------------
-           * TAB 3: Evacuation — center + emergency contacts
+           * TAB 3: Evacuation - center + emergency contacts
            * -------------------------------------------------------------- */}
           <TabsContent value="evacuation" className="space-y-5 mt-4">
             <div className="rounded-lg border p-4 space-y-3">

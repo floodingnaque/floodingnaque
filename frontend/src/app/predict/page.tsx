@@ -1,5 +1,5 @@
 /**
- * Prediction Page — Landing-page-inspired overhaul
+ * Prediction Page - Landing-page-inspired overhaul
  *
  * Main page for flood risk prediction functionality.
  * Dark hero header, animated sections, offline-aware.

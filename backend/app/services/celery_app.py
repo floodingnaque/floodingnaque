@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 celery_app = Celery("floodingnaque")
 
 # ---------------------------------------------------------------------------
-# Dead Letter Queue (DLQ) — stores permanently failed tasks for inspection
+# Dead Letter Queue (DLQ) - stores permanently failed tasks for inspection
 # ---------------------------------------------------------------------------
 
 # Redis key prefix for DLQ entries
@@ -116,7 +116,7 @@ def clear_dlq() -> int:
 
 
 # ---------------------------------------------------------------------------
-# Celery signals — route permanently failed tasks to DLQ
+# Celery signals - route permanently failed tasks to DLQ
 # ---------------------------------------------------------------------------
 
 

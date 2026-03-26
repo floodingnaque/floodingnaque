@@ -290,7 +290,7 @@ def model_history():
                     try:
                         with open(sha_path, "r") as f:
                             checksum = f.read().strip().split()[0]
-                    except Exception:  # nosec B110 — checksum is optional
+                    except Exception:  # nosec B110 - checksum is optional
                         pass
 
             entry = {

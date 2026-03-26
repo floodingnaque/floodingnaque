@@ -1,5 +1,5 @@
 /**
- * Resident — Active Alerts Page
+ * Resident - Active Alerts Page
  *
  * Full alert feed with filters, mark-as-read, and bilingual support.
  */
@@ -141,7 +141,7 @@ export default function ResidentAlertsPage() {
             <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                System Alert — {smartAlert.escalation_state}
+                System Alert - {smartAlert.escalation_state}
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400/80 mt-0.5">
                 3-hour rainfall: {smartAlert.rainfall_3h} mm
@@ -245,7 +245,7 @@ export default function ResidentAlertsPage() {
             {filter === "active" ? (
               <>
                 <ShieldCheck className="h-12 w-12 mb-3 text-green-500 opacity-60" />
-                <p className="text-sm font-medium">Ligtas — All Clear</p>
+                <p className="text-sm font-medium">Ligtas - All Clear</p>
                 <p className="text-xs mt-1">
                   No active flood alerts for your area
                 </p>

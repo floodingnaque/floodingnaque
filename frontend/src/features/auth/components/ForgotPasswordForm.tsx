@@ -1,9 +1,9 @@
 /**
- * ForgotPasswordForm — 3-State Password Reset Flow
+ * ForgotPasswordForm - 3-State Password Reset Flow
  *
- * State 1: Request Reset — email input with security-conscious messaging
- * State 2: Email Sent Confirmation — resend with 60s cooldown timer
- * State 3: Reset Password — new password form (accessed via URL token)
+ * State 1: Request Reset - email input with security-conscious messaging
+ * State 2: Email Sent Confirmation - resend with 60s cooldown timer
+ * State 3: Reset Password - new password form (accessed via URL token)
  *
  * Auto-detects State 3 when `?token=...&email=...` query params are present.
  */
@@ -174,7 +174,7 @@ export function ForgotPasswordForm() {
           if (result?.dev_token) {
             setDevTokenNotice(result.dev_token);
             toast.info("Development mode", {
-              description: "SMTP not configured — token shown below.",
+              description: "SMTP not configured - token shown below.",
             });
           }
         },
@@ -491,7 +491,7 @@ export function ForgotPasswordForm() {
                     <Info className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-amber-500">
-                        Development Mode — SMTP Not Configured
+                        Development Mode - SMTP Not Configured
                       </p>
                       <p className="text-xs text-muted-foreground font-mono break-all">
                         Token: {devTokenNotice}

@@ -1,5 +1,5 @@
 /**
- * Resident — Live Map Page
+ * Resident - Live Map Page
  *
  * Full-featured Leaflet map centered on Parañaque City with:
  * - Barangay risk polygons (color-coded by risk level)

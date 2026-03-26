@@ -1,5 +1,5 @@
 /**
- * EvacuationStatusGrid — Filterable Evacuation Center Overview
+ * EvacuationStatusGrid - Filterable Evacuation Center Overview
  *
  * Filter buttons (All/Open/Closed), summary metric cards,
  * and a scrollable list of center cards with capacity bars.

@@ -13,7 +13,7 @@
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
-// Prediction response — handles variance across model v1–v6
+// Prediction response - handles variance across model v1–v6
 // ---------------------------------------------------------------------------
 
 export const PredictionResponseSchema = z
@@ -92,7 +92,7 @@ export type ValidatedPredictionResponse = z.infer<
 >;
 
 // ---------------------------------------------------------------------------
-// Alert — validates SSE and REST alert payloads
+// Alert - validates SSE and REST alert payloads
 // ---------------------------------------------------------------------------
 
 export const AlertSchema = z.object({

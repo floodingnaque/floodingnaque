@@ -1,5 +1,5 @@
 /**
- * SectionHeading — Landing-page section heading pattern
+ * SectionHeading - Landing-page section heading pattern
  *
  * Green uppercase label → bold heading → muted subtitle.
  * Matches the design language used in the landing page sections.

@@ -1,5 +1,5 @@
 /**
- * RainfallMonitor — 24-Hour Rainfall Monitoring Panel
+ * RainfallMonitor - 24-Hour Rainfall Monitoring Panel
  *
  * Metric strip showing current rate, intensity, 3-hr rolling total, and trend,
  * plus a 24-hour area chart with intensity reference lines.

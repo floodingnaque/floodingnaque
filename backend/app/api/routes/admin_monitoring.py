@@ -43,7 +43,7 @@ def require_admin(f):
 
 
 # ---------------------------------------------------------------------------
-# GET /  —  combined monitoring dashboard
+# GET /  -  combined monitoring dashboard
 # ---------------------------------------------------------------------------
 
 
@@ -68,7 +68,7 @@ def monitoring_dashboard():
 
 
 # ---------------------------------------------------------------------------
-# GET /uptime  —  uptime statistics
+# GET /uptime  -  uptime statistics
 # ---------------------------------------------------------------------------
 
 
@@ -92,7 +92,7 @@ def uptime():
 
 
 # ---------------------------------------------------------------------------
-# GET /api-responses  —  API response tracking
+# GET /api-responses  -  API response tracking
 # ---------------------------------------------------------------------------
 
 
@@ -122,7 +122,7 @@ def api_responses():
 
 
 # ---------------------------------------------------------------------------
-# GET /prediction-drift  —  model prediction drift
+# GET /prediction-drift  -  model prediction drift
 # ---------------------------------------------------------------------------
 
 
@@ -152,7 +152,7 @@ def prediction_drift():
 
 
 # ---------------------------------------------------------------------------
-# GET /alert-delivery  —  alert delivery tracking
+# GET /alert-delivery  -  alert delivery tracking
 # ---------------------------------------------------------------------------
 
 
@@ -182,7 +182,7 @@ def alert_delivery():
 
 
 # ---------------------------------------------------------------------------
-# GET /celery/dlq  —  Dead Letter Queue inspection
+# GET /celery/dlq  -  Dead Letter Queue inspection
 # ---------------------------------------------------------------------------
 
 
@@ -221,7 +221,7 @@ def celery_dlq():
 
 
 # ---------------------------------------------------------------------------
-# POST /celery/dlq/replay  —  replay oldest DLQ entry
+# POST /celery/dlq/replay  -  replay oldest DLQ entry
 # ---------------------------------------------------------------------------
 
 
@@ -250,7 +250,7 @@ def celery_dlq_replay():
 
 
 # ---------------------------------------------------------------------------
-# DELETE /celery/dlq  —  clear all DLQ entries
+# DELETE /celery/dlq  -  clear all DLQ entries
 # ---------------------------------------------------------------------------
 
 

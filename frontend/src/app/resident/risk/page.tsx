@@ -1,5 +1,5 @@
 /**
- * Resident — My Flood Risk Page
+ * Resident - My Flood Risk Page
  *
  * Detailed risk breakdown with XAI factors, household risk profile,
  * and personalized recommendations.
@@ -65,7 +65,7 @@ const RISK_ACTIONS: Record<RiskLevel, string[]> = {
     "Charge devices and save emergency numbers",
     "Monitor weather updates frequently",
     "Know your evacuation route",
-    "Alert household members — be ready to move",
+    "Alert household members - be ready to move",
   ],
   2: [
     "Evacuate immediately if instructed by MDRRMO",
@@ -129,7 +129,7 @@ export default function ResidentRiskPage() {
             </span>
           </div>
           <p className="text-xs text-muted-foreground/70 mt-2">
-            Model: {prediction?.model_version ?? "—"}
+            Model: {prediction?.model_version ?? "-"}
             {prediction?.timestamp &&
               ` · Updated ${new Date(prediction.timestamp).toLocaleTimeString()}`}
           </p>
@@ -155,7 +155,7 @@ export default function ResidentRiskPage() {
                   <p className="text-sm font-semibold">
                     {weather?.precipitation != null
                       ? `${weather.precipitation} mm/h`
-                      : "—"}
+                      : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground">Rainfall</p>
                 </div>
@@ -166,7 +166,7 @@ export default function ResidentRiskPage() {
                   <p className="text-sm font-semibold">
                     {weather?.temperature
                       ? `${Math.round(weather.temperature - 273.15)}°C`
-                      : "—"}
+                      : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground">Temp</p>
                 </div>
@@ -175,7 +175,7 @@ export default function ResidentRiskPage() {
                 <Droplets className="h-5 w-5 text-cyan-500 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold">
-                    {weather?.humidity != null ? `${weather.humidity}%` : "—"}
+                    {weather?.humidity != null ? `${weather.humidity}%` : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground">Humidity</p>
                 </div>

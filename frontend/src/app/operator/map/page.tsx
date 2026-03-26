@@ -1,5 +1,5 @@
 /**
- * Operator — Live Flood Map Page
+ * Operator - Live Flood Map Page
  *
  * Full-page interactive Leaflet map with barangay hazard overlay,
  * evacuation center markers, alert markers, community report layer,

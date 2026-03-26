@@ -1,4 +1,4 @@
-"""Evacuation Routes — evacuation center management and safe routing.
+"""Evacuation Routes - evacuation center management and safe routing.
 
 Blueprint: /api/v1/evacuation
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 evacuation_bp = Blueprint("evacuation", __name__)
 
 
-# ── GET /centers — List all centers ─────────────────────────────────────
+# ── GET /centers - List all centers ─────────────────────────────────────
 
 
 @evacuation_bp.route("/centers", methods=["GET"])
@@ -58,7 +58,7 @@ def list_centers():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── GET /centers/<id> — Single center detail ────────────────────────────
+# ── GET /centers/<id> - Single center detail ────────────────────────────
 
 
 @evacuation_bp.route("/centers/<int:center_id>", methods=["GET"])
@@ -82,7 +82,7 @@ def get_center(center_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── PATCH /centers/<id>/capacity — Update capacity ──────────────────────
+# ── PATCH /centers/<id>/capacity - Update capacity ──────────────────────
 
 
 @evacuation_bp.route("/centers/<int:center_id>/capacity", methods=["PATCH"])
@@ -146,7 +146,7 @@ def update_capacity(center_id: int):
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── GET /nearest — Find nearest centers ─────────────────────────────────
+# ── GET /nearest - Find nearest centers ─────────────────────────────────
 
 
 @evacuation_bp.route("/nearest", methods=["GET"])
@@ -170,7 +170,7 @@ def nearest_centers():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── GET /route — Get safe route ─────────────────────────────────────────
+# ── GET /route - Get safe route ─────────────────────────────────────────
 
 
 @evacuation_bp.route("/route", methods=["GET"])
@@ -244,7 +244,7 @@ def safe_route():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── POST /alert — Trigger SMS dispatch ──────────────────────────────────
+# ── POST /alert - Trigger SMS dispatch ──────────────────────────────────
 
 
 @evacuation_bp.route("/alert", methods=["POST"])
@@ -306,7 +306,7 @@ def trigger_alert():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# ── POST /capacity-stream/ticket — SSE ticket for capacity stream ───────
+# ── POST /capacity-stream/ticket - SSE ticket for capacity stream ───────
 
 _capacity_tickets: dict = {}
 _CAPACITY_TICKET_TTL = 30  # seconds
@@ -330,7 +330,7 @@ def get_capacity_stream_ticket():
     return jsonify({"ticket": ticket, "expires_in": _CAPACITY_TICKET_TTL}), 200
 
 
-# ── GET /capacity-stream — SSE for capacity updates ─────────────────────
+# ── GET /capacity-stream - SSE for capacity updates ─────────────────────
 
 
 @evacuation_bp.route("/capacity-stream", methods=["GET"])
@@ -345,7 +345,7 @@ def capacity_stream():
 
         sse = get_sse_manager()
         client_queue = sse.add_client(client_id)
-    except Exception:  # nosec B110 — SSE client registration fallback
+    except Exception:  # nosec B110 - SSE client registration fallback
         pass
 
     def generate():
@@ -369,7 +369,7 @@ def capacity_stream():
                 from app.api.routes.sse import get_sse_manager
 
                 get_sse_manager().remove_client(client_id)
-            except Exception:  # nosec B110 — SSE cleanup best-effort
+            except Exception:  # nosec B110 - SSE cleanup best-effort
                 pass
 
     return Response(

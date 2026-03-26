@@ -1,5 +1,5 @@
 /**
- * Resident — Evacuation Plan Page
+ * Resident - Evacuation Plan Page
  *
  * Personalized plan based on household profile data,
  * with embedded map placeholder, step-by-step guide,

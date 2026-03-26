@@ -79,10 +79,10 @@ def _resolve_db_url() -> str:
 def _attach_pool_events(eng: Engine) -> None:
     """Register connection-pool monitoring events."""
 
-    # Statement timeout (ms) — kills queries exceeding this duration.
+    # Statement timeout (ms) - kills queries exceeding this duration.
     # Guards against connection leaks caused by runaway queries.
     _statement_timeout_ms = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "15000"))  # 15s default
-    # Max connection age (seconds) — recycle connections older than this.
+    # Max connection age (seconds) - recycle connections older than this.
     _max_conn_age = int(os.getenv("DB_MAX_CONN_AGE_SECONDS", "3600"))  # 1h default
 
     @event.listens_for(eng, "connect")
@@ -95,7 +95,7 @@ def _attach_pool_events(eng: Engine) -> None:
             cursor.execute(f"SET statement_timeout = {_statement_timeout_ms}")
             cursor.close()
             logger.debug("SET statement_timeout = %dms on new connection", _statement_timeout_ms)
-        except Exception:  # nosec B110 — SQLite or non-PG driver, skip silently
+        except Exception:  # nosec B110 - SQLite or non-PG driver, skip silently
             pass
 
     @event.listens_for(eng, "checkout")
@@ -152,7 +152,7 @@ def _attach_pool_events(eng: Engine) -> None:
             # Warn on long-held connections (potential leak)
             if duration_ms > 10000:  # > 10 seconds
                 logger.warning(
-                    "Connection held for %.1fs — possible leak or slow query",
+                    "Connection held for %.1fs - possible leak or slow query",
                     duration_ms / 1000,
                 )
         pool = eng.pool

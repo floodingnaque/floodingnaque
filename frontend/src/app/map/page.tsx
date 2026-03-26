@@ -1,5 +1,5 @@
 /**
- * Flood Map Page — Landing-page-inspired overhaul
+ * Flood Map Page - Landing-page-inspired overhaul
  *
  * Full-screen barangay risk map with dark hero header,
  * animated sections, and emergency info panel.
@@ -91,7 +91,7 @@ export default function MapPage() {
       {!capacityConnected && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-risk-alert/15 px-4 py-1.5 text-xs text-risk-alert shadow-lg">
           <WifiOff className="h-3.5 w-3.5" />
-          Live capacity updates unavailable — showing cached data
+          Live capacity updates unavailable - showing cached data
         </div>
       )}
     </div>

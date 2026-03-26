@@ -1,5 +1,5 @@
 /**
- * ChatPanel — main chat interface for a single barangay channel.
+ * ChatPanel - main chat interface for a single barangay channel.
  *
  * Used in both resident and operator dashboards.
  */

@@ -1,5 +1,5 @@
 /**
- * Decision Engine — Operator Decision Support Checklist
+ * Decision Engine - Operator Decision Support Checklist
  *
  * Risk-level-aware action checklist for DRRMO field staff.
  * Displays recommended actions based on current flood risk level,
@@ -29,7 +29,7 @@ const ACTIONS_BY_RISK: Record<0 | 1 | 2, { id: number; action: string }[]> = {
     },
     {
       id: 2,
-      action: "Activate evacuation centers — notify barangay captains",
+      action: "Activate evacuation centers - notify barangay captains",
     },
     { id: 3, action: "Deploy rescue teams to high-risk barangays" },
     {

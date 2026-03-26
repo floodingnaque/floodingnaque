@@ -1,5 +1,5 @@
 /**
- * RiverLevelMonitor — River/Water Level Monitoring Panel
+ * RiverLevelMonitor - River/Water Level Monitoring Panel
  *
  * Left: SVG gauge showing current water level
  * Right: Level progress bar, threshold references, headroom card

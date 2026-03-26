@@ -1,5 +1,5 @@
 /**
- * Settings Page — Web 3.0 Edition
+ * Settings Page - Web 3.0 Edition
  *
  * User settings page with glassmorphism cards, enhanced form inputs,
  * password strength meter, gradient accents, and polished micro-interactions.
@@ -126,7 +126,7 @@ const passwordSchema = z
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 /**
- * SettingsPage — Web 3.0 User settings and preferences
+ * SettingsPage - Web 3.0 User settings and preferences
  */
 export default function SettingsPage() {
   const theme = useTheme();

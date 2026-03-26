@@ -1,4 +1,4 @@
-/** Chat feature — barrel export */
+/** Chat feature - barrel export */
 
 export { ChannelSidebar } from "./components/ChannelSidebar";
 export { ChatMessage } from "./components/ChatMessage";

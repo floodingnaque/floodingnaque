@@ -1,5 +1,5 @@
 /**
- * Operator — Weather Monitor Page
+ * Operator - Weather Monitor Page
  */
 
 import { Cloud, Droplets, RefreshCw, Thermometer, Wind } from "lucide-react";
@@ -71,7 +71,7 @@ export default function OperatorWeatherPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {tempC !== null ? `${tempC}°C` : "—"}
+                  {tempC !== null ? `${tempC}°C` : "-"}
                 </p>
                 <p className="text-xs text-muted-foreground">Temperature</p>
               </div>
@@ -84,7 +84,7 @@ export default function OperatorWeatherPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {weather.humidity != null ? `${weather.humidity}%` : "—"}
+                  {weather.humidity != null ? `${weather.humidity}%` : "-"}
                 </p>
                 <p className="text-xs text-muted-foreground">Humidity</p>
               </div>
@@ -99,7 +99,7 @@ export default function OperatorWeatherPage() {
                 <p className="text-2xl font-bold">
                   {weather.precipitation != null
                     ? `${weather.precipitation} mm`
-                    : "—"}
+                    : "-"}
                 </p>
                 <p className="text-xs text-muted-foreground">Precipitation</p>
               </div>
@@ -114,7 +114,7 @@ export default function OperatorWeatherPage() {
                 <p className="text-2xl font-bold">
                   {weather.wind_speed != null
                     ? `${weather.wind_speed} m/s`
-                    : "—"}
+                    : "-"}
                 </p>
                 <p className="text-xs text-muted-foreground">Wind Speed</p>
               </div>

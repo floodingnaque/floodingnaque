@@ -178,7 +178,7 @@ export const useAuthStore = create<AuthStore>()(
 // Initialize the API client with the auth store reference
 initializeAuthStore(useAuthStore);
 
-// Initialize Supabase Realtime auth sync — forwards the JWT so
+// Initialize Supabase Realtime auth sync - forwards the JWT so
 // RLS policies can identify the user across all roles.
 import { initSupabaseAuth } from "@/lib/supabase";
 

@@ -1,4 +1,4 @@
-"""Reverse-geocoder service — barangay lookup from coordinates.
+"""Reverse-geocoder service - barangay lookup from coordinates.
 
 Maps a (lat, lon) pair to a Parañaque barangay name using the polygon
 boundaries defined in :mod:`app.services.gis_service`.
@@ -42,7 +42,7 @@ def _init_shapely_polygons() -> bool:
         logger.debug("Shapely polygons compiled for %d barangays", len(_shapely_polygons))
         return True
     except ImportError:
-        logger.warning("Shapely not installed — using pure-Python winding-number fallback")
+        logger.warning("Shapely not installed - using pure-Python winding-number fallback")
         _shapely_available = False
         return False
 
@@ -103,7 +103,7 @@ def reverse_geocode_barangay(lat: float, lon: float) -> Optional[str]:
             if poly.contains(pt):  # type: ignore[attr-defined]
                 meta = BARANGAY_META.get(key, {})
                 return str(meta.get("name", key.replace("_", " ").title()))
-        # No polygon match — fall through
+        # No polygon match - fall through
         return None
 
     # Pure-Python fallback

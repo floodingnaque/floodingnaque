@@ -1,4 +1,4 @@
-"""ChatMessage ORM model — barangay-scoped community chat.
+"""ChatMessage ORM model - barangay-scoped community chat.
 
 Messages are written via Flask and broadcast in real-time by
 Supabase Realtime (postgres_changes).  No WebSocket code in Flask.

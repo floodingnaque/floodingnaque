@@ -404,7 +404,7 @@ export default function AdminPage() {
                 Service Degradation Detected
               </span>
               <span className="text-muted-foreground">
-                {" — "}
+                {" - "}
                 {degradedServices.join(", ")}{" "}
                 {degradedServices.length === 1 ? "requires" : "require"}{" "}
                 attention.
@@ -558,7 +558,7 @@ export default function AdminPage() {
                   />
                   {dbLatency != null && dbLatency > 500 && (
                     <p className="text-xs text-risk-alert pt-2">
-                      ⚠ Database latency exceeds 500ms threshold
+                      <AlertTriangle className="h-3 w-3 inline" /> Database latency exceeds 500ms threshold
                     </p>
                   )}
                 </CardContent>
@@ -737,7 +737,7 @@ export default function AdminPage() {
                                 </p>
                                 {isHighStd && (
                                   <p className="text-xs text-risk-alert">
-                                    ⚠ High variance
+                                    <AlertTriangle className="h-3 w-3 inline" /> High variance
                                   </p>
                                 )}
                               </div>

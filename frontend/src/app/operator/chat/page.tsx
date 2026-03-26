@@ -1,5 +1,5 @@
 /**
- * Operator Chat Page — /operator/chat
+ * Operator Chat Page - /operator/chat
  *
  * Multi-channel view: sidebar listing all 17 barangay channels
  * with unread indicators; main panel shows selected channel.
@@ -25,7 +25,7 @@ export default function OperatorChatPage() {
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <MessageSquare className="h-5 w-5 text-primary" />
-          Community Chat — All Channels
+          Community Chat - All Channels
         </h2>
         <p className="text-sm text-muted-foreground">
           Monitor and post to all 17 barangay channels

@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Elevation data approximated from SRTM 30m DEM (NASA Shuttle Radar
 # Topography Mission, 2000). Accessed via USGS EarthExplorer / OpenTopography.
 # Resolution: ~30m, vertical accuracy ±16m (90% confidence).
-# Values represent barangay centroid approximations — not survey-grade.
+# Values represent barangay centroid approximations - not survey-grade.
 
 BARANGAY_ELEVATION: Dict[str, Dict[str, float]] = {
     "baclaran": {"mean_elevation_m": 3.2, "min_elevation_m": 1.0, "slope_pct": 0.3},

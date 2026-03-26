@@ -1,5 +1,5 @@
 /**
- * Operator — After-Action Reports Page
+ * Operator - After-Action Reports Page
  *
  * List, search, and create after-action reports for resolved incidents.
  * Uses useAARs + useCreateAAR hooks from operator feature module.
@@ -165,7 +165,7 @@ export default function OperatorAARPage() {
                 <option value="">Select an incident…</option>
                 {resolvedIncidents.map((inc) => (
                   <option key={inc.id} value={inc.id}>
-                    #{inc.id} — {inc.title} ({inc.barangay})
+                    #{inc.id} - {inc.title} ({inc.barangay})
                   </option>
                 ))}
               </select>

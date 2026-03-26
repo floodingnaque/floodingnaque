@@ -241,7 +241,7 @@ axiosInstance.interceptors.response.use(undefined, (error: unknown) => {
   const apiError = error as ApiError;
   const status = apiError?.status;
 
-  // Cancelled requests (navigation, unmount) — never show a toast
+  // Cancelled requests (navigation, unmount) - never show a toast
   if (apiError?.code === "REQUEST_CANCELED") {
     return Promise.reject(error);
   }
@@ -253,7 +253,7 @@ axiosInstance.interceptors.response.use(undefined, (error: unknown) => {
   if (!status) {
     toast.error("Connection lost", {
       description:
-        "Unable to reach the server. This may be a temporary network issue — the app will retry automatically.",
+        "Unable to reach the server. This may be a temporary network issue - the app will retry automatically.",
       id: "network-error",
       duration: 8000,
     });

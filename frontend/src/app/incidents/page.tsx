@@ -1,5 +1,5 @@
 /**
- * Incidents Page — LGU Incident Logging & Workflow
+ * Incidents Page - LGU Incident Logging & Workflow
  *
  * Displays all flood incidents, provides filtering, creation, and
  * workflow state transitions (Alert → LGU Confirmed → Broadcast → Resolved → Closed).
@@ -267,7 +267,7 @@ function useIncidentStats() {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-/** Stats summary cards — color-coded by urgency */
+/** Stats summary cards - color-coded by urgency */
 function StatsRow({ stats }: { stats: IncidentStats | null }) {
   if (!stats) return null;
 
@@ -549,7 +549,7 @@ function IncidentDetailPanel({
         <SheetHeader className="pb-4">
           <SheetTitle>{incident.title}</SheetTitle>
           <SheetDescription>
-            Incident #{incident.id} — {incident.barangay}
+            Incident #{incident.id} - {incident.barangay}
           </SheetDescription>
           <div className="flex items-center gap-2 pt-1">
             <Badge variant="outline" className={cn("text-xs", risk.className)}>
@@ -613,7 +613,7 @@ function IncidentDetailPanel({
                       {completed && entry.time && (
                         <p className="text-xs text-muted-foreground">
                           {new Date(entry.time).toLocaleString()}
-                          {entry.actor && ` — by ${entry.actor}`}
+                          {entry.actor && ` - by ${entry.actor}`}
                         </p>
                       )}
                       {!completed && (
@@ -914,7 +914,7 @@ export default function IncidentsPage() {
                       <Label htmlFor="inc-title">Title *</Label>
                       <Input
                         id="inc-title"
-                        placeholder="e.g. Flash flood — Don Galo area"
+                        placeholder="e.g. Flash flood - Don Galo area"
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
                       />
@@ -1240,7 +1240,7 @@ export default function IncidentsPage() {
                     <>
                       <CheckCircle2 className="h-12 w-12 mx-auto text-risk-safe/40 mb-3" />
                       <p className="text-lg font-semibold mb-1">
-                        All Clear — No Active Incidents
+                        All Clear - No Active Incidents
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Parañaque City currently has no recorded flood

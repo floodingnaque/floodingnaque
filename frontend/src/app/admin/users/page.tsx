@@ -755,7 +755,7 @@ export default function AdminUsersPage() {
                               </TableCell>
                               <TableCell className="font-medium">
                                 <div className="flex items-center gap-2">
-                                  {u.name || "—"}
+                                  {u.name || "-"}
                                   {self && (
                                     <Badge
                                       variant="outline"
