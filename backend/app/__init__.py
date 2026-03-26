@@ -3,5 +3,5 @@ Flooding Naque Backend Application
 A commercial-grade flood prediction API for Parañaque City.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Floodingnaque Team"
