@@ -21,9 +21,13 @@ QUERY_COUNT_WARN_THRESHOLD = int(os.getenv("QUERY_COUNT_WARN_THRESHOLD", "10"))
 
 def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     """Increment per-request query counter."""
-    count = getattr(g, "_query_count", None)
-    if count is not None:
-        g._query_count += 1
+    try:
+        count = getattr(g, "_query_count", None)
+        if count is not None:
+            g._query_count += 1
+    except RuntimeError:
+        # Outside application/request context (e.g. scheduler jobs)
+        pass
 
 
 def init_query_counter(app: Flask) -> None:

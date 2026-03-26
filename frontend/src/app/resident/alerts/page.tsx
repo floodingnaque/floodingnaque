@@ -146,9 +146,9 @@ export default function ResidentAlertsPage() {
               <p className="text-xs text-amber-600 dark:text-amber-400/80 mt-0.5">
                 3-hour rainfall: {smartAlert.rainfall_3h} mm
               </p>
-              {smartAlert.contributing_factors.length > 0 && (
+              {smartAlert.contributing_factors?.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {smartAlert.contributing_factors.map((f, i) => (
+                  {smartAlert.contributing_factors?.map((f, i) => (
                     <Badge
                       key={i}
                       variant="outline"

@@ -1,5 +1,5 @@
 /**
- * PageHeader — Landing-page-inspired page header
+ * PageHeader - Landing-page-inspired page header
  *
  * A dark navy rounded banner with icon, title, subtitle,
  * and optional right-side action area. Matches the design language

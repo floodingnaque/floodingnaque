@@ -83,7 +83,7 @@ export function CityWideBroadcastSection() {
       const data = await api.get<{
         messages: ChatMessage[];
         has_more: boolean;
-      }>(`/api/v1/chat/citywide/messages?limit=${INITIAL_LIMIT}`);
+      }>(`/api/v1/chat/citywide/public?limit=${INITIAL_LIMIT}`);
       setMessages(data.messages);
     } catch {
       // Graceful: section simply shows empty state

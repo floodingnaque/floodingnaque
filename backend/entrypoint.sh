@@ -40,7 +40,7 @@ fi
 # --------------------------------------------------
 if [ "${APP_ENV}" = "production" ]; then
     MISSING_SECRETS=""
-    for secret_name in secret_key jwt_secret_key database_url; do
+    for secret_name in secret_key jwt_secret_key database_url redis_url owm_api_key model_signing_key; do
         if [ ! -f "/run/secrets/${secret_name}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS} ${secret_name}"
         fi
@@ -50,7 +50,7 @@ if [ "${APP_ENV}" = "production" ]; then
         echo "WARNING: Missing Docker secrets:${MISSING_SECRETS}"
         echo "Falling back to environment variables / .env.production"
     else
-        echo "OK: Required Docker secrets are mounted"
+        echo "OK: All required Docker secrets are mounted"
     fi
 fi
 
@@ -59,15 +59,46 @@ fi
 # --------------------------------------------------
 if [ "${SKIP_MIGRATIONS:-false}" != "true" ]; then
     # Only the first backend replica should run migrations.
-    # Use a simple lock via environment variable or file lock.
+    # Gate behind RUN_MIGRATIONS env var (set on only 1 replica in compose).
     if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
         echo "Running Alembic database migrations..."
-        if alembic upgrade head 2>&1; then
-            echo "OK: Database migrations applied successfully"
+        # Use PostgreSQL advisory lock to prevent concurrent migration runs
+        # across replicas. Lock ID 73209 is arbitrary but consistent.
+        if python -c "
+import os, sys
+from sqlalchemy import create_engine, text
+
+db_url = os.environ.get('DATABASE_URL', '')
+if not db_url:
+    print('WARNING: DATABASE_URL not set - running migrations without advisory lock')
+    sys.exit(0)
+
+try:
+    engine = create_engine(db_url)
+    with engine.connect() as conn:
+        result = conn.execute(text('SELECT pg_try_advisory_lock(73209)')).scalar()
+        if not result:
+            print('SKIP: Another replica is running migrations (advisory lock held)')
+            sys.exit(2)
+        print('OK: Acquired migration advisory lock')
+except Exception as e:
+    print(f'WARNING: Could not acquire advisory lock ({e}) - proceeding anyway')
+" 2>&1; then
+            LOCK_STATUS=$?
         else
-            echo "ERROR: Alembic migration failed - database schema may be inconsistent"
-            echo "Set SKIP_MIGRATIONS=true to bypass, or check the migration error above"
-            exit 1
+            LOCK_STATUS=$?
+        fi
+
+        if [ "$LOCK_STATUS" = "2" ]; then
+            echo "SKIP: Migration lock held by another replica"
+        else
+            if alembic upgrade head 2>&1; then
+                echo "OK: Database migrations applied successfully"
+            else
+                echo "ERROR: Alembic migration failed - database schema may be inconsistent"
+                echo "Set SKIP_MIGRATIONS=true to bypass, or check the migration error above"
+                exit 1
+            fi
         fi
     else
         echo "SKIP: RUN_MIGRATIONS=false - skipping Alembic migrations"

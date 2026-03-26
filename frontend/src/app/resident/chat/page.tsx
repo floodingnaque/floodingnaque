@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BARANGAYS } from "@/config/paranaque";
-import { ChatPanel } from "@/features/chat";
+import { ChatPanel, useUnreadCount } from "@/features/chat";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +65,14 @@ export default function ResidentChatPage() {
   const handleSelectBarangay = useCallback((key: string) => {
     setUserBarangay(key);
   }, []);
+
+  // Must be called unconditionally (Rules of Hooks)
+  const inactiveChannel = userBarangay
+    ? activeTab === "barangay"
+      ? "citywide"
+      : userBarangay
+    : null;
+  const inactiveUnread = useUnreadCount(inactiveChannel);
 
   if (isLoading) {
     return (
@@ -128,18 +136,23 @@ export default function ResidentChatPage() {
         <button
           onClick={() => setActiveTab("barangay")}
           className={cn(
-            "px-4 py-2 text-sm rounded-lg transition-colors",
+            "px-4 py-2 text-sm rounded-lg transition-colors relative",
             activeTab === "barangay"
               ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground hover:bg-muted/80",
           )}
         >
           {barangayName}
+          {activeTab !== "barangay" && inactiveUnread > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+              {inactiveUnread > 99 ? "99+" : inactiveUnread}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab("citywide")}
           className={cn(
-            "px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-1.5",
+            "px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-1.5 relative",
             activeTab === "citywide"
               ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground hover:bg-muted/80",
@@ -149,6 +162,11 @@ export default function ResidentChatPage() {
           <Badge variant="outline" className="text-[10px] px-1.5">
             Broadcast
           </Badge>
+          {activeTab !== "citywide" && inactiveUnread > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+              {inactiveUnread > 99 ? "99+" : inactiveUnread}
+            </span>
+          )}
         </button>
       </div>
 

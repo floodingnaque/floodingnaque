@@ -189,6 +189,17 @@ axiosInstance.interceptors.response.use(
       }
     }
 
+    // Cancelled requests (e.g. React Query aborting on unmount during
+    // navigation) must not be treated as network failures.
+    if (axios.isCancel(error) || error.code === "ERR_CANCELED") {
+      const cancelledError: ApiError = {
+        code: "REQUEST_CANCELED",
+        message: "Request was canceled",
+        status: 0,
+      };
+      return Promise.reject(cancelledError);
+    }
+
     // Normalise error payload
     // Backend RFC 7807 responses use shape: { success, error: { code, detail, status, … } }
     // Extract the nested error object and map `detail` → `message` for ApiError compat.
@@ -229,6 +240,11 @@ const SILENT_STATUSES = new Set([401, 422]);
 axiosInstance.interceptors.response.use(undefined, (error: unknown) => {
   const apiError = error as ApiError;
   const status = apiError?.status;
+
+  // Cancelled requests (navigation, unmount) — never show a toast
+  if (apiError?.code === "REQUEST_CANCELED") {
+    return Promise.reject(error);
+  }
 
   if (status && SILENT_STATUSES.has(status)) {
     return Promise.reject(error);

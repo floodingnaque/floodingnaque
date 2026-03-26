@@ -1,5 +1,5 @@
 /**
- * PasswordStrengthMeter — Visual password strength indicator
+ * PasswordStrengthMeter - Visual password strength indicator
  *
  * Displays a segmented bar + text label indicating password strength.
  * Used in registration and password change forms.

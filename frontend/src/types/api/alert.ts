@@ -4,6 +4,7 @@ import type { RiskLevel } from "./prediction";
 export interface Alert {
   id: number;
   risk_level: RiskLevel;
+  risk_label?: string;
   message: string;
   location?: string;
   latitude?: number;
@@ -13,6 +14,10 @@ export interface Alert {
   acknowledged: boolean;
   created_at: string;
   updated_at?: string;
+  // Delivery tracking
+  delivery_status?: AlertDeliveryStatus | "sandbox" | "partial";
+  delivery_channel?: string;
+  recipients?: string;
   // Smart alert fields
   confidence_score?: number;
   rainfall_3h?: number;

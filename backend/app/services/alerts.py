@@ -780,12 +780,16 @@ class AlertSystem:
                     {
                         "id": alert.id,
                         "timestamp": alert.created_at.isoformat() if alert.created_at else None,
+                        "triggered_at": alert.created_at.isoformat() if alert.created_at else None,
                         "location": alert.location,
                         "risk_level": alert.risk_level,
                         "risk_label": alert.risk_label,
                         "message": alert.message,
                         "delivery_status": alert.delivery_status,
                         "delivery_channel": alert.delivery_channel,
+                        "acknowledged": bool(alert.acknowledged),
+                        "acknowledged_at": alert.acknowledged_at.isoformat() if alert.acknowledged_at else None,
+                        "confidence_score": alert.confidence_score,
                     }
                     for alert in alerts
                 ]

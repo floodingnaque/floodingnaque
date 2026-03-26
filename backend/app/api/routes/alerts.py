@@ -408,7 +408,11 @@ def get_alert_history():
                         "risk_level": alert.risk_level,
                         "risk_label": alert.risk_label,
                         "location": alert.location,
+                        "message": alert.message,
                         "delivery_status": alert.delivery_status,
+                        "delivery_channel": alert.delivery_channel,
+                        "recipients": alert.recipients,
+                        "acknowledged": alert.acknowledged,
                         "created_at": alert.created_at.isoformat() if alert.created_at else None,
                         # Smart alert fields
                         "confidence_score": alert.confidence_score,

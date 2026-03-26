@@ -511,9 +511,9 @@ export function Layout() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // Start SSE connection for real-time alerts.
-  // Controlled via VITE_ENABLE_SSE env var (defaults to false).
+  // Controlled via VITE_ENABLE_SSE env var (defaults to true).
   const { isConnected, reconnect } = useAlertStream({
-    enabled: import.meta.env.VITE_ENABLE_SSE === "true",
+    enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
 
   // Handle logout

@@ -150,6 +150,40 @@ def list_channels():
     return jsonify({"success": True, "channels": channels, "total": len(channels)})
 
 
+@chat_bp.route("/citywide/public", methods=["GET"])
+def get_public_citywide_messages():
+    """Read-only public endpoint for citywide broadcast (no auth required).
+
+    Used by the landing page to show recent announcements to visitors.
+    Only returns non-deleted messages from the citywide channel.
+    """
+    try:
+        limit = min(int(request.args.get("limit", DEFAULT_MESSAGE_LIMIT)), MAX_MESSAGE_LIMIT)
+    except (ValueError, TypeError):
+        limit = DEFAULT_MESSAGE_LIMIT
+
+    with get_db_session() as session:
+        messages = (
+            session.query(ChatMessage)
+            .filter(
+                ChatMessage.barangay_id == "citywide",
+                ChatMessage.is_deleted.is_(False),
+            )
+            .order_by(desc(ChatMessage.created_at))
+            .limit(limit)
+            .all()
+        )
+        messages_dict = [m.to_dict() for m in reversed(messages)]
+
+    return jsonify({
+        "success": True,
+        "channel": "citywide",
+        "display_name": "City-Wide Broadcast",
+        "messages": messages_dict,
+        "count": len(messages_dict),
+    })
+
+
 @chat_bp.route("/<barangay_id>/messages", methods=["GET"])
 @require_auth
 def get_messages(barangay_id: str):

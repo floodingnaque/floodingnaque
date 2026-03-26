@@ -878,8 +878,10 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      CANARY_TRAFFIC_PCT: "${CANARY_TRAFFIC_PCT:-5}"
     volumes:
-      - ./nginx/floodingnaque.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/floodingnaque.conf:/etc/nginx/conf.d/default.conf
       - certbot_conf_prod:/etc/letsencrypt:ro
       - certbot_www_prod:/var/www/certbot:ro
     depends_on:

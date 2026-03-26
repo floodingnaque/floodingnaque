@@ -48,7 +48,7 @@ repos:
       - id: mypy
         name: mypy
         language: system
-        entry: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-mypy.ps1
+        entry: bash -c 'cd backend && python -m mypy app/ --config-file mypy.ini'
         files: ^backend/app/.*\.py$
         pass_filenames: false
         types: [python]

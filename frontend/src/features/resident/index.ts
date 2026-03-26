@@ -13,3 +13,5 @@ export {
   useSubmitReport,
   useUpdateHouseholdProfile,
 } from "./hooks/useResident";
+
+export { ReportCard } from "./components/ReportCard";

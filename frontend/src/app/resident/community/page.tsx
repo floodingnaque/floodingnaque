@@ -1,8 +1,9 @@
 /**
  * Resident — Community Reports Page
  *
- * Verified flood reports from other residents, with severity badges,
- * filter by barangay, and "Verified by DRRMO" tags.
+ * Submitted and verified flood reports from other residents, with
+ * severity badges, status indicators, filter by barangay, and
+ * "Verified by DRRMO" tags.
  */
 
 import {
@@ -27,10 +28,32 @@ import { useCommunityReports } from "@/features/resident";
 import type { CommunityReport } from "@/types";
 
 const SEVERITY_BADGE: Record<string, string> = {
-  minor: "bg-amber-500/10 text-amber-700 border-amber-500/30",
-  moderate: "bg-orange-500/10 text-orange-700 border-orange-500/30",
+  minor: "bg-green-500/10 text-green-700 border-green-500/30",
+  moderate: "bg-amber-500/10 text-amber-700 border-amber-500/30",
   severe: "bg-red-500/10 text-red-700 border-red-500/30",
 };
+
+/** Map risk_label (Safe/Alert/Critical) to display severity key */
+const RISK_TO_SEVERITY: Record<string, string> = {
+  Safe: "minor",
+  Alert: "moderate",
+  Critical: "severe",
+};
+
+/** Derive severity from risk_label first, fall back to flood_height_cm */
+function getSeverityKey(report: CommunityReport): string {
+  if (report.risk_label && RISK_TO_SEVERITY[report.risk_label]) {
+    return RISK_TO_SEVERITY[report.risk_label];
+  }
+  if (report.flood_height_cm != null) {
+    return report.flood_height_cm > 60
+      ? "severe"
+      : report.flood_height_cm > 15
+        ? "moderate"
+        : "minor";
+  }
+  return "moderate";
+}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -111,14 +134,7 @@ export default function ResidentCommunityPage() {
       ) : filtered.length > 0 ? (
         <div className="space-y-3">
           {filtered.map((report: CommunityReport) => {
-            const severityKey =
-              report.flood_height_cm != null
-                ? report.flood_height_cm > 60
-                  ? "severe"
-                  : report.flood_height_cm > 15
-                    ? "moderate"
-                    : "minor"
-                : "moderate";
+            const severityKey = getSeverityKey(report);
 
             return (
               <Card key={report.id}>
@@ -150,7 +166,7 @@ export default function ResidentCommunityPage() {
                           {severityKey.charAt(0).toUpperCase() +
                             severityKey.slice(1)}
                         </Badge>
-                        {report.verified && (
+                        {report.verified ? (
                           <Badge
                             variant="outline"
                             className="bg-green-500/10 text-green-700 border-green-500/30 text-[10px]"
@@ -158,7 +174,15 @@ export default function ResidentCommunityPage() {
                             <CheckCircle className="h-3 w-3 mr-0.5" />
                             Verified by DRRMO
                           </Badge>
-                        )}
+                        ) : report.status === "pending" ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-amber-500/10 text-amber-700 border-amber-500/30 text-[10px]"
+                          >
+                            <Clock className="h-3 w-3 mr-0.5" />
+                            Pending verification
+                          </Badge>
+                        ) : null}
                       </div>
                       {report.description && (
                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">

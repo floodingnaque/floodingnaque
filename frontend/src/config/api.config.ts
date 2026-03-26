@@ -192,11 +192,11 @@ export const API_CONFIG = {
 
   /** Per-use-case timeout presets (ms) */
   timeouts: {
-    /** Polling and dashboard endpoints — fail fast */
+    /** Polling and dashboard endpoints - fail fast */
     polling: 10_000,
     /** Default for most requests */
     default: 30_000,
-    /** Prediction and upload endpoints — allow more time */
+    /** Prediction and upload endpoints - allow more time */
     heavy: 60_000,
   },
 

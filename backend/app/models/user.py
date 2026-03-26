@@ -32,6 +32,14 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     is_verified = Column(Boolean, default=False, nullable=False, info={"description": "Email verified"})
 
+    # Notification preferences
+    sms_alerts_enabled = Column(
+        Boolean, default=True, nullable=False, info={"description": "Opt-in for SMS flood alerts"}
+    )
+    email_alerts_enabled = Column(
+        Boolean, default=True, nullable=False, info={"description": "Opt-in for email flood alerts"}
+    )
+
     # Password reset
     password_reset_token = Column(String(255), nullable=True)
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)
@@ -77,6 +85,8 @@ class User(Base):
             "role": self.role,
             "is_active": self.is_active,
             "is_verified": self.is_verified,
+            "sms_alerts_enabled": self.sms_alerts_enabled,
+            "email_alerts_enabled": self.email_alerts_enabled,
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

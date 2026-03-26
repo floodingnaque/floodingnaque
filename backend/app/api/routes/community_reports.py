@@ -373,6 +373,9 @@ def list_reports():
                 query = query.filter(CommunityReport.barangay == barangay)
             if status:
                 query = query.filter(CommunityReport.status == status)
+            elif not mine or mine.lower() not in ("true", "1", "yes"):
+                # Public listing: exclude rejected reports by default
+                query = query.filter(CommunityReport.status != "rejected")
             if verified is not None:
                 v = verified.lower() in ("true", "1", "yes")
                 query = query.filter(CommunityReport.verified.is_(v))

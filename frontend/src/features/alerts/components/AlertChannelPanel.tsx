@@ -228,24 +228,51 @@ export const AlertChannelPanel = memo(function AlertChannelPanel() {
   const { data: history, isLoading } = useAlertHistory();
   const simulateMutation = useSimulateSms();
 
-  // Build SMS log from alert history
+  // Build SMS log from alert history (real delivery data)
   const smsLog: SmsLogEntry[] = useMemo(() => {
     if (!history?.alerts) return [];
-    return history.alerts.slice(0, 8).map((a, i) => ({
-      time: new Date(a.created_at).toLocaleTimeString("en-PH", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      recipients: (((a.id ?? i + 1) * 37) % 500) + 100, // deterministic placeholder
-      barangays: a.location ? [a.location] : ["System-wide"],
-      status: a.acknowledged ? "Delivered" : "Pending",
-      type: (a.risk_level >= 2
-        ? "Critical"
-        : a.risk_level === 1
-          ? "Alert"
-          : "Info") as SmsLogEntry["type"],
-      rate: a.acknowledged ? 98 : 87,
-    }));
+    return history.alerts
+      .filter(
+        (a) =>
+          a.delivery_channel?.includes("sms") ||
+          a.delivery_status === "sandbox",
+      )
+      .slice(0, 8)
+      .map((a) => {
+        // Parse recipients JSON if available
+        let recipientCount = 0;
+        if (a.recipients) {
+          try {
+            const parsed = JSON.parse(a.recipients);
+            recipientCount = Array.isArray(parsed) ? parsed.length : 0;
+          } catch {
+            recipientCount = 0;
+          }
+        }
+
+        const status = a.delivery_status ?? "pending";
+        const isDelivered = status === "delivered" || status === "sandbox";
+
+        return {
+          time: new Date(a.created_at).toLocaleTimeString("en-PH", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          recipients: recipientCount,
+          barangays: a.location ? [a.location] : ["System-wide"],
+          status: isDelivered
+            ? "Delivered"
+            : status === "failed"
+              ? "Failed"
+              : "Pending",
+          type: (a.risk_level >= 2
+            ? "Critical"
+            : a.risk_level === 1
+              ? "Alert"
+              : "Info") as SmsLogEntry["type"],
+          rate: isDelivered ? 100 : status === "failed" ? 0 : 50,
+        };
+      });
   }, [history]);
 
   const handleTestSms = useCallback(() => {

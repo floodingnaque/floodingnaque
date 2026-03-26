@@ -39,7 +39,11 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BARANGAYS } from "@/config/paranaque";
-import { SmsSubscriptionToggle, useRecentAlerts } from "@/features/alerts";
+import {
+  EmailSubscriptionToggle,
+  SmsSubscriptionToggle,
+  useRecentAlerts,
+} from "@/features/alerts";
 import { PushPermissionPrompt } from "@/features/alerts/components/PushPermissionPrompt";
 import { useModelHistory } from "@/features/dashboard/hooks/useAnalytics";
 import { useDashboardStats } from "@/features/dashboard/hooks/useDashboard";
@@ -749,6 +753,7 @@ export function ResidentDashboard() {
               <RainfallMonitor />
               <AlertFeed />
               <SmsSubscriptionToggle />
+              <EmailSubscriptionToggle />
               <EvacuationCapacityCard />
               <TidalRiskIndicator />
               <PublicReportDownload />

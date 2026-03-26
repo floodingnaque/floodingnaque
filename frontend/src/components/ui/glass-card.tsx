@@ -1,5 +1,5 @@
 /**
- * GlassCard — Glassmorphism Card Component
+ * GlassCard - Glassmorphism Card Component
  *
  * A card with backdrop-blur, semi-transparent background,
  * and subtle border for modern Web 3.0 aesthetic.

@@ -5,6 +5,15 @@
 
 set -e
 
+# Template canary traffic percentage (default: 5%)
+export CANARY_TRAFFIC_PCT="${CANARY_TRAFFIC_PCT:-5}"
+
+# Substitute environment variables in the config template
+if [ -f /etc/nginx/conf.d/default.conf ]; then
+  envsubst '${CANARY_TRAFFIC_PCT}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/default.conf.tmp
+  mv /etc/nginx/conf.d/default.conf.tmp /etc/nginx/conf.d/default.conf
+fi
+
 # Start the reload loop in background
 (
   while true; do

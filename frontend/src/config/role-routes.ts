@@ -28,7 +28,7 @@ export function getDefaultRoute(role: string | undefined | null): string {
 }
 
 /**
- * Sub-routes each role owns — used for access-control checks.
+ * Sub-routes each role owns - used for access-control checks.
  * Admin can access everything (handled in canAccessRoute).
  */
 export const ROLE_OWNED_ROUTES: Record<UserRole, string[]> = {

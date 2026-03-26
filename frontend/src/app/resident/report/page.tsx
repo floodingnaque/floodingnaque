@@ -43,9 +43,10 @@ const SEVERITIES = [
     labelFil: "Mababaw",
     desc: "Ankle-deep, passable on foot",
     height: "0–15 cm",
+    riskLabel: "Safe" as const,
     color:
-      "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    selectedColor: "border-amber-500 bg-amber-500/20 ring-2 ring-amber-500/40",
+      "border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400",
+    selectedColor: "border-green-500 bg-green-500/20 ring-2 ring-green-500/40",
   },
   {
     value: "moderate",
@@ -54,10 +55,10 @@ const SEVERITIES = [
     labelFil: "Katamtaman",
     desc: "Knee-deep, difficult to walk",
     height: "15–60 cm",
+    riskLabel: "Alert" as const,
     color:
-      "border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400",
-    selectedColor:
-      "border-orange-500 bg-orange-500/20 ring-2 ring-orange-500/40",
+      "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    selectedColor: "border-amber-500 bg-amber-500/20 ring-2 ring-amber-500/40",
   },
   {
     value: "severe",
@@ -66,6 +67,7 @@ const SEVERITIES = [
     labelFil: "Malala",
     desc: "Waist-deep or higher, impassable",
     height: "60+ cm",
+    riskLabel: "Critical" as const,
     color: "border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400",
     selectedColor: "border-red-500 bg-red-500/20 ring-2 ring-red-500/40",
   },
@@ -103,8 +105,9 @@ export default function ResidentReportPage() {
   }, []);
 
   const handleSubmit = useCallback(() => {
+    const selected = SEVERITIES.find((s) => s.value === severity);
     const formData = new FormData();
-    formData.append("severity", severity);
+    formData.append("risk_label", selected?.riskLabel ?? "Alert");
     formData.append("location", location);
     formData.append("description", description);
     if (waterLevel) formData.append("flood_height_cm", waterLevel);

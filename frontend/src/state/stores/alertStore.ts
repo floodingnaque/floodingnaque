@@ -208,7 +208,11 @@ export const useAlertStore = create<AlertStore>()(
             for (const a of state.liveAlerts) {
               ids.add(a.id);
             }
-            return { acknowledgedIds: ids };
+            // Remove acknowledged alerts from the live list and localStorage
+            // so they don't resurface after page refresh or SSE reconnection
+            const remaining = state.liveAlerts.filter((a) => !ids.has(a.id));
+            persistAlerts(remaining);
+            return { acknowledgedIds: ids, liveAlerts: remaining };
           });
         },
 

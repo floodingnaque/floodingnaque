@@ -1,5 +1,5 @@
 /**
- * StepIndicator — Multi-step form progress indicator
+ * StepIndicator - Multi-step form progress indicator
  *
  * Displays numbered circles connected by lines,
  * highlighting the current/completed steps.

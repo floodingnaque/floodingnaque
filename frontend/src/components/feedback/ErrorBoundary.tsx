@@ -83,13 +83,13 @@ export class ErrorBoundary extends Component<
       error.message?.includes("token")
     ) {
       try {
-        // Dynamic require in error boundary — can't use static import in class lifecycle
+        // Dynamic require in error boundary - can't use static import in class lifecycle
         // @ts-expect-error -- require is provided by bundler at runtime
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const mod = require("@/state/stores/authStore");
         mod.useAuthStore.getState().logout?.();
       } catch {
-        // Auth store may not be available — safe to ignore
+        // Auth store may not be available - safe to ignore
       }
     }
 

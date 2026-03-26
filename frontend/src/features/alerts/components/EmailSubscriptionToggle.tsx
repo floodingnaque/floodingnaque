@@ -1,11 +1,11 @@
 /**
- * SmsSubscriptionToggle
+ * EmailSubscriptionToggle
  *
- * Toggle switch for residents to opt in / out of SMS flood alerts.
+ * Toggle switch for residents to opt in / out of email flood alerts.
  * Uses a TanStack Query mutation to persist the preference.
  */
 
-import { BellRing } from "lucide-react";
+import { Mail } from "lucide-react";
 
 import {
   Card,
@@ -26,64 +26,64 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 // API helpers
 // ---------------------------------------------------------------------------
 
-async function getSmsPreference(): Promise<boolean> {
+async function getEmailPreference(): Promise<boolean> {
   const res = await api.get<{
     success: boolean;
-    user: { sms_alerts_enabled: boolean };
+    user: { email_alerts_enabled: boolean };
   }>(`${API_ENDPOINTS.auth.me}`);
-  return res.user?.sms_alerts_enabled ?? false;
+  return res.user?.email_alerts_enabled ?? false;
 }
 
-async function toggleSmsPreference(enabled: boolean): Promise<void> {
-  await api.patch(`${API_ENDPOINTS.auth.me}`, { sms_alerts_enabled: enabled });
+async function toggleEmailPreference(enabled: boolean): Promise<void> {
+  await api.patch(`${API_ENDPOINTS.auth.me}`, {
+    email_alerts_enabled: enabled,
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export interface SmsSubscriptionToggleProps {
+export interface EmailSubscriptionToggleProps {
   className?: string;
 }
 
-export function SmsSubscriptionToggle({
+export function EmailSubscriptionToggle({
   className,
-}: SmsSubscriptionToggleProps) {
+}: EmailSubscriptionToggleProps) {
   const queryClient = useQueryClient();
 
   const { data: isEnabled, isLoading } = useQuery({
-    queryKey: ["sms", "preference"],
-    queryFn: getSmsPreference,
+    queryKey: ["email", "preference"],
+    queryFn: getEmailPreference,
     staleTime: 60_000,
   });
 
   const mutation = useMutation({
-    mutationFn: toggleSmsPreference,
+    mutationFn: toggleEmailPreference,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sms", "preference"] });
+      queryClient.invalidateQueries({ queryKey: ["email", "preference"] });
     },
   });
 
-  if (isLoading) return <SmsSubscriptionToggleSkeleton />;
+  if (isLoading) return <EmailSubscriptionToggleSkeleton />;
 
   return (
     <Card className={cn("w-full", className)}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <BellRing className="h-4 w-4" />
-          SMS Alerts
+          <Mail className="h-4 w-4" />
+          Email Alerts
         </CardTitle>
-        <CardDescription>
-          Receive flood warnings via text message
-        </CardDescription>
+        <CardDescription>Receive flood warnings via email</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <Label htmlFor="sms-toggle" className="text-sm">
-            {isEnabled ? "SMS alerts enabled" : "SMS alerts disabled"}
+          <Label htmlFor="email-toggle" className="text-sm">
+            {isEnabled ? "Email alerts enabled" : "Email alerts disabled"}
           </Label>
           <Switch
-            id="sms-toggle"
+            id="email-toggle"
             checked={isEnabled ?? false}
             onCheckedChange={(checked) => mutation.mutate(checked)}
             disabled={mutation.isPending}
@@ -98,7 +98,7 @@ export function SmsSubscriptionToggle({
 // Skeleton
 // ---------------------------------------------------------------------------
 
-export function SmsSubscriptionToggleSkeleton() {
+export function EmailSubscriptionToggleSkeleton() {
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">

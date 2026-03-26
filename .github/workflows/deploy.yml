@@ -115,7 +115,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.workflow_run.head_commit.timestamp || '' }}
             GIT_SHA=${{ github.sha }}
             VERSION=${{ github.ref_name }}
 

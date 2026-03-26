@@ -33,8 +33,8 @@ import {
 } from "@/components/ui/card";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BarangayRiskMap } from "@/features/dashboard";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
-import { FloodMap } from "@/features/map";
 import { DecisionEngine } from "@/features/operator/components/DecisionEngine";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -344,7 +344,7 @@ export default function OperatorOverviewPage() {
 
       {/* Main Content: Map + Panels */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Live Map Placeholder */}
+        {/* Live Map */}
         <Card className="xl:col-span-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -355,8 +355,12 @@ export default function OperatorOverviewPage() {
               Barangay boundaries color-coded by current risk level
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <FloodMap height={350} />
+          <CardContent className="p-0">
+            <BarangayRiskMap
+              prediction={prediction}
+              height={350}
+              className="border-0 shadow-none"
+            />
           </CardContent>
         </Card>
 

@@ -1,5 +1,5 @@
 /**
- * RouteProgress — Top progress bar for route transitions
+ * RouteProgress - Top progress bar for route transitions
  *
  * Shows a slim animated bar at the top of the viewport during
  * Suspense loading (lazy route transitions). Uses refs + DOM

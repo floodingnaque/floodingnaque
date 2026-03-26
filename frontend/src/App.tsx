@@ -52,6 +52,8 @@ const IncidentsPage = lazy(() => import("@/app/incidents/page"));
 const AdminStoragePage = lazy(() => import("@/app/admin/storage/page"));
 const AdminWorkflowPage = lazy(() => import("@/app/admin/workflow/page"));
 const AdminSensorPage = lazy(() => import("@/app/admin/sensor/page"));
+const AdminChatPage = lazy(() => import("@/app/admin/chat/page"));
+const AdminAlertsPage = lazy(() => import("@/app/admin/alerts/page"));
 const LandingPage = lazy(() => import("@/app/landing/page"));
 const TermsPage = lazy(() => import("@/app/terms/page"));
 const PrivacyPage = lazy(() => import("@/app/privacy/page"));
@@ -372,7 +374,17 @@ function App() {
                 element={
                   <RequireRole requiredRole="admin">
                     <RouteErrorBoundary>
-                      <OperatorChatPage />
+                      <AdminChatPage />
+                    </RouteErrorBoundary>
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/admin/alerts"
+                element={
+                  <RequireRole requiredRole="admin">
+                    <RouteErrorBoundary>
+                      <AdminAlertsPage />
                     </RouteErrorBoundary>
                   </RequireRole>
                 }

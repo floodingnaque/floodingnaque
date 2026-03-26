@@ -52,11 +52,11 @@ RUN npm run build
 # =====================================================
 # Stage 3: Production - Serve with Nginx
 # =====================================================
-FROM nginx:1.27-alpine AS production
+FROM nginx:1.28-alpine AS production
 
 LABEL maintainer="Floodingnaque Team" \
-      description="Floodingnaque Flood Prediction Frontend" \
-      org.opencontainers.image.source="https://github.com/floodingnaque/floodingnaque"
+    description="Floodingnaque Flood Prediction Frontend" \
+    org.opencontainers.image.source="https://github.com/floodingnaque/floodingnaque"
 
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf

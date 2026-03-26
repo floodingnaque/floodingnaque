@@ -16,6 +16,7 @@ import {
   useUnreadCount,
 } from "@/state/stores/alertStore";
 import { RISK_CONFIGS, type RiskLevel } from "@/types";
+import { useAcknowledgeAll } from "../hooks/useAlerts";
 import { AlertBadge } from "./AlertBadge";
 
 /**
@@ -63,6 +64,7 @@ export function LiveAlertsBanner({
   const liveAlerts = useLiveAlerts();
   const unreadCount = useUnreadCount();
   const { markAllRead } = useAlertActions();
+  const acknowledgeAll = useAcknowledgeAll();
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -80,12 +82,15 @@ export function LiveAlertsBanner({
   const handleDismiss = () => {
     markAllRead();
     setIsDismissed(true);
+    // Persist acknowledgement to backend so Alert Management stays in sync
+    acknowledgeAll.mutate();
     // Reset dismissed state after some time so future alerts can show
     setTimeout(() => setIsDismissed(false), 60000);
   };
 
   const handleViewAll = () => {
     markAllRead();
+    acknowledgeAll.mutate();
     onViewAll?.();
   };
 

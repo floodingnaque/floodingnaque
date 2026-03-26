@@ -31,6 +31,11 @@ export {
 } from "./components/AlertChannelPanel";
 export { AlertList } from "./components/AlertList";
 export { ConnectionStatus } from "./components/ConnectionStatus";
+export {
+  EmailSubscriptionToggle,
+  EmailSubscriptionToggleSkeleton,
+} from "./components/EmailSubscriptionToggle";
+export type { EmailSubscriptionToggleProps } from "./components/EmailSubscriptionToggle";
 export { LiveAlertsBanner } from "./components/LiveAlertsBanner";
 export { PushPermissionPrompt } from "./components/PushPermissionPrompt";
 export { SmsSimulationPanel } from "./components/SmsSimulationPanel";

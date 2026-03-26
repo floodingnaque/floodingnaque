@@ -64,7 +64,7 @@ services:
       - SCHEDULER_TIMEZONE=Asia/Manila
       # Model integrity - checksum verification without requiring HMAC signature
       - VERIFY_MODEL_INTEGRITY=True
-      - REQUIRE_MODEL_SIGNATURE=False
+      - REQUIRE_MODEL_SIGNATURE=True
     env_file:
       - ./backend/.env.staging
     volumes:

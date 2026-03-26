@@ -329,7 +329,7 @@ export function OperatorLayout() {
   const unreadCount = useUnreadCount();
 
   const { isConnected, reconnect } = useAlertStream({
-    enabled: import.meta.env.VITE_ENABLE_SSE === "true",
+    enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
 
   const confirmLogout = useCallback(() => {

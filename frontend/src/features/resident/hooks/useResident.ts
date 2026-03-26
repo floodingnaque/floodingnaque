@@ -59,7 +59,7 @@ export function useMyReports(params?: { limit?: number; page?: number }) {
   });
 }
 
-/** Fetch verified community reports (visible to all residents) */
+/** Fetch community reports visible to all residents (pending + verified, not rejected) */
 export function useCommunityReports(params?: {
   barangay?: string;
   hours?: number;
@@ -68,7 +68,7 @@ export function useCommunityReports(params?: {
 }) {
   return useQuery({
     queryKey: residentKeys.communityReports(params),
-    queryFn: () => communityApi.getReports({ ...params, verified: true }),
+    queryFn: () => communityApi.getReports(params),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });

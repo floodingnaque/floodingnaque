@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FloodMap } from "@/features/map";
+import { BarangayRiskMap } from "@/features/dashboard";
 import { useHouseholdProfile } from "@/features/resident";
 
 export default function ResidentPlanPage() {
@@ -61,11 +61,7 @@ export default function ResidentPlanPage() {
       </div>
 
       {/* ── Map Placeholder ───────────────────────────────────────── */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          <FloodMap height={350} />
-        </CardContent>
-      </Card>
+      <BarangayRiskMap height={350} />
 
       {/* ── Step-by-step Plan ─────────────────────────────────────── */}
       <Card>

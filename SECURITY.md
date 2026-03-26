@@ -24,7 +24,7 @@ Instead, please report them via one of the following methods:
 
 ### 2. Email
 
-Send details to: **iamdefinitely.ramil@gmail.com**
+Send details to: **security@floodingnaque.com**
 
 ### What to Include
 

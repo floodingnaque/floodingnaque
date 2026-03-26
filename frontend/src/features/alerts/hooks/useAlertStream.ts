@@ -125,6 +125,8 @@ export function useAlertStream(
       try {
         const recent = await alertsApi.getRecentAlerts(20);
         for (const alert of recent) {
+          // Skip already-acknowledged alerts to avoid re-surfacing dismissed ones
+          if ("acknowledged" in alert && alert.acknowledged) continue;
           addAlert(alert);
           onAlertRef.current?.(alert);
         }

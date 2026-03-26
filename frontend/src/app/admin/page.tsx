@@ -43,6 +43,7 @@ import {
   adminQueryKeys,
   useSystemHealth,
 } from "@/features/admin/hooks/useAdmin";
+import { BarangayRiskMap } from "@/features/dashboard";
 import {
   dashboardQueryKeys,
   useDashboardStats,
@@ -496,6 +497,18 @@ export default function AdminPage() {
               />
             </motion.div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Barangay Flood Risk Map */}
+      <section className="py-10 bg-background">
+        <div className="w-full px-6">
+          <SectionHeading
+            label="Situational Awareness"
+            title="Barangay Flood Risk Map"
+            subtitle="City-wide overview of current flood risk levels per barangay"
+          />
+          <BarangayRiskMap height={500} />
         </div>
       </section>
 

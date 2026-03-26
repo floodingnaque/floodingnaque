@@ -1,5 +1,5 @@
 /**
- * FormField — Web 3.0 Enhanced Form Input
+ * FormField - Web 3.0 Enhanced Form Input
  *
  * A polished form field with icon prefix, glassmorphism styling,
  * animated focus ring, and smooth error transitions.

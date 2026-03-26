@@ -936,6 +936,12 @@ def update_current_user():
                         return api_error("EmailConflict", "Email address is already in use", HTTP_CONFLICT, request_id)
                     user.email = email
 
+            # Update notification preferences
+            if "sms_alerts_enabled" in data:
+                user.sms_alerts_enabled = bool(data["sms_alerts_enabled"])
+            if "email_alerts_enabled" in data:
+                user.email_alerts_enabled = bool(data["email_alerts_enabled"])
+
             session.commit()
             user_data = user.to_dict(include_sensitive=True)
 

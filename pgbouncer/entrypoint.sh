@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # =====================================================
 # FLOODINGNAQUE - PgBouncer Entrypoint Script
 # =====================================================
@@ -61,10 +61,10 @@ DB_REPLICA_PORT="${DB_REPLICA_PORT:-$DB_PORT}"
 # PgBouncer settings (these don't need _FILE as they're not secrets)
 PGBOUNCER_POOL_MODE="${PGBOUNCER_POOL_MODE:-transaction}"
 PGBOUNCER_MAX_CLIENT_CONN="${PGBOUNCER_MAX_CLIENT_CONN:-1000}"
-PGBOUNCER_DEFAULT_POOL_SIZE="${PGBOUNCER_DEFAULT_POOL_SIZE:-25}"
+PGBOUNCER_DEFAULT_POOL_SIZE="${PGBOUNCER_DEFAULT_POOL_SIZE:-20}"
 PGBOUNCER_MIN_POOL_SIZE="${PGBOUNCER_MIN_POOL_SIZE:-5}"
 PGBOUNCER_RESERVE_POOL_SIZE="${PGBOUNCER_RESERVE_POOL_SIZE:-10}"
-PGBOUNCER_MAX_DB_CONNECTIONS="${PGBOUNCER_MAX_DB_CONNECTIONS:-50}"
+PGBOUNCER_MAX_DB_CONNECTIONS="${PGBOUNCER_MAX_DB_CONNECTIONS:-45}"
 
 # Admin users - Support _FILE pattern for admin/stats passwords
 PGBOUNCER_ADMIN_USER="${PGBOUNCER_ADMIN_USER:-pgbouncer_admin}"

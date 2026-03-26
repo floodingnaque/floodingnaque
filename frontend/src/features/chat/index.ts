@@ -7,3 +7,4 @@ export { OnlineCount } from "./components/OnlineCount";
 export { TypingIndicator } from "./components/TypingIndicator";
 export { useChannelOverview } from "./hooks/useChannelOverview";
 export { useChat } from "./hooks/useChat";
+export { useUnreadCount } from "./hooks/useUnreadCount";

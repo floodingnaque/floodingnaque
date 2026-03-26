@@ -215,6 +215,13 @@ def check_environment_variables() -> HealthCheckResult:
         elif var in UNSAFE_DEFAULTS and value in UNSAFE_DEFAULTS[var]:
             using_unsafe_defaults.append(var)
 
+    # Check API_KEY_HASH_SALT if bcrypt is unavailable (PBKDF2 fallback requires it)
+    try:
+        import bcrypt  # noqa: F401
+    except ImportError:
+        if not os.getenv("API_KEY_HASH_SALT"):
+            missing_required.append("API_KEY_HASH_SALT (bcrypt unavailable, PBKDF2 fallback requires salt)")
+
     # Check recommended variables
     for var in REQUIRED_ENV_VARS.get("recommended", []):
         if not os.getenv(var):
