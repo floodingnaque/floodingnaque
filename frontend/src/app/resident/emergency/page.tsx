@@ -6,6 +6,7 @@
 
 import { Download, ExternalLink, Phone } from "lucide-react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -84,6 +85,11 @@ function downloadVCard() {
 export default function ResidentEmergencyPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[{ label: "Home", href: "/resident" }, { label: "Emergency" }]}
+        className="mb-4"
+      />
+
       {/* ── Header ────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>

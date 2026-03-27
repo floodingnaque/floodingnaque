@@ -9,7 +9,9 @@
 import { PageLoader } from "@/components/feedback/PageLoader";
 import { canAccessRoute, getDefaultRoute } from "@/config/role-routes";
 import { useAuthStore } from "@/state/stores/authStore";
+import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 
 /**
  * ProtectedRoute guards routes that require authentication
@@ -38,7 +40,17 @@ export function ProtectedRoute() {
   // Enforce route access - prevent cross-role navigation
   // e.g. a resident manually typing /admin in the URL
   const currentPath = location.pathname;
-  if (!canAccessRoute(user.role, currentPath)) {
+  const accessDenied = !canAccessRoute(user.role, currentPath);
+
+  useEffect(() => {
+    if (accessDenied) {
+      toast.error(
+        "Access denied - you don't have permission to view that page",
+      );
+    }
+  }, [accessDenied]);
+
+  if (accessDenied) {
     return <Navigate to={getDefaultRoute(user.role)} replace />;
   }
 

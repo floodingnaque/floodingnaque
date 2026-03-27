@@ -49,7 +49,7 @@ interface AlertListProps {
 /**
  * Loading skeleton for alerts
  */
-function AlertListSkeleton({ count = 3 }: { count?: number }) {
+export function AlertListSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: count }).map((_, index) => (

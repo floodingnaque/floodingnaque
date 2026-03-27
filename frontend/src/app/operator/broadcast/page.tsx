@@ -5,6 +5,7 @@
  * POST /api/v1/lgu/broadcasts endpoint.
  */
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -203,6 +204,14 @@ export default function OperatorBroadcastPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Broadcast Center" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Compose Broadcast */}
       <Card>
         <CardHeader>
@@ -402,9 +411,9 @@ export default function OperatorBroadcastPage() {
                         variant="outline"
                         className={`text-xs capitalize ${
                           b.priority === "critical"
-                            ? "text-red-600 border-red-300"
+                            ? "text-red-600 dark:text-red-400 border-red-300"
                             : b.priority === "high"
-                              ? "text-amber-600 border-amber-300"
+                              ? "text-amber-600 dark:text-amber-400 border-amber-300"
                               : ""
                         }`}
                       >

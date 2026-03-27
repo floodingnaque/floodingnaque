@@ -8,6 +8,7 @@
 import { MessageSquare } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { ChannelSidebar, ChatPanel } from "@/features/chat";
 
 export default function OperatorChatPage() {
@@ -21,6 +22,14 @@ export default function OperatorChatPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-screen-2xl mx-auto">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Community Chat" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2">

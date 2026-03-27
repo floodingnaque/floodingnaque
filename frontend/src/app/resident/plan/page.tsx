@@ -9,6 +9,7 @@
 import { AlertTriangle, CheckCircle, Route, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,6 +21,39 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarangayRiskMap } from "@/features/dashboard";
 import { useHouseholdProfile } from "@/features/resident";
+
+const EVACUATION_STEPS = [
+  {
+    step: 1,
+    en: "Know Your Meeting Point",
+    fil: "Alamin ang meeting point ng pamilya",
+    desc: "Agree with your household on a meeting point outside your home in case you get separated.",
+  },
+  {
+    step: 2,
+    en: "Grab Your Go-Bag",
+    fil: "Kunin ang go-bag",
+    desc: "Bring documents, medicine, water, cash, and a charged phone.",
+  },
+  {
+    step: 3,
+    en: "Turn Off Utilities",
+    fil: "Patayin ang kuryente at gas",
+    desc: "Switch off electricity at the main breaker and close gas valves.",
+  },
+  {
+    step: 4,
+    en: "Follow Your Route",
+    fil: "Sundin ang ruta ng paglikas",
+    desc: "Take the shortest safe route to the nearest open evacuation center. Avoid flood-prone streets.",
+  },
+  {
+    step: 5,
+    en: "Register at the Center",
+    fil: "Magpa-rehistro sa evacuation center",
+    desc: "Sign in upon arrival so officials can account for everyone.",
+  },
+] as const;
 
 export default function ResidentPlanPage() {
   const { data: household, isLoading } = useHouseholdProfile();
@@ -49,6 +83,14 @@ export default function ResidentPlanPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/resident" },
+          { label: "Emergency Plan" },
+        ]}
+        className="mb-4"
+      />
+
       {/* ── Header ────────────────────────────────────────────────── */}
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -72,38 +114,7 @@ export default function ResidentPlanPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {[
-            {
-              step: 1,
-              en: "Know Your Meeting Point",
-              fil: "Alamin ang meeting point ng pamilya",
-              desc: "Agree with your household on a meeting point outside your home in case you get separated.",
-            },
-            {
-              step: 2,
-              en: "Grab Your Go-Bag",
-              fil: "Kunin ang go-bag",
-              desc: "Bring documents, medicine, water, cash, and a charged phone.",
-            },
-            {
-              step: 3,
-              en: "Turn Off Utilities",
-              fil: "Patayin ang kuryente at gas",
-              desc: "Switch off electricity at the main breaker and close gas valves.",
-            },
-            {
-              step: 4,
-              en: "Follow Your Route",
-              fil: "Sundin ang ruta ng paglikas",
-              desc: "Take the shortest safe route to the nearest open evacuation center. Avoid flood-prone streets.",
-            },
-            {
-              step: 5,
-              en: "Register at the Center",
-              fil: "Magpa-rehistro sa evacuation center",
-              desc: "Sign in upon arrival so officials can account for everyone.",
-            },
-          ].map((s) => (
+          {EVACUATION_STEPS.map((s) => (
             <div key={s.step} className="p-3 rounded-lg bg-muted/50">
               <div className="flex items-start gap-3">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0">

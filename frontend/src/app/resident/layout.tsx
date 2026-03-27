@@ -376,7 +376,7 @@ export function ResidentLayout() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const unreadCount = useUnreadCount();
 
-  const { isConnected, reconnect } = useAlertStream({
+  const { isConnected, reconnect, lastHeartbeat } = useAlertStream({
     enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
 
@@ -521,6 +521,7 @@ export function ResidentLayout() {
                 isConnected={isConnected}
                 onReconnect={reconnect}
                 showReconnectButton={false}
+                lastHeartbeat={lastHeartbeat}
                 className="hidden sm:flex"
               />
 

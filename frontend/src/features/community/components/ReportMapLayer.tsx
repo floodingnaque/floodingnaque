@@ -35,6 +35,27 @@ function markerOpacity(score: number | null): number {
   return 0.3 + (score ?? 0.5) * 0.7;
 }
 
+/**
+ * Time-decay factor: newer reports are more opaque, older fade out.
+ * Returns 1.0 for brand-new reports, down to 0.3 at maxHours.
+ */
+function timeDecayFactor(createdAt: string, maxHours: number): number {
+  const ageMs = Date.now() - new Date(createdAt).getTime();
+  const ageHours = ageMs / (1000 * 60 * 60);
+  return Math.max(0.3, 1 - ageHours / maxHours);
+}
+
+/**
+ * Combined opacity: credibility × time decay
+ */
+function combinedOpacity(
+  score: number | null,
+  createdAt: string,
+  maxHours: number,
+): number {
+  return markerOpacity(score) * timeDecayFactor(createdAt, maxHours);
+}
+
 function markerRadius(floodHeightCm: number | null): number {
   if (floodHeightCm == null) return 8;
   if (floodHeightCm < 15) return 6;
@@ -126,7 +147,11 @@ export function ReportMapLayer({ hours = 6, limit = 50 }: ReportMapLayerProps) {
           pathOptions={{
             color: RISK_COLORS[report.risk_label] ?? RISK_COLORS.Alert,
             fillColor: RISK_COLORS[report.risk_label] ?? RISK_COLORS.Alert,
-            fillOpacity: markerOpacity(report.credibility_score),
+            fillOpacity: combinedOpacity(
+              report.credibility_score,
+              report.created_at,
+              hours,
+            ),
             weight: 2,
           }}
         >
@@ -158,11 +183,19 @@ export function ReportMapLayer({ hours = 6, limit = 50 }: ReportMapLayerProps) {
               <div className="flex items-center gap-2">
                 {report.verified ? (
                   <Badge variant="default" className="text-xs bg-risk-safe">
-                    Verified ✓
+                    ✓ Verified
+                  </Badge>
+                ) : (report.credibility_score ?? 0) >= 0.6 ? (
+                  <Badge variant="secondary" className="text-xs">
+                    AI Scored:{" "}
+                    {((report.credibility_score ?? 0) * 100).toFixed(0)}%
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    Score: {(report.credibility_score ?? 0).toFixed(2)}
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-amber-400 text-amber-600"
+                  >
+                    Pending
                   </Badge>
                 )}
               </div>

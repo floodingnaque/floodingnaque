@@ -19,6 +19,7 @@ import {
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,6 +84,11 @@ export default function ResidentCommunityPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[{ label: "Home", href: "/resident" }, { label: "Community" }]}
+        className="mb-4"
+      />
+
       {/* ── Header ────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

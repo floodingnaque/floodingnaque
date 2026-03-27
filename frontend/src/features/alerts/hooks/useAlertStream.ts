@@ -18,6 +18,7 @@ import { captureException } from "@/lib/sentry";
 import type { ConnectionState } from "@/state/stores/alertStore";
 import { useAlertStore } from "@/state/stores/alertStore";
 import type { Alert, SSEAlertData, SSEAlertEvent } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   startTransition,
   useCallback,
@@ -27,6 +28,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { alertsApi } from "../services/alertsApi";
+import { alertKeys } from "./useAlerts";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -74,6 +76,9 @@ export function useAlertStream(
   const setConnectionError = useAlertStore((state) => state.setConnectionError);
   const pruneDedup = useAlertStore((state) => state.pruneDedup);
   const connectionState = useAlertStore((state) => state.connectionState);
+
+  // Query client for cache invalidation on SSE events
+  const queryClient = useQueryClient();
 
   // Local state
   const [lastHeartbeat, setLastHeartbeat] = useState<Date | null>(null);
@@ -274,6 +279,8 @@ export function useAlertStream(
           startTransition(() => {
             addAlert(data.alert);
           });
+          // Keep REST query cache in sync with SSE-fed store
+          queryClient.invalidateQueries({ queryKey: alertKeys.all });
           onAlertRef.current?.(data.alert);
         } catch (parseError) {
           captureException(parseError, { context: "SSE alert event parse" });

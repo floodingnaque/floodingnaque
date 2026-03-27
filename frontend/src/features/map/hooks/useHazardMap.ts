@@ -32,6 +32,7 @@ export interface HazardFeatureProperties {
   hazard_classification: "low" | "moderate" | "high";
   hazard_color: string;
   hazard_factors: Record<string, number>;
+  confidence: number;
   current_rainfall_mm: number;
 }
 

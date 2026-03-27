@@ -372,6 +372,88 @@ def get_evacuation_centers_geojson():
         return api_error("InternalError", "Failed to fetch evacuation centers", HTTP_INTERNAL_ERROR, request_id)
 
 
+@gis_bp.route("/flood-depth", methods=["GET"])
+@limiter.limit("60 per minute")
+def get_flood_depth():
+    """
+    Estimate flood depth per barangay using the physics-informed model.
+
+    Uses current rainfall data (when available) or a supplied rainfall
+    parameter to run ``estimate_flood_depth()`` for all 16 barangays.
+
+    Query Parameters:
+        rainfall_mm (float): Override rainfall amount in mm (default: live radar data)
+        duration_hours (float): Rainfall duration in hours (default: 1)
+    ---
+    tags:
+      - GIS
+      - Flood Depth
+    responses:
+      200:
+        description: Flood depth estimates per barangay
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        from app.services.gis_service import BARANGAY_META
+        from app.services.spatial_features import estimate_flood_depth
+
+        rainfall_override = request.args.get("rainfall_mm", type=float)
+        duration_hours = request.args.get("duration_hours", 1.0, type=float)
+
+        # Try to get current rainfall per barangay from radar
+        current_rainfall: dict = {}
+        if rainfall_override is None:
+            try:
+                from app.services.pagasa_radar_service import get_pagasa_radar_service
+
+                radar = get_pagasa_radar_service()
+                if radar.is_enabled():
+                    city_data = radar.get_city_precipitation()
+                    if city_data.get("status") == "ok":
+                        for k, v in city_data.get("barangays", {}).items():
+                            current_rainfall[k] = v.get("rainfall_mm", 0)
+            except Exception as exc:
+                logger.warning("Could not fetch radar rainfall for flood depth: %s", exc)
+
+        barangays = {}
+        for key in BARANGAY_META:
+            rain_mm = rainfall_override if rainfall_override is not None else current_rainfall.get(key, 5.0)
+            try:
+                depth = estimate_flood_depth(
+                    barangay=key,
+                    rainfall_mm=rain_mm,
+                    duration_hours=duration_hours,
+                )
+                barangays[key] = {
+                    "depth_cm": round(depth["estimated_depth_m"] * 100, 1),
+                    "depth_range_cm": [round(d * 100, 1) for d in depth["depth_range_m"]],
+                    "classification": depth["classification"],
+                    "uncertainty_pct": 30,
+                }
+            except Exception as exc:
+                logger.warning("Flood depth estimation failed for %s: %s", key, exc)
+                barangays[key] = {
+                    "depth_cm": 0,
+                    "depth_range_cm": [0, 0],
+                    "classification": "none",
+                    "uncertainty_pct": 100,
+                }
+
+        return api_success(
+            data={
+                "barangays": barangays,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            message="Flood depth estimates",
+            request_id=request_id,
+        )
+
+    except Exception as exc:
+        logger.error("Error estimating flood depth [%s]: %s", request_id, exc, exc_info=True)
+        return api_error("InternalError", "Failed to estimate flood depth", HTTP_INTERNAL_ERROR, request_id)
+
+
 @gis_bp.route("/barangays/invalidate-cache", methods=["POST"])
 @limiter.limit("10 per minute")
 def invalidate_barangay_cache():

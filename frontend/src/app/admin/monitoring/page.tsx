@@ -7,6 +7,7 @@
  */
 
 import { PageHeader } from "@/components/layout";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -325,6 +326,13 @@ export default function AdminMonitoringPage() {
 
   return (
     <div className="w-full space-y-0 pb-10">
+      <Breadcrumb
+        items={[
+          { label: "Admin", href: "/admin" },
+          { label: "System Monitoring" },
+        ]}
+        className="mb-4 px-4 sm:px-6 lg:px-8 pt-6"
+      />
       <PageHeader
         icon={Activity}
         title="System Monitoring"

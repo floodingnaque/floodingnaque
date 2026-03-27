@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,6 +126,14 @@ export default function OperatorAARPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "After-Action Reports" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

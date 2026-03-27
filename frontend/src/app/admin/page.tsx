@@ -15,15 +15,19 @@ import {
   Clock,
   Cpu,
   Database,
+  FileText,
   Loader2,
+  Radio,
   RefreshCw,
   Server,
   Shield,
+  Users,
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { fadeUp, staggerContainer } from "@/lib/motion";
@@ -361,6 +365,10 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="w-full px-6 pt-6">
+        <Breadcrumb
+          items={[{ label: "Admin", href: "/admin" }, { label: "Dashboard" }]}
+          className="mb-4"
+        />
         <PageHeader
           icon={Shield}
           title="Admin Panel"
@@ -395,7 +403,7 @@ export default function AdminPage() {
       </div>
 
       {/* SLA / Degraded Service Warning Banner */}
-      {degradedServices.length > 0 && (
+      {degradedServices.length > 0 ? (
         <div className="w-full px-6 mt-4">
           <div className="rounded-xl border border-risk-critical/30 bg-risk-critical/5 px-4 py-3 flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-risk-critical shrink-0" />
@@ -412,7 +420,58 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : !healthLoading && health ? (
+        <div className="w-full px-6 mt-4">
+          <div className="rounded-xl border border-risk-safe/30 bg-risk-safe/5 px-4 py-3 flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-risk-safe shrink-0" />
+            <span className="text-sm font-medium text-risk-safe">
+              All Systems Operational
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Quick Actions */}
+      <div className="w-full px-6 mt-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => navigate("/admin/alerts")}
+          >
+            <Radio className="h-3.5 w-3.5" />
+            Broadcast Alert
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => navigate("/admin/users")}
+          >
+            <Users className="h-3.5 w-3.5" />
+            Manage Users
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => navigate("/admin/logs")}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            View Logs
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => navigate("/admin/config")}
+          >
+            <Server className="h-3.5 w-3.5" />
+            System Config
+          </Button>
+        </div>
+      </div>
 
       {/* System Stats Section */}
       <section className="py-10 bg-muted/30">
@@ -558,7 +617,8 @@ export default function AdminPage() {
                   />
                   {dbLatency != null && dbLatency > 500 && (
                     <p className="text-xs text-risk-alert pt-2">
-                      <AlertTriangle className="h-3 w-3 inline" /> Database latency exceeds 500ms threshold
+                      <AlertTriangle className="h-3 w-3 inline" /> Database
+                      latency exceeds 500ms threshold
                     </p>
                   )}
                 </CardContent>
@@ -737,7 +797,8 @@ export default function AdminPage() {
                                 </p>
                                 {isHighStd && (
                                   <p className="text-xs text-risk-alert">
-                                    <AlertTriangle className="h-3 w-3 inline" /> High variance
+                                    <AlertTriangle className="h-3 w-3 inline" />{" "}
+                                    High variance
                                   </p>
                                 )}
                               </div>

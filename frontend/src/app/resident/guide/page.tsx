@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -35,7 +36,7 @@ const CHECKLISTS: ChecklistSection[] = [
     title: "Before a Flood",
     titleFil: "Bago Mag-baha",
     icon: ShieldCheck,
-    iconColor: "text-green-600",
+    iconColor: "text-green-600 dark:text-green-400",
     items: [
       {
         en: "Know your barangay's flood-prone areas and evacuation routes.",
@@ -68,7 +69,7 @@ const CHECKLISTS: ChecklistSection[] = [
     title: "During a Flood",
     titleFil: "Habang Bumabaha",
     icon: CloudRain,
-    iconColor: "text-amber-600",
+    iconColor: "text-amber-600 dark:text-amber-400",
     items: [
       {
         en: "Move to higher ground immediately if water is rising.",
@@ -195,6 +196,14 @@ export default function ResidentGuidePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/resident" },
+          { label: "Safety Guide" },
+        ]}
+        className="mb-4"
+      />
+
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />

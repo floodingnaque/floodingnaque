@@ -6,8 +6,10 @@
  */
 
 import { motion, useInView } from "framer-motion";
-import { Map, WifiOff } from "lucide-react";
-import { useRef, useState } from "react";
+import { Crosshair, Loader2, Map, WifiOff } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
@@ -22,6 +24,23 @@ import { fadeUp, staggerContainer } from "@/lib/motion";
 export default function MapPage() {
   const { data: prediction } = useLivePrediction();
   const [reportOpen, setReportOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(
+    null,
+  );
+
+  const handleLocate = useCallback(() => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation([pos.coords.latitude, pos.coords.longitude]);
+        setLocating(false);
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []);
 
   // Real-time capacity SSE stream
   const { isConnected: capacityConnected } = useCapacityStream({
@@ -53,13 +72,33 @@ export default function MapPage() {
             title="Barangay Flood Risk Map"
             subtitle="Click any barangay to view detailed risk information, evacuation centers, and historical data."
           />
+          <div className="flex justify-end mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleLocate}
+              disabled={locating}
+            >
+              {locating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Crosshair className="h-3 w-3" />
+              )}
+              My Location
+            </Button>
+          </div>
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             animate={mapInView ? "show" : undefined}
           >
             <motion.div variants={fadeUp}>
-              <BarangayRiskMap prediction={prediction} height={600} />
+              <BarangayRiskMap
+                prediction={prediction}
+                height={600}
+                userLocation={userLocation}
+              />
             </motion.div>
           </motion.div>
         </div>

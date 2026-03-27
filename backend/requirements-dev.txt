@@ -57,5 +57,8 @@ syrupy==4.6.1  # Snapshot testing framework
 google-cloud-bigquery-storage==2.27.0  # Fast BigQuery reads for testing
 # Note: Use unittest.mock or pytest-mock for mocking Google Cloud services
 
+# Tunneling
+pyngrok>=7.0.0  # Ngrok tunnels for local development (webhook testing, mobile previews)
+
 # ML Experiment Tracking
 mlflow>=2.15.0  # Training experiment tracking (optional at runtime, used by training scripts)

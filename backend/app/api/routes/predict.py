@@ -573,3 +573,319 @@ def predict_by_location():
     except Exception as e:
         logger.error(f"Error in predict/location endpoint [{request_id}]: {e}", exc_info=True)
         return api_error("PredictionFailed", "An error occurred during prediction", HTTP_INTERNAL_ERROR, request_id)
+
+
+# ---------------------------------------------------------------------------
+# Forecast Map - per-barangay predictions at current + future time offsets
+# ---------------------------------------------------------------------------
+
+# Parañaque City center for single weather fetch
+_CITY_CENTER_LAT = 14.4793
+_CITY_CENTER_LON = 121.0198
+
+# Precipitation scale factors for future projections.
+# These approximate intensification / dissipation patterns from PAGASA advisories.
+_RAIN_SCALE = {0: 1.0, 1: 1.15, 3: 1.35}
+
+
+@predict_bp.route("/forecast-map", methods=["GET"])
+@rate_limit_with_burst("30 per hour")
+@require_auth_or_api_key
+@require_scope("predict")
+def forecast_map():
+    """
+    Get per-barangay flood risk predictions at current, +1 h, and +3 h.
+
+    Fetches weather once for the city, then runs the ML model for each
+    barangay applying precipitation scaling factors for future offsets.
+
+    Query Parameters:
+        hours (str): Comma-separated offsets, default "0,1,3"
+
+    Returns:
+        200: ``{ barangays: { <key>: { "0": {...}, "1": {...}, "3": {...} } } }``
+    """
+    from app.services.gis_service import BARANGAY_META
+
+    request_id = getattr(g, "request_id", "unknown")
+
+    # Parse requested hour offsets
+    hours_param = request.args.get("hours", "0,1,3")
+    try:
+        offsets = [int(h.strip()) for h in hours_param.split(",") if h.strip().isdigit()]
+    except ValueError:
+        offsets = [0, 1, 3]
+    if not offsets:
+        offsets = [0, 1, 3]
+    # Clamp to safe range
+    offsets = [h for h in offsets if 0 <= h <= 6]
+    if not offsets:
+        offsets = [0]
+
+    try:
+        # Single weather fetch for the whole city
+        weather_data = fetch_weather_by_coordinates(_CITY_CENTER_LAT, _CITY_CENTER_LON)
+        base_precip = weather_data.get("precipitation", 0.0)
+
+        result: dict = {}
+        for key, meta in BARANGAY_META.items():
+            barangay_forecasts: dict = {}
+            for offset in offsets:
+                # Scale precipitation for future offsets
+                scale = _RAIN_SCALE.get(offset, 1.0 + offset * 0.1)
+                forecast_input = {
+                    "temperature": weather_data["temperature"],
+                    "humidity": weather_data["humidity"],
+                    "precipitation": round(base_precip * scale, 2),
+                }
+
+                try:
+                    pred = predict_flood(forecast_input, return_proba=True, return_risk_level=True)
+                    if isinstance(pred, dict):
+                        barangay_forecasts[str(offset)] = {
+                            "risk_level": pred.get("risk_level", 0),
+                            "risk_label": pred.get("risk_label", "Safe"),
+                            "probability": round(pred.get("probability", 0), 4),
+                            "confidence": round(pred.get("confidence", 0), 3),
+                        }
+                    else:
+                        barangay_forecasts[str(offset)] = {
+                            "risk_level": 1 if pred == 1 else 0,
+                            "risk_label": "Alert" if pred == 1 else "Safe",
+                            "probability": 0,
+                            "confidence": 0.5,
+                        }
+                except Exception as exc:
+                    logger.warning("Forecast prediction failed for %s +%dh: %s", key, offset, exc)
+                    barangay_forecasts[str(offset)] = {
+                        "risk_level": 0,
+                        "risk_label": "Safe",
+                        "probability": 0,
+                        "confidence": 0,
+                    }
+
+            result[key] = barangay_forecasts
+
+        return jsonify({
+            "success": True,
+            "barangays": result,
+            "offsets": offsets,
+            "weather_snapshot": {
+                "temperature": weather_data.get("temperature"),
+                "humidity": weather_data.get("humidity"),
+                "precipitation": weather_data.get("precipitation"),
+                "source": weather_data.get("source"),
+            },
+            "request_id": request_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }), HTTP_OK
+
+    except WeatherFetchError as e:
+        logger.error("Forecast map weather fetch failed [%s]: %s", request_id, e)
+        return api_error("WeatherFetchFailed", str(e), HTTP_INTERNAL_ERROR, request_id)
+    except Exception as e:
+        logger.error("Forecast map failed [%s]: %s", request_id, e, exc_info=True)
+        return api_error("ForecastFailed", "Failed to generate forecast map", HTTP_INTERNAL_ERROR, request_id)
+
+
+# ---------------------------------------------------------------------------
+# Scenario Simulation - ephemeral what-if prediction (no DB persistence)
+# ---------------------------------------------------------------------------
+
+# Default Parañaque climate values for parameters not overridden
+_SIMULATION_DEFAULTS = {
+    "temperature": 303.15,  # ~30°C
+    "humidity": 75.0,
+    "precipitation": 5.0,
+    "wind_speed": 3.0,
+    "pressure": 1010.0,
+}
+
+# Preset scenario configurations (realistic Parañaque weather)
+_SCENARIO_PRESETS = {
+    "normal": {
+        "label": "Normal Day",
+        "temperature": 304.15,
+        "humidity": 72.0,
+        "precipitation": 2.0,
+    },
+    "heavy_monsoon": {
+        "label": "Heavy Monsoon",
+        "temperature": 300.15,
+        "humidity": 95.0,
+        "precipitation": 45.0,
+    },
+    "typhoon": {
+        "label": "Typhoon Conditions",
+        "temperature": 298.15,
+        "humidity": 98.0,
+        "precipitation": 120.0,
+        "wind_speed": 45.0,
+    },
+    "high_tide_rain": {
+        "label": "High Tide + Rain",
+        "temperature": 302.15,
+        "humidity": 88.0,
+        "precipitation": 30.0,
+    },
+}
+
+
+@predict_bp.route("/simulate", methods=["POST"])
+@rate_limit_with_burst("30 per hour")
+@validate_request_size(endpoint_name="predict")
+@require_auth_or_api_key
+@require_scope("predict")
+def simulate():
+    """
+    Run a what-if flood prediction without persisting to the database.
+
+    Accepts weather parameter overrides. Omitted parameters use safe
+    defaults for Parañaque City. Returns the full prediction result
+    including XAI explanation.
+
+    Request Body:
+        temperature (float): Temperature in Kelvin (optional)
+        humidity (float): Relative humidity 0-100 (optional)
+        precipitation (float): Precipitation in mm/hour (optional)
+        wind_speed (float): Wind speed in m/s (optional)
+        pressure (float): Atmospheric pressure in hPa (optional)
+        preset (str): Named scenario preset (optional, overrides individual params)
+
+    Returns:
+        200: Simulation result with prediction, risk classification, and XAI
+    ---
+    tags:
+      - Predictions
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            temperature:
+              type: number
+              description: Temperature in Kelvin (default 303.15)
+            humidity:
+              type: number
+              description: Relative humidity 0-100% (default 75)
+            precipitation:
+              type: number
+              description: Precipitation in mm/hour (default 5)
+            wind_speed:
+              type: number
+              description: Wind speed in m/s (default 3)
+            pressure:
+              type: number
+              description: Atmospheric pressure in hPa (default 1010)
+            preset:
+              type: string
+              enum: [normal, heavy_monsoon, typhoon, high_tide_rain]
+              description: Named preset scenario
+    responses:
+      200:
+        description: Simulation result
+      400:
+        description: Validation error
+    security:
+      - api_key: []
+      - bearer_auth: []
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        input_data = request.get_json(force=True, silent=True) or {}
+        if not isinstance(input_data, dict):
+            return api_error("InvalidInput", "Request body must be a JSON object", HTTP_BAD_REQUEST, request_id)
+
+        # Apply preset if specified
+        preset_name = input_data.get("preset")
+        if preset_name:
+            if preset_name not in _SCENARIO_PRESETS:
+                return api_error(
+                    "ValidationError",
+                    f"Unknown preset. Valid presets: {', '.join(_SCENARIO_PRESETS)}",
+                    HTTP_BAD_REQUEST,
+                    request_id,
+                )
+            base = {**_SIMULATION_DEFAULTS, **_SCENARIO_PRESETS[preset_name]}
+        else:
+            base = dict(_SIMULATION_DEFAULTS)
+
+        # Override defaults with any explicitly provided values
+        for key in ("temperature", "humidity", "precipitation", "wind_speed", "pressure"):
+            val = input_data.get(key)
+            if val is not None:
+                try:
+                    base[key] = float(val)
+                except (TypeError, ValueError):
+                    return api_error("ValidationError", f"{key} must be a number", HTTP_BAD_REQUEST, request_id)
+
+        # Validate ranges
+        try:
+            validated = InputValidator.validate_prediction_input(base)
+        except ValidationError as e:
+            return api_error(
+                "ValidationError", "Input validation failed", HTTP_BAD_REQUEST, request_id, errors=getattr(e, "errors", None)
+            )
+
+        # Run prediction (ephemeral - not persisted)
+        prediction = predict_flood(
+            validated,
+            return_proba=True,
+            return_risk_level=True,
+        )
+
+        if isinstance(prediction, dict):
+            response = {
+                "success": True,
+                "simulation": True,
+                "prediction": prediction["prediction"],
+                "flood_risk": "high" if prediction["prediction"] == 1 else "low",
+                "model_version": prediction.get("model_version"),
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "input_parameters": base,
+                "preset": preset_name,
+                "available_presets": {k: v.get("label", k) for k, v in _SCENARIO_PRESETS.items()},
+            }
+            if "probability" in prediction:
+                response["probability"] = prediction["probability"]
+            if "risk_label" in prediction:
+                response["risk_level"] = prediction.get("risk_level")
+                response["risk_label"] = prediction.get("risk_label")
+                response["risk_color"] = prediction.get("risk_color")
+                response["risk_description"] = prediction.get("risk_description")
+                response["confidence"] = prediction.get("confidence")
+            if "smart_alert" in prediction:
+                response["smart_alert"] = prediction["smart_alert"]
+            if "explanation" in prediction:
+                response["explanation"] = prediction["explanation"]
+            if "features_used" in prediction:
+                response["features_used"] = prediction["features_used"]
+        else:
+            response = {
+                "success": True,
+                "simulation": True,
+                "prediction": prediction,
+                "flood_risk": "high" if prediction == 1 else "low",
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "input_parameters": base,
+                "preset": preset_name,
+                "available_presets": {k: v.get("label", k) for k, v in _SCENARIO_PRESETS.items()},
+            }
+
+        return jsonify(response), HTTP_OK
+
+    except FileNotFoundError as e:
+        logger.error(f"Model not found in simulate [{request_id}]: {e}")
+        return api_error("ModelNotFound", "Requested model not found", HTTP_NOT_FOUND, request_id)
+    except Exception as e:
+        logger.error(f"Simulation failed [{request_id}]: {e}", exc_info=True)
+        return api_error("SimulationFailed", "An error occurred during simulation", HTTP_INTERNAL_ERROR, request_id)

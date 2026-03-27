@@ -11,6 +11,7 @@ import type { RiskLevel } from "@/types/api/prediction";
 import L from "leaflet";
 import { memo, useMemo } from "react";
 import { Marker, Popup } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 
 export interface RiskMarkersProps {
   /** Array of alerts to display as markers */
@@ -58,6 +59,7 @@ function isInBounds(lat: number, lng: number): boolean {
 function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
   const color = RISK_COLORS[riskLevel];
   const label = RISK_LABELS[riskLevel];
+  const isCritical = riskLevel === 2;
 
   const svgIcon = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" role="img" aria-label="${label} risk marker">
@@ -74,7 +76,9 @@ function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
 
   return L.divIcon({
     html: svgIcon,
-    className: "custom-marker-icon",
+    className: isCritical
+      ? "custom-marker-icon marker-pulse-critical"
+      : "custom-marker-icon",
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
@@ -92,7 +96,36 @@ function formatDate(dateString: string): string {
 }
 
 /**
- * RiskMarkers - Renders colored markers for alerts on the map
+ * Create a custom cluster icon showing alert count + dominant risk color
+ */
+function createClusterIcon(cluster: L.MarkerCluster): L.DivIcon {
+  const childMarkers = cluster.getAllChildMarkers();
+  const count = childMarkers.length;
+
+  // Determine dominant risk color by highest severity in cluster
+  let maxRisk: RiskLevel = 0;
+  for (const m of childMarkers) {
+    const risk = (m.options as { riskLevel?: RiskLevel }).riskLevel ?? 0;
+    if (risk > maxRisk) maxRisk = risk;
+  }
+  const color = RISK_COLORS[maxRisk];
+  const size = count < 10 ? 36 : count < 50 ? 44 : 52;
+
+  return L.divIcon({
+    html: `<div style="
+      background:${color};opacity:0.85;color:#fff;
+      width:${size}px;height:${size}px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:13px;border:2px solid #fff;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    ">${count}</div>`,
+    className: "custom-cluster-icon",
+    iconSize: L.point(size, size),
+  });
+}
+
+/**
+ * RiskMarkers - Renders clustered colored markers for alerts on the map
  *
  * @example
  * <RiskMarkers alerts={alerts} />
@@ -130,78 +163,92 @@ export const RiskMarkers = memo(function RiskMarkers({
 
   return (
     <>
-      {validAlerts.map((alert) => (
-        <Marker
-          key={alert.id}
-          position={[alert.latitude!, alert.longitude!]}
-          icon={markerIcons[alert.risk_level]}
-        >
-          <Popup className="risk-marker-popup">
-            <div className="min-w-50 p-1">
-              {/* Risk Level Badge */}
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className={`inline-block h-3 w-3 rounded-full ${
-                    alert.risk_level === 0
-                      ? "bg-risk-safe"
-                      : alert.risk_level === 1
-                        ? "bg-risk-alert"
-                        : "bg-risk-critical"
-                  }`}
-                />
-                <span className="font-semibold text-sm">
-                  {RISK_LABELS[alert.risk_level]}
-                </span>
-              </div>
+      <MarkerClusterGroup
+        iconCreateFunction={createClusterIcon}
+        maxClusterRadius={50}
+        spiderfyOnMaxZoom
+        showCoverageOnHover={false}
+        zoomToBoundsOnClick
+      >
+        {validAlerts.map((alert) => (
+          <Marker
+            key={alert.id}
+            position={[alert.latitude!, alert.longitude!]}
+            icon={markerIcons[alert.risk_level]}
+            // @ts-expect-error custom option for cluster icon color
+            riskLevel={alert.risk_level}
+          >
+            <Popup className="risk-marker-popup">
+              <div className="min-w-50 p-1">
+                {/* Risk Level Badge */}
+                <div className="mb-2 flex items-center gap-2">
+                  <span
+                    className={`inline-block h-3 w-3 rounded-full ${
+                      alert.risk_level === 0
+                        ? "bg-risk-safe"
+                        : alert.risk_level === 1
+                          ? "bg-risk-alert"
+                          : "bg-risk-critical"
+                    }`}
+                  />
+                  <span className="font-semibold text-sm">
+                    {RISK_LABELS[alert.risk_level]}
+                  </span>
+                </div>
 
-              {/* Alert Message */}
-              <p className="mb-2 text-sm text-gray-700">{alert.message}</p>
+                {/* Alert Message */}
+                <p className="mb-2 text-sm text-gray-700">{alert.message}</p>
 
-              {/* Location */}
-              {alert.location && (
+                {/* Location */}
+                {alert.location && (
+                  <p className="mb-1 text-xs text-gray-500">
+                    <strong>Location:</strong> {alert.location}
+                  </p>
+                )}
+
+                {/* Coordinates */}
                 <p className="mb-1 text-xs text-gray-500">
-                  <strong>Location:</strong> {alert.location}
+                  <strong>Coordinates:</strong> {alert.latitude?.toFixed(4)},{" "}
+                  {alert.longitude?.toFixed(4)}
                 </p>
-              )}
 
-              {/* Coordinates */}
-              <p className="mb-1 text-xs text-gray-500">
-                <strong>Coordinates:</strong> {alert.latitude?.toFixed(4)},{" "}
-                {alert.longitude?.toFixed(4)}
-              </p>
-
-              {/* Triggered Time */}
-              <p className="mb-1 text-xs text-gray-500">
-                <strong>Triggered:</strong> {formatDate(alert.triggered_at)}
-              </p>
-
-              {/* Expires Time */}
-              {alert.expires_at && (
-                <p className="text-xs text-gray-500">
-                  <strong>Expires:</strong> {formatDate(alert.expires_at)}
+                {/* Triggered Time */}
+                <p className="mb-1 text-xs text-gray-500">
+                  <strong>Triggered:</strong> {formatDate(alert.triggered_at)}
                 </p>
-              )}
 
-              {/* Acknowledged Status */}
-              <div className="mt-2 pt-2 border-t border-gray-200">
-                <span
-                  className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                    alert.acknowledged
-                      ? "bg-risk-safe/15 text-risk-safe"
-                      : "bg-risk-alert/15 text-risk-alert"
-                  }`}
-                >
-                  {alert.acknowledged ? "Acknowledged" : "Pending"}
-                </span>
+                {/* Expires Time */}
+                {alert.expires_at && (
+                  <p className="text-xs text-gray-500">
+                    <strong>Expires:</strong> {formatDate(alert.expires_at)}
+                  </p>
+                )}
+
+                {/* Acknowledged Status */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <span
+                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                      alert.acknowledged
+                        ? "bg-risk-safe/15 text-risk-safe"
+                        : "bg-risk-alert/15 text-risk-alert"
+                    }`}
+                  >
+                    {alert.acknowledged ? "Acknowledged" : "Pending"}
+                  </span>
+                </div>
               </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+            </Popup>
+          </Marker>
+        ))}
+      </MarkerClusterGroup>
 
       {/* Custom styles for marker icon */}
       <style>{`
         .custom-marker-icon {
+          background: transparent;
+          border: none;
+        }
+        .custom-cluster-icon {
           background: transparent;
           border: none;
         }

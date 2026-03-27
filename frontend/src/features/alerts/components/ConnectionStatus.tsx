@@ -4,6 +4,7 @@
  * Displays the current SSE connection status with visual indicator.
  */
 
+import { formatDistanceToNow } from "date-fns";
 import { RefreshCw, Wifi, WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ interface ConnectionStatusProps {
   className?: string;
   /** Show reconnect button */
   showReconnectButton?: boolean;
+  /** Last heartbeat timestamp from SSE */
+  lastHeartbeat?: Date | null;
 }
 
 /**
@@ -32,6 +35,7 @@ interface ConnectionStatusProps {
  * <ConnectionStatus
  *   isConnected={isConnected}
  *   onReconnect={reconnect}
+ *   lastHeartbeat={lastHeartbeat}
  * />
  */
 export function ConnectionStatus({
@@ -40,7 +44,13 @@ export function ConnectionStatus({
   isReconnecting = false,
   className,
   showReconnectButton = true,
+  lastHeartbeat,
 }: ConnectionStatusProps) {
+  const heartbeatLabel =
+    lastHeartbeat && isConnected
+      ? formatDistanceToNow(lastHeartbeat, { addSuffix: true })
+      : null;
+
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {/* Status Indicator */}
@@ -65,6 +75,11 @@ export function ConnectionStatus({
         >
           {isConnected ? "Live" : "Disconnected"}
         </span>
+        {heartbeatLabel && (
+          <span className="text-[10px] text-muted-foreground hidden lg:inline">
+            · {heartbeatLabel}
+          </span>
+        )}
       </div>
 
       {/* Reconnect Button */}

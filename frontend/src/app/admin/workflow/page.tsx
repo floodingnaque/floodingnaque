@@ -44,6 +44,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +90,9 @@ const STATUS_CONFIG: Record<
     label: string;
     className: string;
     color: string;
+    headerClass: string;
+    iconBgClass: string;
+    iconTextClass: string;
     icon: typeof AlertTriangle;
   }
 > = {
@@ -96,30 +100,49 @@ const STATUS_CONFIG: Record<
     label: "Alert Raised",
     className: "border-risk-critical/30 bg-risk-critical/10 text-risk-critical",
     color: RISK_HEX.critical,
+    headerClass:
+      "bg-risk-critical/10 border-b-2 border-risk-critical/40 text-risk-critical",
+    iconBgClass: "bg-risk-critical/10",
+    iconTextClass: "text-risk-critical",
     icon: AlertTriangle,
   },
   lgu_confirmed: {
     label: "LGU Confirmed",
     className: "border-risk-alert/30 bg-risk-alert/10 text-risk-alert",
     color: RISK_HEX.alert,
+    headerClass:
+      "bg-risk-alert/10 border-b-2 border-risk-alert/40 text-risk-alert",
+    iconBgClass: "bg-risk-alert/10",
+    iconTextClass: "text-risk-alert",
     icon: ShieldCheck,
   },
   broadcast_sent: {
     label: "Broadcast Sent",
     className: "border-blue-500/30 bg-blue-500/10 text-blue-400",
     color: "#3B82F6",
+    headerClass: "bg-blue-500/10 border-b-2 border-blue-500/40 text-blue-400",
+    iconBgClass: "bg-blue-500/10",
+    iconTextClass: "text-blue-400",
     icon: Megaphone,
   },
   resolved: {
     label: "Resolved",
     className: "border-risk-safe/30 bg-risk-safe/10 text-risk-safe",
     color: RISK_HEX.safe,
+    headerClass:
+      "bg-risk-safe/10 border-b-2 border-risk-safe/40 text-risk-safe",
+    iconBgClass: "bg-risk-safe/10",
+    iconTextClass: "text-risk-safe",
     icon: CheckCircle2,
   },
   closed: {
     label: "Closed",
     className: "border-slate-500/30 bg-slate-500/10 text-slate-400",
     color: "#64748b",
+    headerClass:
+      "bg-slate-500/10 border-b-2 border-slate-500/40 text-slate-400",
+    iconBgClass: "bg-slate-500/10",
+    iconTextClass: "text-slate-400",
     icon: FileText,
   },
 };
@@ -315,14 +338,13 @@ function PipelineStage({
     <div className="min-w-50 flex-1">
       {/* Column header */}
       <div
-        className="rounded-t-lg px-3 py-2 flex items-center justify-between"
-        style={{
-          backgroundColor: `${cfg.color}15`,
-          borderBottom: `2px solid ${cfg.color}40`,
-        }}
+        className={cn(
+          "rounded-t-lg px-3 py-2 flex items-center justify-between",
+          cfg.headerClass,
+        )}
       >
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4" style={{ color: cfg.color }} />
+          <Icon className="h-4 w-4" />
           <span className="text-xs font-semibold">{cfg.label}</span>
         </div>
         <Badge
@@ -542,10 +564,12 @@ function IncidentRow({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `${cfg.color}15` }}
+            className={cn(
+              "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
+              cfg.iconBgClass,
+            )}
           >
-            <cfg.icon className="h-4 w-4" style={{ color: cfg.color }} />
+            <cfg.icon className={cn("h-4 w-4", cfg.iconTextClass)} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -1711,6 +1735,13 @@ export default function WorkflowPage() {
     <div className="w-full space-y-0">
       {/* ── Header ── */}
       <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-2">
+        <Breadcrumb
+          items={[
+            { label: "Admin", href: "/admin" },
+            { label: "Incident Workflow" },
+          ]}
+          className="mb-4"
+        />
         <PageHeader
           icon={GitBranch}
           title="LGU Workflow Management"

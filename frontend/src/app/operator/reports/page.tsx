@@ -8,6 +8,7 @@
 import { Check, Clock, FileText, Flag, MapPin, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,7 +126,7 @@ function ReportRow({
           <Button
             size="sm"
             variant="outline"
-            className="gap-1 text-xs text-green-600"
+            className="gap-1 text-xs text-green-600 dark:text-green-400"
             onClick={() => onVerify(report.id)}
           >
             <Check className="h-3 w-3" /> Verify
@@ -204,17 +205,27 @@ export default function OperatorReportsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Community Reports" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+              {stats.pending}
+            </p>
             <p className="text-xs text-muted-foreground">Pending Review</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
               {stats.verified}
             </p>
             <p className="text-xs text-muted-foreground">Verified</p>

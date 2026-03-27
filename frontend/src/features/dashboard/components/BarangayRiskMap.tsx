@@ -8,13 +8,15 @@
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
+  CircleMarker,
   MapContainer,
   Polygon,
   Popup,
   TileLayer,
   Tooltip,
+  useMap,
 } from "react-leaflet";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BARANGAYS, type BarangayData } from "@/config/paranaque";
 import { ReportMapLayer } from "@/features/community/components/ReportMapLayer";
 import { EvacuationMarkers } from "@/features/map/components/EvacuationMarkers";
+import { FloodDepthOverlay } from "@/features/map/components/FloodDepthOverlay";
 import {
   MapLayerControl,
   type BaseMapType,
@@ -108,6 +111,50 @@ const ROAD_OVERLAY_URL =
   "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png";
 
 // ---------------------------------------------------------------------------
+// Data freshness floating badge
+// ---------------------------------------------------------------------------
+
+function DataFreshnessBadge({ timestamp }: { timestamp: string }) {
+  const [, setTick] = useState(0);
+
+  // Re-render every 30s to keep the "X ago" text current
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+
+  let label: string;
+  let isStale = false;
+  if (diffMin < 1) {
+    label = "Data updated just now";
+  } else if (diffMin < 60) {
+    label = `Data updated ${diffMin} min ago`;
+    isStale = diffMin > 10;
+  } else {
+    const hrs = Math.floor(diffMin / 60);
+    label = `Data updated ${hrs}h ago`;
+    isStale = true;
+  }
+
+  return (
+    <div
+      className={cn(
+        "absolute bottom-3 right-3 z-1000 rounded-md border px-2.5 py-1 text-[10px] font-mono shadow-sm backdrop-blur-sm",
+        isStale
+          ? "border-amber-400/60 bg-amber-50/90 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300"
+          : "border-border bg-background/90 text-muted-foreground",
+      )}
+    >
+      {isStale && "⚠️ "}
+      {label}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Dynamic risk overlay - if prediction data is present, override static risk
 // ---------------------------------------------------------------------------
 
@@ -121,6 +168,18 @@ function riskForBarangay(
 }
 
 // ---------------------------------------------------------------------------
+// Map fly-to helper (must be a child of MapContainer)
+// ---------------------------------------------------------------------------
+
+function FlyToUser({ position }: { position: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(position, 15);
+  }, [map, position]);
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -131,6 +190,10 @@ export interface BarangayRiskMapProps {
   prediction?: PredictionResponse | null;
   /** Optional map height (CSS value) */
   height?: string | number;
+  /** User GPS location to display on the map */
+  userLocation?: [number, number] | null;
+  /** Additional Leaflet layers to render inside the MapContainer */
+  children?: React.ReactNode;
   className?: string;
 }
 
@@ -138,6 +201,8 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
   livePredictions,
   prediction,
   height = 420,
+  userLocation,
+  children,
   className,
 }: BarangayRiskMapProps) {
   const heightMap: Record<string | number, string> = {
@@ -160,6 +225,7 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
     traffic: false,
     communityReports: false,
     safeRoute: false,
+    floodDepth: false,
   });
 
   // Count at-risk barangays
@@ -308,6 +374,31 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
 
             {/* Safe evacuation routes */}
             {layers.safeRoute && <SafeRouteLayer />}
+
+            {/* Flood depth estimation */}
+            <FloodDepthOverlay visible={layers.floodDepth} />
+
+            {/* Additional layers from parent */}
+            {children}
+
+            {/* User GPS location */}
+            {userLocation && <FlyToUser position={userLocation} />}
+            {userLocation && (
+              <CircleMarker
+                center={userLocation}
+                radius={8}
+                pathOptions={{
+                  color: "#3b82f6",
+                  fillColor: "#3b82f6",
+                  fillOpacity: 0.4,
+                  weight: 2,
+                }}
+              >
+                <Tooltip direction="top" offset={[0, -10]}>
+                  Your Location
+                </Tooltip>
+              </CircleMarker>
+            )}
           </MapContainer>
 
           {/* Floating layer-control panel */}
@@ -347,6 +438,11 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Data freshness badge */}
+          {prediction?.timestamp && (
+            <DataFreshnessBadge timestamp={prediction.timestamp} />
           )}
         </div>
       </CardContent>

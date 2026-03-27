@@ -11,6 +11,11 @@
 
 const OSRM_BASE = "https://router.project-osrm.org/route/v1/driving";
 
+/** Request timeout — the public OSRM demo can be slow under load */
+const OSRM_TIMEOUT_MS = 8_000;
+/** Retry once on transient failures */
+const OSRM_MAX_RETRIES = 1;
+
 export interface OSRMRoute {
   /** Road-following coordinates in [lat, lon] order (Leaflet-ready) */
   coordinates: [number, number][];
@@ -34,6 +39,7 @@ interface OSRMResponse {
 
 /**
  * Fetch a driving route between two points via OSRM.
+ * Includes timeout protection and a single retry on transient failures.
  *
  * @param originLat - Start latitude
  * @param originLon - Start longitude
@@ -50,25 +56,47 @@ export async function fetchOSRMRoute(
   // OSRM uses lon,lat order
   const url = `${OSRM_BASE}/${originLon},${originLat};${destLon},${destLat}?overview=full&geometries=geojson`;
 
-  const response = await fetch(url);
-  if (!response.ok) return null;
+  for (let attempt = 0; attempt <= OSRM_MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), OSRM_TIMEOUT_MS);
 
-  const data: OSRMResponse = await response.json();
-  if (data.code !== "Ok" || !data.routes.length) return null;
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
 
-  const route = data.routes[0];
-  if (!route) return null;
+      if (!response.ok) {
+        if (attempt < OSRM_MAX_RETRIES) continue;
+        return null;
+      }
 
-  // Convert from [lon, lat] (GeoJSON) → [lat, lon] (Leaflet)
-  const coordinates: [number, number][] = route.geometry.coordinates.map(
-    ([lon, lat]) => [lat, lon],
-  );
+      const data: OSRMResponse = await response.json();
+      if (data.code !== "Ok" || !data.routes.length) return null;
 
-  return {
-    coordinates,
-    distance: route.distance,
-    duration: route.duration,
-  };
+      const route = data.routes[0];
+      if (!route) return null;
+
+      // Convert from [lon, lat] (GeoJSON) → [lat, lon] (Leaflet)
+      const coordinates: [number, number][] = route.geometry.coordinates.map(
+        ([lon, lat]) => [lat, lon],
+      );
+
+      return {
+        coordinates,
+        distance: route.distance,
+        duration: route.duration,
+      };
+    } catch {
+      clearTimeout(timeoutId);
+      if (attempt < OSRM_MAX_RETRIES) {
+        // Brief pause before retry
+        await new Promise((r) => setTimeout(r, 500));
+        continue;
+      }
+      return null;
+    }
+  }
+
+  return null;
 }
 
 /**

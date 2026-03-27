@@ -20,6 +20,7 @@ import {
 import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -133,10 +134,17 @@ export default function ResidentReportPage() {
   if (submitted) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 w-full">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/resident" },
+            { label: "Report Flooding" },
+          ]}
+          className="mb-4"
+        />
         <Card className="max-w-lg mx-auto">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+              <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-xl font-semibold">
               Naipadala na! / Report Submitted
@@ -159,6 +167,14 @@ export default function ResidentReportPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/resident" },
+          { label: "Report Flooding" },
+        ]}
+        className="mb-4"
+      />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -174,7 +190,7 @@ export default function ResidentReportPage() {
           {/* ── Severity Tiles ─────────────────────────────────────── */}
           <div className="space-y-2">
             <p className="text-sm font-medium">Gaano kalala? / How severe?</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {SEVERITIES.map((s) => (
                 <button
                   key={s.value}

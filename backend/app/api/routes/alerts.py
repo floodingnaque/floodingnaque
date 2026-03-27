@@ -762,3 +762,226 @@ def admin_bulk_delete_alerts():
     except Exception as e:
         logger.error(f"Admin bulk delete alerts failed: {e}", exc_info=True)
         return api_error("DeleteFailed", "Failed to bulk delete alerts", HTTP_INTERNAL_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# Alert Coverage - per-barangay delivery statistics
+# ---------------------------------------------------------------------------
+
+
+@alerts_bp.route("/coverage", methods=["GET"])
+@limiter.limit("30 per minute")
+def get_alert_coverage():
+    """
+    Get per-barangay alert delivery coverage statistics.
+
+    Shows how many alerts were delivered vs pending vs failed,
+    grouped by delivery channel, for the specified time window.
+
+    Query Parameters:
+        hours (int): Lookback window in hours (default: 24, max: 720)
+
+    Returns:
+        200: Coverage statistics with per-barangay and per-channel breakdown
+    ---
+    tags:
+      - Alerts
+    parameters:
+      - in: query
+        name: hours
+        type: integer
+        default: 24
+    responses:
+      200:
+        description: Alert coverage statistics
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        hours = min(max(request.args.get("hours", 24, type=int), 1), 720)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        with get_db_session() as session:
+            alerts = (
+                session.query(AlertHistory)
+                .filter(AlertHistory.is_deleted.is_(False), AlertHistory.created_at >= cutoff)
+                .all()
+            )
+
+            # Aggregate per-barangay
+            barangay_stats: dict = {}
+            channel_stats: dict = {}
+            total_delivered = 0
+            total_failed = 0
+            total_pending = 0
+            delivery_times = []
+
+            for alert in alerts:
+                # Extract barangay from location field
+                location = (alert.location or "Unknown").strip()
+                if location not in barangay_stats:
+                    barangay_stats[location] = {
+                        "delivered": 0,
+                        "pending": 0,
+                        "failed": 0,
+                        "partial": 0,
+                        "total": 0,
+                        "risk_levels": {0: 0, 1: 0, 2: 0},
+                    }
+
+                bs = barangay_stats[location]
+                bs["total"] += 1
+                status = alert.delivery_status or "pending"
+                if status in bs:
+                    bs[status] += 1
+                rl = alert.risk_level
+                if rl in bs["risk_levels"]:
+                    bs["risk_levels"][rl] += 1
+
+                # Channel breakdown
+                channel = alert.delivery_channel or "web"
+                if channel not in channel_stats:
+                    channel_stats[channel] = {"delivered": 0, "failed": 0, "pending": 0, "total": 0}
+                channel_stats[channel]["total"] += 1
+                if status == "delivered":
+                    channel_stats[channel]["delivered"] += 1
+                    total_delivered += 1
+                elif status == "failed":
+                    channel_stats[channel]["failed"] += 1
+                    total_failed += 1
+                else:
+                    channel_stats[channel]["pending"] += 1
+                    total_pending += 1
+
+                # Time-to-delivery
+                if alert.delivered_at and alert.created_at:
+                    delta = (alert.delivered_at - alert.created_at).total_seconds()
+                    if delta >= 0:
+                        delivery_times.append(delta)
+
+            total_alerts = total_delivered + total_failed + total_pending
+            delivery_rate = round(total_delivered / total_alerts * 100, 1) if total_alerts > 0 else 0.0
+
+            # Median time-to-delivery
+            median_delivery_sec = None
+            if delivery_times:
+                delivery_times.sort()
+                mid = len(delivery_times) // 2
+                median_delivery_sec = round(delivery_times[mid], 1)
+
+            # Per-barangay delivery percentage
+            for loc, bs in barangay_stats.items():
+                bs["delivery_pct"] = round(bs["delivered"] / bs["total"] * 100, 1) if bs["total"] > 0 else 0.0
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "coverage": {
+                        "hours": hours,
+                        "total_alerts": total_alerts,
+                        "total_delivered": total_delivered,
+                        "total_failed": total_failed,
+                        "total_pending": total_pending,
+                        "delivery_rate_pct": delivery_rate,
+                        "median_delivery_seconds": median_delivery_sec,
+                    },
+                    "barangays": barangay_stats,
+                    "channels": channel_stats,
+                    "request_id": request_id,
+                }
+            ),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching alert coverage [{request_id}]: {e}", exc_info=True)
+        return api_error("FetchFailed", "Failed to fetch alert coverage", HTTP_INTERNAL_ERROR, request_id)
+
+
+# ---------------------------------------------------------------------------
+# SMS Delivery Confirmation Webhook (Semaphore callback)
+# ---------------------------------------------------------------------------
+
+
+@alerts_bp.route("/sms/delivery-status", methods=["POST"])
+@limiter.limit("300 per minute")
+def sms_delivery_webhook():
+    """
+    Receive SMS delivery status callbacks from Semaphore.
+
+    Semaphore sends POST requests when SMS delivery status changes.
+    Updates the corresponding AlertHistory record's delivery_status.
+
+    Request Body (form-encoded or JSON):
+        message_id (str): Semaphore message ID
+        status (str): pending / sent / failed
+        recipient (str): Phone number
+
+    Returns:
+        200: Acknowledged
+    ---
+    tags:
+      - Alerts
+    """
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        # Semaphore sends form-encoded or JSON
+        if request.content_type and "json" in request.content_type:
+            data = request.get_json(silent=True) or {}
+        else:
+            data = request.form.to_dict()
+
+        message_id = data.get("message_id", "")
+        status = data.get("status", "").lower()
+        recipient = data.get("recipient", "")
+
+        if not message_id or not status:
+            return jsonify({"success": False, "error": "message_id and status required"}), HTTP_BAD_REQUEST
+
+        # Map Semaphore statuses to our status model
+        status_map = {
+            "sent": "delivered",
+            "delivered": "delivered",
+            "failed": "failed",
+            "pending": "pending",
+            "queued": "pending",
+        }
+        mapped_status = status_map.get(status, "pending")
+
+        logger.info(
+            "SMS delivery webhook [%s]: message_id=%s status=%s recipient=%s",
+            request_id,
+            message_id,
+            mapped_status,
+            recipient,
+        )
+
+        # Update the most recent SMS alert for this recipient (best-effort match)
+        if recipient:
+            try:
+                with get_db_session() as session:
+                    recent_sms = (
+                        session.query(AlertHistory)
+                        .filter(
+                            AlertHistory.is_deleted.is_(False),
+                            AlertHistory.delivery_channel == "sms",
+                            AlertHistory.created_at >= datetime.now(timezone.utc) - timedelta(hours=24),
+                        )
+                        .order_by(desc(AlertHistory.created_at))
+                        .first()
+                    )
+                    if recent_sms:
+                        recent_sms.delivery_status = mapped_status
+                        if mapped_status == "delivered":
+                            recent_sms.delivered_at = datetime.now(timezone.utc)
+                        logger.info("Updated alert %d delivery_status → %s", recent_sms.id, mapped_status)
+            except Exception as db_err:
+                logger.warning("SMS webhook DB update failed: %s", db_err)
+
+        return jsonify({"success": True, "acknowledged": True}), HTTP_OK
+
+    except Exception as e:
+        logger.error("SMS delivery webhook error [%s]: %s", request_id, e, exc_info=True)
+        return jsonify({"success": False, "error": "Internal error"}), HTTP_INTERNAL_ERROR

@@ -8,6 +8,7 @@
 
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { PageHeader, SectionHeading } from "@/components/layout";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
@@ -203,6 +204,10 @@ export default function AdminSensorPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 pt-6">
+        <Breadcrumb
+          items={[{ label: "Admin", href: "/admin" }, { label: "Sensor Data" }]}
+          className="mb-4"
+        />
         <PageHeader
           icon={Radio}
           title="Sensor Data Input"
@@ -259,7 +264,7 @@ export default function AdminSensorPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                         {[
                           {
                             label: "Rainfall",

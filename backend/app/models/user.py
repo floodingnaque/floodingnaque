@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from app.models.db import Base
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Index, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, Index, Integer, String
 
 
 class User(Base):
@@ -54,6 +54,13 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
 
+    # Reputation / trust scoring
+    reputation_score = Column(Float, default=0.5, nullable=False, info={"description": "Aggregate trust score 0-1"})
+    total_reports = Column(Integer, default=0, nullable=False)
+    accepted_reports = Column(Integer, default=0, nullable=False)
+    rejected_reports = Column(Integer, default=0, nullable=False)
+    reputation_updated_at = Column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
@@ -87,6 +94,10 @@ class User(Base):
             "is_verified": self.is_verified,
             "sms_alerts_enabled": self.sms_alerts_enabled,
             "email_alerts_enabled": self.email_alerts_enabled,
+            "reputation_score": self.reputation_score,
+            "total_reports": self.total_reports,
+            "accepted_reports": self.accepted_reports,
+            "rejected_reports": self.rejected_reports,
             "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

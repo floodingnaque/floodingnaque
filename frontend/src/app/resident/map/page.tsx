@@ -12,10 +12,17 @@
 import { Crosshair, Layers, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BarangayRiskMap } from "@/features/dashboard";
+import { ResidentDecisionPanel } from "@/features/flooding";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
+import {
+  ForecastOverlay,
+  ForecastTimeSelector,
+  useForecastOverlayState,
+} from "@/features/map/components/ForecastOverlay";
 import { RISK_CONFIGS, type RiskLevel } from "@/types/api/prediction";
 
 const RISK_BADGE: Record<RiskLevel, string> = {
@@ -33,12 +40,18 @@ export default function ResidentMapPage() {
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
 
   const [locating, setLocating] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(
+    null,
+  );
+  const { selectedOffset, setSelectedOffset, offsets } =
+    useForecastOverlayState();
 
   const handleLocate = useCallback(() => {
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      () => {
+      (pos) => {
+        setUserLocation([pos.coords.latitude, pos.coords.longitude]);
         setLocating(false);
       },
       () => setLocating(false),
@@ -48,6 +61,11 @@ export default function ResidentMapPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 w-full">
+      <Breadcrumb
+        items={[{ label: "Home", href: "/resident" }, { label: "Flood Map" }]}
+        className="mb-4"
+      />
+
       {/* ── Controls ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
@@ -61,7 +79,12 @@ export default function ResidentMapPage() {
             </Badge>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <ForecastTimeSelector
+            offsets={offsets}
+            selected={selectedOffset}
+            onSelect={setSelectedOffset}
+          />
           <Button
             variant="outline"
             size="sm"
@@ -94,6 +117,15 @@ export default function ResidentMapPage() {
         livePredictions={undefined}
         prediction={prediction}
         height={600}
+        userLocation={userLocation}
+      >
+        <ForecastOverlay selectedOffset={selectedOffset} />
+      </BarangayRiskMap>
+
+      {/* ── Decision Panel ────────────────────────────────────────── */}
+      <ResidentDecisionPanel
+        prediction={prediction}
+        userLocation={userLocation}
       />
     </div>
   );

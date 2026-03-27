@@ -89,10 +89,14 @@ export const HazardOverlay = memo(function HazardOverlay({
       const positions = geoJsonToLeaflet(feature.geometry.coordinates);
       const color = getFeatureColor(props, mode);
 
+      // Modulate opacity by confidence: 0.2 baseline + confidence * 0.6 range
+      const confidence = props.confidence ?? 0.7;
+      const adaptiveOpacity = 0.2 + confidence * 0.6;
+
       const pathOptions: PathOptions = {
         color: color,
         fillColor: color,
-        fillOpacity,
+        fillOpacity: adaptiveOpacity,
         weight: 2,
         opacity: 0.8,
       };
@@ -126,6 +130,8 @@ export const HazardOverlay = memo(function HazardOverlay({
                 <>
                   Hazard: {properties.hazard_classification.toUpperCase()} (
                   {formatScore(properties.hazard_score)})
+                  <br />
+                  Confidence: {formatScore(properties.confidence ?? 0.7)}
                   {properties.current_rainfall_mm > 0 && (
                     <>
                       <br />
@@ -174,6 +180,14 @@ export const HazardOverlay = memo(function HazardOverlay({
                   <span className="text-muted-foreground text-xs">
                     ({formatScore(properties.hazard_score)})
                   </span>
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  Data confidence: {formatScore(properties.confidence ?? 0.7)}
+                  {(properties.confidence ?? 0.7) >= 0.9
+                    ? " — Live data"
+                    : (properties.confidence ?? 0.7) >= 0.85
+                      ? " — Recently evaluated"
+                      : " — Static baseline"}
                 </div>
               </div>
 

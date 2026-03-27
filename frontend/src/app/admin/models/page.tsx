@@ -7,6 +7,7 @@
  */
 
 import { PageHeader, SectionHeading } from "@/components/layout";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -382,6 +383,10 @@ export default function AdminModelsPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="w-full px-6 pt-6">
+        <Breadcrumb
+          items={[{ label: "Admin", href: "/admin" }, { label: "ML Models" }]}
+          className="mb-4"
+        />
         <div className="flex items-start justify-between">
           <PageHeader
             icon={Brain}
@@ -452,7 +457,7 @@ export default function AdminModelsPage() {
             variants={staggerContainer}
             initial="hidden"
             animate={statusInView ? "show" : undefined}
-            className="grid gap-4 grid-cols-2 lg:grid-cols-5"
+            className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
           >
             <motion.div variants={fadeUp}>
               <StatCard
@@ -933,6 +938,15 @@ export default function AdminModelsPage() {
                           >
                             <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
                             Loading model history…
+                          </TableCell>
+                        </TableRow>
+                      ) : modelVersions.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={9}
+                            className="text-center py-8 text-muted-foreground"
+                          >
+                            No model versions found
                           </TableCell>
                         </TableRow>
                       ) : (

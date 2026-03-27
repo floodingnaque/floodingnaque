@@ -6,6 +6,7 @@
  */
 
 import { PageHeader, SectionHeading } from "@/components/layout";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -132,21 +133,21 @@ const TABLE_META: Record<
   api_requests: {
     label: "API Request Logs",
     icon: Zap,
-    color: "text-blue-500",
+    color: "text-blue-500 dark:text-blue-400",
     bgRing: "bg-blue-500/10 ring-1 ring-blue-500/20",
     barColor: "bg-blue-500",
   },
   predictions: {
     label: "Predictions",
     icon: Database,
-    color: "text-purple-500",
+    color: "text-purple-500 dark:text-purple-400",
     bgRing: "bg-purple-500/10 ring-1 ring-purple-500/20",
     barColor: "bg-purple-500",
   },
   weather_data: {
     label: "Weather Data",
     icon: Database,
-    color: "text-cyan-500",
+    color: "text-cyan-500 dark:text-cyan-400",
     bgRing: "bg-cyan-500/10 ring-1 ring-cyan-500/20",
     barColor: "bg-cyan-500",
   },
@@ -647,6 +648,13 @@ export default function AdminStoragePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="w-full px-6 pt-6">
+        <Breadcrumb
+          items={[
+            { label: "Admin", href: "/admin" },
+            { label: "Database Storage" },
+          ]}
+          className="mb-4"
+        />
         <div className="flex items-start justify-between">
           <PageHeader
             icon={HardDrive}
@@ -687,7 +695,7 @@ export default function AdminStoragePage() {
 
           {/* Summary cards */}
           <motion.div
-            className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8"
+            className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-8"
             variants={staggerContainer}
             initial="hidden"
             animate={overviewInView ? "show" : undefined}

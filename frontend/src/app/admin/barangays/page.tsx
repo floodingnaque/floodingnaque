@@ -9,6 +9,7 @@
  */
 
 import { PageHeader, SectionHeading } from "@/components/layout";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -989,6 +990,10 @@ export default function AdminBarangaysPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="w-full px-6 pt-6">
+        <Breadcrumb
+          items={[{ label: "Admin", href: "/admin" }, { label: "Barangays" }]}
+          className="mb-4"
+        />
         <div className="flex items-start justify-between">
           <PageHeader
             icon={MapPin}

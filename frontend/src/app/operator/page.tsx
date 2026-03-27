@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { EmptyState } from "@/components/feedback/EmptyState";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,10 +36,12 @@ import {
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarangayRiskMap } from "@/features/dashboard";
+import { useDashboardStats } from "@/features/dashboard/hooks/useDashboard";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
 import { DecisionEngine } from "@/features/operator/components/DecisionEngine";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { useUnreadCount } from "@/state/stores/alertStore";
 import type { RiskLevel } from "@/types";
 
 // ─── Risk Configuration ─────────────────────────────────────────────────────
@@ -160,7 +164,7 @@ function StatusBanner({
           <Button
             size="sm"
             variant="outline"
-            className="gap-1 border-amber-500/30 text-amber-600 hover:bg-amber-500/10"
+            className="gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
             onClick={() => navigate("/operator/broadcast")}
           >
             <Send className="h-3.5 w-3.5" />
@@ -248,6 +252,8 @@ function StatCard({
 export default function OperatorOverviewPage() {
   const navigate = useNavigate();
   const { data: prediction, isLoading } = useLivePrediction();
+  const { data: dashStats } = useDashboardStats();
+  const unreadCount = useUnreadCount();
 
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
   const confidence = prediction?.confidence
@@ -267,6 +273,8 @@ export default function OperatorOverviewPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-screen-2xl mx-auto">
+      <Breadcrumb items={[{ label: "Operations" }]} className="mb-4" />
+
       {/* Status Banner */}
       <StatusBanner
         riskLevel={riskLevel}
@@ -295,8 +303,11 @@ export default function OperatorOverviewPage() {
           <StatCard
             icon={Bell}
             label="Pending Alerts"
-            value={0}
-            description="All acknowledged"
+            value={unreadCount}
+            description={
+              unreadCount === 0 ? "All acknowledged" : "Unacknowledged"
+            }
+            urgent={unreadCount > 5}
             onClick={() => navigate("/operator/alerts")}
           />
         </motion.div>
@@ -388,11 +399,16 @@ export default function OperatorOverviewPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <ShieldCheck className="h-10 w-10 mb-2 text-emerald-500/50" />
-                <p className="text-sm font-medium">All Clear</p>
-                <p className="text-xs">No active incidents</p>
-              </div>
+              <EmptyState
+                icon={ShieldCheck}
+                title="All Clear"
+                description="No active incidents"
+                size="sm"
+                action={{
+                  label: "View History",
+                  onClick: () => navigate("/operator/incidents"),
+                }}
+              />
             </CardContent>
           </Card>
 

@@ -4,6 +4,7 @@
 
 import { Cloud, Droplets, MapPin, Thermometer, Zap } from "lucide-react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +24,9 @@ const RISK_BG: Record<RiskLevel, string> = {
   2: "bg-red-500/10 border border-red-500/30",
 };
 const RISK_TEXT: Record<RiskLevel, string> = {
-  0: "text-green-600",
-  1: "text-amber-600",
-  2: "text-red-600",
+  0: "text-green-600 dark:text-green-400",
+  1: "text-amber-600 dark:text-amber-400",
+  2: "text-red-600 dark:text-red-400",
 };
 
 export default function OperatorPredictPage() {
@@ -41,6 +42,14 @@ export default function OperatorPredictPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Flood Prediction" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Current Prediction */}
       <Card>
         <CardHeader>
@@ -159,7 +168,7 @@ export default function OperatorPredictPage() {
                 {prediction.smart_alert.was_suppressed && " (suppressed)"}
               </p>
               {prediction.smart_alert.contributing_factors.length > 0 && (
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                   Factors:{" "}
                   {prediction.smart_alert.contributing_factors.join(", ")}
                 </p>

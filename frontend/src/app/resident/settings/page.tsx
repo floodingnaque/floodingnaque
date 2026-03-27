@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,11 @@ export default function ResidentSettingsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[{ label: "Home", href: "/resident" }, { label: "Settings" }]}
+        className="mb-4"
+      />
+
       {/* ── Profile ───────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">

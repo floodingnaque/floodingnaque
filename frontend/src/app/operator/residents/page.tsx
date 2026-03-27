@@ -8,6 +8,7 @@
 import { Clock, MapPin, Search, UserCheck, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -104,6 +105,14 @@ export default function OperatorResidentsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Residents" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
@@ -114,7 +123,7 @@ export default function OperatorResidentsPage() {
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
               {residents.filter((r) => r.is_active).length}
             </p>
             <p className="text-xs text-muted-foreground">Active</p>
@@ -130,7 +139,7 @@ export default function OperatorResidentsPage() {
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <p className="text-2xl font-bold text-amber-600">
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {residents.filter((r) => !r.is_active).length}
             </p>
             <p className="text-xs text-muted-foreground">Inactive</p>

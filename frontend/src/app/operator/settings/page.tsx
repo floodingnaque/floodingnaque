@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import {
@@ -241,6 +242,13 @@ export default function OperatorSettingsPage() {
     <div className="min-h-screen bg-background">
       {/* ── Header ────────────────────────────────────────────────── */}
       <div className="container mx-auto max-w-4xl px-4 pt-6">
+        <Breadcrumb
+          items={[
+            { label: "Operations", href: "/operator" },
+            { label: "Settings" },
+          ]}
+          className="mb-4"
+        />
         <PageHeader
           icon={Settings}
           title="Settings"

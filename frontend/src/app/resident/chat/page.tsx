@@ -9,6 +9,7 @@
 import { MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -77,6 +78,13 @@ export default function ResidentChatPage() {
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 w-full">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/resident" },
+            { label: "Community Chat" },
+          ]}
+          className="mb-4"
+        />
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-125 w-full rounded-xl" />
       </div>
@@ -87,6 +95,13 @@ export default function ResidentChatPage() {
   if (!userBarangay) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 w-full">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/resident" },
+            { label: "Community Chat" },
+          ]}
+          className="mb-4"
+        />
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -120,6 +135,14 @@ export default function ResidentChatPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 w-full">
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/resident" },
+          { label: "Community Chat" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2">

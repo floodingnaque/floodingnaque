@@ -27,7 +27,10 @@ export {
   FloodStatusHero,
   FloodStatusHeroSkeleton,
 } from "./components/FloodStatusHero";
-export { ForecastPanel } from "./components/ForecastPanel";
+export {
+  ForecastPanel,
+  ForecastPanelSkeleton,
+} from "./components/ForecastPanel";
 export { LGUDashboard } from "./components/LGUDashboard";
 export {
   AccuracyProgressionChart,

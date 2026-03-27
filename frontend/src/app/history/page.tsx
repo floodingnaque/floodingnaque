@@ -17,7 +17,15 @@ import {
   RefreshCw,
   Table2,
 } from "lucide-react";
-import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -46,6 +54,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { StaleDataBanner } from "@/components/feedback/StaleDataBanner";
+import type { TimelineItem } from "@/features/predictions/components/TimelineScrubber";
+import { TimelineScrubber } from "@/features/predictions/components/TimelineScrubber";
 import {
   useOfflinePredictions,
   usePredictionHistory,
@@ -143,6 +153,9 @@ export default function HistoryPage() {
   const [predPage, setPredPage] = useState(1);
   const [predDateRange, setPredDateRange] = useState<DateRange>({});
 
+  // Timeline scrubber state
+  const [timelineIndex, setTimelineIndex] = useState(0);
+
   // Last updated
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -200,6 +213,21 @@ export default function HistoryPage() {
 
   // Use offline data when online data is unavailable and user is offline
   const effectivePredData = predData ?? (isOffline ? offlinePredData : null);
+
+  // Build timeline items from prediction data (oldest → newest for scrubber)
+  const timelineItems: TimelineItem[] = useMemo(() => {
+    const rows = effectivePredData?.data;
+    if (!rows?.length) return [];
+    return [...rows].reverse().map((pred) => ({
+      timestamp: pred.created_at,
+      risk_label: pred.risk_label ?? getRiskLabel(pred.risk_level).label,
+    }));
+  }, [effectivePredData]);
+
+  // Reset timeline index when data changes
+  useEffect(() => {
+    setTimelineIndex(0);
+  }, [timelineItems.length]);
 
   // Handlers
   const handleSourceChange = useCallback((value: string) => {
@@ -502,6 +530,25 @@ export default function HistoryPage() {
                     </div>
                   </GlassCard>
 
+                  {/* Timeline Scrubber */}
+                  {timelineItems.length > 1 && (
+                    <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                      <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
+                      <div className="p-6">
+                        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                          <Activity className="h-4 w-4 text-primary" />
+                          Timeline Replay
+                        </h3>
+                        <TimelineScrubber
+                          items={timelineItems}
+                          index={timelineIndex}
+                          onIndexChange={setTimelineIndex}
+                          speed={600}
+                        />
+                      </div>
+                    </GlassCard>
+                  )}
+
                   {/* Predictions Table */}
                   <GlassCard className="overflow-hidden hover:shadow-lg transition-all duration-300">
                     <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
@@ -552,13 +599,24 @@ export default function HistoryPage() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {effectivePredData.data.map((pred) => {
+                              {effectivePredData.data.map((pred, rowIdx) => {
                                 const risk = getRiskLabel(pred.risk_level);
                                 const inputs = pred.input_data as
                                   | Record<string, number | undefined>
                                   | undefined;
+                                // Highlight active timeline row (timeline is reversed relative to table)
+                                const isTimelineActive =
+                                  timelineItems.length > 1 &&
+                                  rowIdx ===
+                                    timelineItems.length - 1 - timelineIndex;
                                 return (
-                                  <TableRow key={pred.id}>
+                                  <TableRow
+                                    key={pred.id}
+                                    className={cn(
+                                      isTimelineActive &&
+                                        "bg-primary/10 ring-1 ring-primary/30",
+                                    )}
+                                  >
                                     <TableCell className="text-sm whitespace-nowrap">
                                       {format(
                                         new Date(pred.created_at),

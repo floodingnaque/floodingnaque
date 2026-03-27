@@ -429,6 +429,23 @@ class GISService:
 
             hazard = _compute_hazard_score(elev, drain, rain_mm)
 
+            # Confidence reflects how much live data backs the assessment.
+            # Live rainfall → 0.9 (dynamic data available)
+            # SmartAlertEvaluator recently evaluated → 0.85
+            # Static-only data → 0.7 baseline
+            confidence = 0.7
+            if rain_mm > 0:
+                confidence = 0.9
+            else:
+                try:
+                    from app.services.smart_alert_evaluator import get_smart_evaluator
+
+                    loc_state = get_smart_evaluator().get_location_state(key)
+                    if loc_state and loc_state.get("last_evaluated_at"):
+                        confidence = 0.85
+                except Exception:
+                    pass
+
             feature: Dict[str, Any] = {
                 "type": "Feature",
                 "geometry": {
@@ -456,6 +473,8 @@ class GISService:
                     "hazard_classification": hazard["classification"],
                     "hazard_color": hazard["color"],
                     "hazard_factors": hazard["factors"],
+                    # Confidence (0–1): higher when live data is available
+                    "confidence": round(confidence, 2),
                     # Current rainfall (if available)
                     "current_rainfall_mm": round(rain_mm, 2),
                 },

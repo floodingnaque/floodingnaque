@@ -57,7 +57,6 @@ import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { RouteProgress } from "@/components/feedback/RouteProgress";
 import { FloodIcon } from "@/components/icons/FloodIcon";
 import { ConnectionStatus } from "@/features/alerts/components/ConnectionStatus";
-import { LiveAlertsBanner } from "@/features/alerts/components/LiveAlertsBanner";
 import { useAlertStream } from "@/features/alerts/hooks/useAlertStream";
 import { authApi } from "@/features/auth/services/authApi";
 import {
@@ -328,7 +327,7 @@ export function OperatorLayout() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const unreadCount = useUnreadCount();
 
-  const { isConnected, reconnect } = useAlertStream({
+  const { isConnected, reconnect, lastHeartbeat } = useAlertStream({
     enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
 
@@ -363,11 +362,6 @@ export function OperatorLayout() {
       >
         Skip to main content
       </a>
-
-      <LiveAlertsBanner
-        onViewAll={() => navigate("/operator/alerts")}
-        className="z-50"
-      />
 
       <div className="flex h-screen">
         {/* Desktop Sidebar */}
@@ -475,18 +469,19 @@ export function OperatorLayout() {
                 isConnected={isConnected}
                 onReconnect={reconnect}
                 showReconnectButton={false}
+                lastHeartbeat={lastHeartbeat}
                 className="hidden sm:flex"
               />
 
-              {/* Quick Action: Raise Incident */}
+              {/* Quick Action: View Incidents */}
               <Button
                 size="sm"
-                variant="destructive"
+                variant="outline"
                 className="hidden sm:inline-flex h-8 text-xs gap-1"
                 onClick={() => navigate("/operator/incidents")}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Raise Incident
+                View Incidents
               </Button>
 
               {/* Notification Bell */}

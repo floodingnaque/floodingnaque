@@ -9,6 +9,11 @@ export { alertsApi } from "./services/alertsApi";
 
 // Hooks
 export {
+  coverageKeys,
+  useAlertCoverage,
+  type CoverageResponse,
+} from "./hooks/useAlertCoverage";
+export {
   alertKeys,
   useAcknowledgeAlert,
   useAcknowledgeAll,
@@ -29,7 +34,8 @@ export {
   AlertChannelPanel,
   AlertChannelPanelSkeleton,
 } from "./components/AlertChannelPanel";
-export { AlertList } from "./components/AlertList";
+export { AlertCoverageLayer } from "./components/AlertCoverageLayer";
+export { AlertList, AlertListSkeleton } from "./components/AlertList";
 export { ConnectionStatus } from "./components/ConnectionStatus";
 export {
   EmailSubscriptionToggle,

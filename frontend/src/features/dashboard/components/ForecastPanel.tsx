@@ -218,3 +218,24 @@ export const ForecastPanel = memo(function ForecastPanel({
     </Card>
   );
 });
+
+export function ForecastPanelSkeleton({ className }: { className?: string }) {
+  return (
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Hourly Forecast
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Skeleton className="h-48 w-full" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-full rounded-md" />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

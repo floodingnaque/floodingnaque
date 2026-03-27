@@ -6,6 +6,7 @@
  * for situational awareness - admin handles edits.
  */
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +80,13 @@ export default function OperatorBarangaysPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="container mx-auto max-w-6xl px-4 pt-6">
+        <Breadcrumb
+          items={[
+            { label: "Operations", href: "/operator" },
+            { label: "Barangays" },
+          ]}
+          className="mb-4"
+        />
         <PageHeader
           icon={MapPin}
           title="Barangays"

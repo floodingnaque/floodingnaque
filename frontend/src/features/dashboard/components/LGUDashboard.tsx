@@ -868,7 +868,17 @@ export function LGUDashboard() {
                 <CommunityReportsPanel />
               </motion.div>
               <motion.div variants={fadeUp} className="lg:col-span-7">
-                <FloodRiskHeatmap />
+                <ErrorBoundary
+                  fallback={
+                    <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border bg-muted/50 p-8 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Unable to load heatmap
+                      </p>
+                    </div>
+                  }
+                >
+                  <FloodRiskHeatmap />
+                </ErrorBoundary>
               </motion.div>
             </div>
           </motion.div>

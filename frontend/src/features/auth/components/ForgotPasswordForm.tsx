@@ -481,7 +481,7 @@ export function ForgotPasswordForm() {
               </div>
 
               {/* Dev token notice */}
-              {devTokenNotice && (
+              {import.meta.env.DEV && devTokenNotice && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}

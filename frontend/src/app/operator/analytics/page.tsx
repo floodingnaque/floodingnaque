@@ -24,6 +24,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -111,6 +112,14 @@ export default function OperatorAnalyticsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Analytics" },
+        ]}
+        className="mb-4"
+      />
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>

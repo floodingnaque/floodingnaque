@@ -91,6 +91,7 @@ const OperatorChatPage = lazy(() => import("@/app/operator/chat/page"));
 const OperatorBarangaysPage = lazy(
   () => import("@/app/operator/barangays/page"),
 );
+const SimulationPage = lazy(() => import("@/app/operator/simulate/page"));
 
 // Resident Dashboard
 const ResidentLayout = lazy(() => import("@/app/resident/layout"));
@@ -529,6 +530,14 @@ function App() {
                   </RouteErrorBoundary>
                 }
               />
+              <Route
+                path="/operator/simulate"
+                element={
+                  <RouteErrorBoundary>
+                    <SimulationPage />
+                  </RouteErrorBoundary>
+                }
+              />
             </Route>
           </Route>
 
@@ -662,7 +671,14 @@ function App() {
       </Suspense>
 
       {/* Toast Notifications */}
-      <Toaster position="top-right" expand={false} richColors closeButton />
+      <Toaster
+        position="top-right"
+        expand={false}
+        richColors
+        closeButton
+        visibleToasts={5}
+        duration={4000}
+      />
 
       {/* Scroll to top on route change */}
       <ScrollToTop />

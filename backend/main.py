@@ -92,6 +92,13 @@ def cleanup_connections():
     except Exception as e:
         logger.warning(f"Error closing Redis connection: {e}")  # OK: has curly braces
 
+    try:
+        from app.utils.ngrok import stop_ngrok
+
+        stop_ngrok()
+    except Exception:
+        pass
+
     logger.info("Graceful shutdown complete")
 
 
@@ -131,6 +138,18 @@ if __name__ == "__main__":
     # Only print once (not on reloader subprocess)
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
         print(f"Starting Floodingnaque API on {host}:{port} (debug={debug})")  # OK: has curly braces
+
+        # Start Ngrok tunnel if enabled (dev only, skip on Werkzeug reloader child)
+        if os.getenv("NGROK_ENABLED", "").lower() in ("true", "1", "yes"):
+            from app.utils.ngrok import start_ngrok
+
+            public_url = start_ngrok(port)
+            if public_url:
+                # Inject Ngrok origin into CORS so the browser accepts it
+                existing = os.getenv("CORS_ORIGINS", "")
+                if public_url not in existing:
+                    os.environ["CORS_ORIGINS"] = f"{existing},{public_url}" if existing else public_url
+                print(f"Ngrok tunnel: {public_url}")  # OK: has curly braces
 
     try:
         application.run(host=host, port=port, debug=debug)

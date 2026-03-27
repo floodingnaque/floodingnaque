@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +87,11 @@ export default function ResidentAlertsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[{ label: "Home", href: "/resident" }, { label: "Alerts" }]}
+        className="mb-4"
+      />
+
       {/* ── Header + Actions ──────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -138,7 +144,7 @@ export default function ResidentAlertsPage() {
       {smartAlert && !smartAlert.was_suppressed && (
         <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
                 System Alert - {smartAlert.escalation_state}
@@ -187,10 +193,10 @@ export default function ResidentAlertsPage() {
                   <LevelIcon
                     className={`h-5 w-5 mt-0.5 shrink-0 ${
                       alert.risk_level === 2
-                        ? "text-red-600"
+                        ? "text-red-600 dark:text-red-400"
                         : alert.risk_level === 1
-                          ? "text-amber-600"
-                          : "text-green-600"
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-green-600 dark:text-green-400"
                     }`}
                   />
                   <div className="flex-1 min-w-0">

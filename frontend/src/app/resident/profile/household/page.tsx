@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,6 +102,14 @@ export default function ResidentHouseholdPage() {
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/resident" },
+            { label: "Settings", href: "/resident/settings" },
+            { label: "Household Profile" },
+          ]}
+          className="mb-4"
+        />
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-64 w-full rounded-xl" />
         <Skeleton className="h-48 w-full rounded-xl" />
@@ -110,6 +119,15 @@ export default function ResidentHouseholdPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      {" "}
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/resident" },
+          { label: "Settings", href: "/resident/settings" },
+          { label: "Household Profile" },
+        ]}
+        className="mb-4"
+      />
       {/* ── Header + Completeness ─────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -129,7 +147,6 @@ export default function ResidentHouseholdPage() {
           {completeness}% complete
         </Badge>
       </div>
-
       {/* ── Completeness Bar ──────────────────────────────────────── */}
       <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
         <div
@@ -143,7 +160,6 @@ export default function ResidentHouseholdPage() {
           style={{ width: `${completeness}%` }}
         />
       </div>
-
       {/* ── Location ──────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
@@ -205,7 +221,6 @@ export default function ResidentHouseholdPage() {
           </div>
         </CardContent>
       </Card>
-
       {/* ── Contact ───────────────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
@@ -268,7 +283,6 @@ export default function ResidentHouseholdPage() {
           </div>
         </CardContent>
       </Card>
-
       {/* ── Household Members ─────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
@@ -379,7 +393,6 @@ export default function ResidentHouseholdPage() {
           </div>
         </CardContent>
       </Card>
-
       {/* ── Home & Flood Experience ───────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
@@ -469,7 +482,6 @@ export default function ResidentHouseholdPage() {
           )}
         </CardContent>
       </Card>
-
       {/* ── Action Buttons ────────────────────────────────────────── */}
       <div className="flex gap-3">
         {editing ? (

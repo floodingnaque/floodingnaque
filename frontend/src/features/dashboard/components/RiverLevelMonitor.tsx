@@ -6,13 +6,14 @@
  * Bottom: 24h water level trend line chart
  */
 
+import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SvgGauge } from "@/components/ui/svg-gauge";
 import { cn } from "@/lib/utils";
-import { Waves } from "lucide-react";
+import { RefreshCw, Waves } from "lucide-react";
 import { memo, useMemo } from "react";
 import {
   CartesianGrid,
@@ -45,7 +46,7 @@ export const RiverLevelMonitor = memo(function RiverLevelMonitor({
 }: {
   className?: string;
 }) {
-  const { data: readings, isLoading } = useRiverLevel();
+  const { data: readings, isLoading, refetch } = useRiverLevel();
 
   const latest = useMemo<RiverReading | null>(() => {
     if (!readings?.length) return null;
@@ -86,8 +87,12 @@ export const RiverLevelMonitor = memo(function RiverLevelMonitor({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            No station data available
+          <div className="flex h-48 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+            <p>No station data available</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              Retry
+            </Button>
           </div>
         </CardContent>
       </GlassCard>

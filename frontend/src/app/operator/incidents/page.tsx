@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -281,6 +282,14 @@ export default function OperatorIncidentsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Incidents" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Pipeline Overview */}
       <div className="flex flex-wrap items-center gap-2">
         {PIPELINE_STAGES.map((stage, i) => (

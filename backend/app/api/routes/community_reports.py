@@ -776,3 +776,140 @@ def admin_bulk_delete_reports():
     except Exception as exc:
         logger.error("Admin bulk delete reports failed: %s", exc, exc_info=True)
         return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Report Density - GeoJSON heatmap data for community reports
+# ---------------------------------------------------------------------------
+
+_GRID_SIZE_DEG = 0.001  # ~100 m at equator
+
+
+@community_reports_bp.route("/density", methods=["GET"])
+@rate_limit_with_burst("30 per minute")
+def get_report_density():
+    """
+    Get report density as a GeoJSON FeatureCollection for heatmap display.
+
+    Groups reports into ~100 m grid cells and returns:
+      - Per-cell report count (weight for HeatmapLayer)
+      - Average credibility score
+      - Dominant risk_label per cell
+
+    Query Parameters:
+        hours (int): Lookback window in hours (default: 168 = 7 days, max: 720)
+        min_credibility (float): Minimum credibility score filter (0-1, default: 0)
+
+    Returns:
+        200: GeoJSON FeatureCollection with point features per grid cell
+    ---
+    tags:
+      - Community Reports
+    parameters:
+      - in: query
+        name: hours
+        type: integer
+        default: 168
+      - in: query
+        name: min_credibility
+        type: number
+        default: 0
+    responses:
+      200:
+        description: Report density GeoJSON
+    """
+    import math
+
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        hours = min(max(request.args.get("hours", 168, type=int), 1), 720)
+        min_cred = max(request.args.get("min_credibility", 0.0, type=float), 0.0)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        with get_db_session() as session:
+            query = session.query(CommunityReport).filter(
+                CommunityReport.is_deleted.is_(False),
+                CommunityReport.created_at >= cutoff,
+                CommunityReport.latitude.isnot(None),
+                CommunityReport.longitude.isnot(None),
+            )
+
+            if min_cred > 0:
+                query = query.filter(CommunityReport.credibility_score >= min_cred)
+
+            reports = query.all()
+
+            # Aggregate into grid cells
+            grid: dict = {}
+            for r in reports:
+                lat = r.latitude
+                lon = r.longitude
+                if lat is None or lon is None:
+                    continue
+                # Snap to grid
+                cell_lat = round(math.floor(lat / _GRID_SIZE_DEG) * _GRID_SIZE_DEG, 6)
+                cell_lon = round(math.floor(lon / _GRID_SIZE_DEG) * _GRID_SIZE_DEG, 6)
+                key = (cell_lat, cell_lon)
+
+                if key not in grid:
+                    grid[key] = {
+                        "count": 0,
+                        "cred_sum": 0.0,
+                        "risk_counts": {},
+                        "max_height": 0.0,
+                    }
+
+                cell = grid[key]
+                cell["count"] += 1
+                cell["cred_sum"] += r.credibility_score or 0.0
+                rl = r.risk_label or "Unknown"
+                cell["risk_counts"][rl] = cell["risk_counts"].get(rl, 0) + 1
+                if r.flood_height_cm:
+                    cell["max_height"] = max(cell["max_height"], r.flood_height_cm)
+
+        # Build GeoJSON
+        features = []
+        for (lat, lon), cell in grid.items():
+            dominant_risk = max(cell["risk_counts"], key=cell["risk_counts"].get)
+            avg_cred = round(cell["cred_sum"] / cell["count"], 2) if cell["count"] > 0 else 0.0
+            # Center of grid cell
+            center_lat = round(lat + _GRID_SIZE_DEG / 2, 6)
+            center_lon = round(lon + _GRID_SIZE_DEG / 2, 6)
+
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [center_lon, center_lat]},
+                    "properties": {
+                        "count": cell["count"],
+                        "weight": cell["count"],
+                        "avg_credibility": avg_cred,
+                        "dominant_risk": dominant_risk,
+                        "max_flood_height_cm": cell["max_height"],
+                    },
+                }
+            )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "type": "FeatureCollection",
+                    "features": features,
+                    "meta": {
+                        "hours": hours,
+                        "min_credibility": min_cred,
+                        "total_reports": sum(c["count"] for c in grid.values()),
+                        "grid_cells": len(features),
+                        "grid_size_degrees": _GRID_SIZE_DEG,
+                    },
+                    "request_id": request_id,
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        logger.error("Error fetching report density [%s]: %s", request_id, e, exc_info=True)
+        return jsonify({"success": False, "error": "Failed to compute report density"}), 500

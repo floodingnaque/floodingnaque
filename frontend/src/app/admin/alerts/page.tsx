@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,14 +58,17 @@ import type { Alert } from "@/types/api/alert";
 /* ── Risk badge styles ─────────────────────────────────── */
 
 const RISK_BADGE: Record<number, { label: string; cls: string }> = {
-  0: { label: "Safe", cls: "bg-green-500/10 text-green-700 border-green-300" },
+  0: {
+    label: "Safe",
+    cls: "bg-green-500/10 text-green-700 dark:text-green-300 border-green-300 dark:border-green-600",
+  },
   1: {
     label: "Alert",
-    cls: "bg-amber-500/10 text-amber-700 border-amber-300",
+    cls: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-600",
   },
   2: {
     label: "Critical",
-    cls: "bg-red-500/10 text-red-700 border-red-300",
+    cls: "bg-red-500/10 text-red-700 dark:text-red-300 border-red-300 dark:border-red-600",
   },
 };
 
@@ -181,6 +186,8 @@ export default function AdminAlertsPage() {
   const [riskFilter, setRiskFilter] = useState<string>("all");
   const [ackFilter, setAckFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: alertsData, isLoading, refetch } = useAlerts();
   const { data: history } = useAlertHistory();
@@ -230,6 +237,13 @@ export default function AdminAlertsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Admin", href: "/admin" },
+          { label: "Alert Management" },
+        ]}
+        className="mb-4"
+      />
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
@@ -337,25 +351,7 @@ export default function AdminAlertsPage() {
               size="sm"
               variant="destructive"
               className="gap-1"
-              onClick={() => {
-                // confirm in advance
-                if (
-                  window.confirm(`Delete ${selected.size} selected alert(s)?`)
-                ) {
-                  // use the bulk delete endpoint
-                  fetch("/api/v1/alerts/admin/bulk-delete", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({
-                      alert_ids: Array.from(selected),
-                    }),
-                  }).then(() => {
-                    setSelected(new Set());
-                    refetch();
-                  });
-                }
-              }}
+              onClick={() => setDeleteConfirmOpen(true)}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete ({selected.size})
@@ -462,6 +458,33 @@ export default function AdminAlertsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Selected Alerts"
+        description={`This will permanently delete ${selected.size} selected alert(s). This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={isDeleting}
+        onConfirm={() => {
+          setIsDeleting(true);
+          fetch("/api/v1/alerts/admin/bulk-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ alert_ids: Array.from(selected) }),
+          })
+            .then(() => {
+              setSelected(new Set());
+              refetch();
+            })
+            .finally(() => {
+              setIsDeleting(false);
+              setDeleteConfirmOpen(false);
+            });
+        }}
+      />
     </div>
   );
 }

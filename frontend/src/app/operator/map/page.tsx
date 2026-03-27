@@ -9,6 +9,7 @@
 import { Layers, RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,11 @@ import {
   useHazardMap,
   type FloodMapRef,
 } from "@/features/map";
+import {
+  ForecastOverlay,
+  ForecastTimeSelector,
+  useForecastOverlayState,
+} from "@/features/map/components/ForecastOverlay";
 import { SafeRouteLayer } from "@/features/map/components/SafeRouteLayer";
 import { cn } from "@/lib/utils";
 import type { Alert } from "@/types/api/alert";
@@ -40,6 +46,8 @@ export default function OperatorMapPage() {
   const { data: alertsData } = useAlerts();
   const [overlayMode, setOverlayMode] = useState<OverlayMode>("hazard");
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
+  const { selectedOffset, setSelectedOffset, offsets } =
+    useForecastOverlayState();
 
   const alerts: Alert[] = (() => {
     if (!alertsData) return [];
@@ -69,6 +77,14 @@ export default function OperatorMapPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Flood Map" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Map controls bar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
@@ -100,6 +116,11 @@ export default function OperatorMapPage() {
               ),
             )}
           </div>
+          <ForecastTimeSelector
+            offsets={offsets}
+            selected={selectedOffset}
+            onSelect={setSelectedOffset}
+          />
         </div>
         <Button
           variant="outline"
@@ -126,6 +147,7 @@ export default function OperatorMapPage() {
           >
             <EvacuationMarkers />
             <SafeRouteLayer />
+            <ForecastOverlay selectedOffset={selectedOffset} />
           </FloodMap>
         </CardContent>
       </Card>

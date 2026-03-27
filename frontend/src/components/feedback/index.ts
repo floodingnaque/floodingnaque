@@ -19,3 +19,4 @@ export { OfflineBanner } from "./OfflineBanner";
 export { PageLoader } from "./PageLoader";
 export { NotFoundFallback, RouteErrorBoundary } from "./RouteErrorBoundary";
 export { RouteProgress } from "./RouteProgress";
+export { StaleDataBanner } from "./StaleDataBanner";

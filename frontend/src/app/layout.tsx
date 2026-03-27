@@ -512,7 +512,7 @@ export function Layout() {
 
   // Start SSE connection for real-time alerts.
   // Controlled via VITE_ENABLE_SSE env var (defaults to true).
-  const { isConnected, reconnect } = useAlertStream({
+  const { isConnected, reconnect, lastHeartbeat } = useAlertStream({
     enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
 
@@ -687,6 +687,7 @@ export function Layout() {
                 isConnected={isConnected}
                 onReconnect={reconnect}
                 showReconnectButton={false}
+                lastHeartbeat={lastHeartbeat}
                 className="hidden sm:flex"
               />
 

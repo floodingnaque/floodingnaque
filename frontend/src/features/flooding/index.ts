@@ -9,6 +9,7 @@ export { ExplainabilityPanel } from "./components/ExplainabilityPanel";
 export { PersonalizedRiskBanner } from "./components/PersonalizedRiskBanner";
 export { PredictionForm } from "./components/PredictionForm";
 export { PredictionResult } from "./components/PredictionResult";
+export { ResidentDecisionPanel } from "./components/ResidentDecisionPanel";
 export { RiskBadge } from "./components/RiskBadge";
 export { RiskDisplay } from "./components/RiskDisplay";
 

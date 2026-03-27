@@ -18,9 +18,16 @@ export const API_ENDPOINTS = {
     passwordResetRequest: "/api/v1/auth/password-reset/request",
     passwordResetConfirm: "/api/v1/auth/password-reset/confirm",
   },
+  users: {
+    reputation: "/api/v1/users/me/reputation",
+    recalculateReputation: "/api/v1/users/me/reputation/recalculate",
+    leaderboard: "/api/v1/users/reputation/leaderboard",
+  },
   predict: {
     predict: "/api/v1/predict",
     predictByLocation: "/api/v1/predict/location",
+    forecastMap: "/api/v1/predict/forecast-map",
+    simulate: "/api/v1/predict/simulate",
   },
   data: {
     weather: "/api/v1/data/data",
@@ -31,6 +38,8 @@ export const API_ENDPOINTS = {
     list: "/api/v1/alerts",
     recent: "/api/v1/alerts/recent",
     simulateSms: "/api/v1/alerts/simulate-sms",
+    coverage: "/api/v1/alerts/coverage",
+    smsDeliveryWebhook: "/api/v1/alerts/sms/delivery-status",
   },
   sse: {
     alerts: "/api/v1/sse/alerts",
@@ -68,6 +77,7 @@ export const API_ENDPOINTS = {
     barangays: "/api/v1/gis/barangays",
     floodZones: "/api/v1/gis/flood-zones",
     evacuationCenters: "/api/v1/gis/evacuation-centers",
+    floodDepth: "/api/v1/gis/flood-depth",
     invalidateCache: "/api/v1/gis/barangays/invalidate-cache",
   },
   lgu: {
@@ -130,6 +140,7 @@ export const API_ENDPOINTS = {
     confirm: "/api/v1/reports",
     flag: "/api/v1/reports",
     stats: "/api/v1/reports/stats",
+    density: "/api/v1/reports/density",
   },
   evacuation: {
     centers: "/api/v1/evacuation/centers",

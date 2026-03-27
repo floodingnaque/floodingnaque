@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -99,6 +100,14 @@ export default function ResidentRiskPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/resident" },
+          { label: "Risk Assessment" },
+        ]}
+        className="mb-4"
+      />
+
       {/* ── Current Risk Level ─────────────────────────────────────── */}
       {isLoading ? (
         <Skeleton className="h-44 w-full rounded-2xl" />
@@ -148,7 +157,7 @@ export default function ResidentRiskPage() {
           {isLoading ? (
             <Skeleton className="h-16" />
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
                 <Droplets className="h-5 w-5 text-blue-500 shrink-0" />
                 <div>
@@ -223,9 +232,9 @@ export default function ResidentRiskPage() {
                   variant="outline"
                   className={`text-[10px] uppercase ${
                     f.severity === "high"
-                      ? "text-red-600 border-red-500/30"
+                      ? "text-red-600 dark:text-red-400 border-red-500/30"
                       : f.severity === "medium"
-                        ? "text-amber-600 border-amber-500/30"
+                        ? "text-amber-600 dark:text-amber-400 border-amber-500/30"
                         : ""
                   }`}
                 >
@@ -322,7 +331,7 @@ export default function ResidentRiskPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-            <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+            <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium text-foreground">
                 LIGTAS / Safe (Level 0)
@@ -334,7 +343,7 @@ export default function ResidentRiskPage() {
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium text-foreground">
                 ALERTO / Alert (Level 1)
@@ -346,7 +355,7 @@ export default function ResidentRiskPage() {
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20">
-            <Siren className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+            <Siren className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium text-foreground">
                 KRITIKAL / Critical (Level 2)

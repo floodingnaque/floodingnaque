@@ -45,6 +45,7 @@ export {
   type HazardFeatureProperties,
   type HazardMapData,
 } from "./hooks/useHazardMap";
+export { useMapData } from "./hooks/useMapData";
 
 // Services
 export {

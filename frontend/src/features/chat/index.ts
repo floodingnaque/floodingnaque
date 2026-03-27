@@ -2,7 +2,7 @@
 
 export { ChannelSidebar } from "./components/ChannelSidebar";
 export { ChatMessage } from "./components/ChatMessage";
-export { ChatPanel } from "./components/ChatPanel";
+export { ChatPanel, ChatPanelSkeleton } from "./components/ChatPanel";
 export { OnlineCount } from "./components/OnlineCount";
 export { TypingIndicator } from "./components/TypingIndicator";
 export { useChannelOverview } from "./hooks/useChannelOverview";

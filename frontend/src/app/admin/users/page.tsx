@@ -8,6 +8,7 @@
  */
 
 import { PageHeader, SectionHeading } from "@/components/layout";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -511,6 +512,13 @@ export default function AdminUsersPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="w-full px-6 pt-6">
+        <Breadcrumb
+          items={[
+            { label: "Admin", href: "/admin" },
+            { label: "User Management" },
+          ]}
+          className="mb-4"
+        />
         <div className="flex items-start justify-between">
           <PageHeader
             icon={Users}

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -186,6 +187,14 @@ export default function OperatorAlertsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Alerts" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
@@ -257,9 +266,9 @@ export default function OperatorAlertsPage() {
               className={cn(
                 "text-xs gap-1",
                 connectionState === "CONNECTED"
-                  ? "text-green-600"
+                  ? "text-green-600 dark:text-green-400"
                   : connectionState === "RECONNECTING"
-                    ? "text-amber-600"
+                    ? "text-amber-600 dark:text-amber-400"
                     : "text-muted-foreground",
               )}
             >

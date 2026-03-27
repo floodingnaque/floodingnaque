@@ -1275,3 +1275,140 @@ def export_current_user_data():
     except Exception as e:
         logger.error(f"Data export error [{request_id}]: {str(e)}", exc_info=True)
         return api_error("ExportFailed", "Failed to export user data", HTTP_INTERNAL_ERROR, request_id)
+
+
+# ---------------------------------------------------------------------------
+# User Reputation
+# ---------------------------------------------------------------------------
+
+
+@users_bp.route("/me/reputation", methods=["GET"])
+@limiter.limit("30 per minute")
+def get_my_reputation():
+    """
+    Get the current user's reputation score and report statistics.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Returns:
+        200: Reputation snapshot
+    ---
+    tags:
+      - Users
+    responses:
+      200:
+        description: User reputation data
+    """
+    from app.services.user_reputation import get_reputation
+
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Missing or invalid token", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+        rep = get_reputation(user_id)
+        if rep is None:
+            return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+        return jsonify({"success": True, "reputation": rep, "request_id": request_id}), HTTP_OK
+
+    except Exception as e:
+        logger.error(f"Reputation fetch error [{request_id}]: {e}", exc_info=True)
+        return api_error("FetchFailed", "Failed to fetch reputation", HTTP_INTERNAL_ERROR, request_id)
+
+
+@users_bp.route("/me/reputation/recalculate", methods=["POST"])
+@limiter.limit("5 per minute")
+def recalculate_my_reputation():
+    """
+    Trigger a recalculation of the current user's reputation score.
+
+    Headers:
+        Authorization: Bearer <access_token>
+
+    Returns:
+        200: Updated reputation score
+    ---
+    tags:
+      - Users
+    responses:
+      200:
+        description: Recalculated reputation
+    """
+    from app.services.user_reputation import recalculate_reputation
+
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return api_error("Unauthorized", "Missing or invalid token", HTTP_UNAUTHORIZED, request_id)
+
+        token = auth_header.split(" ", 1)[1]
+        payload, error = decode_token(token)
+        if error:
+            return api_error("InvalidToken", error, HTTP_UNAUTHORIZED, request_id)
+
+        user_id = int(payload.get("sub"))
+        new_score = recalculate_reputation(user_id)
+        if new_score is None:
+            return api_error("UserNotFound", "User not found", HTTP_NOT_FOUND, request_id)
+
+        return (
+            jsonify({"success": True, "reputation_score": new_score, "request_id": request_id}),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(f"Reputation recalculation error [{request_id}]: {e}", exc_info=True)
+        return api_error("RecalcFailed", "Failed to recalculate reputation", HTTP_INTERNAL_ERROR, request_id)
+
+
+@users_bp.route("/reputation/leaderboard", methods=["GET"])
+@limiter.limit("30 per minute")
+def get_reputation_leaderboard():
+    """
+    Get the community reputation leaderboard (top reporters).
+
+    Query Parameters:
+        limit (int): Number of results (default: 20, max: 100)
+
+    Returns:
+        200: Leaderboard of top users by reputation
+    ---
+    tags:
+      - Users
+    parameters:
+      - in: query
+        name: limit
+        type: integer
+        default: 20
+    responses:
+      200:
+        description: Reputation leaderboard
+    """
+    from app.services.user_reputation import get_leaderboard
+
+    request_id = getattr(g, "request_id", "unknown")
+
+    try:
+        limit = min(max(request.args.get("limit", 20, type=int), 1), 100)
+        leaderboard = get_leaderboard(limit=limit)
+
+        return (
+            jsonify({"success": True, "leaderboard": leaderboard, "total": len(leaderboard), "request_id": request_id}),
+            HTTP_OK,
+        )
+
+    except Exception as e:
+        logger.error(f"Leaderboard fetch error [{request_id}]: {e}", exc_info=True)
+        return api_error("FetchFailed", "Failed to fetch leaderboard", HTTP_INTERNAL_ERROR, request_id)

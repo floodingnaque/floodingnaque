@@ -15,6 +15,7 @@ import {
   LifeBuoy,
   MapPin,
   Phone,
+  RefreshCw,
   ShieldCheck,
   Siren,
   Thermometer,
@@ -23,6 +24,8 @@ import {
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +38,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecentAlerts } from "@/features/alerts/hooks/useAlerts";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
+import { ResidentDecisionPanel } from "@/features/flooding";
 import { useUser } from "@/state";
+import { useUnreadCount } from "@/state/stores/alertStore";
 import type { Alert } from "@/types";
 import type { RiskLevel } from "@/types/api/prediction";
 
@@ -131,12 +136,13 @@ const QUICK_ACTIONS = [
 /* ── Page component ───────────────────────────────────────────────────── */
 
 export default function ResidentOverviewPage() {
-  const { data: prediction, isLoading } = useLivePrediction();
-  const { data: recentAlerts } = useRecentAlerts(5, {
+  const { data: prediction, isLoading, isError: predictionError, refetch: refetchPrediction } = useLivePrediction();
+  const { data: recentAlerts, dataUpdatedAt: alertsUpdatedAt, isError: alertsError, refetch: refetchAlerts } = useRecentAlerts(5, {
     staleTime: 30_000,
     refetchInterval: 30_000,
   });
   const user = useUser();
+  const unreadCount = useUnreadCount();
 
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
   const Icon = RISK_ICON[riskLevel];
@@ -156,6 +162,37 @@ export default function ResidentOverviewPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
+      <Breadcrumb items={[{ label: "Home" }]} className="mb-4" />
+
+      {/* ── Error feedback ─────────────────────────────────────── */}
+      {(predictionError || alertsError) && (
+        <Alert variant="destructive" className="border-red-500/30 bg-red-500/5">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              {predictionError && alertsError
+                ? "Unable to load flood risk and alerts data."
+                : predictionError
+                  ? "Unable to load flood risk data."
+                  : "Unable to load alerts."}
+              {" "}Showing cached data if available.
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 ml-2 shrink-0"
+              onClick={() => {
+                if (predictionError) refetchPrediction();
+                if (alertsError) refetchAlerts();
+              }}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* ── 3a. Personal Risk Banner ───────────────────────────────── */}
       {isLoading ? (
         <Skeleton className="h-48 w-full rounded-2xl" />
@@ -228,6 +265,9 @@ export default function ResidentOverviewPage() {
           </div>
         </div>
       )}
+
+      {/* ── Decision Panel ("What should I do?") ───────────────────── */}
+      <ResidentDecisionPanel prediction={prediction} userLocation={null} />
 
       {/* ── 3b. Current Weather Snapshot ───────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -311,7 +351,7 @@ export default function ResidentOverviewPage() {
                   className="p-3 rounded-lg border bg-amber-500/5 border-amber-500/20"
                 >
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{alert.message}</p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -347,12 +387,29 @@ export default function ResidentOverviewPage() {
                 </p>
               )}
             </div>
-          ) : (
-            <div className="flex items-center gap-2 py-4 text-muted-foreground">
-              <ShieldCheck className="h-5 w-5 text-green-500" />
-              <p className="text-sm">
+          ) : activeAlerts.length === 0 && unreadCount === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+              <ShieldCheck className="h-8 w-8 text-green-500" />
+              <p className="text-sm font-medium">
                 Walang aktibong alerto - No active alerts. Your area is safe.
               </p>
+              {alertsUpdatedAt ? (
+                <p className="text-xs text-muted-foreground/60">
+                  Last checked: {new Date(alertsUpdatedAt).toLocaleString()}
+                </p>
+              ) : null}
+              <Button asChild variant="outline" size="sm" className="mt-2">
+                <Link to="/resident/report">Report a Flood</Link>
+              </Button>
+            </div>
+          ) : activeAlerts.length === 0 && unreadCount > 0 ? (
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  {unreadCount} unread {unreadCount === 1 ? "alert" : "alerts"} — check your notifications
+                </p>
+              </div>
             </div>
           )}
         </CardContent>

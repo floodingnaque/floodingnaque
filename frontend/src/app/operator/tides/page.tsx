@@ -8,6 +8,7 @@
 import { Info, Ruler, TrendingDown, TrendingUp, Waves } from "lucide-react";
 import { useMemo } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -105,6 +106,14 @@ export default function OperatorTidesPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Operations", href: "/operator" },
+          { label: "Tides & River Levels" },
+        ]}
+        className="mb-4"
+      />
+
       {/* Tidal Data Unavailable Banner */}
       {tidalUnavailable && (
         <Card className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">

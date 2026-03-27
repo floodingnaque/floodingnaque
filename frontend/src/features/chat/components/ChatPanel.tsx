@@ -386,3 +386,39 @@ export function ChatPanel({
     </div>
   );
 }
+
+export function ChatPanelSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex flex-col h-full", className)}>
+      {/* Header */}
+      <div className="px-4 py-3 border-b flex items-center gap-2">
+        <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+        <div className="ml-auto h-4 w-16 bg-muted animate-pulse rounded" />
+      </div>
+      {/* Messages */}
+      <div className="flex-1 p-4 space-y-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "flex gap-2",
+              i % 3 === 0 ? "justify-end" : "justify-start",
+            )}
+          >
+            <div className="space-y-1">
+              <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+              <div
+                className="h-10 bg-muted animate-pulse rounded-xl"
+                style={{ width: `${120 + (i % 3) * 60}px` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Input */}
+      <div className="px-4 py-3 border-t">
+        <div className="h-10 w-full bg-muted animate-pulse rounded-xl" />
+      </div>
+    </div>
+  );
+}

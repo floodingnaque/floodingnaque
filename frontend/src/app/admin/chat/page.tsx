@@ -9,6 +9,7 @@
 import { MessageSquare, Shield } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { ChannelSidebar, ChatPanel } from "@/features/chat";
 
@@ -23,6 +24,13 @@ export default function AdminChatPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-screen-2xl mx-auto">
+      <Breadcrumb
+        items={[
+          { label: "Admin", href: "/admin" },
+          { label: "Community Chat" },
+        ]}
+        className="mb-4"
+      />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
