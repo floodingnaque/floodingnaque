@@ -71,7 +71,7 @@ seaborn==0.13.2
 # ============================================================================
 # SECURITY & AUTHENTICATION
 # ============================================================================
-cryptography==45.0.3  # Latest security patches, pinned
+cryptography==46.0.6  # Latest security patches, pinned
 itsdangerous==2.2.0
 bcrypt==4.3.0
 PyJWT[crypto]==2.10.1  # For JWT token-based authentication (>=2.10.1 required by supabase-auth)
