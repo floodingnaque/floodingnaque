@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useLanguage } from "@/state";
 
 interface Contact {
   name: string;
@@ -83,6 +84,8 @@ function downloadVCard() {
 }
 
 export default function ResidentEmergencyPage() {
+  const language = useLanguage();
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
       <Breadcrumb
@@ -97,10 +100,14 @@ export default function ResidentEmergencyPage() {
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Phone className="h-4 w-4 text-red-500" />
-                Mga Emergency Number / Emergency Contacts
+                {language === "fil"
+                  ? "Mga Emergency Number / Emergency Contacts"
+                  : "Emergency Contacts"}
               </CardTitle>
               <CardDescription>
-                Tap a number to call directly. Save to your phone.
+                {language === "fil"
+                  ? "I-tap ang numero para tumawag. I-save sa phone."
+                  : "Tap a number to call directly. Save to your phone."}
               </CardDescription>
             </div>
             <Button

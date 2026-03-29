@@ -26,6 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCommunityReports } from "@/features/resident";
+import { useLanguage } from "@/state";
 import type { CommunityReport } from "@/types";
 
 const SEVERITY_BADGE: Record<string, string> = {
@@ -70,6 +71,7 @@ function timeAgo(dateStr: string): string {
 export default function ResidentCommunityPage() {
   const { data: reports, isLoading, refetch } = useCommunityReports({});
   const [search, setSearch] = useState("");
+  const language = useLanguage();
 
   const filtered = useMemo(() => {
     if (!reports) return [];
@@ -94,10 +96,14 @@ export default function ResidentCommunityPage() {
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            Mga Ulat ng Komunidad / Community Reports
+            {language === "fil"
+              ? "Mga Ulat ng Komunidad / Community Reports"
+              : "Community Reports"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Verified flood reports from Parañaque residents
+            {language === "fil"
+              ? "Mga verified na ulat ng baha mula sa mga residente"
+              : "Verified flood reports from Parañaque residents"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -229,7 +235,9 @@ export default function ResidentCommunityPage() {
             <p className="text-sm font-medium">
               {search
                 ? "No matching reports"
-                : "Wala pang ulat / No reports yet"}
+                : language === "fil"
+                  ? "Wala pang ulat / No reports yet"
+                  : "No reports yet"}
             </p>
             <p className="text-xs mt-1">
               {search

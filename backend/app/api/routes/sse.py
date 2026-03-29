@@ -29,7 +29,7 @@ _sse_clients: Dict[str, queue.Queue] = {}
 _sse_lock = threading.Lock()
 
 # Per-IP SSE connection cap to prevent resource exhaustion
-MAX_SSE_CONNECTIONS_PER_IP = 5
+MAX_SSE_CONNECTIONS_PER_IP = 10
 _sse_ip_connections: Dict[str, int] = {}
 _sse_ip_lock = threading.Lock()
 

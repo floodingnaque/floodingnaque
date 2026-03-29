@@ -41,9 +41,9 @@ import {
   useAcknowledgeAlert,
   useAcknowledgeAll,
   useAlerts,
-  useAlertStream,
 } from "@/features/alerts";
 import { cn } from "@/lib/utils";
+import { useAlertStore } from "@/state/stores/alertStore";
 import type { Alert } from "@/types/api/alert";
 
 const RISK_BADGE: Record<number, { label: string; cls: string }> = {
@@ -138,7 +138,7 @@ function AlertRow({
       {alert.acknowledged && (
         <Badge variant="secondary" className="text-xs shrink-0 gap-1">
           <CheckCheck className="h-3 w-3" />
-          Ack&apos;d
+          Acknowledged
         </Badge>
       )}
     </div>
@@ -153,7 +153,7 @@ export default function OperatorAlertsPage() {
   const { data: alertsData, isLoading } = useAlerts();
   const ack = useAcknowledgeAlert();
   const ackAll = useAcknowledgeAll();
-  const { connectionState } = useAlertStream();
+  const connectionState = useAlertStore((s) => s.connectionState);
 
   const alerts: Alert[] = useMemo(() => {
     if (!alertsData) return [];
@@ -237,7 +237,7 @@ export default function OperatorAlertsPage() {
               disabled={ackAll.isPending}
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              Ack All ({pendingCount})
+              Acknowledge All ({pendingCount})
             </Button>
           )}
         </div>

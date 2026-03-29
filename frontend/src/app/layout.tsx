@@ -70,6 +70,7 @@ import { ConnectionStatus } from "@/features/alerts/components/ConnectionStatus"
 import { LiveAlertsBanner } from "@/features/alerts/components/LiveAlertsBanner";
 import { useAlertStream } from "@/features/alerts/hooks/useAlertStream";
 import { authApi } from "@/features/auth/services/authApi";
+import { useNotificationAutoPrompt } from "@/hooks/useNotificationAutoPrompt";
 import {
   useAuthStore,
   useSidebarCollapsed,
@@ -515,6 +516,10 @@ export function Layout() {
   const { isConnected, reconnect, lastHeartbeat } = useAlertStream({
     enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
+
+  // Auto-prompt push notification permission once per session after login.
+  // This ensures all roles (resident, operator, admin) get prompted early.
+  useNotificationAutoPrompt();
 
   // Handle logout
   const handleLogout = useCallback(() => {

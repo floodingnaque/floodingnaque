@@ -37,7 +37,7 @@ import type {
   HouseholdProfile,
   HouseholdProfileUpdate,
 } from "@/features/resident/services/residentApi";
-import { useUser } from "@/state";
+import { useLanguage, useUser } from "@/state";
 
 function profileToForm(h: Partial<HouseholdProfile>): HouseholdProfileUpdate {
   return {
@@ -79,6 +79,7 @@ function computeCompleteness(data: HouseholdProfileUpdate): number {
 
 export default function ResidentHouseholdPage() {
   const user = useUser();
+  const language = useLanguage();
   const { data: household, isLoading } = useHouseholdProfile();
   const updateMutation = useUpdateHouseholdProfile();
   const [editing, setEditing] = useState(false);
@@ -133,10 +134,14 @@ export default function ResidentHouseholdPage() {
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Heart className="h-5 w-5 text-red-500" />
-            Ang Aking Sambahayan / My Household
+            {language === "fil"
+              ? "Ang Aking Sambahayan / My Household"
+              : "My Household"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Ilagay ang impormasyon ng sambahayan para sa emergency tracking
+            {language === "fil"
+              ? "Ilagay ang impormasyon ng sambahayan para sa emergency tracking"
+              : "Household information for emergency tracking"}
           </p>
         </div>
         <Badge
@@ -165,7 +170,7 @@ export default function ResidentHouseholdPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />
-            Lokasyon / Location
+            {language === "fil" ? "Lokasyon / Location" : "Location"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -225,7 +230,9 @@ export default function ResidentHouseholdPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Kontak / Contact Information
+            {language === "fil"
+              ? "Kontak / Contact Information"
+              : "Contact Information"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -288,10 +295,14 @@ export default function ResidentHouseholdPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" />
-            Mga Kasambahay / Household Members
+            {language === "fil"
+              ? "Mga Kasambahay / Household Members"
+              : "Household Members"}
           </CardTitle>
           <CardDescription>
-            Makakatulong sa MDRRMO na mag-prioritize ng tulong
+            {language === "fil"
+              ? "Makakatulong sa MDRRMO na mag-prioritize ng tulong"
+              : "Helps MDRRMO prioritize assistance"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -364,7 +375,9 @@ export default function ResidentHouseholdPage() {
               <div>
                 <p className="text-sm font-medium">Senior Citizen (60+)</p>
                 <p className="text-xs text-muted-foreground">
-                  Matatanda sa bahay
+                  {language === "fil"
+                    ? "Matatanda sa bahay"
+                    : "Elderly in the household"}
                 </p>
               </div>
               <Switch
@@ -379,7 +392,9 @@ export default function ResidentHouseholdPage() {
               <div>
                 <p className="text-sm font-medium">Person with Disability</p>
                 <p className="text-xs text-muted-foreground">
-                  Taong may kapansanan
+                  {language === "fil"
+                    ? "Taong may kapansanan"
+                    : "Person with disability"}
                 </p>
               </div>
               <Switch
@@ -398,7 +413,9 @@ export default function ResidentHouseholdPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Droplets className="h-4 w-4 text-blue-500" />
-            Bahay at Karanasan sa Baha / Home & Flood Experience
+            {language === "fil"
+              ? "Bahay at Karanasan sa Baha / Home & Flood Experience"
+              : "Home & Flood Experience"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -448,7 +465,9 @@ export default function ResidentHouseholdPage() {
             <div>
               <p className="text-sm font-medium">Has Flood Experience</p>
               <p className="text-xs text-muted-foreground">
-                Nakaranas na ba ng baha ang bahay?
+                {language === "fil"
+                  ? "Nakaranas na ba ng baha ang bahay?"
+                  : "Has your home experienced flooding?"}
               </p>
             </div>
             <Switch

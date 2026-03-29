@@ -395,3 +395,6 @@ backend/scripts/archive/
 backend/create_admin.py
 backend/list_users.py
 backend/reset_admin_password.py
+
+# Frontend build artifacts
+frontend/dev-dist/

@@ -49,9 +49,9 @@ import {
   useAcknowledgeAll,
   useAlertHistory,
   useAlerts,
-  useAlertStream,
 } from "@/features/alerts";
 import { cn } from "@/lib/utils";
+import { useAlertStore } from "@/state/stores/alertStore";
 import type { Alert } from "@/types/api/alert";
 
 /* ── Risk badge styles ─────────────────────────────────── */
@@ -166,12 +166,12 @@ function AlertRow({
           disabled={isAcking}
         >
           <Check className="h-3 w-3" />
-          Ack
+          Acknowledge
         </Button>
       ) : (
         <Badge variant="secondary" className="text-xs shrink-0 gap-1">
           <CheckCheck className="h-3 w-3" />
-          Ack&apos;d
+          Acknowledged
         </Badge>
       )}
     </div>
@@ -192,7 +192,7 @@ export default function AdminAlertsPage() {
   const { data: history } = useAlertHistory();
   const ack = useAcknowledgeAlert({ onSuccess: () => refetch() });
   const ackAll = useAcknowledgeAll({ onSuccess: () => refetch() });
-  const { connectionState } = useAlertStream();
+  const connectionState = useAlertStore((s) => s.connectionState);
 
   const alerts: Alert[] = useMemo(() => {
     if (!alertsData) return [];
@@ -334,7 +334,7 @@ export default function AdminAlertsPage() {
                 disabled={ackAll.isPending}
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Ack All ({pendingCount})
+                Acknowledge All ({pendingCount})
               </Button>
             )}
             {selected.size > 0 && (

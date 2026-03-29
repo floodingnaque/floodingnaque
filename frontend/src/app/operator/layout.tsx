@@ -59,6 +59,7 @@ import { FloodIcon } from "@/components/icons/FloodIcon";
 import { ConnectionStatus } from "@/features/alerts/components/ConnectionStatus";
 import { useAlertStream } from "@/features/alerts/hooks/useAlertStream";
 import { authApi } from "@/features/auth/services/authApi";
+import { useNotificationAutoPrompt } from "@/hooks/useNotificationAutoPrompt";
 import {
   useAuthStore,
   useSidebarCollapsed,
@@ -331,6 +332,9 @@ export function OperatorLayout() {
     enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
 
+  // Auto-prompt push notification permission once per session
+  useNotificationAutoPrompt();
+
   const confirmLogout = useCallback(() => {
     authApi.logout().catch(() => {});
     clearAuth();
@@ -473,32 +477,32 @@ export function OperatorLayout() {
                 className="hidden sm:flex"
               />
 
-              {/* Quick Action: View Incidents */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="hidden sm:inline-flex h-8 text-xs gap-1"
-                onClick={() => navigate("/operator/incidents")}
-              >
-                <AlertTriangle className="h-3.5 w-3.5" />
-                View Incidents
-              </Button>
-
-              {/* Notification Bell */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                onClick={() => navigate("/operator/alerts")}
-                aria-label="Alerts"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive text-[10px] text-destructive-foreground flex items-center justify-center px-1">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </Button>
+              {/* Incidents + Alerts */}
+              <div className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  onClick={() => navigate("/operator/incidents")}
+                  aria-label="View Incidents"
+                >
+                  <AlertTriangle className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  onClick={() => navigate("/operator/alerts")}
+                  aria-label="Alerts"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 rounded-full bg-destructive text-[10px] text-destructive-foreground flex items-center justify-center px-1">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </div>
 
               <Button
                 variant="ghost"

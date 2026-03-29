@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEvacuationCenters } from "@/features/evacuation/hooks/useEvacuationCenters";
+import { useLanguage } from "@/state";
 import type { EvacuationCenter } from "@/types";
 
 function statusColor(isActive: boolean, occupancyPct: number) {
@@ -49,6 +50,7 @@ function capacityBarColor(pct: number) {
 export default function ResidentEvacuationPage() {
   const { data: centers, isLoading, refetch } = useEvacuationCenters();
   const [search, setSearch] = useState("");
+  const language = useLanguage();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
@@ -111,10 +113,14 @@ export default function ResidentEvacuationPage() {
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Building className="h-5 w-5 text-primary" />
-            Mga Evacuation Center / Centers
+            {language === "fil"
+              ? "Mga Evacuation Center / Centers"
+              : "Evacuation Centers"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Go to the nearest open center if instructed to evacuate
+            {language === "fil"
+              ? "Pumunta sa pinakamalapit na bukas na center kung inutusan mag-evacuate"
+              : "Go to the nearest open center if instructed to evacuate"}
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -945,11 +945,36 @@ def create_broadcast():
         user = getattr(g, "current_user", None)
         sent_by = getattr(user, "full_name", None) or getattr(user, "email", "system")
 
-        # ── Dispatch to real channels ────────────────────────────────────
+        # ── Map priority to numeric risk_level for Alert-compatible payloads ─
+        _PRIORITY_TO_RISK = {"low": 0, "normal": 0, "high": 1, "critical": 2}
+        priority_str = data.get("priority", "normal")
+        risk_level = _PRIORITY_TO_RISK.get(priority_str, 0)
+
+        # ── Persist broadcast record FIRST so we have a real ID ──────────
         from app.models.user import User
 
         delivery_results: dict = {}
         actual_recipients = 0
+
+        with get_db_session() as session:
+            broadcast = Broadcast(
+                title=data.get("title"),
+                message=message,
+                priority=priority_str,
+                target_barangays=target_barangays_str,
+                channels=channels_str,
+                recipients=0,
+                sent_by=sent_by,
+                incident_id=data.get("incident_id"),
+            )
+            session.add(broadcast)
+            session.flush()
+            broadcast_id = broadcast.id
+            now_iso = datetime.now(timezone.utc).isoformat()
+            result = _serialize_broadcast(broadcast)
+            session.commit()
+
+        # ── Dispatch to real channels ────────────────────────────────────
 
         with get_db_session() as session:
             # SMS dispatch
@@ -1001,17 +1026,22 @@ def create_broadcast():
                 else:
                     delivery_results["email"] = "no_recipients"
 
-            # SSE / In-App broadcast
+            # SSE / In-App broadcast (payload matches frontend Alert interface)
             if "sse" in channels_list or "web" in channels_list:
                 try:
                     from app.api.routes.sse import broadcast_alert
 
                     sse_record = {
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "risk_label": data.get("priority", "normal").capitalize(),
+                        "id": broadcast_id,
+                        "risk_level": risk_level,
+                        "risk_label": priority_str.capitalize(),
                         "message": message,
                         "location": target_barangays_str,
-                        "delivery_status": {"sse": "delivered"},
+                        "triggered_at": now_iso,
+                        "acknowledged": False,
+                        "created_at": now_iso,
+                        "delivery_status": "delivered",
+                        "delivery_channel": "broadcast",
                     }
                     client_count = broadcast_alert(sse_record)
                     delivery_results["sse"] = f"delivered ({client_count} clients)"
@@ -1019,23 +1049,63 @@ def create_broadcast():
                     logger.warning("SSE broadcast failed: %s", sse_exc)
                     delivery_results["sse"] = "failed"
 
-        # ── Persist broadcast record ─────────────────────────────────────
+            # Web Push dispatch
+            if "push" in channels_list:
+                try:
+                    from app.api.routes.push_notifications import send_push_citywide, send_push_to_barangay
+
+                    push_payload = {
+                        "title": data.get("title", "Flood Alert Broadcast"),
+                        "message": message,
+                        "risk_level": risk_level,
+                        "url": "/resident/alerts",
+                    }
+                    push_total = {"delivered": 0, "failed": 0}
+                    target_list = [b.strip() for b in target_barangays_str.split(",") if b.strip()]
+                    for brgy in target_list:
+                        push_payload["barangay_id"] = brgy
+                        brgy_result = send_push_to_barangay(brgy, push_payload)
+                        push_total["delivered"] += brgy_result.get("delivered", 0)
+                        push_total["failed"] += brgy_result.get("failed", 0)
+
+                    delivery_results["push"] = f"delivered ({push_total['delivered']})"
+                    actual_recipients += push_total["delivered"]
+                    logger.info("Broadcast push to %d barangays: %s", len(target_list), push_total)
+                except Exception as push_exc:
+                    logger.warning("Push broadcast failed: %s", push_exc)
+                    delivery_results["push"] = "failed"
+
+        # ── Update broadcast with final recipient count ──────────────────
         with get_db_session() as session:
-            broadcast = Broadcast(
-                title=data.get("title"),
-                message=message,
-                priority=data.get("priority", "normal"),
-                target_barangays=target_barangays_str,
-                channels=channels_str,
-                recipients=actual_recipients,
-                sent_by=sent_by,
-                incident_id=data.get("incident_id"),
-            )
-            session.add(broadcast)
-            session.flush()
-            result = _serialize_broadcast(broadcast)
-            result["delivery_results"] = delivery_results
-            session.commit()
+            bcast = session.query(Broadcast).get(broadcast_id)
+            if bcast:
+                bcast.recipients = actual_recipients
+                session.commit()
+
+        # ── Persist as AlertHistory so it appears in the Alert Feed ──────
+        try:
+            from app.models.db import AlertHistory
+
+            with get_db_session() as session:
+                alert_record = AlertHistory(
+                    risk_level=risk_level,
+                    risk_label=priority_str.capitalize(),
+                    location=target_barangays_str,
+                    message=message,
+                    delivery_status="delivered",
+                    delivery_channel=channels_str,
+                    delivered_at=datetime.now(timezone.utc),
+                    acknowledged=False,
+                )
+                session.add(alert_record)
+                session.commit()
+                # Update SSE record id to match the alert_history id
+                logger.info("Broadcast %d persisted as AlertHistory for Alert Feed", broadcast_id)
+        except Exception as ah_exc:
+            logger.warning("Failed to persist broadcast as AlertHistory: %s", ah_exc)
+
+        result["recipients"] = actual_recipients
+        result["delivery_results"] = delivery_results
 
         logger.info(
             "Broadcast %d sent to %s via %s - %d recipients [%s]",

@@ -14,10 +14,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyReports } from "@/features/resident";
 import { ReportCard } from "@/features/resident/components/ReportCard";
+import { useLanguage } from "@/state";
 import type { CommunityReport } from "@/types";
 
 export default function ResidentMyReportsPage() {
   const { data: reports, isLoading } = useMyReports({});
+  const language = useLanguage();
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
@@ -31,10 +33,12 @@ export default function ResidentMyReportsPage() {
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
-            Mga Ulat Ko / My Reports
+            {language === "fil" ? "Mga Ulat Ko / My Reports" : "My Reports"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Track the status of your submitted flood reports
+            {language === "fil"
+              ? "I-track ang status ng mga nai-submit mong ulat"
+              : "Track the status of your submitted flood reports"}
           </p>
         </div>
         <Button asChild className="gap-2">
@@ -63,7 +67,9 @@ export default function ResidentMyReportsPage() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <FileText className="h-12 w-12 mb-3 opacity-30" />
             <p className="text-sm font-medium">
-              Wala ka pang ulat / No reports yet
+              {language === "fil"
+                ? "Wala ka pang ulat / No reports yet"
+                : "No reports yet"}
             </p>
             <p className="text-xs mt-1">
               Help your community - report flooding in your area

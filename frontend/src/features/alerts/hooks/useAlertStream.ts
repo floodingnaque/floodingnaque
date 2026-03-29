@@ -268,6 +268,15 @@ export function useAlertStream(
         setReconnectAttempts(0);
         isReconnectingRef.current = false;
         stopPollingFallback(); // Stop polling if SSE resumes
+
+        // Clear stale persisted alerts - the live stream will push any
+        // real active alerts. This prevents phantom badge counts from
+        // leftover localStorage data on page reload.
+        const store = useAlertStore.getState();
+        if (store.liveAlerts.length > 0) {
+          store.clearAlerts();
+        }
+
         onConnectRef.current?.();
       };
 
@@ -283,6 +292,56 @@ export function useAlertStream(
           // Keep REST query cache in sync with SSE-fed store
           queryClient.invalidateQueries({ queryKey: alertKeys.all });
           onAlertRef.current?.(data.alert);
+
+          // Show toast notification so user sees it immediately
+          const alertMsg = data.alert.message || "New flood alert received";
+          const location = data.alert.location || "";
+          const riskLevel = data.alert.risk_level ?? 0;
+          if (riskLevel === 2) {
+            toast.error(alertMsg, {
+              description: location,
+              duration: Infinity,
+            });
+          } else if (riskLevel === 1) {
+            toast.warning(alertMsg, {
+              description: location,
+              duration: 10_000,
+            });
+          } else {
+            toast.info(alertMsg, {
+              description: location,
+              duration: 8_000,
+            });
+          }
+
+          // Browser Notification API: shows OS-level notification even when
+          // the tab is backgrounded. Works on mobile browsers too.
+          if (
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            const isCritical = riskLevel === 2;
+            const notifTitle = isCritical
+              ? "\u{1F6A8} CRITICAL FLOOD RISK"
+              : "\u26A0\uFE0F Flood Alert";
+            const notifBody = location ? `${alertMsg}\n${location}` : alertMsg;
+            try {
+              const n = new Notification(notifTitle, {
+                body: notifBody,
+                icon: "/icons/icon-192x192.png",
+                badge: "/icons/icon-72x72.png",
+                tag: `flood-alert-${data.alert.id ?? "live"}`,
+                renotify: isCritical,
+                requireInteraction: isCritical,
+              });
+              n.onclick = () => {
+                window.focus();
+                n.close();
+              };
+            } catch {
+              // Notification constructor may fail in some contexts (e.g. insecure)
+            }
+          }
         } catch (parseError) {
           captureException(parseError, { context: "SSE alert event parse" });
         }

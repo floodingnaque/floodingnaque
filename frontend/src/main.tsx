@@ -31,16 +31,10 @@ injectAnalytics();
 
 import { registerSW } from "virtual:pwa-register";
 
-// PWA service worker: only register in production to avoid stale cached
-// API responses during development.
-if (import.meta.env.PROD) {
-  registerSW({ immediate: true });
-} else {
-  // Unregister any leftover SW from a previous production build
-  navigator.serviceWorker
-    ?.getRegistrations()
-    .then((regs) => regs.forEach((r) => r.unregister()));
-}
+// PWA service worker: register in all environments.
+// VitePWA devOptions.enabled=true generates a dev SW that includes
+// custom-sw.js (push handler), so push notifications work in dev/ngrok too.
+registerSW({ immediate: true });
 
 // Initialize cross-tab sync and leader election
 initTabSync({

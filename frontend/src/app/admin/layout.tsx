@@ -56,6 +56,7 @@ import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { RouteProgress } from "@/components/feedback/RouteProgress";
 import { FloodIcon } from "@/components/icons/FloodIcon";
 import { authApi } from "@/features/auth/services/authApi";
+import { useNotificationAutoPrompt } from "@/hooks/useNotificationAutoPrompt";
 import {
   useClearAuth,
   useSidebarCollapsed,
@@ -293,6 +294,9 @@ export function AdminLayout() {
   const { toggleTheme, collapseSidebar, setSidebarOpen } = useUIActions();
   const clearAuth = useClearAuth();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+  // Auto-prompt push notification permission once per session
+  useNotificationAutoPrompt();
 
   const confirmLogout = useCallback(() => {
     authApi.logout().catch(() => {});

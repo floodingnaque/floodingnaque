@@ -21,4 +21,6 @@ export {
 
 export { usePushNotifications } from "./usePushNotifications";
 
+export { useNotificationAutoPrompt } from "./useNotificationAutoPrompt";
+
 export { useNetworkStatus } from "./useNetworkStatus";

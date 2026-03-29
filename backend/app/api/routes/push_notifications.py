@@ -10,7 +10,7 @@ import logging
 from app.api.middleware.auth import require_auth
 from app.api.middleware.body_size import validate_json_body_size
 from app.api.middleware.rate_limit import rate_limit_with_burst
-from app.core.config import Config
+from app.core.config import get_config
 from app.models.db import get_db_session
 from app.models.push_subscription import PushSubscription
 from app.utils.api_responses import api_error, api_success
@@ -23,7 +23,7 @@ push_notifications_bp = Blueprint("push_notifications", __name__)
 
 def _get_vapid_config() -> tuple[str, str, dict[str, str | int]]:
     """Return (private_key, public_key, claims) from Config."""
-    cfg = Config.get_instance()
+    cfg = get_config()
     return (
         cfg.VAPID_PRIVATE_KEY,
         cfg.VAPID_PUBLIC_KEY,

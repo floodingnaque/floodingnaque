@@ -59,6 +59,7 @@ import { FloodIcon } from "@/components/icons/FloodIcon";
 import { ConnectionStatus } from "@/features/alerts/components/ConnectionStatus";
 import { useAlertStream } from "@/features/alerts/hooks/useAlertStream";
 import { authApi } from "@/features/auth/services/authApi";
+import { useNotificationAutoPrompt } from "@/hooks/useNotificationAutoPrompt";
 import {
   useAuthStore,
   useSidebarCollapsed,
@@ -379,6 +380,9 @@ export function ResidentLayout() {
   const { isConnected, reconnect, lastHeartbeat } = useAlertStream({
     enabled: import.meta.env.VITE_ENABLE_SSE !== "false",
   });
+
+  // Auto-prompt push notification permission once per session
+  useNotificationAutoPrompt();
 
   const confirmLogout = useCallback(() => {
     authApi.logout().catch(() => {});

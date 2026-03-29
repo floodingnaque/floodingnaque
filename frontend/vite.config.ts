@@ -9,10 +9,12 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      // Enable SW in development for testing PWA features
+      // Enable SW in development for testing PWA features (push, offline)
       devOptions: {
         enabled: true,
-        type: "module",
+        // 'classic' type allows importScripts('/custom-sw.js') to work in dev.
+        // 'module' type uses ESM which doesn't support importScripts.
+        type: "classic",
       },
       registerType: "autoUpdate",
       injectRegister: "auto",

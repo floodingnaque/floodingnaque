@@ -21,6 +21,7 @@ import api from "@/lib/api-client";
 import { showToast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Bell,
   CheckCircle,
   Loader2,
   Mail,
@@ -65,6 +66,12 @@ const CHANNELS = [
     icon: Radio,
     label: "SSE / In-App",
     desc: "Real-time in-app alert",
+  },
+  {
+    id: "push",
+    icon: Bell,
+    label: "Push",
+    desc: "Browser push notification",
   },
 ] as const;
 
