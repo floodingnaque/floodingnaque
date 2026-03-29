@@ -186,6 +186,7 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     port: 3000,
+    host: true, // Bind to 0.0.0.0 for cross-device testing
     // Pre-transform frequently accessed modules for faster page load
     warmup: {
       clientFiles: [
@@ -199,6 +200,11 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       "/api/v1/sse": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        timeout: 0,
+      },
+      "/api/v1/chat/stream": {
         target: "http://localhost:5000",
         changeOrigin: true,
         timeout: 0,

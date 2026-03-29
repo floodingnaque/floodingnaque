@@ -23,12 +23,11 @@ function scrollTo(id: string) {
 }
 
 const NAV_LINKS = [
-  { label: "Status", target: "live-status", group: "info" },
   { label: "Live Status", target: "barangay-status", group: "info" },
   { label: "How It Works", target: "how-it-works", group: "info" },
   { label: "Features", target: "features", group: "product" },
-  { label: "Barangays", target: "barangay-map", group: "product" },
-  { label: "About", target: "footer", group: "other" },
+  { label: "Broadcast", target: "broadcast", group: "product" },
+  { label: "Get Started", target: "cta", group: "other" },
 ] as const;
 
 // ---------------------------------------------------------------------------

@@ -7,16 +7,37 @@ import os
 import pickle  # nosec B403 - used only for joblib model loading, not arbitrary deserialization
 import tempfile
 import threading
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import joblib
 import numpy as np
 import pandas as pd
+
+# Use sklearn's own Parallel & delayed so that sklearn config (n_jobs,
+# random_state, transform_output) propagates to workers correctly.
+# If any code in the project needs parallel loops, import from HERE — never
+# from joblib directly — to avoid the UserWarning about mismatched sources.
+from sklearn.utils.parallel import Parallel, delayed  # noqa: F401 – re-exported for project use
+
 from app.services.risk_classifier import classify_risk_level
 from app.services.smart_alert_evaluator import evaluate_smart_alert
 from app.services.xai_engine import generate_explanation
 from app.utils.secrets import get_secret
+
+# Safety-net filter: the warning fires when *any* code (including third-party
+# libraries like shap or lightgbm) pairs joblib.delayed with sklearn's Parallel.
+# We cannot fix third-party internals, so suppress the warning here while the
+# canonical imports above ensure all *user* code is consistent.
+# Tested 2026-03-29: sklearn 1.8.0 + joblib 1.4.2 — warning does NOT reproduce
+# from predict/predict_proba on models with n_jobs=-1, but keeping the filter
+# as defence for environments (Docker/Gunicorn) or future library upgrades.
+warnings.filterwarnings(
+    "ignore",
+    message=r".*sklearn\.utils\.parallel\.(delayed|Parallel).*",
+    category=UserWarning,
+)
 
 logger = logging.getLogger(__name__)
 

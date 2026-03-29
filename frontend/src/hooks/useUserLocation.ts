@@ -89,7 +89,7 @@ function pointInPolygon(
   return inside;
 }
 
-function detectBarangay(lat: number, lng: number): BarangayData | null {
+export function detectBarangay(lat: number, lng: number): BarangayData | null {
   for (const barangay of BARANGAYS) {
     if (pointInPolygon(lat, lng, barangay.polygon)) {
       return barangay;

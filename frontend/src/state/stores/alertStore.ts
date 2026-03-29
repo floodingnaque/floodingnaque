@@ -276,11 +276,15 @@ export const useAlertStore = create<AlertStore>()(
 
 export const useLiveAlerts = () => useAlertStore((state) => state.liveAlerts);
 
-/** Derived unread count - never stored, always computed */
+/** Derived unread count - never stored, always computed.
+ *  Excludes safe (risk_level 0) alerts so the badge only counts
+ *  actionable warnings / critical notifications. */
 export const useUnreadCount = () =>
   useAlertStore(
     (state) =>
-      state.liveAlerts.filter((a) => !state.acknowledgedIds.has(a.id)).length,
+      state.liveAlerts.filter(
+        (a) => !state.acknowledgedIds.has(a.id) && a.risk_level > 0,
+      ).length,
   );
 
 /** Backward-compatible boolean derived from connection state machine */

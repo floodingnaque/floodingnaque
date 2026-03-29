@@ -37,6 +37,7 @@ const HistoryPage = lazy(() => import("@/app/history/page"));
 const ReportsPage = lazy(() => import("@/app/reports/page"));
 const SettingsPage = lazy(() => import("@/app/settings/page"));
 const AdminPage = lazy(() => import("@/app/admin/page"));
+const AdminLayout = lazy(() => import("@/app/admin/layout"));
 const MapPage = lazy(() => import("@/app/map/page"));
 const AnalyticsPage = lazy(() => import("@/app/analytics/page"));
 const AdminUsersPage = lazy(() => import("@/app/admin/users/page"));
@@ -250,144 +251,136 @@ function App() {
               />
 
               {/* Admin Routes (guarded by role) */}
+            </Route>
+          </Route>
+
+          {/* ── Admin Dashboard Routes ────────────────────────────── */}
+          <Route element={<ProtectedRoute />}>
+            <Route
+              element={
+                <RequireRole requiredRole="admin">
+                  <AdminLayout />
+                </RequireRole>
+              }
+            >
               <Route
                 path="/admin"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/users"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminUsersPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminUsersPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/logs"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminLogsPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminLogsPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/barangays"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminBarangaysPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminBarangaysPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/data"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminDataPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminDataPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/models"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminModelsPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminModelsPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/config"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminConfigPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminConfigPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/security"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminSecurityPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminSecurityPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/monitoring"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminMonitoringPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminMonitoringPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/storage"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminStoragePage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminStoragePage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/workflow"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminWorkflowPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminWorkflowPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/sensor"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminSensorPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminSensorPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/chat"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminChatPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminChatPage />
+                  </RouteErrorBoundary>
                 }
               />
               <Route
                 path="/admin/alerts"
                 element={
-                  <RequireRole requiredRole="admin">
-                    <RouteErrorBoundary>
-                      <AdminAlertsPage />
-                    </RouteErrorBoundary>
-                  </RequireRole>
+                  <RouteErrorBoundary>
+                    <AdminAlertsPage />
+                  </RouteErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/reports"
+                element={
+                  <RouteErrorBoundary>
+                    <OperatorReportsPage />
+                  </RouteErrorBoundary>
                 }
               />
             </Route>

@@ -24,7 +24,6 @@ import {
   Loader2,
   Megaphone,
   RefreshCw,
-  Scale,
   ShieldCheck,
   Siren,
   Users,
@@ -32,7 +31,6 @@ import {
 } from "lucide-react";
 import { useRef } from "react";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -345,23 +343,6 @@ export default function CompliancePage() {
 
   return (
     <div className="space-y-0">
-      {/* ── Header ── */}
-      <div className="w-full px-6 pt-6 pb-2">
-        <PageHeader
-          icon={Scale}
-          title="National Framework Compliance"
-          subtitle="Alignment with RA 10121, local DRRM protocols, and barangay early warning procedures"
-          badge={
-            <Badge
-              variant="outline"
-              className={cn("text-xs", headerBadgeClass)}
-            >
-              {headerBadgeLabel}
-            </Badge>
-          }
-        />
-      </div>
-
       {/* ═══ Overall Score Banner ═══ */}
       <div className="w-full px-6">
         <GlassCard intensity="medium" className="relative overflow-hidden">

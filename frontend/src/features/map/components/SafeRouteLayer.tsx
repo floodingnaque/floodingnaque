@@ -6,7 +6,9 @@
  * to its designated evacuation center and are color-coded by flood risk.
  */
 
+import { useEffect } from "react";
 import { Polyline, Tooltip } from "react-leaflet";
+import { toast } from "sonner";
 import {
   useEvacuationRoutes,
   type BarangayRoute,
@@ -60,9 +62,18 @@ function RoutePolyline({ r }: { r: BarangayRoute }) {
 }
 
 export function SafeRouteLayer() {
-  const { data: routes } = useEvacuationRoutes();
+  const { data: routes, error, isLoading } = useEvacuationRoutes();
 
-  if (!routes?.length) return null;
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load evacuation routes", {
+        description: "OSRM routing service may be unavailable.",
+        id: "safe-route-error",
+      });
+    }
+  }, [error]);
+
+  if (isLoading || !routes?.length) return null;
 
   return (
     <>

@@ -8,10 +8,10 @@
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CircleMarker,
   MapContainer,
+  Marker,
   Polygon,
   Popup,
   TileLayer,
@@ -197,14 +197,66 @@ export interface BarangayRiskMapProps {
   className?: string;
 }
 
+/** Blue location pin icon for the user's GPS position */
+function createUserLocationIcon(): L.DivIcon {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="40" height="60">
+      <defs>
+        <filter id="loc-glow" x="-40%" y="-20%" width="180%" height="160%">
+          <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#3b82f6" flood-opacity="0.5"/>
+        </filter>
+      </defs>
+      <path filter="url(#loc-glow)" fill="#3b82f6"
+        stroke="#fff" stroke-width="2"
+        d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24C24 5.37 18.63 0 12 0z"/>
+      <circle cx="12" cy="11" r="5" fill="#fff" opacity="0.9"/>
+      <circle cx="12" cy="11" r="2.5" fill="#3b82f6"/>
+    </svg>
+  `;
+  return L.divIcon({
+    html: svg,
+    className: "user-location-marker",
+    iconSize: [40, 60],
+    iconAnchor: [20, 60],
+    popupAnchor: [0, -60],
+  });
+}
+
 export const BarangayRiskMap = memo(function BarangayRiskMap({
   livePredictions,
   prediction,
   height = 420,
-  userLocation,
+  userLocation: userLocationProp,
   children,
   className,
 }: BarangayRiskMapProps) {
+  // Auto-detect user location if not provided by parent
+  const [autoLocation, setAutoLocation] = useState<[number, number] | null>(
+    null,
+  );
+
+  const requestAutoLocation = useCallback(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setAutoLocation([pos.coords.latitude, pos.coords.longitude]);
+      },
+      () => {
+        /* silently ignore errors */
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300_000 },
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!userLocationProp) {
+      requestAutoLocation();
+    }
+  }, [userLocationProp, requestAutoLocation]);
+
+  const userLocation = userLocationProp ?? autoLocation;
+
+  const userLocationIcon = useMemo(() => createUserLocationIcon(), []);
   const heightMap: Record<string | number, string> = {
     "100%": "h-full",
     300: "h-[250px] sm:h-[300px]",
@@ -221,11 +273,11 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
   const [layers, setLayers] = useState<LayerVisibility>({
     boundaries: true,
     floodZones: true,
-    evacuation: false,
+    evacuation: true,
     traffic: false,
-    communityReports: false,
+    communityReports: true,
     safeRoute: false,
-    floodDepth: false,
+    floodDepth: true,
   });
 
   // Count at-risk barangays
@@ -384,20 +436,31 @@ export const BarangayRiskMap = memo(function BarangayRiskMap({
             {/* User GPS location */}
             {userLocation && <FlyToUser position={userLocation} />}
             {userLocation && (
-              <CircleMarker
-                center={userLocation}
-                radius={8}
-                pathOptions={{
-                  color: "#3b82f6",
-                  fillColor: "#3b82f6",
-                  fillOpacity: 0.4,
-                  weight: 2,
-                }}
+              <Marker
+                position={userLocation}
+                icon={userLocationIcon}
+                zIndexOffset={1000}
               >
-                <Tooltip direction="top" offset={[0, -10]}>
-                  Your Location
+                <Tooltip direction="top" offset={[0, -60]} permanent>
+                  <span className="font-semibold text-xs inline-flex items-center gap-1">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    You are here
+                  </span>
                 </Tooltip>
-              </CircleMarker>
+              </Marker>
             )}
           </MapContainer>
 

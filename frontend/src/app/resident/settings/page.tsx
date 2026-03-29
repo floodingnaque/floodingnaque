@@ -38,7 +38,7 @@ import {
   useUpdateHouseholdProfile,
 } from "@/features/resident";
 import { showToast } from "@/lib/toast";
-import { useTheme, useUIActions, useUser } from "@/state";
+import { useLanguage, useTheme, useUIActions, useUser } from "@/state";
 
 function passwordStrength(pw: string): {
   label: string;
@@ -61,7 +61,8 @@ function passwordStrength(pw: string): {
 export default function ResidentSettingsPage() {
   const user = useUser();
   const theme = useTheme();
-  const { toggleTheme } = useUIActions();
+  const language = useLanguage();
+  const { toggleTheme, setLanguage } = useUIActions();
   const { data: household } = useHouseholdProfile();
   const updateProfile = useUpdateHouseholdProfile();
   const { changePassword, isChangingPassword } = useAuth();
@@ -73,9 +74,6 @@ export default function ResidentSettingsPage() {
   );
   const [pushAlerts, setPushAlerts] = useState(
     household?.push_notifications ?? true,
-  );
-  const [prefLang, setPrefLang] = useState(
-    household?.preferred_language ?? "fil",
   );
 
   // ── Password change form ───────────────────────────────────────
@@ -103,9 +101,9 @@ export default function ResidentSettingsPage() {
       sms_alerts: smsAlerts,
       email_alerts: emailAlerts,
       push_notifications: pushAlerts,
-      preferred_language: prefLang,
+      preferred_language: language,
     });
-  }, [smsAlerts, emailAlerts, pushAlerts, prefLang, updateProfile]);
+  }, [smsAlerts, emailAlerts, pushAlerts, language, updateProfile]);
 
   const handlePasswordChange = useCallback(() => {
     changePassword(
@@ -137,7 +135,7 @@ export default function ResidentSettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <User className="h-4 w-4 text-primary" />
-            Aking Account / My Account
+            {language === "fil" ? "Aking Account / My Account" : "My Account"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -167,7 +165,7 @@ export default function ResidentSettingsPage() {
             ) : (
               <Sun className="h-4 w-4" />
             )}
-            Anyo / Appearance
+            {language === "fil" ? "Anyo / Appearance" : "Appearance"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -175,7 +173,9 @@ export default function ResidentSettingsPage() {
             <div>
               <p className="text-sm font-medium">Dark Mode</p>
               <p className="text-xs text-muted-foreground">
-                Gabi mode para sa mata
+                {language === "fil"
+                  ? "Gabi mode para sa mata"
+                  : "Reduce eye strain at night"}
               </p>
             </div>
             <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
@@ -188,20 +188,20 @@ export default function ResidentSettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Globe className="h-4 w-4 text-primary" />
-            Wika / Language
+            {language === "fil" ? "Wika / Language" : "Language"}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-3">
             {[
-              { code: "fil", label: "Filipino" },
-              { code: "en", label: "English" },
+              { code: "fil" as const, label: "Filipino" },
+              { code: "en" as const, label: "English" },
             ].map(({ code, label }) => (
               <Button
                 key={code}
                 size="sm"
-                variant={prefLang === code ? "default" : "outline"}
-                onClick={() => setPrefLang(code)}
+                variant={language === code ? "default" : "outline"}
+                onClick={() => setLanguage(code)}
               >
                 {label}
               </Button>
@@ -215,10 +215,12 @@ export default function ResidentSettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Bell className="h-4 w-4 text-primary" />
-            Mga Abiso / Notifications
+            {language === "fil" ? "Mga Abiso / Notifications" : "Notifications"}
           </CardTitle>
           <CardDescription>
-            Paano mo gustong makatanggap ng flood alerts
+            {language === "fil"
+              ? "Paano mo gustong makatanggap ng flood alerts"
+              : "How you want to receive flood alerts"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -271,7 +273,7 @@ export default function ResidentSettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Lock className="h-4 w-4 text-primary" />
-            Seguridad / Security
+            {language === "fil" ? "Seguridad / Security" : "Security"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

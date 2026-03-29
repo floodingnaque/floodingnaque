@@ -52,7 +52,25 @@ self.addEventListener("push", function (event) {
         ],
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      // Clear cached API responses so the app fetches fresh data
+      caches.open("api-cache").then(function (cache) {
+        return cache.keys().then(function (keys) {
+          return Promise.all(
+            keys
+              .filter(function (req) {
+                return req.url.includes("/api/v1/");
+              })
+              .map(function (req) {
+                return cache.delete(req);
+              }),
+          );
+        });
+      }),
+    ]),
+  );
 });
 
 self.addEventListener("notificationclick", function (event) {

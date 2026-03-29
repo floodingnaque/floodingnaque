@@ -15,7 +15,6 @@ import {
   MapPin,
   Megaphone,
   Search,
-  Shield,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -236,255 +235,248 @@ export default function AdminAlertsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <Breadcrumb
-        items={[
-          { label: "Admin", href: "/admin" },
-          { label: "Alert Management" },
-        ]}
-        className="mb-4"
-      />
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-          <Shield className="h-5 w-5 text-red-500" />
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold">Alert & Notification Center</h1>
-          <p className="text-xs text-muted-foreground">
-            Manage alerts, SMS dispatch, email notifications, and channel
-            monitoring
-          </p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <div className="w-full px-6 pt-6">
+        <Breadcrumb
+          items={[
+            { label: "Admin", href: "/admin" },
+            { label: "Alert Management" },
+          ]}
+          className="mb-4"
+        />
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total Alerts</p>
-            <p className="text-2xl font-bold">
-              {history?.summary?.total_alerts ?? alerts.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3 text-red-500" />
-              Critical
-            </p>
-            <p className="text-2xl font-bold text-red-600">
-              {history?.summary?.risk_distribution?.critical ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Smartphone className="h-3 w-3" />
-              SMS Delivered
-            </p>
-            <p className="text-2xl font-bold">
-              {history?.summary?.status_distribution?.delivered ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Mail className="h-3 w-3" />
-              Pending
-            </p>
-            <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters & Bulk Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search alerts by barangay or message..."
-            className="pl-9"
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={riskFilter} onValueChange={setRiskFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Risk Level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="2">Critical</SelectItem>
-              <SelectItem value="1">Alert</SelectItem>
-              <SelectItem value="0">Safe</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={ackFilter} onValueChange={setAckFilter}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="acknowledged">Acknowledged</SelectItem>
-            </SelectContent>
-          </Select>
-          {pendingCount > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1"
-              onClick={() => ackAll.mutate()}
-              disabled={ackAll.isPending}
-            >
-              <CheckCheck className="h-3.5 w-3.5" />
-              Ack All ({pendingCount})
-            </Button>
-          )}
-          {selected.size > 0 && (
-            <Button
-              size="sm"
-              variant="destructive"
-              className="gap-1"
-              onClick={() => setDeleteConfirmOpen(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete ({selected.size})
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Alert Feed */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                Alert Feed
-                {pendingCount > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    {pendingCount} pending
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                <button
-                  type="button"
-                  onClick={selectAll}
-                  className="text-xs underline hover:text-primary transition-colors"
-                >
-                  {selected.size === filtered.length && filtered.length > 0
-                    ? "Deselect all"
-                    : "Select all"}
-                </button>
-              </CardDescription>
-            </div>
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-xs gap-1",
-                connectionState === "CONNECTED"
-                  ? "text-green-600"
-                  : connectionState === "RECONNECTING"
-                    ? "text-amber-600"
-                    : "text-muted-foreground",
-              )}
-            >
-              <Wifi className="h-3 w-3" />
-              {connectionState === "CONNECTED"
-                ? "Live"
-                : connectionState === "RECONNECTING"
-                  ? "Reconnecting…"
-                  : "Polling"}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <ShieldCheck className="h-12 w-12 mb-3 text-emerald-500/50" />
-              <p className="text-base font-medium">No Active Alerts</p>
-              <p className="text-sm mt-1">
-                {search || riskFilter !== "all" || ackFilter !== "all"
-                  ? "No alerts match your filters."
-                  : "All alerts have been acknowledged and resolved."}
+      <div className="w-full px-6 py-6 space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">Total Alerts</p>
+              <p className="text-2xl font-bold">
+                {history?.summary?.total_alerts ?? alerts.length}
               </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filtered.map((alert) => (
-                <AlertRow
-                  key={alert.id}
-                  alert={alert}
-                  onAck={(id) => ack.mutate(id)}
-                  isAcking={ack.isPending}
-                  selected={selected.has(alert.id)}
-                  onSelect={toggleSelect}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 text-red-500" />
+                Critical
+              </p>
+              <p className="text-2xl font-bold text-red-600">
+                {history?.summary?.risk_distribution?.critical ?? 0}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Smartphone className="h-3 w-3" />
+                SMS Delivered
+              </p>
+              <p className="text-2xl font-bold">
+                {history?.summary?.status_distribution?.delivered ?? 0}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Mail className="h-3 w-3" />
+                Pending
+              </p>
+              <p className="text-2xl font-bold text-amber-600">
+                {pendingCount}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Bottom panels: Channel Panel + SMS Simulation */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <AlertChannelPanel />
+        {/* Filters & Bulk Actions */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search alerts by barangay or message..."
+              className="pl-9"
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={riskFilter} onValueChange={setRiskFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Risk Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="2">Critical</SelectItem>
+                <SelectItem value="1">Alert</SelectItem>
+                <SelectItem value="0">Safe</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={ackFilter} onValueChange={setAckFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="acknowledged">Acknowledged</SelectItem>
+              </SelectContent>
+            </Select>
+            {pendingCount > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1"
+                onClick={() => ackAll.mutate()}
+                disabled={ackAll.isPending}
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Ack All ({pendingCount})
+              </Button>
+            )}
+            {selected.size > 0 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="gap-1"
+                onClick={() => setDeleteConfirmOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete ({selected.size})
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Alert Feed */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Megaphone className="h-4 w-4" />
-              SMS Sandbox
-            </CardTitle>
-            <CardDescription>
-              Send a test SMS to verify delivery. Always runs in sandbox mode.
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Alert Feed
+                  {pendingCount > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      {pendingCount} pending
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    className="text-xs underline hover:text-primary transition-colors"
+                  >
+                    {selected.size === filtered.length && filtered.length > 0
+                      ? "Deselect all"
+                      : "Select all"}
+                  </button>
+                </CardDescription>
+              </div>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs gap-1",
+                  connectionState === "CONNECTED"
+                    ? "text-green-600"
+                    : connectionState === "RECONNECTING"
+                      ? "text-amber-600"
+                      : "text-muted-foreground",
+                )}
+              >
+                <Wifi className="h-3 w-3" />
+                {connectionState === "CONNECTED"
+                  ? "Live"
+                  : connectionState === "RECONNECTING"
+                    ? "Reconnecting…"
+                    : "Polling"}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent>
-            <SmsSimulationPanel />
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <ShieldCheck className="h-12 w-12 mb-3 text-emerald-500/50" />
+                <p className="text-base font-medium">No Active Alerts</p>
+                <p className="text-sm mt-1">
+                  {search || riskFilter !== "all" || ackFilter !== "all"
+                    ? "No alerts match your filters."
+                    : "All alerts have been acknowledged and resolved."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filtered.map((alert) => (
+                  <AlertRow
+                    key={alert.id}
+                    alert={alert}
+                    onAck={(id) => ack.mutate(id)}
+                    isAcking={ack.isPending}
+                    selected={selected.has(alert.id)}
+                    onSelect={toggleSelect}
+                  />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      </div>
 
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        onOpenChange={setDeleteConfirmOpen}
-        title="Delete Selected Alerts"
-        description={`This will permanently delete ${selected.size} selected alert(s). This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="destructive"
-        loading={isDeleting}
-        onConfirm={() => {
-          setIsDeleting(true);
-          fetch("/api/v1/alerts/admin/bulk-delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ alert_ids: Array.from(selected) }),
-          })
-            .then(() => {
-              setSelected(new Set());
-              refetch();
+        {/* Bottom panels: Channel Panel + SMS Simulation */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <AlertChannelPanel />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Megaphone className="h-4 w-4" />
+                SMS Sandbox
+              </CardTitle>
+              <CardDescription>
+                Send a test SMS to verify delivery. Always runs in sandbox mode.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SmsSimulationPanel />
+            </CardContent>
+          </Card>
+        </div>
+
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          title="Delete Selected Alerts"
+          description={`This will permanently delete ${selected.size} selected alert(s). This action cannot be undone.`}
+          confirmLabel="Delete"
+          variant="destructive"
+          loading={isDeleting}
+          onConfirm={() => {
+            setIsDeleting(true);
+            fetch("/api/v1/alerts/admin/bulk-delete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ alert_ids: Array.from(selected) }),
             })
-            .finally(() => {
-              setIsDeleting(false);
-              setDeleteConfirmOpen(false);
-            });
-        }}
-      />
+              .then(() => {
+                setSelected(new Set());
+                refetch();
+              })
+              .finally(() => {
+                setIsDeleting(false);
+                setDeleteConfirmOpen(false);
+              });
+          }}
+        />
+      </div>
     </div>
   );
 }

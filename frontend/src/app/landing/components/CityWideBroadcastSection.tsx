@@ -8,6 +8,7 @@
  */
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api-client";
@@ -18,6 +19,7 @@ import { motion, useInView } from "framer-motion";
 import {
   AlertTriangle,
   Bell,
+  LogIn,
   Megaphone,
   Radio,
   ShieldAlert,
@@ -25,6 +27,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -179,7 +182,7 @@ export function CityWideBroadcastSection() {
 
         {/* Message feed */}
         <div
-          className="max-w-2xl mx-auto space-y-3"
+          className="max-w-4xl mx-auto space-y-3"
           role="log"
           aria-live="polite"
           aria-label="City-wide broadcast messages"
@@ -289,17 +292,26 @@ export function CityWideBroadcastSection() {
           )}
         </div>
 
-        {/* Read-only notice */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          This is a read-only feed.{" "}
-          <a
-            href="/login"
-            className="text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-sm"
-          >
-            Sign in
-          </a>{" "}
-          to access your barangay chat channel.
-        </p>
+        {/* Sign-in CTA banner */}
+        <div className="max-w-4xl mx-auto mt-8">
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <p className="text-sm font-medium text-foreground">
+                Want to participate in your barangay chat?
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Sign in to post messages, receive personalized alerts, and
+                submit flood reports.
+              </p>
+            </div>
+            <Button asChild size="default" className="shrink-0 gap-2">
+              <Link to="/login">
+                <LogIn className="h-4 w-4" />
+                Sign In
+              </Link>
+            </Button>
+          </div>
+        </div>
       </div>
     </section>
   );

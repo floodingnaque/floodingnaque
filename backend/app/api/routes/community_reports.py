@@ -336,7 +336,7 @@ def list_reports():
     """List community flood reports with optional filters."""
     try:
         barangay = request.args.get("barangay")
-        hours = int(request.args.get("hours", 6))
+        hours = int(request.args.get("hours", 24))
         status = request.args.get("status")
         verified = request.args.get("verified")
         mine = request.args.get("mine")
@@ -648,7 +648,7 @@ def confirm_report(report_id: int):
 @community_reports_bp.route("/<int:report_id>/flag", methods=["POST"])
 @rate_limit_with_burst("10 per hour")
 def flag_report(report_id: int):
-    """Flag a report for abuse. Auto-rejects at 3 flags."""
+    """Flag a report for abuse. Notifies operators/admins for review."""
     try:
         with get_db_session() as session:
             report = (
@@ -660,11 +660,7 @@ def flag_report(report_id: int):
                 return jsonify({"success": False, "error": "Report not found"}), 404
 
             report.abuse_flag_count = (report.abuse_flag_count or 0) + 1
-
-            # Auto-reject at 3 flags
-            if report.abuse_flag_count >= 3:
-                report.status = "rejected"
-                logger.info("Report %d auto-rejected due to %d abuse flags", report_id, report.abuse_flag_count)
+            logger.info("Report %d flagged for abuse (total flags: %d)", report_id, report.abuse_flag_count)
 
             session.add(report)
 
@@ -674,12 +670,17 @@ def flag_report(report_id: int):
                 "status": report.status,
             }
 
-            # Broadcast flag event via SSE for real-time updates
+            # Notify operators/admins via SSE (report stays visible to all users)
             try:
                 from app.api.routes.sse import get_sse_manager
 
                 sse = get_sse_manager()
-                sse.broadcast("report_status_changed", {"report_id": report_id, "status": report.status, "flagged": True})
+                sse.broadcast("report_abuse_flagged", {
+                    "report_id": report_id,
+                    "abuse_flag_count": report.abuse_flag_count,
+                    "barangay": report.barangay,
+                    "description": (report.description or "")[:100],
+                })
             except Exception as exc:
                 logger.debug("SSE broadcast skipped for flag: %s", exc)
 

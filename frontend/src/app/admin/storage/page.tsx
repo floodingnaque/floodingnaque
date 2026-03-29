@@ -5,7 +5,7 @@
  * and permanently purge soft-deleted data. Admin-only access.
  */
 
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import {
   AlertDialog,
@@ -655,32 +655,25 @@ export default function AdminStoragePage() {
           ]}
           className="mb-4"
         />
-        <div className="flex items-start justify-between">
-          <PageHeader
-            icon={HardDrive}
-            title="Storage Management"
-            subtitle="Monitor database usage, clean up old records, and free storage"
-          />
-          <div className="flex items-center gap-3 pt-1">
-            {displayUpdatedAt && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Updated{" "}
-                {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshAll}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
-              />
-              Refresh
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-3">
+          {displayUpdatedAt && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Updated{" "}
+              {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshAll}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
         </div>
       </div>
 
@@ -882,7 +875,7 @@ export default function AdminStoragePage() {
           />
 
           <motion.div
-            className="grid gap-6 lg:grid-cols-3"
+            className="grid gap-6 lg:grid-cols-3 auto-rows-fr"
             variants={staggerContainer}
             initial="hidden"
             animate={cleanupInView ? "show" : undefined}

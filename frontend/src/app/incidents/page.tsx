@@ -12,7 +12,6 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
-  ClipboardList,
   Clock,
   Filter,
   Loader2,
@@ -28,7 +27,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -872,168 +870,144 @@ export default function IncidentsPage() {
     <div className="space-y-0">
       {/* ── Header ── */}
       <div className="w-full px-6 pt-6 pb-2">
-        <PageHeader
-          icon={ClipboardList}
-          title="Incident Management"
-          subtitle="Log, track, and manage flood incidents through the LGU workflow pipeline"
-          actions={
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleManualRefresh}
-                  className="border border-white/20 text-white hover:bg-white/10 hover:text-white"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-                {lastUpdated && (
-                  <span className="text-[10px] text-white/50 hidden sm:inline">
-                    Updated {formatRelativeTime(lastUpdated.toISOString())}
-                  </span>
-                )}
-              </div>
-              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="bg-primary hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Incident
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Log New Incident</DialogTitle>
-                    <DialogDescription>
-                      Create a new flood incident record. It will start in
-                      &ldquo;Alert Raised&rdquo; status.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="inc-title">Title *</Label>
-                      <Input
-                        id="inc-title"
-                        placeholder="e.g. Flash flood - Don Galo area"
-                        value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="inc-desc">Description</Label>
-                      <textarea
-                        id="inc-desc"
-                        rows={3}
-                        placeholder="Describe the incident, affected areas, and any immediate observations…"
-                        value={newDescription}
-                        onChange={(e) => setNewDescription(e.target.value)}
-                        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="inc-barangay">Barangay *</Label>
-                      <Select
-                        value={newBarangay}
-                        onValueChange={setNewBarangay}
-                      >
-                        <SelectTrigger id="inc-barangay">
-                          <SelectValue placeholder="Select barangay" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PARANAQUE_BARANGAYS.map((b) => (
-                            <SelectItem key={b} value={b}>
-                              {b}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="inc-type">Type</Label>
-                        <Select
-                          value={newType}
-                          onValueChange={(v) => setNewType(v as IncidentType)}
-                        >
-                          <SelectTrigger id="inc-type">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="flood">Flood</SelectItem>
-                            <SelectItem value="storm_surge">
-                              Storm Surge
-                            </SelectItem>
-                            <SelectItem value="landslide">Landslide</SelectItem>
-                            <SelectItem value="flash_flood">
-                              Flash Flood
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="inc-risk">Risk Level</Label>
-                        <Select
-                          value={String(newRisk)}
-                          onValueChange={(v) => setNewRisk(Number(v))}
-                        >
-                          <SelectTrigger id="inc-risk">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">Safe</SelectItem>
-                            <SelectItem value="1">Alert</SelectItem>
-                            <SelectItem value="2">Critical</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="inc-families">Affected Families</Label>
-                        <Input
-                          id="inc-families"
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={newAffectedFamilies}
-                          onChange={(e) =>
-                            setNewAffectedFamilies(e.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="inc-officer">Reporting Officer</Label>
-                        <Input
-                          id="inc-officer"
-                          placeholder="Officer name"
-                          value={newOfficer}
-                          onChange={(e) => setNewOfficer(e.target.value)}
-                        />
-                      </div>
-                    </div>
+        <div className="flex items-center justify-end gap-3">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleManualRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            {lastUpdated && (
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                Updated {formatRelativeTime(lastUpdated.toISOString())}
+              </span>
+            )}
+          </div>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                New Incident
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Log New Incident</DialogTitle>
+                <DialogDescription>
+                  Create a new flood incident record. It will start in
+                  &ldquo;Alert Raised&rdquo; status.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label htmlFor="inc-title">Title *</Label>
+                  <Input
+                    id="inc-title"
+                    placeholder="e.g. Flash flood - Don Galo area"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inc-desc">Description</Label>
+                  <textarea
+                    id="inc-desc"
+                    rows={3}
+                    placeholder="Describe the incident, affected areas, and any immediate observations…"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inc-barangay">Barangay *</Label>
+                  <Select value={newBarangay} onValueChange={setNewBarangay}>
+                    <SelectTrigger id="inc-barangay">
+                      <SelectValue placeholder="Select barangay" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PARANAQUE_BARANGAYS.map((b) => (
+                        <SelectItem key={b} value={b}>
+                          {b}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="inc-type">Type</Label>
+                    <Select
+                      value={newType}
+                      onValueChange={(v) => setNewType(v as IncidentType)}
+                    >
+                      <SelectTrigger id="inc-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="flood">Flood</SelectItem>
+                        <SelectItem value="storm_surge">Storm Surge</SelectItem>
+                        <SelectItem value="landslide">Landslide</SelectItem>
+                        <SelectItem value="flash_flood">Flash Flood</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setCreateOpen(false)}
+                  <div className="space-y-2">
+                    <Label htmlFor="inc-risk">Risk Level</Label>
+                    <Select
+                      value={String(newRisk)}
+                      onValueChange={(v) => setNewRisk(Number(v))}
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreate}
-                      disabled={creating || !newTitle.trim() || !newBarangay}
-                    >
-                      {creating && (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      )}
-                      Create Incident
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          }
-        />
+                      <SelectTrigger id="inc-risk">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Safe</SelectItem>
+                        <SelectItem value="1">Alert</SelectItem>
+                        <SelectItem value="2">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="inc-families">Affected Families</Label>
+                    <Input
+                      id="inc-families"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={newAffectedFamilies}
+                      onChange={(e) => setNewAffectedFamilies(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="inc-officer">Reporting Officer</Label>
+                    <Input
+                      id="inc-officer"
+                      placeholder="Officer name"
+                      value={newOfficer}
+                      onChange={(e) => setNewOfficer(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={creating || !newTitle.trim() || !newBarangay}
+                >
+                  {creating && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
+                  Create Incident
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* ═══ Stats Row ═══ */}

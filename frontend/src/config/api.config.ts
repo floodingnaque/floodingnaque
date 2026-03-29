@@ -43,6 +43,7 @@ export const API_ENDPOINTS = {
   },
   sse: {
     alerts: "/api/v1/sse/alerts",
+    chat: "/api/v1/chat/stream",
   },
   dashboard: {
     stats: "/api/v1/dashboard/stats",

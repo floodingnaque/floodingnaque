@@ -487,11 +487,13 @@ export const adminApi = {
     return api.get(endpoints.admin.models);
   },
 
-  triggerRetrain: async (modelId?: string): Promise<RetrainResult> => {
-    return api.post(
-      endpoints.admin.modelRetrain,
-      modelId ? { model_id: modelId } : undefined,
-    );
+  triggerRetrain: async (options?: {
+    model_id?: string;
+    clean_data?: boolean;
+    hmac_sign?: boolean;
+    version_tag?: string;
+  }): Promise<RetrainResult> => {
+    return api.post(endpoints.admin.modelRetrain, options);
   },
 
   getRetrainStatus: async (taskId: string): Promise<RetrainResult> => {

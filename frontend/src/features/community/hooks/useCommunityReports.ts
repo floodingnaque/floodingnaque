@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import {
   communityApi,
   type ReportListParams,
+  type ReportListResponse,
   type ReportStatsParams,
 } from "../services/communityApi";
 
@@ -122,30 +123,70 @@ export function useSubmitReport() {
 
 /**
  * Vote on a report (confirm / dispute).
+ * Uses optimistic cache updates to avoid marker re-mount flicker.
  */
 export function useVoteReport() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, vote }: { id: number; vote: "confirm" | "dispute" }) =>
       communityApi.voteReport(id, vote),
+    onMutate: async ({ id, vote }) => {
+      // Cancel any in-flight refetches so they don't overwrite our optimistic update
+      await qc.cancelQueries({ queryKey: communityKeys.all });
+
+      // Snapshot current cache entries for rollback
+      const previousLists = qc.getQueriesData<ReportListResponse>({
+        queryKey: communityKeys.lists(),
+      });
+
+      // Optimistically update every cached list that contains this report
+      qc.setQueriesData<ReportListResponse>(
+        { queryKey: communityKeys.lists() },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            reports: old.reports.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    confirmation_count:
+                      r.confirmation_count + (vote === "confirm" ? 1 : 0),
+                    dispute_count:
+                      r.dispute_count + (vote === "dispute" ? 1 : 0),
+                  }
+                : r,
+            ),
+          };
+        },
+      );
+
+      return { previousLists };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback on failure
+      if (context?.previousLists) {
+        for (const [key, data] of context.previousLists) {
+          if (data) qc.setQueryData(key, data);
+        }
+      }
+      toast.error("Failed to submit vote");
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: communityKeys.all });
       notifyCrossTabs();
     },
-    onError: () => toast.error("Failed to submit vote"),
   });
 }
 
 /**
  * Flag a report for abuse.
+ * Does NOT refetch or hide the report — operators/admins are notified instead.
  */
 export function useFlagReport() {
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => communityApi.flagReport(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: communityKeys.all });
-      notifyCrossTabs();
+      toast.success("Report flagged — operators will review it");
     },
     onError: () => toast.error("Failed to flag report"),
   });

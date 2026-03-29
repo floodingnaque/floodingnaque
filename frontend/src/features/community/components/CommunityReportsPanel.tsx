@@ -16,19 +16,23 @@ import {
   useSubmitReport,
 } from "@/features/community/hooks/useCommunityReports";
 import { cn } from "@/lib/utils";
+import { uuid } from "@/lib/uuid";
 import type { CommunityReport } from "@/types";
 import {
   Camera,
+  CarFront,
   CheckCircle2,
   ClipboardList,
   Construction,
+  Crosshair,
   FileText,
-  CarFront,
+  Loader2,
   TrendingUp,
   Upload,
   Waves,
 } from "lucide-react";
 import { memo, useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -79,11 +83,13 @@ const BARANGAY_NAMES = BARANGAYS.map((b) => b.name).sort();
 
 function ReportRow({ report }: { report: CommunityReport }) {
   const typeIcon =
-    report.risk_label === "Critical"
-      ? <Waves className="h-4 w-4" />
-      : report.risk_label === "Alert"
-        ? <Construction className="h-4 w-4" />
-        : <TrendingUp className="h-4 w-4" />;
+    report.risk_label === "Critical" ? (
+      <Waves className="h-4 w-4" />
+    ) : report.risk_label === "Alert" ? (
+      <Construction className="h-4 w-4" />
+    ) : (
+      <TrendingUp className="h-4 w-4" />
+    );
 
   const credibility = report.credibility_score ?? 0;
 
@@ -150,9 +156,12 @@ export const CommunityReportsPanel = memo(function CommunityReportsPanel() {
   const [desc, setDesc] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [lat, setLat] = useState<number | null>(null);
+  const [lon, setLon] = useState<number | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [referenceId] = useState(
-    () => `RPT-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
+    () => `RPT-${uuid().slice(0, 6).toUpperCase()}`,
   );
 
   const { data: reportsData, isLoading: reportsLoading } = useCommunityReports({
@@ -167,7 +176,12 @@ export const CommunityReportsPanel = memo(function CommunityReportsPanel() {
         ? reportsData
         : []) ?? [];
 
-  const canSubmit = incidentType && barangay && desc.length >= 10;
+  const canSubmit =
+    incidentType &&
+    barangay &&
+    desc.length >= 10 &&
+    lat !== null &&
+    lon !== null;
 
   const resetForm = useCallback(() => {
     setStep("form");
@@ -175,12 +189,41 @@ export const CommunityReportsPanel = memo(function CommunityReportsPanel() {
     setBarangay("");
     setDesc("");
     setPhoto(null);
+    setLat(null);
+    setLon(null);
+  }, []);
+
+  const handleGeolocate = useCallback(() => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude);
+        setLon(pos.coords.longitude);
+        setGeoLoading(false);
+        toast.success("Location detected");
+      },
+      (err) => {
+        setGeoLoading(false);
+        toast.error(`Location error: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   }, []);
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
+    if (lat === null || lon === null) {
+      toast.error("Please set your location first");
+      return;
+    }
 
     const formData = new FormData();
+    formData.append("latitude", lat.toString());
+    formData.append("longitude", lon.toString());
     formData.append("barangay", barangay);
     formData.append("description", desc);
     formData.append(
@@ -194,7 +237,16 @@ export const CommunityReportsPanel = memo(function CommunityReportsPanel() {
     submitMutation.mutate(formData, {
       onSuccess: () => setStep("submitted"),
     });
-  }, [canSubmit, barangay, desc, incidentType, photo, submitMutation]);
+  }, [
+    canSubmit,
+    lat,
+    lon,
+    barangay,
+    desc,
+    incidentType,
+    photo,
+    submitMutation,
+  ]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -316,6 +368,33 @@ export const CommunityReportsPanel = memo(function CommunityReportsPanel() {
           </select>
         </div>
 
+        {/* GPS Location */}
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-mono mb-2">
+            GPS Location *
+          </div>
+          <button
+            type="button"
+            onClick={handleGeolocate}
+            disabled={geoLoading}
+            className={cn(
+              "w-full flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-mono transition-colors",
+              lat !== null
+                ? "border-risk-safe/40 bg-risk-safe/5 text-risk-safe"
+                : "border-border bg-muted text-muted-foreground hover:bg-accent/50",
+            )}
+          >
+            {geoLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Crosshair className="h-3.5 w-3.5" />
+            )}
+            {lat !== null && lon !== null
+              ? `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+              : "Use my location"}
+          </button>
+        </div>
+
         {/* Description */}
         <div>
           <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-mono mb-2">
@@ -396,7 +475,9 @@ export const CommunityReportsPanel = memo(function CommunityReportsPanel() {
             ? "Submitting…"
             : canSubmit
               ? "Submit Report to DRRMO"
-              : "Fill in required fields to submit"}
+              : lat === null
+                ? "Set your GPS location to submit"
+                : "Fill in required fields to submit"}
         </Button>
       </CardContent>
     </Card>

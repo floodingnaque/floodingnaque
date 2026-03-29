@@ -22,11 +22,12 @@ export interface PresenceUser {
   user_id: number;
   user_name: string;
   user_role: string;
-  online_at: string;
+  online_at?: string;
 }
 
 export interface TypingPayload {
   user_name: string;
   user_id: number;
+  user_role?: "user" | "operator" | "admin";
   is_typing: boolean;
 }

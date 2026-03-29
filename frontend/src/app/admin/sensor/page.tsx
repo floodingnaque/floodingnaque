@@ -7,7 +7,7 @@
  */
 
 import { EmptyState } from "@/components/feedback/EmptyState";
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -203,21 +203,16 @@ export default function AdminSensorPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 pt-6">
+      <div className="w-full px-6 pt-6">
         <Breadcrumb
           items={[{ label: "Admin", href: "/admin" }, { label: "Sensor Data" }]}
           className="mb-4"
-        />
-        <PageHeader
-          icon={Radio}
-          title="Sensor Data Input"
-          subtitle="Manually ingest weather observations or monitor data sources"
         />
       </div>
 
       {/* Input Form / Data Sources Tabs */}
       <section className="py-10 bg-muted/30">
-        <div className="container mx-auto px-4" ref={formRef}>
+        <div className="w-full px-6" ref={formRef}>
           <motion.div
             variants={staggerContainer}
             initial="hidden"
@@ -411,7 +406,7 @@ export default function AdminSensorPage() {
 
       {/* Recent Readings Charts */}
       <section className="py-10 bg-background">
-        <div className="container mx-auto px-4" ref={chartsRef}>
+        <div className="w-full px-6" ref={chartsRef}>
           <SectionHeading
             label="Readings"
             title="Recent 24h Observations"

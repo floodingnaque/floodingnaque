@@ -642,13 +642,38 @@ def forecast_map():
                 try:
                     pred = predict_flood(forecast_input, return_proba=True, return_risk_level=True)
                     if isinstance(pred, dict):
+                        # FIX: predict_flood(return_proba=True) returns probability as
+                        # {"no_flood": float, "flood": float}  — NOT a plain float.
+                        # Calling round() directly on the dict caused:
+                        #   "type dict doesn't define __round__ method"
+                        # Extract the flood probability before rounding.
+                        raw_prob = pred.get("probability", 0)
+                        if isinstance(raw_prob, dict):
+                            # Normal path: probability dict from predict_proba()
+                            prob_value = float(raw_prob.get("flood", 0))
+                        elif isinstance(raw_prob, (int, float)):
+                            # Legacy/single-value path
+                            prob_value = float(raw_prob)
+                        else:
+                            # Unexpected type — log descriptively instead of crashing
+                            logger.warning(
+                                "Forecast %s +%dh: probability has unexpected type %s (value=%r), defaulting to 0",
+                                key, offset, type(raw_prob).__name__, raw_prob,
+                            )
+                            prob_value = 0.0
+
+                        # Extract confidence with same type guard
+                        raw_conf = pred.get("confidence", 0)
+                        conf_value = float(raw_conf) if isinstance(raw_conf, (int, float)) else 0.0
+
                         barangay_forecasts[str(offset)] = {
                             "risk_level": pred.get("risk_level", 0),
                             "risk_label": pred.get("risk_label", "Safe"),
-                            "probability": round(pred.get("probability", 0), 4),
-                            "confidence": round(pred.get("confidence", 0), 3),
+                            "probability": round(prob_value, 4),
+                            "confidence": round(conf_value, 3),
                         }
                     else:
+                        # predict_flood returned a bare int (0 or 1) — no proba requested
                         barangay_forecasts[str(offset)] = {
                             "risk_level": 1 if pred == 1 else 0,
                             "risk_label": "Alert" if pred == 1 else "Safe",

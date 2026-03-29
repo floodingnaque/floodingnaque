@@ -50,11 +50,10 @@ export function useForecastMap(offsets = "0,1,3", enabled = true) {
   return useQuery<ForecastMapResponse>({
     queryKey: forecastKeys.map(offsets),
     queryFn: async ({ signal }) => {
-      const { data } = await api.get<ForecastMapResponse>(
+      return api.get<ForecastMapResponse>(
         API_ENDPOINTS.predict.forecastMap,
         { params: { hours: offsets }, signal },
       );
-      return data;
     },
     enabled,
     staleTime: 5 * 60 * 1000, // 5 min

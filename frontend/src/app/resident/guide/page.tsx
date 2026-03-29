@@ -18,6 +18,7 @@ import { useCallback, useState } from "react";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/state";
 
 const STORAGE_KEY = "floodingnaque_guide_checked";
 
@@ -176,6 +177,7 @@ const CHECKLISTS: ChecklistSection[] = [
 ];
 
 export default function ResidentGuidePage() {
+  const language = useLanguage();
   const [checked, setChecked] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -207,7 +209,9 @@ export default function ResidentGuidePage() {
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />
-          Gabay sa Kaligtasan / Flood Safety Guide
+          {language === "fil"
+            ? "Gabay sa Kaligtasan / Flood Safety Guide"
+            : "Flood Safety Guide"}
         </h2>
         <p className="text-sm text-muted-foreground">
           Interactive checklist - tap items to mark them done
@@ -228,7 +232,9 @@ export default function ResidentGuidePage() {
               <CardTitle className="text-base flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <SectionIcon className={`h-4 w-4 ${section.iconColor}`} />
-                  {section.titleFil} / {section.title}
+                  {language === "fil"
+                    ? `${section.titleFil} / ${section.title}`
+                    : section.title}
                 </span>
                 <Badge
                   variant={allDone ? "default" : "outline"}
@@ -268,9 +274,11 @@ export default function ResidentGuidePage() {
                       >
                         {item.en}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {item.fil}
-                      </p>
+                      {language === "fil" && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.fil}
+                        </p>
+                      )}
                     </div>
                   </button>
                 );

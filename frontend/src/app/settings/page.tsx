@@ -19,7 +19,6 @@ import {
   Mail,
   MessageSquare,
   Palette,
-  Settings,
   Shield,
   User,
 } from "lucide-react";
@@ -28,7 +27,6 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
@@ -335,15 +333,6 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="w-full px-6 pt-6">
-        <PageHeader
-          icon={Settings}
-          title="Settings"
-          subtitle="Manage your account settings and preferences"
-        />
-      </div>
-
       {/* Profile & Password Section */}
       <section className="py-10 bg-muted/30">
         <div className="w-full px-6" ref={profileRef}>

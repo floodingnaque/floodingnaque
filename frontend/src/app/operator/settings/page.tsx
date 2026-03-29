@@ -19,14 +19,12 @@ import {
   MapPin,
   Palette,
   Radio,
-  Settings,
   Shield,
   User,
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import {
   AlertDialog,
@@ -248,11 +246,6 @@ export default function OperatorSettingsPage() {
             { label: "Settings" },
           ]}
           className="mb-4"
-        />
-        <PageHeader
-          icon={Settings}
-          title="Settings"
-          subtitle="Manage your operator account settings and preferences"
         />
       </div>
 

@@ -6,7 +6,7 @@
  * and real-time inference monitoring.
  */
 
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import {
   AlertDialog,
@@ -27,6 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { GlassCard } from "@/components/ui/glass-card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -46,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  adminQueryKeys,
   useModels,
   useRetrainStatus,
   useRollbackModel,
@@ -54,6 +57,7 @@ import {
 } from "@/features/admin/hooks/useAdmin";
 import { useFeatureImportance } from "@/features/admin/hooks/useModel";
 import {
+  analyticsQueryKeys,
   useModelHistory,
   type ModelVersionEntry,
 } from "@/features/dashboard/hooks/useAnalytics";
@@ -261,6 +265,9 @@ export default function AdminModelsPage() {
   const [taskId, setTaskId] = useState<string | null>(null);
   const [expandedVersion, setExpandedVersion] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [retrainCleanData, setRetrainCleanData] = useState(true);
+  const [retrainHmacSign, setRetrainHmacSign] = useState(true);
+  const [retrainVersionTag, setRetrainVersionTag] = useState("");
 
   // ── Queries ──
   const { data: health, isLoading: healthLoading } = useSystemHealth();
@@ -313,23 +320,31 @@ export default function AdminModelsPage() {
 
   const refreshAll = useCallback(async () => {
     setIsRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ["admin"] });
-    await queryClient.invalidateQueries({ queryKey: ["analytics"] });
-    await queryClient.invalidateQueries({ queryKey: ["model"] });
+    await queryClient.invalidateQueries({ queryKey: adminQueryKeys.all });
+    await queryClient.invalidateQueries({ queryKey: analyticsQueryKeys.all });
+    await queryClient.invalidateQueries({ queryKey: adminQueryKeys.models() });
     setIsRefreshing(false);
   }, [queryClient]);
 
   const handleRetrain = useCallback(() => {
-    triggerRetrain.mutate(undefined, {
-      onSuccess: (res) => {
-        const tid = res.data?.task_id;
-        if (tid) setTaskId(tid);
-        toast.success("Retraining job queued successfully");
-        setRetrainDialogOpen(false);
+    triggerRetrain.mutate(
+      {
+        clean_data: retrainCleanData,
+        hmac_sign: retrainHmacSign,
+        version_tag: retrainVersionTag.trim() || undefined,
       },
-      onError: () => toast.error("Failed to queue retraining job"),
-    });
-  }, [triggerRetrain]);
+      {
+        onSuccess: (res) => {
+          const tid = res.data?.task_id;
+          if (tid) setTaskId(tid);
+          toast.success("Retraining job queued successfully");
+          setRetrainDialogOpen(false);
+          setRetrainVersionTag("");
+        },
+        onError: () => toast.error("Failed to queue retraining job"),
+      },
+    );
+  }, [triggerRetrain, retrainCleanData, retrainHmacSign, retrainVersionTag]);
 
   const handleRollback = useCallback(() => {
     if (!rollbackVersion.trim()) {
@@ -341,8 +356,8 @@ export default function AdminModelsPage() {
         toast.success(res.message || `Rolled back to ${rollbackVersion}`);
         setRollbackDialogOpen(false);
         setRollbackVersion("");
-        queryClient.invalidateQueries({ queryKey: ["admin"] });
-        queryClient.invalidateQueries({ queryKey: ["analytics"] });
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: analyticsQueryKeys.all });
       },
       onError: () => toast.error("Rollback failed"),
     });
@@ -370,9 +385,9 @@ export default function AdminModelsPage() {
     if (retrainStatusValue === "completed") {
       toast.success("Model retraining completed successfully");
       startTransition(() => setTaskId(null));
-      queryClient.invalidateQueries({ queryKey: ["admin"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      queryClient.invalidateQueries({ queryKey: ["model"] });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: analyticsQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.models() });
     } else if (retrainStatusValue === "failed") {
       toast.error(retrainStatus.data?.data?.message ?? "Retraining failed");
       startTransition(() => setTaskId(null));
@@ -387,43 +402,35 @@ export default function AdminModelsPage() {
           items={[{ label: "Admin", href: "/admin" }, { label: "ML Models" }]}
           className="mb-4"
         />
-        <div className="flex items-start justify-between">
-          <PageHeader
-            icon={Brain}
-            title="AI Model Control"
-            subtitle="Manage the Random Forest flood prediction model"
-          />
-          <div className="flex items-center gap-2 pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshAll}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
-              />
-              Refresh
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRollbackDialogOpen(true)}
-              disabled={rollback.isPending}
-            >
-              <ArrowDownToLine className="h-4 w-4 mr-1.5" />
-              Rollback
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setRetrainDialogOpen(true)}
-              disabled={triggerRetrain.isPending}
-            >
-              <RefreshCw className="h-4 w-4 mr-1.5" />
-              Retrain Model
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshAll}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRollbackDialogOpen(true)}
+            disabled={rollback.isPending}
+          >
+            <ArrowDownToLine className="h-4 w-4 mr-1.5" />
+            Rollback
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setRetrainDialogOpen(true)}
+            disabled={triggerRetrain.isPending}
+          >
+            <RefreshCw className="h-4 w-4 mr-1.5" />
+            Retrain Model
+          </Button>
         </div>
       </div>
 
@@ -1020,6 +1027,69 @@ export default function AdminModelsPage() {
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* Retrain Options */}
+          <div className="px-6 pb-2 space-y-4">
+            <Separator />
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Pipeline Options</p>
+
+              {/* Data Cleaning */}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label
+                    htmlFor="retrain-clean"
+                    className="text-sm font-medium"
+                  >
+                    Data Cleaning & Preprocessing
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Remove duplicates, handle missing values, normalize features
+                  </p>
+                </div>
+                <Switch
+                  id="retrain-clean"
+                  checked={retrainCleanData}
+                  onCheckedChange={setRetrainCleanData}
+                />
+              </div>
+
+              {/* HMAC Signature */}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label htmlFor="retrain-hmac" className="text-sm font-medium">
+                    HMAC Signature
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Sign the model artifact for integrity verification on load
+                  </p>
+                </div>
+                <Switch
+                  id="retrain-hmac"
+                  checked={retrainHmacSign}
+                  onCheckedChange={setRetrainHmacSign}
+                />
+              </div>
+
+              {/* Version Tag */}
+              <div className="space-y-1.5">
+                <Label htmlFor="retrain-tag" className="text-sm font-medium">
+                  Version Tag{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="retrain-tag"
+                  placeholder={`e.g. v${Number(model?.version ?? 0) + 1} — auto-incremented if empty`}
+                  value={retrainVersionTag}
+                  onChange={(e) => setRetrainVersionTag(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction

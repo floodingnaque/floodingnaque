@@ -1,23 +1,21 @@
 /**
  * useChat - core hook for a single barangay chat channel.
  *
- * Loads history from Flask, subscribes to Supabase Realtime for
- * live INSERT/UPDATE delivery, presence tracking, and typing indicators.
+ * Loads history from Flask, subscribes to a Flask SSE stream for
+ * live delivery of new messages, deletions, pin toggles, and typing.
  *
  * Robustness features:
  * - Reconnection gap-fill: re-fetches recent messages after a connection
  *   drop so nothing is silently missed.
- * - Retry with back-off: on CHANNEL_ERROR or TIMED_OUT, unsubscribes and
- *   re-subscribes with exponential delay (max 30 s).
+ * - Retry with exponential back-off (max 30 s).
  * - Idempotent inserts: duplicates (by ID) are ignored.
- * - Graceful degradation: if Supabase Realtime is unavailable the hook
- *   still provides REST-based history and send/delete/pin.
+ * - Last-Event-ID replay on reconnection.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { API_CONFIG } from "@/config/api.config";
 import { api } from "@/lib/api-client";
-import { isRealtimeEnabled, supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/state/stores/authStore";
 import type {
   ChatMessage,
@@ -28,31 +26,32 @@ import type {
 const TYPING_TIMEOUT_MS = 2_500;
 const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 1_000;
-
-type ChannelType = ReturnType<typeof supabase.channel>;
+const MAX_RECONNECT_ATTEMPTS = 15;
 
 export function useChat(barangayId: string | null) {
   const user = useAuthStore((s) => s.user);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<
+    { name: string; role: string }[]
+  >([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
 
-  const channelRef = useRef<ChannelType | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const typingTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );
-  /** Tracks whether we already had a successful subscription once. */
   const hadConnection = useRef(false);
-  /** Retry attempt counter for exponential back-off. */
   const retryCount = useRef(0);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Guard against double-cleanup races during rapid channel switches. */
   const subscriptionId = useRef(0);
+  const lastEventIdRef = useRef<string | null>(null);
+  /** Bumped to force the SSE effect to re-run from the reconnect button. */
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
   // ── Load message history from Flask API ─────────────────────────
   const loadHistory = useCallback(
@@ -68,7 +67,6 @@ export function useChat(barangayId: string | null) {
           has_more: boolean;
         }>(`/api/v1/chat/${barangayId}/messages?${params}`);
         if (opts?.since) {
-          // Gap-fill: merge without duplicates
           setMessages((prev) => {
             const ids = new Set(prev.map((m) => m.id));
             const fresh = data.messages.filter((m) => !ids.has(m.id));
@@ -110,93 +108,147 @@ export function useChat(barangayId: string | null) {
     }
   }, [barangayId, messages, hasMore]);
 
-  // ── Subscribe to Supabase Realtime ───────────────────────────────
+  // ── SSE connection ───────────────────────────────────────────────
   useEffect(() => {
     if (!barangayId || !user) return;
 
-    // Increment subscription ID so stale callbacks from a
-    // previous channel are silently ignored.
     const thisSubId = ++subscriptionId.current;
     const isStale = () => thisSubId !== subscriptionId.current;
 
-    // Reset state for the new channel
     setMessages([]);
-    setOnlineUsers([]);
     setTypingUsers([]);
     setIsConnected(false);
     hadConnection.current = false;
     retryCount.current = 0;
+    lastEventIdRef.current = null;
 
     loadHistory();
 
-    if (!isRealtimeEnabled) return;
+    let es: EventSource | null = null;
 
-    // ── Build & subscribe channel ──────────────────────────────
+    async function connect() {
+      if (isStale()) return;
 
-    function createChannel(): ChannelType {
-      const channel = supabase.channel(`chat:${barangayId}`, {
-        config: {
-          presence: { key: String(user!.id) },
-        },
-      });
+      try {
+        // Get SSE ticket
+        const { ticket } = await api.post<{ ticket: string }>(
+          `${API_CONFIG.endpoints.sse.chat}/ticket`,
+        );
+        if (isStale()) return;
 
-      channel
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "chat_messages",
-            filter: `barangay_id=eq.${barangayId}`,
-          },
-          (payload) => {
-            if (isStale()) return;
-            const msg = payload.new as ChatMessage;
+        const baseUrl = API_CONFIG.sseUrl || API_CONFIG.baseUrl;
+        let url = `${baseUrl}${API_CONFIG.endpoints.sse.chat}?channel=${encodeURIComponent(barangayId!)}&ticket=${encodeURIComponent(ticket)}`;
+        if (lastEventIdRef.current) {
+          url += `&lastEventId=${encodeURIComponent(lastEventIdRef.current)}`;
+        }
+
+        es = new EventSource(url);
+        eventSourceRef.current = es;
+
+        // ── connected ──
+        es.addEventListener("connected", (event: MessageEvent) => {
+          if (isStale()) return;
+          if (hadConnection.current) {
+            // Gap-fill after reconnect
+            setMessages((prev) => {
+              const newest = prev[prev.length - 1]?.created_at;
+              if (newest) loadHistory({ since: newest });
+              return prev;
+            });
+          }
+          hadConnection.current = true;
+          retryCount.current = 0;
+          setIsConnected(true);
+          setError(null);
+          // Extract initial presence from connected event
+          try {
+            const data = JSON.parse(event.data);
+            if (data.presence?.users) {
+              setOnlineUsers(data.presence.users);
+            }
+          } catch {
+            // ignore
+          }
+        });
+
+        // ── presence ──
+        es.addEventListener("presence", (event: MessageEvent) => {
+          if (isStale()) return;
+          try {
+            const data = JSON.parse(event.data);
+            if (data.users) {
+              setOnlineUsers(data.users);
+            }
+          } catch {
+            // ignore
+          }
+        });
+
+        // ── new_message ──
+        es.addEventListener("new_message", (event: MessageEvent) => {
+          if (isStale()) return;
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
+          try {
+            const data = JSON.parse(event.data);
+            const msg: ChatMessage = data.message;
             setMessages((prev) => {
               if (prev.some((m) => m.id === msg.id)) return prev;
               return [...prev, msg];
             });
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "chat_messages",
-            filter: `barangay_id=eq.${barangayId}`,
-          },
-          (payload) => {
-            if (isStale()) return;
-            const updated = payload.new as ChatMessage & {
-              is_deleted: boolean;
+          } catch {
+            // ignore parse errors
+          }
+        });
+
+        // ── delete_message ──
+        es.addEventListener("delete_message", (event: MessageEvent) => {
+          if (isStale()) return;
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
+          try {
+            const data = JSON.parse(event.data);
+            setMessages((prev) => prev.filter((m) => m.id !== data.message_id));
+          } catch {
+            // ignore
+          }
+        });
+
+        // ── pin_message ──
+        es.addEventListener("pin_message", (event: MessageEvent) => {
+          if (isStale()) return;
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
+          try {
+            const data = JSON.parse(event.data);
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === data.message_id
+                  ? { ...m, is_pinned: data.is_pinned }
+                  : m,
+              ),
+            );
+          } catch {
+            // ignore
+          }
+        });
+
+        // ── typing ──
+        es.addEventListener("typing", (event: MessageEvent) => {
+          if (isStale()) return;
+          try {
+            const payload: TypingPayload = JSON.parse(event.data);
+            if (payload.user_id === user!.id) return;
+
+            const entry = {
+              name: payload.user_name,
+              role: payload.user_role ?? "user",
             };
-            if (updated.is_deleted) {
-              setMessages((prev) => prev.filter((m) => m.id !== updated.id));
-            } else {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === updated.id
-                    ? { ...m, is_pinned: updated.is_pinned }
-                    : m,
-                ),
-              );
-            }
-          },
-        )
-        .on(
-          "broadcast",
-          { event: "typing" },
-          ({ payload }: { payload: TypingPayload }) => {
-            if (isStale() || payload.user_id === user!.id) return;
 
             setTypingUsers((prev) => {
               if (payload.is_typing) {
-                return prev.includes(payload.user_name)
+                return prev.some((u) => u.name === payload.user_name)
                   ? prev
-                  : [...prev, payload.user_name];
+                  : [...prev, entry];
               }
-              return prev.filter((n) => n !== payload.user_name);
+              return prev.filter((u) => u.name !== payload.user_name);
             });
 
             if (payload.is_typing) {
@@ -204,96 +256,72 @@ export function useChat(barangayId: string | null) {
               typingTimerRef.current[payload.user_name] = setTimeout(() => {
                 if (!isStale()) {
                   setTypingUsers((prev) =>
-                    prev.filter((n) => n !== payload.user_name),
+                    prev.filter((u) => u.name !== payload.user_name),
                   );
                 }
               }, TYPING_TIMEOUT_MS);
             }
-          },
-        )
-        .on("presence", { event: "sync" }, () => {
-          if (isStale()) return;
-          const state = channel.presenceState<PresenceUser>();
-          const online = Object.values(state)
-            .flat()
-            .map((p) => {
-              const raw = p as unknown as Record<string, unknown>;
-              return {
-                user_id: raw.user_id as number,
-                user_name: raw.user_name as string,
-                user_role: raw.user_role as string,
-                online_at: raw.online_at as string,
-              };
-            });
-          setOnlineUsers(online);
-        })
-        .subscribe(async (status) => {
-          if (isStale()) return;
-
-          if (status === "SUBSCRIBED") {
-            // If we're reconnecting after a drop, fill the gap
-            if (hadConnection.current) {
-              setMessages((prev) => {
-                const newest = prev[prev.length - 1]?.created_at;
-                if (newest) loadHistory({ since: newest });
-                return prev;
-              });
-            }
-            hadConnection.current = true;
-            retryCount.current = 0;
-            setIsConnected(true);
-            setError(null);
-            await channel.track({
-              user_id: user!.id,
-              user_name: user!.name,
-              user_role: user!.role,
-              online_at: new Date().toISOString(),
-            });
-          } else if (
-            status === "CLOSED" ||
-            status === "CHANNEL_ERROR" ||
-            status === "TIMED_OUT"
-          ) {
-            setIsConnected(false);
-            // Retry with exponential back-off
-            if (!isStale()) {
-              const delay = Math.min(
-                BASE_RETRY_DELAY_MS * 2 ** retryCount.current,
-                MAX_RETRY_DELAY_MS,
-              );
-              retryCount.current++;
-              retryTimer.current = setTimeout(() => {
-                if (isStale()) return;
-                channel.unsubscribe().then(() => {
-                  if (isStale()) return;
-                  const next = createChannel();
-                  channelRef.current = next;
-                });
-              }, delay);
-            }
+          } catch {
+            // ignore
           }
         });
 
-      return channel;
+        // ── heartbeat ──
+        es.addEventListener("heartbeat", (event: MessageEvent) => {
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
+        });
+
+        // ── error → reconnect with backoff ──
+        es.onerror = () => {
+          if (isStale()) return;
+          setIsConnected(false);
+
+          es?.close();
+          es = null;
+          eventSourceRef.current = null;
+
+          if (retryCount.current < MAX_RECONNECT_ATTEMPTS) {
+            const delay = Math.min(
+              BASE_RETRY_DELAY_MS * 2 ** retryCount.current,
+              MAX_RETRY_DELAY_MS,
+            );
+            retryCount.current++;
+            retryTimer.current = setTimeout(() => {
+              if (!isStale()) connect();
+            }, delay);
+          } else {
+            setError("Connection lost. Click reconnect to try again.");
+          }
+        };
+      } catch {
+        if (isStale()) return;
+        // Ticket fetch failed → retry
+        if (retryCount.current < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(
+            BASE_RETRY_DELAY_MS * 2 ** retryCount.current,
+            MAX_RETRY_DELAY_MS,
+          );
+          retryCount.current++;
+          retryTimer.current = setTimeout(() => {
+            if (!isStale()) connect();
+          }, delay);
+        }
+      }
     }
 
-    const channel = createChannel();
-    channelRef.current = channel;
+    connect();
 
-    // ── Cleanup ──────────────────────────────────────────────────
     const timers = typingTimerRef.current;
     return () => {
-      // Invalidate this subscription so stale callbacks are no-ops
       subscriptionId.current++;
       if (retryTimer.current) clearTimeout(retryTimer.current);
       Object.values(timers).forEach(clearTimeout);
-      channel.unsubscribe();
-      channelRef.current = null;
+      if (es) es.close();
+      eventSourceRef.current = null;
       setIsConnected(false);
     };
-    // loadHistory is stable via useCallback(barangayId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [barangayId, user?.id]);
+  }, [barangayId, user?.id, reconnectTrigger]);
 
   // ── Send a message via Flask API ─────────────────────────────────
   const sendMessage = useCallback(
@@ -312,25 +340,20 @@ export function useChat(barangayId: string | null) {
     [barangayId],
   );
 
-  // ── Send typing indicator (ephemeral broadcast) ──────────────────
+  // ── Send typing indicator via REST → SSE broadcast ───────────────
   const sendTyping = useCallback(
     async (isTyping: boolean) => {
-      if (!channelRef.current || !user) return;
+      if (!barangayId || !user) return;
       try {
-        await channelRef.current.send({
-          type: "broadcast",
-          event: "typing",
-          payload: {
-            user_id: user.id,
-            user_name: user.name,
-            is_typing: isTyping,
-          } satisfies TypingPayload,
+        await api.post("/api/v1/chat/stream/typing", {
+          channel: barangayId,
+          is_typing: isTyping,
         });
       } catch {
-        // Typing is best-effort - swallow send failures
+        // Typing is best-effort
       }
     },
-    [user],
+    [barangayId, user],
   );
 
   // ── Delete a message ─────────────────────────────────────────────
@@ -353,11 +376,9 @@ export function useChat(barangayId: string | null) {
 
   // ── Manual reconnect (exposed for UI retry button) ───────────────
   const reconnect = useCallback(() => {
-    if (!channelRef.current || isConnected) return;
+    if (isConnected) return;
     retryCount.current = 0;
-    channelRef.current
-      .unsubscribe()
-      .then(() => channelRef.current?.subscribe());
+    setReconnectTrigger((n) => n + 1);
   }, [isConnected]);
 
   const pinnedMessages = messages.filter((m) => m.is_pinned);

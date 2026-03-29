@@ -16,13 +16,12 @@ import { BARANGAYS, type BarangayData } from "@/config/paranaque";
 import { useAllBarangayPredictions } from "@/features/flooding/hooks/useAllBarangayPredictions";
 import type { RiskLevel } from "@/types";
 import { motion, useInView } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from "react";
 
 import { BarangayCard } from "./BarangayCard";
 import { BarangayDetailDrawer } from "./BarangayDetailDrawer";
 import { CityWideSummary } from "./CityWideSummary";
-import { DataTransparency } from "./DataTransparency";
 import { PublicReportsFeed } from "./PublicReportsFeed";
 import { RecentPublicAlerts } from "./RecentPublicAlerts";
 import { RegistrationCTA } from "./RegistrationCTA";
@@ -43,6 +42,12 @@ const STATIC_RISK_MAP: Record<BarangayData["floodRisk"], RiskLevel> = {
   low: 0,
   moderate: 1,
   high: 2,
+};
+
+const RISK_LABEL: Record<string, { text: string; className: string }> = {
+  high: { text: "High", className: "text-risk-critical font-semibold" },
+  moderate: { text: "Moderate", className: "text-risk-alert font-semibold" },
+  low: { text: "Low", className: "text-risk-safe font-semibold" },
 };
 
 // ---------------------------------------------------------------------------
@@ -140,12 +145,83 @@ export function BarangayStatusSection() {
             </div>
           </div>
 
-          {/* Bottom row: Reports Feed + Alerts + Data Transparency */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Bottom row: Reports Feed + Alerts (2-col) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <PublicReportsFeed />
             <RecentPublicAlerts />
-            <DataTransparency />
           </div>
+
+          {/* Barangay summary table (collapsed from former BarangayMapSection) */}
+          <details className="mb-8 group">
+            <summary className="cursor-pointer flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              View All 16 Barangays — Population &amp; Risk Summary
+              <span className="ml-1 text-xs transition-transform group-open:rotate-90">
+                ▶
+              </span>
+            </summary>
+            <div className="mt-3 overflow-x-auto rounded-lg border border-border/40 bg-background">
+              <table
+                className="w-full text-sm"
+                aria-label="Barangay flood risk summary"
+              >
+                <thead>
+                  <tr className="bg-muted/50 text-left">
+                    <th
+                      scope="col"
+                      className="px-4 py-2.5 font-medium text-muted-foreground"
+                    >
+                      Barangay
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-2.5 font-medium text-muted-foreground text-right"
+                    >
+                      Population
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-2.5 font-medium text-muted-foreground text-center"
+                    >
+                      Flood Risk
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-2.5 font-medium text-muted-foreground"
+                    >
+                      Evacuation Centre
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {BARANGAYS.map((b) => {
+                    const risk = (RISK_LABEL[b.floodRisk] ?? RISK_LABEL.low)!;
+                    return (
+                      <tr
+                        key={b.key}
+                        className="hover:bg-muted/20 transition-colors"
+                      >
+                        <td className="px-4 py-2 font-medium text-foreground">
+                          {b.name}
+                        </td>
+                        <td className="px-4 py-2 text-right text-muted-foreground tabular-nums">
+                          {b.population.toLocaleString()}
+                        </td>
+                        <td
+                          className={`px-4 py-2 text-center ${risk.className}`}
+                        >
+                          {risk.text}
+                        </td>
+                        <td className="px-4 py-2 text-muted-foreground text-xs">
+                          {b.evacuationCenter}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </details>
 
           {/* Registration CTA */}
           <RegistrationCTA predictions={predictions} />

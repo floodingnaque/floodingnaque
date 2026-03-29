@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Camera,
   CheckCircle2,
+  Crosshair,
   Droplets,
   Loader2,
   MapPin,
@@ -17,8 +18,9 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Button } from "@/components/ui/button";
@@ -30,9 +32,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { BARANGAYS } from "@/config/paranaque";
 import { useSubmitReport } from "@/features/resident";
+import { detectBarangay } from "@/hooks/useUserLocation";
+import { useLanguage } from "@/state";
 
 /* ── Severity tile data ───────────────────────────────────────────────── */
 
@@ -80,8 +92,13 @@ export default function ResidentReportPage() {
   const navigate = useNavigate();
   const submitMutation = useSubmitReport();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const language = useLanguage();
 
   const [severity, setSeverity] = useState<SeverityValue>("moderate");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lon, setLon] = useState<number | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [selectedBarangay, setSelectedBarangay] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [waterLevel, setWaterLevel] = useState("");
@@ -89,6 +106,43 @@ export default function ResidentReportPage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  const handleGeolocate = useCallback((options?: { silent?: boolean }) => {
+    if (!navigator.geolocation) {
+      if (!options?.silent)
+        toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLat(pos.coords.latitude);
+        setLon(pos.coords.longitude);
+        setGeoLoading(false);
+        if (!options?.silent) toast.success("Location detected");
+      },
+      (err) => {
+        setGeoLoading(false);
+        if (!options?.silent) toast.error(`Location error: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []);
+
+  // Auto-capture GPS on page load
+  useEffect(() => {
+    handleGeolocate({ silent: true });
+  }, [handleGeolocate]);
+
+  // Auto-detect barangay from GPS coordinates
+  useEffect(() => {
+    if (lat !== null && lon !== null) {
+      const detected = detectBarangay(lat, lon);
+      if (detected) {
+        setSelectedBarangay(detected.name);
+      }
+    }
+  }, [lat, lon]);
 
   const handlePhoto = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,19 +160,40 @@ export default function ResidentReportPage() {
   }, []);
 
   const handleSubmit = useCallback(() => {
+    if (lat === null || lon === null) {
+      toast.error("Please set your location using the GPS button");
+      return;
+    }
+    if (!selectedBarangay) {
+      toast.error("Please select your barangay");
+      return;
+    }
+
     const selected = SEVERITIES.find((s) => s.value === severity);
     const formData = new FormData();
+    formData.append("latitude", lat.toString());
+    formData.append("longitude", lon.toString());
     formData.append("risk_label", selected?.riskLabel ?? "Alert");
-    formData.append("location", location);
-    formData.append("description", description);
+    formData.append("barangay", selectedBarangay);
+    if (location.trim()) formData.append("specific_location", location.trim());
+    formData.append("description", description.trim());
     if (waterLevel) formData.append("flood_height_cm", waterLevel);
-    if (peopleDanger) formData.append("people_in_danger", "true");
+    if (peopleDanger) {
+      const prefix = "[PEOPLE IN DANGER] ";
+      const desc = formData.get("description") as string;
+      if (desc && !desc.startsWith(prefix)) {
+        formData.set("description", prefix + desc);
+      }
+    }
     if (photo) formData.append("photo", photo);
 
     submitMutation.mutate(formData, {
       onSuccess: () => setSubmitted(true),
     });
   }, [
+    lat,
+    lon,
+    selectedBarangay,
     severity,
     location,
     description,
@@ -128,7 +203,11 @@ export default function ResidentReportPage() {
     submitMutation,
   ]);
 
-  const canSubmit = location.trim().length > 0 && description.trim().length > 0;
+  const canSubmit =
+    lat !== null &&
+    lon !== null &&
+    selectedBarangay.length > 0 &&
+    description.trim().length > 0;
 
   /* ── Confirmation screen ─────────────────────────────────────────── */
   if (submitted) {
@@ -147,7 +226,9 @@ export default function ResidentReportPage() {
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-xl font-semibold">
-              Naipadala na! / Report Submitted
+              {language === "fil"
+                ? "Naipadala na! / Report Submitted"
+                : "Report Submitted"}
             </h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-sm">
               Thank you for helping keep Parañaque safe. An MDRRMO operator will
@@ -179,7 +260,9 @@ export default function ResidentReportPage() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-red-500" />
-            Mag-ulat ng Baha / Report Flooding
+            {language === "fil"
+              ? "Mag-ulat ng Baha / Report Flooding"
+              : "Report Flooding"}
           </CardTitle>
           <CardDescription>
             Help your community - your report will be verified by MDRRMO
@@ -189,7 +272,11 @@ export default function ResidentReportPage() {
         <CardContent className="space-y-6">
           {/* ── Severity Tiles ─────────────────────────────────────── */}
           <div className="space-y-2">
-            <p className="text-sm font-medium">Gaano kalala? / How severe?</p>
+            <p className="text-sm font-medium">
+              {language === "fil"
+                ? "Gaano kalala? / How severe?"
+                : "How severe?"}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {SEVERITIES.map((s) => (
                 <button
@@ -203,26 +290,114 @@ export default function ResidentReportPage() {
                   <span className="text-2xl">{s.emoji}</span>
                   <span className="text-sm font-semibold">{s.label}</span>
                   <span className="text-[10px] text-muted-foreground">
-                    {s.labelFil}
+                    {language === "fil" ? s.labelFil : s.height}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {s.height}
-                  </span>
+                  {language === "fil" && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {s.height}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* ── Location ───────────────────────────────────────────── */}
+          {/* ── GPS Location ──────────────────────────────────────── */}
           <div className="space-y-1.5">
-            <p className="text-sm font-medium">Lokasyon / Location *</p>
+            <p className="text-sm font-medium">
+              {language === "fil"
+                ? "GPS Lokasyon / GPS Location"
+                : "GPS Location"}{" "}
+              *
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-start gap-2"
+              onClick={() => handleGeolocate()}
+              disabled={geoLoading}
+            >
+              {geoLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Crosshair className="h-4 w-4" />
+              )}
+              {lat !== null && lon !== null
+                ? `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+                : language === "fil"
+                  ? "Gamitin ang aking lokasyon / Use my location"
+                  : "Use my location"}
+            </Button>
+            {lat !== null && (
+              <p className="text-xs text-muted-foreground">
+                {language === "fil"
+                  ? "I-tap upang i-update ang lokasyon / Tap to refresh location"
+                  : "Tap to refresh your current location"}
+              </p>
+            )}
+            {lat === null && (
+              <p className="text-xs text-muted-foreground">
+                {language === "fil"
+                  ? "Kailangan para ma-verify ang ulat"
+                  : "Required to verify report location"}
+              </p>
+            )}
+          </div>
+
+          {/* ── Barangay ───────────────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">
+              {language === "fil" ? "Barangay" : "Barangay"} *
+            </p>
+            <Select
+              value={selectedBarangay}
+              onValueChange={setSelectedBarangay}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    language === "fil"
+                      ? "Pumili ng barangay…"
+                      : "Select barangay…"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {BARANGAYS.map((b) => (
+                  <SelectItem key={b.key} value={b.name}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedBarangay && lat !== null && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {language === "fil"
+                  ? "Auto-detect mula sa GPS / Auto-detected from GPS"
+                  : "Auto-detected from GPS — change manually if needed"}
+              </p>
+            )}
+          </div>
+
+          {/* ── Location details ───────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">
+              {language === "fil"
+                ? "Detalye ng Lokasyon / Location Details"
+                : "Street / Landmark"}{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
+            </p>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-10"
-                placeholder="Street, barangay, or landmark…"
+                placeholder="Street, landmark…"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                maxLength={200}
               />
             </div>
           </div>
@@ -230,7 +405,9 @@ export default function ResidentReportPage() {
           {/* ── Water Level ────────────────────────────────────────── */}
           <div className="space-y-1.5">
             <p className="text-sm font-medium">
-              Taas ng tubig / Water level (cm)
+              {language === "fil"
+                ? "Taas ng tubig / Water level (cm)"
+                : "Water level (cm)"}
             </p>
             <div className="relative">
               <Droplets className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -248,7 +425,10 @@ export default function ResidentReportPage() {
 
           {/* ── Description ────────────────────────────────────────── */}
           <div className="space-y-1.5">
-            <p className="text-sm font-medium">Deskripsyon / Description *</p>
+            <p className="text-sm font-medium">
+              {language === "fil" ? "Deskripsyon / Description" : "Description"}{" "}
+              *
+            </p>
             <Textarea
               placeholder="Describe the flood - is water rising fast? Are people stranded? Is the road passable?"
               value={description}
@@ -263,7 +443,9 @@ export default function ResidentReportPage() {
               <Users className="h-5 w-5 text-red-600 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-red-700 dark:text-red-400">
-                  May mga tao sa panganib? / People in danger?
+                  {language === "fil"
+                    ? "May mga tao sa panganib? / People in danger?"
+                    : "People in danger?"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   This will flag the report as urgent
@@ -275,7 +457,11 @@ export default function ResidentReportPage() {
 
           {/* ── Photo Upload ───────────────────────────────────────── */}
           <div className="space-y-2">
-            <p className="text-sm font-medium">Larawan / Photo (Optional)</p>
+            <p className="text-sm font-medium">
+              {language === "fil"
+                ? "Larawan / Photo (Optional)"
+                : "Photo (Optional)"}
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -326,14 +512,20 @@ export default function ResidentReportPage() {
             ) : (
               <>
                 <Send className="h-4 w-4" />
-                Ipadala / Submit Report
+                {language === "fil"
+                  ? "Ipadala / Submit Report"
+                  : "Submit Report"}
               </>
             )}
           </Button>
 
           {!canSubmit && (
             <p className="text-xs text-muted-foreground text-center">
-              Please fill in location and description to submit
+              {lat === null
+                ? "Please set your GPS location to submit"
+                : !selectedBarangay
+                  ? "Please select your barangay"
+                  : "Please fill in the description to submit"}
             </p>
           )}
         </CardContent>

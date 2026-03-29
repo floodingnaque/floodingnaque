@@ -37,40 +37,14 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecentAlerts } from "@/features/alerts/hooks/useAlerts";
-import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
 import { ResidentDecisionPanel } from "@/features/flooding";
-import { useUser } from "@/state";
+import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
+import { useLanguage } from "@/state";
 import { useUnreadCount } from "@/state/stores/alertStore";
-import type { Alert } from "@/types";
+import type { Alert as AlertData } from "@/types";
 import type { RiskLevel } from "@/types/api/prediction";
 
 /* ── Risk theme maps ──────────────────────────────────────────────────── */
-
-const RISK_BG: Record<RiskLevel, string> = {
-  0: "bg-green-500/10 border-green-500/30",
-  1: "bg-amber-500/10 border-amber-500/30 animate-pulse",
-  2: "bg-red-500/10 border-red-500/30 animate-pulse",
-};
-const RISK_TEXT: Record<RiskLevel, string> = {
-  0: "text-green-600 dark:text-green-400",
-  1: "text-amber-600 dark:text-amber-400",
-  2: "text-red-600 dark:text-red-400",
-};
-const RISK_ICON: Record<RiskLevel, React.ElementType> = {
-  0: ShieldCheck,
-  1: AlertTriangle,
-  2: Siren,
-};
-const RISK_LABEL: Record<RiskLevel, { en: string; fil: string }> = {
-  0: { en: "SAFE", fil: "LIGTAS" },
-  1: { en: "ALERT", fil: "ALERTO" },
-  2: { en: "CRITICAL", fil: "KRITIKAL" },
-};
-const RISK_MESSAGE: Record<RiskLevel, string> = {
-  0: "No flooding expected in your area. Continue normal activities.",
-  1: "Flooding is possible. Stay informed and prepare your family.",
-  2: "Flooding is likely. Follow evacuation instructions immediately.",
-};
 
 function rainfallLabel(mm: number): string {
   if (mm <= 0) return "No Rain";
@@ -136,27 +110,32 @@ const QUICK_ACTIONS = [
 /* ── Page component ───────────────────────────────────────────────────── */
 
 export default function ResidentOverviewPage() {
-  const { data: prediction, isLoading, isError: predictionError, refetch: refetchPrediction } = useLivePrediction();
-  const { data: recentAlerts, dataUpdatedAt: alertsUpdatedAt, isError: alertsError, refetch: refetchAlerts } = useRecentAlerts(5, {
+  const {
+    data: prediction,
+    isLoading,
+    isError: predictionError,
+    refetch: refetchPrediction,
+  } = useLivePrediction();
+  const {
+    data: recentAlerts,
+    dataUpdatedAt: alertsUpdatedAt,
+    isError: alertsError,
+    refetch: refetchAlerts,
+  } = useRecentAlerts(5, {
     staleTime: 30_000,
     refetchInterval: 30_000,
   });
-  const user = useUser();
+  const language = useLanguage();
   const unreadCount = useUnreadCount();
 
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
-  const Icon = RISK_ICON[riskLevel];
   const weather = prediction?.weather_data;
   const tempC = weather?.temperature
     ? Math.round(weather.temperature - 273.15)
     : null;
-  const probability = prediction?.probability
-    ? Math.round(prediction.probability * 100)
-    : 0;
-  const confidence = Math.round((prediction?.confidence ?? 0) * 100);
 
   const activeAlerts = useMemo(
-    () => (recentAlerts ?? []).filter((a: Alert) => !a.acknowledged),
+    () => (recentAlerts ?? []).filter((a: AlertData) => !a.acknowledged),
     [recentAlerts],
   );
 
@@ -174,8 +153,8 @@ export default function ResidentOverviewPage() {
                 ? "Unable to load flood risk and alerts data."
                 : predictionError
                   ? "Unable to load flood risk data."
-                  : "Unable to load alerts."}
-              {" "}Showing cached data if available.
+                  : "Unable to load alerts."}{" "}
+              Showing cached data if available.
             </span>
             <Button
               variant="ghost"
@@ -193,80 +172,7 @@ export default function ResidentOverviewPage() {
         </Alert>
       )}
 
-      {/* ── 3a. Personal Risk Banner ───────────────────────────────── */}
-      {isLoading ? (
-        <Skeleton className="h-48 w-full rounded-2xl" />
-      ) : (
-        <div
-          className={`rounded-2xl border-2 p-6 sm:p-8 w-full ${RISK_BG[riskLevel]}`}
-          role="status"
-          aria-live="polite"
-          aria-label={`Flood risk level: ${RISK_LABEL[riskLevel].en}`}
-        >
-          <div className="flex flex-col items-center text-center gap-2">
-            <Icon
-              className={`h-12 w-12 sm:h-14 sm:w-14 ${RISK_TEXT[riskLevel]}`}
-            />
-            <p className="text-sm text-muted-foreground">
-              Your area&apos;s flood risk
-            </p>
-            <p
-              className={`text-4xl sm:text-5xl font-extrabold tracking-tight ${RISK_TEXT[riskLevel]}`}
-            >
-              {RISK_LABEL[riskLevel].fil} / {RISK_LABEL[riskLevel].en}
-            </p>
-            <p className="text-base text-muted-foreground">
-              Parañaque City
-              {user?.name ? ` - ${user.name}` : ""}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              <span className="font-semibold">{probability}%</span> flood
-              probability &middot; {confidence}% confidence
-            </p>
-            <p className="text-sm max-w-md mt-2 leading-relaxed">
-              {RISK_MESSAGE[riskLevel]}
-            </p>
-
-            {/* Context-dependent action button */}
-            <div className="mt-3">
-              {riskLevel === 0 && (
-                <Button asChild variant="outline" size="lg">
-                  <Link to="/resident/guide">View Safety Tips</Link>
-                </Button>
-              )}
-              {riskLevel === 1 && (
-                <Button
-                  asChild
-                  variant="outline"
-                  size="lg"
-                  className="border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
-                >
-                  <Link to="/resident/guide">View Preparation Checklist</Link>
-                </Button>
-              )}
-              {riskLevel === 2 && (
-                <Button
-                  asChild
-                  size="lg"
-                  className="bg-red-600 text-white hover:bg-red-700"
-                >
-                  <Link to="/resident/evacuation">
-                    Find Nearest Evacuation Center
-                  </Link>
-                </Button>
-              )}
-            </div>
-
-            {prediction?.timestamp && (
-              <p className="text-[11px] text-muted-foreground/60 mt-2">
-                Last updated: {new Date(prediction.timestamp).toLocaleString()}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Decision Panel ("What should I do?") ───────────────────── */}
+      {/* ── Personal Risk & Decision Panel (consolidated) ──────── */}
       <ResidentDecisionPanel prediction={prediction} userLocation={null} />
 
       {/* ── 3b. Current Weather Snapshot ───────────────────────────── */}
@@ -345,7 +251,7 @@ export default function ResidentOverviewPage() {
         <CardContent className="space-y-3">
           {activeAlerts.length > 0 ? (
             <>
-              {activeAlerts.slice(0, 3).map((alert: Alert) => (
+              {activeAlerts.slice(0, 3).map((alert: AlertData) => (
                 <div
                   key={alert.id}
                   className="p-3 rounded-lg border bg-amber-500/5 border-amber-500/20"
@@ -391,7 +297,9 @@ export default function ResidentOverviewPage() {
             <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
               <ShieldCheck className="h-8 w-8 text-green-500" />
               <p className="text-sm font-medium">
-                Walang aktibong alerto - No active alerts. Your area is safe.
+                {language === "fil"
+                  ? "Walang aktibong alerto - No active alerts. Your area is safe."
+                  : "No active alerts. Your area is safe."}
               </p>
               {alertsUpdatedAt ? (
                 <p className="text-xs text-muted-foreground/60">
@@ -407,11 +315,12 @@ export default function ResidentOverviewPage() {
               <div className="flex items-center gap-2">
                 <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                  {unreadCount} unread {unreadCount === 1 ? "alert" : "alerts"} — check your notifications
+                  {unreadCount} unread {unreadCount === 1 ? "alert" : "alerts"}{" "}
+                  — check your notifications
                 </p>
               </div>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -437,9 +346,11 @@ export default function ResidentOverviewPage() {
               <span className="text-sm font-medium text-center leading-tight">
                 {action.label}
               </span>
-              <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                {action.labelFil}
-              </span>
+              {language === "fil" && (
+                <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                  {action.labelFil}
+                </span>
+              )}
             </Link>
           );
         })}

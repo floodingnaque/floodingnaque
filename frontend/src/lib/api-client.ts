@@ -7,6 +7,7 @@
  */
 
 import { API_CONFIG } from "@/config/api.config";
+import { uuid } from "@/lib/uuid";
 import type { ApiError } from "@/types";
 import axios, {
   type AxiosError,
@@ -79,7 +80,7 @@ axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Attach a unique correlation ID for end-to-end request tracing
     if (config.headers) {
-      config.headers["X-Correlation-ID"] = crypto.randomUUID();
+      config.headers["X-Correlation-ID"] = uuid();
     }
 
     // Attach JWT access token as Authorization header

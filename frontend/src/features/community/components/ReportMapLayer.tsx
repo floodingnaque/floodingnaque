@@ -8,8 +8,10 @@
  * Listens for SSE `flood_report` events for real-time updates.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { CircleMarker, LayerGroup, Popup } from "react-leaflet";
+import L from "leaflet";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { LayerGroup, Marker, Popup } from "react-leaflet";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,11 +59,40 @@ function combinedOpacity(
 }
 
 function markerRadius(floodHeightCm: number | null): number {
-  if (floodHeightCm == null) return 8;
-  if (floodHeightCm < 15) return 6;
-  if (floodHeightCm < 30) return 9;
-  if (floodHeightCm < 60) return 12;
-  return 16;
+  if (floodHeightCm == null) return 5;
+  if (floodHeightCm < 15) return 4;
+  if (floodHeightCm < 30) return 6;
+  if (floodHeightCm < 60) return 8;
+  return 10;
+}
+
+/**
+ * Create a DivIcon for community report markers — teardrop pin with wave icon
+ */
+function createReportIcon(color: string, opacity: number): L.DivIcon {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="36" height="54">
+      <defs>
+        <filter id="rep-s" x="-20%" y="-10%" width="140%" height="130%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity="0.25"/>
+        </filter>
+      </defs>
+      <path filter="url(#rep-s)" fill="${color}" fill-opacity="${Math.min(opacity + 0.15, 1)}"
+        stroke="#fff" stroke-width="1.5"
+        d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24C24 5.37 18.63 0 12 0z"/>
+      <g transform="translate(6,5)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round">
+        <path d="M0 7c2-2 4 2 6 0s4 2 6 0"/>
+        <path d="M0 10.5c2-2 4 2 6 0s4 2 6 0" opacity="0.6"/>
+      </g>
+    </svg>
+  `;
+  return L.divIcon({
+    html: svg,
+    className: "report-marker",
+    iconSize: [36, 54],
+    iconAnchor: [18, 54],
+    popupAnchor: [0, -54],
+  });
 }
 
 function timeAgo(isoDate: string): string {
@@ -89,10 +120,22 @@ export interface ReportMapLayerProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ReportMapLayer({ hours = 6, limit = 50 }: ReportMapLayerProps) {
-  const { data } = useCommunityReports({ hours, limit });
+export function ReportMapLayer({
+  hours = 24,
+  limit = 50,
+}: ReportMapLayerProps) {
+  const { data, error } = useCommunityReports({ hours, limit });
   const voteMutation = useVoteReport();
   const flagMutation = useFlagReport();
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load community reports", {
+        description: "Report service may be unavailable.",
+        id: "community-reports-error",
+      });
+    }
+  }, [error]);
 
   // ── SSE live updates ──
   const [sseReports, setSseReports] = useState<CommunityReport[]>([]);
@@ -139,109 +182,129 @@ export function ReportMapLayer({ hours = 6, limit = 50 }: ReportMapLayerProps) {
 
   return (
     <LayerGroup>
-      {reports.map((report) => (
-        <CircleMarker
-          key={report.id}
-          center={[report.latitude, report.longitude]}
-          radius={markerRadius(report.flood_height_cm)}
-          pathOptions={{
-            color: RISK_COLORS[report.risk_label] ?? RISK_COLORS.Alert,
-            fillColor: RISK_COLORS[report.risk_label] ?? RISK_COLORS.Alert,
-            fillOpacity: combinedOpacity(
-              report.credibility_score,
-              report.created_at,
-              hours,
-            ),
-            weight: 2,
-          }}
-        >
-          <Popup maxWidth={260} className="report-popup">
-            <div className="space-y-2 text-sm">
-              {/* Header */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold">
-                  {report.barangay ?? "Unknown"}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {timeAgo(report.created_at)}
-                </span>
-              </div>
-
-              {/* Flood info */}
-              {report.flood_height_cm != null && (
-                <p className="text-xs text-gray-600">
-                  Flood height: ~{report.flood_height_cm} cm
-                </p>
-              )}
-              {report.description && (
-                <p className="text-xs text-gray-600 line-clamp-2">
-                  {report.description}
-                </p>
-              )}
-
-              {/* Credibility badge */}
-              <div className="flex items-center gap-2">
-                {report.verified ? (
-                  <Badge variant="default" className="text-xs bg-risk-safe">
-                    ✓ Verified
-                  </Badge>
-                ) : (report.credibility_score ?? 0) >= 0.6 ? (
-                  <Badge variant="secondary" className="text-xs">
-                    AI Scored:{" "}
-                    {((report.credibility_score ?? 0) * 100).toFixed(0)}%
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="text-xs border-amber-400 text-amber-600"
-                  >
-                    Pending
-                  </Badge>
-                )}
-              </div>
-
-              {/* Photo */}
-              {report.photo_url && (
-                <img
-                  src={report.photo_url}
-                  alt="Flood evidence"
-                  width={400}
-                  height={224}
-                  className="w-full rounded max-h-28 object-cover"
-                  loading="lazy"
-                  decoding="async"
-                />
-              )}
-
-              {/* Vote buttons + counts */}
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={() => handleVote(report.id, "confirm")}
-                >
-                  👍 {report.confirmation_count}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={() => handleVote(report.id, "dispute")}
-                >
-                  👎 {report.dispute_count}
-                </Button>
-                <button
-                  className="ml-auto text-xs text-destructive hover:underline"
-                  onClick={() => handleFlag(report.id)}
-                >
-                  Report Abuse
-                </button>
-              </div>
-            </div>
-          </Popup>
-        </CircleMarker>
-      ))}
+      {reports.map((report) => {
+        const rColor = RISK_COLORS[report.risk_label] ?? RISK_COLORS.Alert;
+        const opacity = combinedOpacity(
+          report.credibility_score,
+          report.created_at,
+          hours,
+        );
+        return (
+          <PulsingReportMarker
+            key={report.id}
+            report={report}
+            color={rColor}
+            fillOpacity={opacity}
+            onVote={handleVote}
+            onFlag={handleFlag}
+          />
+        );
+      })}
     </LayerGroup>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PulsingReportMarker – CircleMarker with pulsing outer ring animation
+// ---------------------------------------------------------------------------
+
+interface PulsingReportMarkerProps {
+  report: CommunityReport;
+  color: string;
+  fillOpacity: number;
+  onVote: (id: number, vote: "confirm" | "dispute") => void;
+  onFlag: (id: number) => void;
+}
+
+function PulsingReportMarker({
+  report,
+  color,
+  fillOpacity,
+  onVote,
+  onFlag,
+}: PulsingReportMarkerProps) {
+  const icon = useMemo(
+    () => createReportIcon(color, fillOpacity),
+    [color, fillOpacity],
+  );
+
+  return (
+    <Marker position={[report.latitude, report.longitude]} icon={icon}>
+      <Popup maxWidth={260} className="report-popup">
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-semibold">
+              {report.barangay ?? "Unknown"}
+            </span>
+            <span className="text-xs text-gray-500">
+              {timeAgo(report.created_at)}
+            </span>
+          </div>
+          {report.flood_height_cm != null && (
+            <p className="text-xs text-gray-600">
+              Flood height: ~{report.flood_height_cm} cm
+            </p>
+          )}
+          {report.description && (
+            <p className="text-xs text-gray-600 line-clamp-2">
+              {report.description}
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            {report.verified ? (
+              <Badge variant="default" className="text-xs bg-risk-safe">
+                ✓ Verified
+              </Badge>
+            ) : (report.credibility_score ?? 0) >= 0.6 ? (
+              <Badge variant="secondary" className="text-xs">
+                AI Scored: {((report.credibility_score ?? 0) * 100).toFixed(0)}%
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="text-xs border-amber-400 text-amber-600"
+              >
+                Pending
+              </Badge>
+            )}
+          </div>
+          {report.photo_url && (
+            <img
+              src={report.photo_url}
+              alt="Flood evidence"
+              width={400}
+              height={224}
+              className="w-full rounded max-h-28 object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => onVote(report.id, "confirm")}
+            >
+              👍 {report.confirmation_count}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => onVote(report.id, "dispute")}
+            >
+              👎 {report.dispute_count}
+            </Button>
+            <button
+              className="ml-auto text-xs text-destructive hover:underline"
+              onClick={() => onFlag(report.id)}
+            >
+              Report Abuse
+            </button>
+          </div>
+        </div>
+      </Popup>
+    </Marker>
   );
 }

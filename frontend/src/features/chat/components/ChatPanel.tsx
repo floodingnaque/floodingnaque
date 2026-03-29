@@ -116,12 +116,15 @@ export function ChatPanel({
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isSending) return;
+    const text = input;
+    setInput("");
     setIsSending(true);
+    if (typingDebounce.current) clearTimeout(typingDebounce.current);
+    sendTyping(false);
     try {
-      await sendMessage(input);
-      setInput("");
-      sendTyping(false);
-      if (typingDebounce.current) clearTimeout(typingDebounce.current);
+      await sendMessage(text);
+    } catch {
+      setInput(text);
     } finally {
       setIsSending(false);
       inputRef.current?.focus();
@@ -167,7 +170,7 @@ export function ChatPanel({
               {pinnedMessages.length} pinned
             </button>
           )}
-          <OnlineCount count={onlineUsers.length} />
+          <OnlineCount count={onlineUsers.length} users={onlineUsers} />
           <button
             onClick={() => {
               setShowSearch((p) => !p);
@@ -358,12 +361,12 @@ export function ChatPanel({
                   : `Message ${channelName}...`
               }
               maxLength={1000}
-              disabled={!isConnected || isSending}
+              disabled={isSending}
               className="flex-1 rounded-xl"
             />
             <Button
               onClick={handleSend}
-              disabled={!input.trim() || !isConnected || isSending}
+              disabled={!input.trim() || isSending}
               size="icon"
               className="rounded-xl shrink-0"
             >

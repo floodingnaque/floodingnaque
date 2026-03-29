@@ -1,9 +1,20 @@
-export function TypingIndicator({ users }: { users: string[] }) {
+interface TypingUser {
+  name: string;
+  role: string;
+}
+
+function formatUser(u: TypingUser) {
+  const tag =
+    u.role === "admin" ? "Admin" : u.role === "operator" ? "Operator" : "";
+  return tag ? `${tag} ${u.name}` : u.name;
+}
+
+export function TypingIndicator({ users }: { users: TypingUser[] }) {
   const label =
     users.length === 1
-      ? `${users[0]} is typing`
+      ? `${formatUser(users[0])} is typing`
       : users.length === 2
-        ? `${users[0]} and ${users[1]} are typing`
+        ? `${formatUser(users[0])} and ${formatUser(users[1])} are typing`
         : `${users.length} people are typing`;
 
   return (

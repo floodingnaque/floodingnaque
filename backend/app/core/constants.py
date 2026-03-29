@@ -21,8 +21,8 @@ API_NAME = "Floodingnaque API"
 # Bounding box for coordinate validation (rejects points outside Parañaque)
 STUDY_AREA_BOUNDS = {
     "lat_min": 14.4280,
-    "lat_max": 14.5120,
-    "lon_min": 120.9750,
+    "lat_max": 14.5350,
+    "lon_min": 120.9740,
     "lon_max": 121.0550,
     "name": "Parañaque City, Philippines",
 }

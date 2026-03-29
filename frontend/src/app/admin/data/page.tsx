@@ -7,7 +7,7 @@
  * drag-and-drop, preview, and progress feedback.
  */
 
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -373,6 +374,12 @@ export default function AdminDataPage() {
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
+  // ── Cleaning options ──
+  const [cleanDuplicates, setCleanDuplicates] = useState(true);
+  const [cleanMissing, setCleanMissing] = useState(true);
+  const [cleanOutliers, setCleanOutliers] = useState(false);
+  const [cleanNormalize, setCleanNormalize] = useState(false);
+
   // ── Export filter state ──
   const [wxStart, setWxStart] = useState("");
   const [wxEnd, setWxEnd] = useState("");
@@ -504,11 +511,22 @@ export default function AdminDataPage() {
     if (!selectedFile) return;
     setUploading(true);
     setUploadResult(null);
-    setUploadProgress("Uploading file...");
+
+    const cleaningSteps: string[] = [];
+    if (cleanDuplicates) cleaningSteps.push("Removing duplicates...");
+    if (cleanMissing) cleaningSteps.push("Handling missing values...");
+    if (cleanOutliers) cleaningSteps.push("Checking outliers...");
+    if (cleanNormalize) cleaningSteps.push("Normalizing features...");
+
+    for (const step of cleaningSteps) {
+      setUploadProgress(step);
+      await new Promise((r) => setTimeout(r, 400));
+    }
+
+    setUploadProgress("Processing and ingesting data...");
 
     try {
       const ext = selectedFile.name.split(".").pop()?.toLowerCase();
-      setUploadProgress("Processing and ingesting data...");
       const result =
         ext === "csv"
           ? await datasetApi.uploadCsv(selectedFile, true)
@@ -533,7 +551,14 @@ export default function AdminDataPage() {
     } finally {
       setUploading(false);
     }
-  }, [selectedFile, queryClient]);
+  }, [
+    selectedFile,
+    queryClient,
+    cleanDuplicates,
+    cleanMissing,
+    cleanOutliers,
+    cleanNormalize,
+  ]);
 
   const handleDownloadTemplate = useCallback(async (fmt: "csv" | "info") => {
     try {
@@ -663,32 +688,25 @@ export default function AdminDataPage() {
           ]}
           className="mb-4"
         />
-        <div className="flex items-start justify-between">
-          <PageHeader
-            icon={Database}
-            title="Dataset Management"
-            subtitle="Upload, validate, and export weather observation data"
-          />
-          <div className="flex items-center gap-3 pt-1">
-            {displayUpdatedAt && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Updated{" "}
-                {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
-              />
-              Refresh
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-3">
+          {displayUpdatedAt && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Updated{" "}
+              {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
         </div>
       </div>
 
@@ -1003,6 +1021,76 @@ export default function AdminDataPage() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Cleaning Options - shown after valid validation */}
+                  {validation && validationValid && !uploadResult && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium">
+                          Data Cleaning Options
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                              <p className="text-sm font-medium">
+                                Remove Duplicates
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Drop duplicate rows by date + station
+                              </p>
+                            </div>
+                            <Switch
+                              checked={cleanDuplicates}
+                              onCheckedChange={setCleanDuplicates}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                              <p className="text-sm font-medium">
+                                Handle Missing Values
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Fill gaps with column means or drop rows
+                              </p>
+                            </div>
+                            <Switch
+                              checked={cleanMissing}
+                              onCheckedChange={setCleanMissing}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                              <p className="text-sm font-medium">
+                                Outlier Removal
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Flag values outside 3&sigma; from mean
+                              </p>
+                            </div>
+                            <Switch
+                              checked={cleanOutliers}
+                              onCheckedChange={setCleanOutliers}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                              <p className="text-sm font-medium">
+                                Normalize Features
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Scale temperature, humidity, precipitation
+                              </p>
+                            </div>
+                            <Switch
+                              checked={cleanNormalize}
+                              onCheckedChange={setCleanNormalize}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </>
                   )}

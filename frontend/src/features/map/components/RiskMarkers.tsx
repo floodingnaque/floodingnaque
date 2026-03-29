@@ -54,23 +54,33 @@ function isInBounds(lat: number, lng: number): boolean {
 }
 
 /**
- * Create a custom colored SVG marker icon
+ * Create a custom colored SVG marker icon with inner symbol
  */
 function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
   const color = RISK_COLORS[riskLevel];
   const label = RISK_LABELS[riskLevel];
   const isCritical = riskLevel === 2;
 
+  // Safe = checkmark, Alert = exclamation, Critical = X
+  const innerSymbol =
+    riskLevel === 0
+      ? `<path d="M10.5 12.5l1.5 1.5 3-3" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`
+      : riskLevel === 1
+        ? `<g fill="${color}"><rect x="11.25" y="6.5" width="1.5" height="4" rx="0.75"/><circle cx="12" cy="12" r="0.9"/></g>`
+        : `<g stroke="${color}" stroke-width="1.5" stroke-linecap="round"><line x1="10" y1="7.5" x2="14" y2="11.5"/><line x1="14" y1="7.5" x2="10" y2="11.5"/></g>`;
+
   const svgIcon = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" role="img" aria-label="${label} risk marker">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="45" role="img" aria-label="${label} risk marker">
       <title>${label} risk marker</title>
-      <path
-        fill="${color}"
-        stroke="#ffffff"
-        stroke-width="1.5"
-        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-      />
-      <circle cx="12" cy="9" r="3" fill="#ffffff" />
+      <defs>
+        <filter id="risk-shadow-${riskLevel}" x="-20%" y="-10%" width="140%" height="130%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000" flood-opacity="0.3"/>
+        </filter>
+      </defs>
+      <path filter="url(#risk-shadow-${riskLevel})" fill="${color}" stroke="#fff" stroke-width="1.5"
+        d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24C24 5.37 18.63 0 12 0z"/>
+      <circle cx="12" cy="9.5" r="5" fill="#fff"/>
+      ${innerSymbol}
     </svg>
   `;
 
@@ -79,9 +89,9 @@ function createMarkerIcon(riskLevel: RiskLevel): L.DivIcon {
     className: isCritical
       ? "custom-marker-icon marker-pulse-critical"
       : "custom-marker-icon",
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
+    iconSize: [30, 45],
+    iconAnchor: [15, 45],
+    popupAnchor: [0, -45],
   });
 }
 
@@ -110,15 +120,18 @@ function createClusterIcon(cluster: L.MarkerCluster): L.DivIcon {
   }
   const color = RISK_COLORS[maxRisk];
   const size = count < 10 ? 36 : count < 50 ? 44 : 52;
+  const half = size / 2;
+  const fontSize = count < 10 ? 12 : count < 50 ? 13 : 14;
 
   return L.divIcon({
-    html: `<div style="
-      background:${color};opacity:0.85;color:#fff;
-      width:${size}px;height:${size}px;border-radius:50%;
-      display:flex;align-items:center;justify-content:center;
-      font-weight:700;font-size:13px;border:2px solid #fff;
-      box-shadow:0 2px 6px rgba(0,0,0,0.3);
-    ">${count}</div>`,
+    html: `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${half}" cy="${half}" r="${half - 1}" fill="${color}" fill-opacity="0.85" stroke="#fff" stroke-width="2"/>
+        <circle cx="${half}" cy="${half}" r="${half - 5}" fill="${color}" fill-opacity="0.4" stroke="none"/>
+        <text x="${half}" y="${half}" text-anchor="middle" dominant-baseline="central"
+          fill="#fff" font-weight="700" font-size="${fontSize}" font-family="system-ui, sans-serif">${count}</text>
+      </svg>
+    `,
     className: "custom-cluster-icon",
     iconSize: L.point(size, size),
   });

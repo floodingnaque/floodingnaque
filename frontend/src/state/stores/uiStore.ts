@@ -15,6 +15,11 @@ import { useShallow } from "zustand/react/shallow";
 export type Theme = "light" | "dark";
 
 /**
+ * Language preference
+ */
+export type Language = "en" | "fil";
+
+/**
  * Notification preferences
  */
 export interface NotificationPreferences {
@@ -33,6 +38,8 @@ interface UIState {
   sidebarCollapsed: boolean;
   /** Current theme */
   theme: Theme;
+  /** Preferred display language */
+  language: Language;
   /** Notification preferences */
   notifications: NotificationPreferences;
 }
@@ -53,6 +60,8 @@ interface UIActions {
   toggleTheme: () => void;
   /** Set theme explicitly */
   setTheme: (theme: Theme) => void;
+  /** Set display language */
+  setLanguage: (lang: Language) => void;
   /** Toggle a notification preference */
   toggleNotification: (key: keyof NotificationPreferences) => void;
   /** Set notification preferences explicitly */
@@ -83,6 +92,7 @@ const initialState: UIState = {
   sidebarOpen: false,
   sidebarCollapsed: false,
   theme: "light", // Will be overridden by persist or system preference
+  language: "en",
   notifications: {
     emailAlerts: true,
     pushNotifications: true,
@@ -126,6 +136,10 @@ export const useUIStore = create<UIStore>()(
           applyTheme(theme);
         },
 
+        setLanguage: (language: Language) => {
+          set({ language });
+        },
+
         toggleNotification: (key: keyof NotificationPreferences) => {
           set((state) => ({
             notifications: {
@@ -147,6 +161,7 @@ export const useUIStore = create<UIStore>()(
         partialize: (state) => ({
           sidebarCollapsed: state.sidebarCollapsed,
           theme: state.theme,
+          language: state.language,
           notifications: state.notifications,
         }),
         // Apply theme on rehydration
@@ -195,6 +210,7 @@ if (typeof window !== "undefined") {
  * Selector hooks for common UI state
  */
 export const useTheme = () => useUIStore((state) => state.theme);
+export const useLanguage = () => useUIStore((state) => state.language);
 export const useSidebarOpen = () => useUIStore((state) => state.sidebarOpen);
 export const useSidebarCollapsed = () =>
   useUIStore((state) => state.sidebarCollapsed);
@@ -216,6 +232,7 @@ export const useUIActions = () => {
   const setSidebarCollapsed = useUIStore((state) => state.setSidebarCollapsed);
   const toggleTheme = useUIStore((state) => state.toggleTheme);
   const setTheme = useUIStore((state) => state.setTheme);
+  const setLanguage = useUIStore((state) => state.setLanguage);
   const toggleNotification = useUIStore((state) => state.toggleNotification);
   const setNotifications = useUIStore((state) => state.setNotifications);
 
@@ -226,6 +243,7 @@ export const useUIActions = () => {
     setSidebarCollapsed,
     toggleTheme,
     setTheme,
+    setLanguage,
     toggleNotification,
     setNotifications,
   };

@@ -61,6 +61,8 @@ export function useAuth() {
         data.access_token,
         data.refresh_token,
       );
+      // Invalidate any stale profile/auth queries so UI reflects the new user
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.all });
     },
   });
 
@@ -76,6 +78,7 @@ export function useAuth() {
         data.access_token,
         data.refresh_token,
       );
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.all });
     },
   });
 

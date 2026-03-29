@@ -17,6 +17,7 @@ import api from "@/lib/api-client";
 import { captureException } from "@/lib/sentry";
 import type { ConnectionState } from "@/state/stores/alertStore";
 import { useAlertStore } from "@/state/stores/alertStore";
+import { useAuthStore } from "@/state/stores/authStore";
 import type { Alert, SSEAlertData, SSEAlertEvent } from "@/types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -286,6 +287,55 @@ export function useAlertStream(
           captureException(parseError, { context: "SSE alert event parse" });
         }
       });
+
+      // ----- Community flood report events -----
+      eventSource.addEventListener("flood_report", (event: MessageEvent) => {
+        try {
+          if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
+          const data = JSON.parse(event.data);
+          // Relay to window so ReportMapLayer & other components can react
+          window.dispatchEvent(
+            new CustomEvent("flood_report", { detail: data }),
+          );
+          // Refresh community reports query cache
+          queryClient.invalidateQueries({ queryKey: ["community-reports"] });
+          // Show a toast notification for operators/admins
+          const location =
+            data.barangay || data.specific_location || "Unknown area";
+          toast.info("New flood report submitted", {
+            description: location,
+            duration: 6000,
+          });
+        } catch (parseError) {
+          captureException(parseError, {
+            context: "SSE flood_report event parse",
+          });
+        }
+      });
+
+      // ----- Report abuse flagged (operators/admins only) -----
+      eventSource.addEventListener(
+        "report_abuse_flagged",
+        (event: MessageEvent) => {
+          try {
+            if (event.lastEventId) lastEventIdRef.current = event.lastEventId;
+            const data = JSON.parse(event.data);
+            // Only show notification to operators and admins
+            const userRole = useAuthStore.getState().user?.role;
+            if (userRole === "operator" || userRole === "admin") {
+              const location = data.barangay || "Unknown area";
+              toast.warning("Report flagged for abuse", {
+                description: `Report #${data.report_id} in ${location} (${data.abuse_flag_count} flags)`,
+                duration: 8000,
+              });
+            }
+          } catch (parseError) {
+            captureException(parseError, {
+              context: "SSE report_abuse_flagged event parse",
+            });
+          }
+        },
+      );
 
       // ----- Heartbeat events -----
       eventSource.addEventListener("heartbeat", (event: MessageEvent) => {

@@ -19,6 +19,7 @@ export {
 export {
   useAuthActions,
   useAuthStore,
+  useClearAuth,
   useCsrfToken,
   useIsAuthenticated,
   useUser,
@@ -31,6 +32,7 @@ export {
   useIsOffline,
 } from "./evacuationStore";
 export {
+  useLanguage,
   useNotifications,
   useSidebarCollapsed,
   useSidebarOpen,
@@ -38,6 +40,7 @@ export {
   useTheme,
   useUIActions,
   useUIStore,
+  type Language,
   type NotificationPreferences,
   type Theme,
 } from "./uiStore";

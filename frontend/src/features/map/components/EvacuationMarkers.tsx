@@ -8,8 +8,8 @@
  */
 
 import { BARANGAYS } from "@/config/paranaque";
-import { Home } from "lucide-react";
 import L from "leaflet";
+import { Home } from "lucide-react";
 import { useMemo } from "react";
 import { Marker, Popup, Tooltip } from "react-leaflet";
 
@@ -19,10 +19,18 @@ import { Marker, Popup, Tooltip } from "react-leaflet";
 
 function createEvacuationIcon(): L.DivIcon {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
-      <path fill="#16a34a" stroke="#ffffff" stroke-width="1.5"
-        d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24C24 5.37 18.63 0 12 0z"/>
-      <path fill="#ffffff" d="M12 6.5l-5.5 6.5h2.5v4h6v-4h2.5L12 6.5z"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 42" width="28" height="42">
+      <defs>
+        <filter id="evac-shadow" x="-20%" y="-10%" width="140%" height="130%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity="0.25"/>
+        </filter>
+      </defs>
+      <path filter="url(#evac-shadow)" fill="#16a34a" stroke="#fff" stroke-width="1.5"
+        d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 28 14 28s14-17.5 14-28C28 6.27 21.73 0 14 0z"/>
+      <g transform="translate(7, 7)" fill="#fff">
+        <path d="M7 0L0 6h2v5h4v-3h2v3h4v-5h2L7 0z"/>
+        <rect x="5.5" y="8" width="3" height="3" rx="0.5" fill="#16a34a"/>
+      </g>
     </svg>
   `;
 
@@ -67,7 +75,7 @@ export function EvacuationMarkers({
     () =>
       BARANGAYS.map((b) => ({
         key: b.key,
-        position: [b.lat, b.lon] as [number, number],
+        position: [b.evacLat, b.evacLon] as [number, number],
         center: b.evacuationCenter,
         barangay: b.name,
         population: b.population,

@@ -157,7 +157,7 @@ export default function OperatorReportsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: reportsData, isLoading } = useCommunityReports();
+  const { data: reportsData, isLoading } = useCommunityReports({ hours: 168 });
   const { data: statsData } = useReportStats();
   const verify = useVerifyReport();
   const flag = useFlagReport();
@@ -165,6 +165,8 @@ export default function OperatorReportsPage() {
   const reports: CommunityReport[] = useMemo(() => {
     if (!reportsData) return [];
     if (Array.isArray(reportsData)) return reportsData;
+    if ("reports" in reportsData)
+      return (reportsData as { reports: CommunityReport[] }).reports ?? [];
     if ("data" in reportsData)
       return (reportsData as { data: CommunityReport[] }).data ?? [];
     return [];

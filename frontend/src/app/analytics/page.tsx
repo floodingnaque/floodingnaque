@@ -7,10 +7,8 @@
  */
 
 import { motion, useInView } from "framer-motion";
-import { BarChart3 } from "lucide-react";
 import { useRef } from "react";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
@@ -33,15 +31,6 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="w-full px-6 pt-6">
-        <PageHeader
-          icon={BarChart3}
-          title="Analytics"
-          subtitle="Weather trends, risk analysis, and model performance at a glance"
-        />
-      </div>
-
       {/* Model Summary Section */}
       <section className="py-10 bg-muted/30">
         <div className="w-full px-6" ref={modelRef}>

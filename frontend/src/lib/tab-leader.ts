@@ -5,12 +5,14 @@
  * Follower tabs receive alerts via the tab-sync BroadcastChannel.
  *
  * Algorithm:
- *  1. Each tab generates a unique ID (crypto.randomUUID)
+ *  1. Each tab generates a unique ID (uuid())
  *  2. Tab claims leadership if no heartbeat is received within 3s
  *  3. Leader sends heartbeat every 2s
  *  4. On beforeunload, leader resigns
  *  5. Followers re-elect on missed heartbeat
  */
+
+import { uuid } from "@/lib/uuid";
 
 type LeaderMessage =
   | { type: "LEADER_HEARTBEAT"; tabId: string }
@@ -129,7 +131,7 @@ export function initLeaderElection(): () => void {
     return () => {};
   }
 
-  tabId = crypto.randomUUID();
+  tabId = uuid();
   channel = new BroadcastChannel(CHANNEL_NAME);
   channel.addEventListener("message", handleMessage);
 

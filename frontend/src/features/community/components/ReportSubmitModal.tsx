@@ -189,6 +189,9 @@ export function ReportSubmitModal({
     if (description.trim()) {
       formData.append("description", description.trim());
     }
+    if (severity) {
+      formData.append("severity", severity);
+    }
     if (contactNumber.trim()) {
       formData.append("contact_number", contactNumber.trim());
     }

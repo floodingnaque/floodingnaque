@@ -10,7 +10,7 @@
  */
 
 import { Crosshair, Layers, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +58,11 @@ export default function ResidentMapPage() {
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }, []);
+
+  // Auto-detect user location on page load
+  useEffect(() => {
+    handleLocate();
+  }, [handleLocate]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 w-full">

@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useCommunityReports } from "@/features/community/hooks/useCommunityReports";
 import { useNearestCenters } from "@/features/evacuation/hooks/useEvacuationCenters";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/state";
 import type { PredictionResponse } from "@/types";
 import type { CommunityReport } from "@/types/api/community";
 import type { RiskLevel } from "@/types/api/prediction";
@@ -135,6 +136,7 @@ export const ResidentDecisionPanel = memo(function ResidentDecisionPanel({
   className,
 }: ResidentDecisionPanelProps) {
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
+  const language = useLanguage();
 
   // Nearby community reports (last 6 hours, auto-refreshing)
   const { data: reports } = useCommunityReports({
@@ -152,7 +154,7 @@ export const ResidentDecisionPanel = memo(function ResidentDecisionPanel({
   const nearestCenter = nearestCenters?.[0];
 
   const decision = useMemo(
-    () => computeDecision(riskLevel, (reports as CommunityReport[]) ?? []),
+    () => computeDecision(riskLevel, reports?.reports ?? []),
     [riskLevel, reports],
   );
 
@@ -197,9 +199,11 @@ export const ResidentDecisionPanel = memo(function ResidentDecisionPanel({
             >
               {config.headline}
             </h3>
-            <p className="text-xs text-muted-foreground">
-              {config.headlineFil}
-            </p>
+            {language === "fil" && (
+              <p className="text-xs text-muted-foreground">
+                {config.headlineFil}
+              </p>
+            )}
           </div>
           <Badge
             variant="outline"
@@ -213,7 +217,7 @@ export const ResidentDecisionPanel = memo(function ResidentDecisionPanel({
 
         {/* Message */}
         <p className="text-sm leading-relaxed text-foreground/80">
-          {config.message}
+          {language === "fil" ? config.messageFil : config.message}
         </p>
 
         {/* Nearest evacuation center */}

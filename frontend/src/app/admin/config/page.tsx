@@ -6,7 +6,8 @@
  * scheduled tasks overview, and configuration export.
  */
 
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,9 +53,9 @@ import {
   Download,
   Gauge,
   LayoutGrid,
+  RefreshCw,
   Save,
   Shield,
-  SlidersHorizontal,
   ToggleRight,
   XCircle,
   Zap,
@@ -328,7 +329,11 @@ function saveThresholds(config: ThresholdConfig) {
 // -- Component --
 
 export default function AdminConfigPage() {
-  const { data: flagsResponse, isLoading: flagsLoading } = useFeatureFlags();
+  const {
+    data: flagsResponse,
+    isLoading: flagsLoading,
+    refetch: refetchFlags,
+  } = useFeatureFlags();
   const updateFlag = useUpdateFeatureFlag();
 
   const [thresholds, setThresholds] = useState<ThresholdConfig>(loadThresholds);
@@ -521,18 +526,18 @@ export default function AdminConfigPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="w-full px-6 pt-6">
-        <div className="flex items-start justify-between">
-          <PageHeader
-            icon={SlidersHorizontal}
-            title="System Configuration"
-            subtitle="Feature flags, risk thresholds, and system-wide settings"
-          />
-          <div className="flex items-center gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={handleExportConfig}>
-              <Download className="h-4 w-4 mr-1.5" />
-              Export Config
-            </Button>
-          </div>
+        <Breadcrumb
+          items={[
+            { label: "Admin", href: "/admin" },
+            { label: "Configuration" },
+          ]}
+          className="mb-4"
+        />
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="outline" size="sm" onClick={handleExportConfig}>
+            <Download className="h-4 w-4 mr-1.5" />
+            Export Config
+          </Button>
         </div>
       </div>
 
@@ -593,14 +598,23 @@ export default function AdminConfigPage() {
               <motion.div variants={fadeUp}>
                 <GlassCard className="overflow-hidden">
                   <div className="h-1 w-full bg-linear-to-r from-primary/60 via-primary to-primary/60" />
-                  <CardContent className="py-12 text-center">
+                  <CardContent className="py-12 text-center space-y-4">
                     <ToggleRight className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
                     <p className="text-sm text-muted-foreground">
                       No feature flags returned from the server
                     </p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      Verify the backend FeatureFlagService is initialized.
+                    <p className="text-xs text-muted-foreground/70">
+                      Verify the backend FeatureFlagService is initialized and
+                      the API is reachable.
                     </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchFlags()}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1.5" />
+                      Retry
+                    </Button>
                   </CardContent>
                 </GlassCard>
               </motion.div>

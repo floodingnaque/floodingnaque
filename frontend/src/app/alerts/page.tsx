@@ -6,10 +6,9 @@
  */
 
 import { motion, useInView } from "framer-motion";
-import { Bell, Calendar, CheckCheck, Filter, RefreshCw } from "lucide-react";
+import { Calendar, CheckCheck, Filter, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
@@ -147,44 +146,36 @@ export default function AlertsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header Actions */}
       <div className="w-full px-6 pt-6">
-        <PageHeader
-          icon={Bell}
-          title="Alerts"
-          subtitle="Monitor and manage flood risk alerts in real time"
-          actions={
-            <div className="flex items-center gap-3">
-              <ConnectionStatus
-                isConnected={isConnected}
-                showReconnectButton={false}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isFetching}
-                className="border border-white/20 text-white hover:bg-white/10 hover:text-white"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-                />
-                Refresh
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleAcknowledgeAll}
-                disabled={isAcknowledgingAll || unacknowledgedCount === 0}
-              >
-                <CheckCheck className="h-4 w-4 mr-2" />
-                {isAcknowledgingAll
-                  ? "Acknowledging..."
-                  : `Acknowledge All${unacknowledgedCount > 0 ? ` (${unacknowledgedCount})` : ""}`}
-              </Button>
-            </div>
-          }
-        />
+        <div className="flex items-center justify-end gap-3">
+          <ConnectionStatus
+            isConnected={isConnected}
+            showReconnectButton={false}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleAcknowledgeAll}
+            disabled={isAcknowledgingAll || unacknowledgedCount === 0}
+          >
+            <CheckCheck className="h-4 w-4 mr-2" />
+            {isAcknowledgingAll
+              ? "Acknowledging..."
+              : `Acknowledge All${unacknowledgedCount > 0 ? ` (${unacknowledgedCount})` : ""}`}
+          </Button>
+        </div>
       </div>
 
       {/* Filters Section */}

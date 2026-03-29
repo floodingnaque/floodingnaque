@@ -1468,7 +1468,7 @@ export function RegistrationWizard() {
     <GlassCard intensity="medium" className="w-full overflow-hidden">
       <div className="h-1 w-full bg-linear-to-r from-primary/80 via-primary to-primary/80" />
 
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         {/* Mobile-only status */}
         <div className="flex justify-center lg:hidden">
           <CityStatusBadge />
@@ -1538,7 +1538,7 @@ export function RegistrationWizard() {
       </div>
 
       {/* Footer */}
-      <div className="px-6 pb-6 flex flex-col items-center space-y-2">
+      <div className="px-4 pb-4 sm:px-6 sm:pb-6 flex flex-col items-center space-y-2">
         <div className="w-full h-px bg-linear-to-r from-transparent via-border/50 to-transparent" />
         <p className="text-sm text-muted-foreground pt-2">
           Already have an account?{" "}

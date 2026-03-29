@@ -5,7 +5,6 @@
  * for the thesis defense. Composes all landing sections in order.
  */
 
-import { BarangayMapSection } from "./components/BarangayMapSection";
 import { BarangayStatusSection } from "./components/BarangayStatusSection";
 import { CityWideBroadcastSection } from "./components/CityWideBroadcastSection";
 import { DualCTA } from "./components/DualCTA";
@@ -28,10 +27,9 @@ export default function LandingPage() {
       <HowItWorks />
       <FeatureCards />
       <RiskExplainer />
-      <BarangayMapSection />
       <BarangayStatusSection />
-      <DualCTA />
       <CityWideBroadcastSection />
+      <DualCTA />
       <Footer />
     </div>
   );

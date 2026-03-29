@@ -32,6 +32,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
 import { useHouseholdProfile } from "@/features/resident";
+import { useLanguage } from "@/state";
 import type { RiskLevel } from "@/types/api/prediction";
 
 const RISK_BG: Record<RiskLevel, string> = {
@@ -80,6 +81,7 @@ const RISK_ACTIONS: Record<RiskLevel, string[]> = {
 export default function ResidentRiskPage() {
   const { data: prediction, isLoading } = useLivePrediction();
   const { data: household } = useHouseholdProfile();
+  const language = useLanguage();
 
   const riskLevel = (prediction?.risk_level ?? 0) as RiskLevel;
   const Icon = RISK_ICON[riskLevel];
@@ -124,7 +126,9 @@ export default function ResidentRiskPage() {
           <p
             className={`text-4xl sm:text-5xl font-extrabold tracking-tight mt-1 ${RISK_TEXT[riskLevel]}`}
           >
-            {RISK_LABEL[riskLevel].fil} / {RISK_LABEL[riskLevel].en}
+            {language === "fil"
+              ? `${RISK_LABEL[riskLevel].fil} / ${RISK_LABEL[riskLevel].en}`
+              : RISK_LABEL[riskLevel].en}
           </p>
           <div className="flex items-center justify-center gap-4 mt-3 text-sm text-muted-foreground">
             <span>
@@ -200,7 +204,9 @@ export default function ResidentRiskPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Brain className="h-4 w-4 text-primary" />
-              Bakit Ito ang Risk Level? / Why This Risk Level?
+              {language === "fil"
+                ? "Bakit Ito ang Risk Level? / Why This Risk Level?"
+                : "Why This Risk Level?"}
             </CardTitle>
             <CardDescription>
               {prediction.explanation.why_alert.summary}
@@ -251,7 +257,9 @@ export default function ResidentRiskPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Info className="h-4 w-4 text-primary" />
-            Ano ang Dapat Gawin? / What Should You Do?
+            {language === "fil"
+              ? "Ano ang Dapat Gawin? / What Should You Do?"
+              : "What Should You Do?"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -326,7 +334,9 @@ export default function ResidentRiskPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Ano ang Ibig Sabihin? / What the Levels Mean
+            {language === "fil"
+              ? "Ano ang Ibig Sabihin? / What the Levels Mean"
+              : "What the Levels Mean"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
@@ -334,7 +344,9 @@ export default function ResidentRiskPage() {
             <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium text-foreground">
-                LIGTAS / Safe (Level 0)
+                {language === "fil"
+                  ? "LIGTAS / Safe (Level 0)"
+                  : "Safe (Level 0)"}
               </p>
               <p>
                 No flood risk detected. Normal conditions. Stay aware of weather
@@ -346,7 +358,9 @@ export default function ResidentRiskPage() {
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium text-foreground">
-                ALERTO / Alert (Level 1)
+                {language === "fil"
+                  ? "ALERTO / Alert (Level 1)"
+                  : "Alert (Level 1)"}
               </p>
               <p>
                 Elevated flood risk. Monitor weather updates. Prepare to
@@ -358,7 +372,9 @@ export default function ResidentRiskPage() {
             <Siren className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium text-foreground">
-                KRITIKAL / Critical (Level 2)
+                {language === "fil"
+                  ? "KRITIKAL / Critical (Level 2)"
+                  : "Critical (Level 2)"}
               </p>
               <p>
                 Severe flood risk. Evacuate immediately if instructed. Follow

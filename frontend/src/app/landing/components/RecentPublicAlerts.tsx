@@ -7,6 +7,7 @@
  */
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { alertsApi } from "@/features/alerts/services/alertsApi";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { Alert, RiskLevel } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Bell, CheckCircle, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const RISK_BADGE: Record<
   RiskLevel,
@@ -49,8 +51,8 @@ function timeAgo(dateStr: string): string {
 
 export function RecentPublicAlerts() {
   const { data: alerts, isLoading } = useQuery<Alert[]>({
-    queryKey: ["alerts", "recent", "public", 5],
-    queryFn: () => alertsApi.getRecentAlerts(5),
+    queryKey: ["alerts", "recent", "public", 10],
+    queryFn: () => alertsApi.getRecentAlerts(10),
     staleTime: 5 * 60 * 1000,
     // Pause polling while in error state to avoid flooding the console
     refetchInterval: (query) =>
@@ -61,10 +63,18 @@ export function RecentPublicAlerts() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Bell className="h-4 w-4 text-muted-foreground" />
-          Recent Alerts
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4 text-muted-foreground" />
+            Recent Alerts
+          </CardTitle>
+          <Badge variant="outline" className="text-[10px]">
+            {alerts?.length ?? 0} alerts
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Latest flood alerts and advisories across all barangays.
+        </p>
       </CardHeader>
       <CardContent className="space-y-2">
         {isLoading ? (
@@ -78,48 +88,69 @@ export function RecentPublicAlerts() {
             </div>
           ))
         ) : !alerts?.length ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
-            No recent alerts
-          </p>
+          <div className="text-center py-8">
+            <Bell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No recent alerts</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              All clear — no active flood alerts at this time
+            </p>
+          </div>
         ) : (
-          alerts.map((alert) => {
-            const meta = RISK_BADGE[alert.risk_level];
-            const Icon = meta.icon;
-            return (
-              <div
-                key={alert.id}
-                className="flex items-start gap-3 py-2 border-b last:border-0 border-border/30"
-              >
-                <Icon
-                  className={cn(
-                    "h-4 w-4 mt-0.5 shrink-0",
-                    alert.risk_level === 0
-                      ? "text-risk-safe"
-                      : alert.risk_level === 1
-                        ? "text-risk-alert"
-                        : "text-risk-critical",
-                  )}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground line-clamp-2">
-                    {alert.message}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge
-                      variant="outline"
-                      className={cn("text-[10px] h-4 px-1.5", meta.cls)}
-                    >
-                      {meta.label}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground">
-                      {timeAgo(alert.triggered_at)}
-                    </span>
+          <div className="space-y-0 max-h-120 overflow-y-auto pr-1 scrollbar-thin">
+            {alerts.map((alert) => {
+              const meta = RISK_BADGE[alert.risk_level];
+              const Icon = meta.icon;
+              return (
+                <div
+                  key={alert.id}
+                  className="flex items-start gap-3 py-2 border-b last:border-0 border-border/30"
+                >
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 mt-0.5 shrink-0",
+                      alert.risk_level === 0
+                        ? "text-risk-safe"
+                        : alert.risk_level === 1
+                          ? "text-risk-alert"
+                          : "text-risk-critical",
+                    )}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground line-clamp-2">
+                      {alert.message}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge
+                        variant="outline"
+                        className={cn("text-[10px] h-4 px-1.5", meta.cls)}
+                      >
+                        {meta.label}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        {timeAgo(alert.triggered_at)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
+
+        {/* Sign in CTA */}
+        <div className="rounded-lg bg-muted/30 p-3 flex items-center justify-between gap-3 mt-2">
+          <p className="text-xs text-muted-foreground">
+            Sign in for personalized barangay alerts
+          </p>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="shrink-0 text-xs h-7"
+          >
+            <Link to="/login">View All</Link>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

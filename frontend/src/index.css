@@ -142,6 +142,77 @@
   animation: pulse-critical 1.5s ease-in-out infinite;
 }
 
+/* Pulsing animation for community report markers */
+@keyframes report-pulse-ring {
+  0% {
+    stroke-opacity: 0.6;
+    stroke-width: 1.5;
+    r: attr(r);
+  }
+  50% {
+    stroke-opacity: 0;
+    stroke-width: 4;
+  }
+  100% {
+    stroke-opacity: 0.6;
+    stroke-width: 1.5;
+  }
+}
+
+.report-pulse {
+  animation: report-pulse-anim 2s ease-in-out infinite;
+}
+
+@keyframes report-pulse-anim {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/* Pulsing animation for user location indicator */
+.user-location-pulse {
+  animation: user-loc-pulse 2.5s ease-in-out infinite;
+}
+
+/* Custom DivIcon markers — remove Leaflet's default white box */
+.user-location-marker,
+.report-marker {
+  background: none !important;
+  border: none !important;
+}
+
+/* Pulsing glow for user location pin */
+.user-location-marker {
+  animation: user-pin-pulse 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
+}
+
+@keyframes user-pin-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(59, 130, 246, 0.8));
+  }
+}
+
+@keyframes user-loc-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+    stroke-width: 1.5;
+  }
+  50% {
+    opacity: 0.1;
+    stroke-width: 3;
+  }
+}
+
 /* Rain effect animation (global so every RainEffect instance uses it) */
 @keyframes rain-fall {
   0% {

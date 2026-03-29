@@ -6,11 +6,9 @@
  */
 
 import { motion, useInView } from "framer-motion";
-import { CloudRain, ShieldAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { StaleDataBanner } from "@/components/feedback/StaleDataBanner";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { PredictionForm } from "@/features/flooding/components/PredictionForm";
 import { PredictionResult } from "@/features/flooding/components/PredictionResult";
@@ -52,15 +50,6 @@ export default function PredictPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="container mx-auto px-4 pt-4 sm:pt-6">
-        <PageHeader
-          icon={predictionResult ? ShieldAlert : CloudRain}
-          title="Flood Risk Prediction"
-          subtitle="Enter current weather conditions to assess flood risk. Our Random Forest model analyzes multiple factors for accurate predictions."
-        />
-      </div>
-
       {/* Main Content */}
       <section className="py-6 sm:py-10 bg-muted/30">
         <div className="container max-w-4xl mx-auto px-4" ref={contentRef}>

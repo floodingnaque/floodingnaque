@@ -49,7 +49,13 @@ initTabSync({
   setAccessTokenSilent: (token) =>
     useAuthStore.getState().setAccessTokenSilent(token),
 });
-initLeaderElection();
+
+try {
+  initLeaderElection();
+} catch {
+  // Leader election is non-critical — app functions fine as single-tab
+  console.warn("[tab-leader] Leader election failed to initialize");
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

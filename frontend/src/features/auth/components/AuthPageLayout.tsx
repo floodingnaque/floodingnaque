@@ -113,7 +113,7 @@ export function AuthPageLayout({
   className,
 }: AuthPageLayoutProps) {
   return (
-    <div className="relative min-h-screen flex bg-primary overflow-hidden">
+    <div className="relative min-h-screen flex bg-primary overflow-x-hidden overflow-y-auto">
       {/* Rain + gradient overlay */}
       <RainEffect />
       <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30 pointer-events-none" />
@@ -148,7 +148,7 @@ export function AuthPageLayout({
       {/* Right content panel */}
       <div
         className={cn(
-          "relative z-10 flex flex-1 items-center justify-center p-4 sm:p-6",
+          "relative z-10 flex flex-1 items-start sm:items-center justify-center p-4 pt-16 sm:p-6 sm:pt-6 min-h-screen",
           showBrandingPanel && "lg:w-7/12 xl:w-1/2",
           className,
         )}

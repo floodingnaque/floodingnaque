@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
@@ -187,11 +186,6 @@ export default function ReportsPage() {
 
       {/* Header */}
       <header className="w-full px-6 pt-6">
-        <PageHeader
-          icon={FileText}
-          title="Reports & Export"
-          subtitle="Download flood monitoring reports as PDF or CSV files. Pick a report type below, then generate it."
-        />
         <p
           className="mt-2 text-sm text-muted-foreground max-w-2xl"
           id="reports-page-heading"

@@ -19,13 +19,11 @@ import {
   MapPin,
   RefreshCw,
   ShieldCheck,
-  Users2,
   XCircle,
 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -207,15 +205,6 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="w-full px-6 pt-6">
-        <PageHeader
-          icon={Users2}
-          title="Community Reports"
-          subtitle="Crowdsourced flood reports from residents across Parañaque City"
-        />
-      </div>
-
       {/* Stats + Filters + Reports */}
       <section className="py-10 bg-muted/30">
         <div className="w-full px-6" ref={sectionRef}>

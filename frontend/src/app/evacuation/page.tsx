@@ -28,7 +28,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, Tooltip } from "react-leaflet";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -315,12 +314,7 @@ export default function EvacuationPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="w-full px-6 pt-6">
-        <div className="flex items-center justify-between">
-          <PageHeader
-            icon={LifeBuoy}
-            title="Evacuation Centers"
-            subtitle="Real-time capacity monitoring for all evacuation centers in Parañaque City"
-          />
+        <div className="flex items-center justify-end gap-3">
           {/* Live indicator */}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {isConnected ? (
@@ -558,7 +552,12 @@ export default function EvacuationPage() {
                         >
                           <Tooltip direction="top" offset={[0, -47]}>
                             <strong>{c.name}</strong>
-                            {nearestIds.has(c.id) && <> <Star className="h-3 w-3 inline" /> Nearest</>}
+                            {nearestIds.has(c.id) && (
+                              <>
+                                {" "}
+                                <Star className="h-3 w-3 inline" /> Nearest
+                              </>
+                            )}
                           </Tooltip>
                           <Popup maxWidth={280}>
                             <div className="min-w-48 space-y-2 text-sm">

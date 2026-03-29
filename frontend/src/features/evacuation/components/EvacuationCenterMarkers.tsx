@@ -8,9 +8,9 @@
  */
 
 import type { EvacuationCenter } from "@/types";
-import { Home } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import L from "leaflet";
+import { Home } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";
 import { Marker, Popup, Tooltip } from "react-leaflet";
 
@@ -33,10 +33,18 @@ function occupancyColor(pct: number): string {
 function createCenterIcon(occupancyPct: number): L.DivIcon {
   const fill = occupancyColor(occupancyPct);
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="45">
-      <path fill="${fill}" stroke="#fff" stroke-width="1.5"
-        d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24C24 5.37 18.63 0 12 0z"/>
-      <path fill="#fff" d="M12 6.5l-5.5 6.5h2.5v4h6v-4h2.5L12 6.5z"/>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 45" width="30" height="45">
+      <defs>
+        <filter id="ec-shadow" x="-20%" y="-10%" width="140%" height="130%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000" flood-opacity="0.25"/>
+        </filter>
+      </defs>
+      <path filter="url(#ec-shadow)" fill="${fill}" stroke="#fff" stroke-width="1.5"
+        d="M15 0C6.72 0 0 6.72 0 15c0 11.25 15 30 15 30s15-18.75 15-30C30 6.72 23.28 0 15 0z"/>
+      <g transform="translate(7.5, 7.5)" fill="#fff">
+        <path d="M7.5 0L0 6.5h2.2v5.5h4.3v-3.2h2v3.2h4.3V6.5h2.2L7.5 0z"/>
+        <rect x="5.75" y="8.5" width="3.5" height="3.3" rx="0.5" fill="${fill}"/>
+      </g>
     </svg>
   `;
   return L.divIcon({

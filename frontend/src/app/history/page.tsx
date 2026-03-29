@@ -28,7 +28,6 @@ import {
 } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
@@ -303,33 +302,25 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header Actions */}
       <div className="w-full px-6 pt-6">
-        <PageHeader
-          icon={CloudSun}
-          title="History"
-          subtitle="View and analyze historical weather and prediction data"
-          actions={
-            <div className="flex items-center gap-3">
-              {lastUpdated && (
-                <span className="text-xs text-white/60">
-                  Updated {format(lastUpdated, "h:mm:ss a")}
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="border border-white/20 text-white hover:bg-white/10 hover:text-white"
-              >
-                <RefreshCw
-                  className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                />
-                Refresh
-              </Button>
-            </div>
-          }
-        />
+        <div className="flex items-center justify-end gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground">
+              Updated {format(lastUpdated, "h:mm:ss a")}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Tabbed Content */}

@@ -8,7 +8,7 @@
  * multi-filter search, detail side-panel, and auto-refresh.
  */
 
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -994,32 +994,25 @@ export default function AdminBarangaysPage() {
           items={[{ label: "Admin", href: "/admin" }, { label: "Barangays" }]}
           className="mb-4"
         />
-        <div className="flex items-start justify-between">
-          <PageHeader
-            icon={MapPin}
-            title="Barangay Management"
-            subtitle={`Configure flood risk and evacuation data for all ${BARANGAYS.length} barangays`}
-          />
-          <div className="flex items-center gap-3 pt-1">
-            {displayUpdatedAt && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Updated{" "}
-                {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
-              />
-              Refresh
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-3">
+          {displayUpdatedAt && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Updated{" "}
+              {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
         </div>
       </div>
 

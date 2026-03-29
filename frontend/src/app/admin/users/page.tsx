@@ -7,7 +7,7 @@
  * bulk selection, and inactive-account badging.
  */
 
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import {
   AlertDialog,
@@ -519,32 +519,25 @@ export default function AdminUsersPage() {
           ]}
           className="mb-4"
         />
-        <div className="flex items-start justify-between">
-          <PageHeader
-            icon={Users}
-            title="User Management"
-            subtitle={`${total} registered account${total !== 1 ? "s" : ""}`}
-          />
-          <div className="flex items-center gap-3 pt-1">
-            {displayUpdatedAt && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Updated{" "}
-                {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
-              />
-              Refresh
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-3">
+          {displayUpdatedAt && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Updated{" "}
+              {formatDistanceToNow(displayUpdatedAt, { addSuffix: true })}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-1.5", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
         </div>
       </div>
 

@@ -45,7 +45,6 @@ import {
 } from "recharts";
 
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1742,41 +1741,24 @@ export default function WorkflowPage() {
           ]}
           className="mb-4"
         />
-        <PageHeader
-          icon={GitBranch}
-          title="LGU Workflow Management"
-          subtitle="Manage incident workflows, state transitions, and after-action reports"
-          badge={
-            <Badge
-              variant="outline"
-              className="border-primary/30 bg-primary/10 text-primary text-xs"
-            >
-              Admin Only
-            </Badge>
-          }
-          actions={
-            <div className="flex items-center gap-3">
-              {/* Last updated */}
-              {lastUpdated && (
-                <span className="text-xs text-white/60">
-                  Updated {lastUpdated.toLocaleTimeString()}
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  refetch();
-                  refetchAnalytics();
-                }}
-                className="border border-white/20 text-white hover:bg-white/10 hover:text-white"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
-          }
-        />
+        <div className="flex items-center justify-end gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground">
+              Updated {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetch();
+              refetchAnalytics();
+            }}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* ═══ Pipeline Overview ═══ */}

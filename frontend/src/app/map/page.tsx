@@ -6,12 +6,11 @@
  */
 
 import { motion, useInView } from "framer-motion";
-import { Crosshair, Loader2, Map, WifiOff } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { Crosshair, Loader2, WifiOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { ReportFAB } from "@/features/community/components/ReportFAB";
 import { ReportSubmitModal } from "@/features/community/components/ReportSubmitModal";
@@ -42,6 +41,11 @@ export default function MapPage() {
     );
   }, []);
 
+  // Auto-detect user location on page load
+  useEffect(() => {
+    handleLocate();
+  }, [handleLocate]);
+
   // Real-time capacity SSE stream
   const { isConnected: capacityConnected } = useCapacityStream({
     enabled: true,
@@ -55,15 +59,6 @@ export default function MapPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="container mx-auto px-4 pt-6">
-        <PageHeader
-          icon={Map}
-          title="Flood Map"
-          subtitle="Interactive barangay flood risk visualization across all 16 barangays of Parañaque City"
-        />
-      </div>
-
       {/* Map Section */}
       <section className="py-10 bg-muted/30">
         <div className="container mx-auto px-4" ref={mapRef}>

@@ -31,6 +31,7 @@ import {
   useAlerts,
 } from "@/features/alerts/hooks/useAlerts";
 import { useLivePrediction } from "@/features/flooding/hooks/useLivePrediction";
+import { useLanguage } from "@/state";
 import type { Alert } from "@/types";
 
 type FilterTab = "active" | "all";
@@ -69,6 +70,7 @@ export default function ResidentAlertsPage() {
   const ackMutation = useAcknowledgeAlert();
   const ackAllMutation = useAcknowledgeAll();
   const [filter, setFilter] = useState<FilterTab>("active");
+  const language = useLanguage();
 
   const smartAlert = prediction?.smart_alert;
 
@@ -97,7 +99,7 @@ export default function ResidentAlertsPage() {
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
-            Mga Alerto / Alerts
+            {language === "fil" ? "Mga Alerto / Alerts" : "Alerts"}
           </h2>
           <p className="text-sm text-muted-foreground">
             Real-time flood warnings for Parañaque City
@@ -141,34 +143,36 @@ export default function ResidentAlertsPage() {
       </div>
 
       {/* ── Smart Alert Banner ────────────────────────────────────── */}
-      {smartAlert && !smartAlert.was_suppressed && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                System Alert - {smartAlert.escalation_state}
-              </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400/80 mt-0.5">
-                3-hour rainfall: {smartAlert.rainfall_3h} mm
-              </p>
-              {smartAlert.contributing_factors?.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {smartAlert.contributing_factors?.map((f, i) => (
-                    <Badge
-                      key={i}
-                      variant="outline"
-                      className="text-xs border-amber-500/30 text-amber-700 dark:text-amber-400"
-                    >
-                      {f}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+      {smartAlert &&
+        !smartAlert.was_suppressed &&
+        smartAlert.escalation_state !== "none" && (
+          <div className="p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                  System Alert - {smartAlert.escalation_state}
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400/80 mt-0.5">
+                  3-hour rainfall: {smartAlert.rainfall_3h} mm
+                </p>
+                {smartAlert.contributing_factors?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {smartAlert.contributing_factors?.map((f, i) => (
+                      <Badge
+                        key={i}
+                        variant="outline"
+                        className="text-xs border-amber-500/30 text-amber-700 dark:text-amber-400"
+                      >
+                        {f}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* ── Alert List ────────────────────────────────────────────── */}
       {isLoading ? (
@@ -251,7 +255,9 @@ export default function ResidentAlertsPage() {
             {filter === "active" ? (
               <>
                 <ShieldCheck className="h-12 w-12 mb-3 text-green-500 opacity-60" />
-                <p className="text-sm font-medium">Ligtas - All Clear</p>
+                <p className="text-sm font-medium">
+                  {language === "fil" ? "Ligtas - All Clear" : "All Clear"}
+                </p>
                 <p className="text-xs mt-1">
                   No active flood alerts for your area
                 </p>
@@ -273,7 +279,9 @@ export default function ResidentAlertsPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Kapag May Alerto / When You Get an Alert
+            {language === "fil"
+              ? "Kapag May Alerto / When You Get an Alert"
+              : "When You Get an Alert"}
           </CardTitle>
           <CardDescription>Follow these steps to stay safe</CardDescription>
         </CardHeader>

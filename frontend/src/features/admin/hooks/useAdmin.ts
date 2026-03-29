@@ -72,7 +72,7 @@ export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: CreateUserParams) => adminApi.createUser(params),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminQueryKeys.users() }),
     onError: () => toast.error("Failed to create user"),
   });
 }
@@ -82,7 +82,7 @@ export function useUpdateUserRole() {
   return useMutation({
     mutationFn: ({ id, role }: { id: string; role: string }) =>
       adminApi.updateUserRole(id, role),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminQueryKeys.users() }),
     onError: () => toast.error("Failed to update user role"),
   });
 }
@@ -92,7 +92,7 @@ export function useToggleUserStatus() {
   return useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       adminApi.toggleUserStatus(id, isActive),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminQueryKeys.users() }),
     onError: () => toast.error("Failed to update user status"),
   });
 }
@@ -108,7 +108,7 @@ export function useDeleteUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => adminApi.deleteUser(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminQueryKeys.users() }),
     onError: () => toast.error("Failed to delete user"),
   });
 }
@@ -156,7 +156,12 @@ export function useModelComparison() {
 export function useTriggerRetrain() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (modelId?: string) => adminApi.triggerRetrain(modelId),
+    mutationFn: (options?: {
+      model_id?: string;
+      clean_data?: boolean;
+      hmac_sign?: boolean;
+      version_tag?: string;
+    }) => adminApi.triggerRetrain(options),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "models"] }),
     onError: () => toast.error("Failed to trigger model retrain"),
   });

@@ -7,7 +7,6 @@
  */
 
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -26,7 +25,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Landmark,
-  MapPin,
   Search,
   Shield,
   Users,
@@ -86,12 +84,6 @@ export default function OperatorBarangaysPage() {
             { label: "Barangays" },
           ]}
           className="mb-4"
-        />
-        <PageHeader
-          icon={MapPin}
-          title="Barangays"
-          subtitle="Overview of all 16 Parañaque barangays - flood risk, population, and evacuation centers"
-          badge="Read-Only"
         />
       </div>
 

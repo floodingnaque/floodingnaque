@@ -13,8 +13,9 @@
  */
 
 import type { PathOptions } from "leaflet";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { Polygon, Tooltip } from "react-leaflet";
+import { toast } from "sonner";
 
 import { BARANGAYS } from "@/config/paranaque";
 import { useFloodDepth, type BarangayDepth } from "../hooks/useFloodDepth";
@@ -51,7 +52,16 @@ export interface FloodDepthOverlayProps {
 export const FloodDepthOverlay = memo(function FloodDepthOverlay({
   visible = true,
 }: FloodDepthOverlayProps) {
-  const { data } = useFloodDepth(visible);
+  const { data, error } = useFloodDepth(visible);
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to load flood depth data", {
+        description: "Depth estimation service may be unavailable.",
+        id: "flood-depth-error",
+      });
+    }
+  }, [error]);
 
   const polygons = useMemo(() => {
     if (!data?.barangays) return [];

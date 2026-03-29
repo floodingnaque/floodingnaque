@@ -6,7 +6,7 @@
  * security-event analytics. Admin-only access.
  */
 
-import { PageHeader, SectionHeading } from "@/components/layout";
+import { SectionHeading } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -440,49 +440,42 @@ export default function AdminSecurityPage() {
     <div className="min-h-screen bg-background">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="w-full px-6 pt-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <PageHeader
-            icon={Shield}
-            title="Cybersecurity & Audit"
-            subtitle="Security posture assessment, audit trail, and threat monitoring"
-          />
-          <div className="flex items-center gap-2">
-            {lastUpdated && (
-              <span className="text-xs text-muted-foreground mr-2">
-                Updated {lastUpdated}
-              </span>
-            )}
-            <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-              <Radio
-                className={cn(
-                  "h-3.5 w-3.5",
-                  liveMode
-                    ? "text-risk-safe animate-pulse"
-                    : "text-muted-foreground",
-                )}
-              />
-              <span className="text-xs font-medium">Live</span>
-              <Switch
-                checked={liveMode}
-                onCheckedChange={setLiveMode}
-                className="scale-75"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshAll}
-              disabled={postureFetching || auditFetching}
-            >
-              <RefreshCw
-                className={cn(
-                  "h-4 w-4 mr-1.5",
-                  (postureFetching || auditFetching) && "animate-spin",
-                )}
-              />
-              Refresh
-            </Button>
+        <div className="flex items-center justify-end gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground mr-2">
+              Updated {lastUpdated}
+            </span>
+          )}
+          <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+            <Radio
+              className={cn(
+                "h-3.5 w-3.5",
+                liveMode
+                  ? "text-risk-safe animate-pulse"
+                  : "text-muted-foreground",
+              )}
+            />
+            <span className="text-xs font-medium">Live</span>
+            <Switch
+              checked={liveMode}
+              onCheckedChange={setLiveMode}
+              className="scale-75"
+            />
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshAll}
+            disabled={postureFetching || auditFetching}
+          >
+            <RefreshCw
+              className={cn(
+                "h-4 w-4 mr-1.5",
+                (postureFetching || auditFetching) && "animate-spin",
+              )}
+            />
+            Refresh
+          </Button>
         </div>
       </div>
 

@@ -28,7 +28,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { SectionHeading } from "@/components/layout/SectionHeading";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
@@ -369,37 +368,29 @@ export default function AdminPage() {
           items={[{ label: "Admin", href: "/admin" }, { label: "Dashboard" }]}
           className="mb-4"
         />
-        <PageHeader
-          icon={Shield}
-          title="Admin Panel"
-          subtitle="System health monitoring and statistics"
-          actions={
-            <div className="flex items-center gap-3">
-              {lastUpdated > 0 && (
-                <span className="text-xs text-white/60">
-                  Updated{" "}
-                  {formatDistanceToNow(new Date(lastUpdated), {
-                    addSuffix: true,
-                  })}
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={healthFetching}
-                className="border border-white/20 text-white hover:bg-white/10 hover:text-white"
-              >
-                {healthFetching ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                Refresh
-              </Button>
-            </div>
-          }
-        />
+        <div className="flex items-center justify-end gap-3">
+          {lastUpdated > 0 && (
+            <span className="text-xs text-muted-foreground">
+              Updated{" "}
+              {formatDistanceToNow(new Date(lastUpdated), {
+                addSuffix: true,
+              })}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={healthFetching}
+          >
+            {healthFetching ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* SLA / Degraded Service Warning Banner */}

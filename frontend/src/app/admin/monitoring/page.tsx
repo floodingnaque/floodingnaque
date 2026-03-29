@@ -6,7 +6,6 @@
  * alert delivery confirmation monitoring, and anomaly detection.
  */
 
-import { PageHeader } from "@/components/layout";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -333,58 +332,49 @@ export default function AdminMonitoringPage() {
         ]}
         className="mb-4 px-4 sm:px-6 lg:px-8 pt-6"
       />
-      <PageHeader
-        icon={Activity}
-        title="System Monitoring"
-        subtitle="Uptime, API performance, model drift, and alert delivery tracking"
-        actions={
-          <div className="flex items-center gap-3">
-            {/* Last updated timestamp */}
-            <span className="text-[11px] text-muted-foreground hidden sm:inline">
-              Updated{" "}
-              {lastRefreshed.toLocaleTimeString("en-PH", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
+      <div className="flex items-center justify-end gap-3 px-4 sm:px-6 lg:px-8">
+        {/* Last updated timestamp */}
+        <span className="text-[11px] text-muted-foreground hidden sm:inline">
+          Updated{" "}
+          {lastRefreshed.toLocaleTimeString("en-PH", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+        </span>
+        {/* Live mode toggle */}
+        <div className="flex items-center gap-1.5">
+          {liveMode && (
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-risk-safe opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-risk-safe" />
             </span>
-            {/* Live mode toggle */}
-            <div className="flex items-center gap-1.5">
-              {liveMode && (
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-risk-safe opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-risk-safe" />
-                </span>
-              )}
-              <span
-                className={cn(
-                  "text-xs",
-                  liveMode
-                    ? "text-risk-safe font-medium"
-                    : "text-muted-foreground",
-                )}
-              >
-                {liveMode ? "Live" : "Paused"}
-              </span>
-              <Switch
-                checked={liveMode}
-                onCheckedChange={setLiveMode}
-                aria-label="Toggle live monitoring"
-              />
-            </div>
-            {/* Manual refresh */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleRefresh}
-              className="gap-1.5"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Refresh
-            </Button>
-          </div>
-        }
-      />
+          )}
+          <span
+            className={cn(
+              "text-xs",
+              liveMode ? "text-risk-safe font-medium" : "text-muted-foreground",
+            )}
+          >
+            {liveMode ? "Live" : "Paused"}
+          </span>
+          <Switch
+            checked={liveMode}
+            onCheckedChange={setLiveMode}
+            aria-label="Toggle live monitoring"
+          />
+        </div>
+        {/* Manual refresh */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleRefresh}
+          className="gap-1.5"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Refresh
+        </Button>
+      </div>
 
       {/* ── Anomaly / Degradation Banner ── */}
       {anomalies.length > 0 && (

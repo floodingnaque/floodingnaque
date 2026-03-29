@@ -21,6 +21,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarangayRiskMap } from "@/features/dashboard";
 import { useHouseholdProfile } from "@/features/resident";
+import { useLanguage } from "@/state";
 
 const EVACUATION_STEPS = [
   {
@@ -57,6 +58,7 @@ const EVACUATION_STEPS = [
 
 export default function ResidentPlanPage() {
   const { data: household, isLoading } = useHouseholdProfile();
+  const language = useLanguage();
 
   const vulnerabilities: string[] = [];
   const extraSteps: string[] = [];
@@ -95,7 +97,9 @@ export default function ResidentPlanPage() {
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Route className="h-5 w-5 text-primary" />
-          Plano sa Paglikas / My Evacuation Plan
+          {language === "fil"
+            ? "Plano sa Paglikas / My Evacuation Plan"
+            : "My Evacuation Plan"}
         </h2>
         <p className="text-sm text-muted-foreground">
           Plan your route to the nearest evacuation center
@@ -108,7 +112,9 @@ export default function ResidentPlanPage() {
       {/* ── Step-by-step Plan ─────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Mga Hakbang / Steps</CardTitle>
+          <CardTitle className="text-base">
+            {language === "fil" ? "Mga Hakbang / Steps" : "Steps"}
+          </CardTitle>
           <CardDescription>
             Follow this plan when an evacuation alert is issued
           </CardDescription>
@@ -122,7 +128,7 @@ export default function ResidentPlanPage() {
                 </span>
                 <div>
                   <p className="font-medium text-foreground text-sm">
-                    {s.fil} / {s.en}
+                    {language === "fil" ? `${s.fil} / ${s.en}` : s.en}
                   </p>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     {s.desc}

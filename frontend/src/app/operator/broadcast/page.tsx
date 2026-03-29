@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { API_ENDPOINTS } from "@/config/api.config";
+import { operatorKeys } from "@/features/operator/hooks/useOperator";
 import api from "@/lib/api-client";
 import { showToast } from "@/lib/toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -115,7 +116,7 @@ export default function OperatorBroadcastPage() {
 
   // Broadcast history
   const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ["broadcasts"],
+    queryKey: operatorKeys.broadcasts(),
     queryFn: () =>
       api.get<BroadcastListResponse>(API_ENDPOINTS.lgu.broadcasts, {
         params: { limit: 20 },
@@ -140,7 +141,7 @@ export default function OperatorBroadcastPage() {
       showToast.success(
         `Broadcast sent to ${data.data.recipients} recipients (${summary})`,
       );
-      queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
+      queryClient.invalidateQueries({ queryKey: operatorKeys.broadcasts() });
       // Reset form
       setTitle("");
       setMessage("");
