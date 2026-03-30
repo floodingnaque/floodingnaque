@@ -1,9 +1,9 @@
 # ============================================================================
 # WEB FRAMEWORK & API
 # ============================================================================
-Flask==3.0.3
-flask-cors==6.0.0  # Updated: fixes GHSA-43qf-4rqw-9q2g, GHSA-8vgw-p6qm-5gr7, GHSA-7rxf-gvfg-47g4
-Werkzeug==3.1.5  # Updated: fixes GHSA-hgf8-39gv-g3f2, GHSA-87hc-h4r5-73f7
+Flask==3.1.3
+flask-cors==6.0.2  # Updated: fixes GHSA-43qf-4rqw-9q2g, GHSA-8vgw-p6qm-5gr7, GHSA-7rxf-gvfg-47g4
+Werkzeug==3.1.7  # Updated: fixes GHSA-hgf8-39gv-g3f2, GHSA-87hc-h4r5-73f7
 
 # Production Servers
 gunicorn==23.0.0  # Linux/macOS/Docker (updated: fixes request smuggling CVE-2024-1135)
@@ -15,10 +15,10 @@ waitress==3.0.2  # Windows alternative (updated: fixes DoS CVE-2024-49768, race 
 requests==2.33.0  # Updated: fixes GHSA-9hjg-9r4m-mvj7
 urllib3==2.6.3  # Updated: fixes GHSA-48p4-8xcf-vxj5, GHSA-pq67-6m6q-mj2v, GHSA-gm62-xv2j-4w53, GHSA-2xpw-w6gg-jr37, GHSA-38jv-5279-wg99
 charset-normalizer>=3.4,<4  # Pin to suppress RequestsDependencyWarning
-aiohttp==3.13.3  # Updated: fixes GHSA-9548-qrrj-x5pj, GHSA-6mq8-rvhq-8wgg, GHSA-69f9-5gxw-wvc2 and more
+aiohttp==3.13.4  # Updated: fixes GHSA-9548-qrrj-x5pj, GHSA-6mq8-rvhq-8wgg, GHSA-69f9-5gxw-wvc2 and more
 aiohttp[speedups]==3.13.3  # Optional C extensions for better performance
 pywebpush==2.3.0  # Web Push notifications (VAPID/ECDH)
-tenacity==9.1.2  # Retry logic with exponential backoff (>=9.1.2 required by schemathesis)
+tenacity==9.1.4  # Retry logic with exponential backoff (>=9.1.2 required by schemathesis)
 
 # ============================================================================
 # DATA PROCESSING & MACHINE LEARNING
@@ -27,11 +27,11 @@ tenacity==9.1.2  # Retry logic with exponential backoff (>=9.1.2 required by sch
 # CRITICAL: These versions must match training environment to ensure
 # saved models load correctly. Changing versions may break model loading.
 # See: app/utils/ml_version_check.py for runtime validation
-numpy==2.1.3  # Array serialization in saved models
+numpy==2.4.4  # Array serialization in saved models
 pandas==2.2.3  # DataFrame structure in preprocessing
 scikit-learn==1.8.0  # Model pickle format changes between versions
-joblib==1.4.2  # Serialization format for .joblib files
-scipy==1.14.1  # Used internally by scikit-learn
+joblib==1.5.3  # Serialization format for .joblib files
+scipy==1.17.1  # Used internally by scikit-learn
 
 # Deep Learning (CPU-only for inference and lightweight training)
 # Install with: pip install torch --index-url https://download.pytorch.org/whl/cpu
@@ -40,32 +40,32 @@ torch>=2.0  # LSTM & Transformer flood prediction models (see app/services/deep_
 
 # Gradient Boosting Frameworks (XGBoost & LightGBM)
 xgboost==2.1.3  # Extreme Gradient Boosting - optimised trees, GPU support
-lightgbm==4.5.0  # Microsoft LightGBM - fast histogram-based gradient boosting
+lightgbm==4.6.0  # Microsoft LightGBM - fast histogram-based gradient boosting
 
 # ============================================================================
 # SCHEDULING & BACKGROUND TASKS
 # ============================================================================
-APScheduler==3.10.4
-celery==5.4.0  # Distributed task queue for background processing
+APScheduler==3.11.2
+celery==5.6.3  # Distributed task queue for background processing
 
 # ============================================================================
 # CONFIGURATION & ENVIRONMENT
 # ============================================================================
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # ============================================================================
 # DATABASE & ORM
 # ============================================================================
-SQLAlchemy==2.0.35
-alembic==1.13.3
+SQLAlchemy==2.0.48
+alembic==1.18.4
 pg8000==1.31.5  # Updated: fixes GHSA-wq2g-r956-j8cc
-psycopg2-binary==2.9.10  # Faster C-based driver for Linux/Docker production
+psycopg2-binary==2.9.11  # Faster C-based driver for Linux/Docker production
                           # Both drivers are installed; code auto-selects based on platform
 
 # ============================================================================
 # DATA VISUALIZATION
 # ============================================================================
-matplotlib==3.9.2
+matplotlib==3.10.8
 seaborn==0.13.2
 
 # ============================================================================
@@ -74,14 +74,14 @@ seaborn==0.13.2
 cryptography==45.0.3  # Latest security patches, pinned
 itsdangerous==2.2.0
 bcrypt==4.3.0
-PyJWT[crypto]==2.10.1  # For JWT token-based authentication (>=2.10.1 required by supabase-auth)
+PyJWT[crypto]==2.12.1  # For JWT token-based authentication (>=2.10.1 required by supabase-auth)
 
 # ============================================================================
 # INPUT VALIDATION & SANITIZATION
 # ============================================================================
-validators==0.34.0
-bleach==6.2.0
-email-validator==2.2.0  # Enhanced email validation
+validators==0.35.0
+bleach==6.3.0
+email-validator==2.3.0  # Enhanced email validation
 
 # ============================================================================
 # RATE LIMITING & CACHING
@@ -96,21 +96,21 @@ packaging==24.2  # Required by limits, pinned
 # ============================================================================
 # PERFORMANCE OPTIMIZATION
 # ============================================================================
-flask-compress==1.15
-Flask-Caching==2.3.0  # Response caching
+flask-compress==1.23
+Flask-Caching==2.3.1  # Response caching
 
 # ============================================================================
 # API DOCUMENTATION
 # ============================================================================
 flasgger==0.9.7.1  # Swagger/OpenAPI documentation
-PyYAML==6.0.2  # YAML export for OpenAPI schema
+PyYAML==6.0.3  # YAML export for OpenAPI schema
 
 # ============================================================================
 # MONITORING, LOGGING & ERROR TRACKING
 # ============================================================================
 python-json-logger==3.2.1
-prometheus-flask-exporter==0.23.1  # Prometheus metrics, pinned
-sentry-sdk[flask]==2.18.0  # Error tracking & performance monitoring
+prometheus-flask-exporter==0.23.2  # Prometheus metrics, pinned
+sentry-sdk[flask]==2.56.0  # Error tracking & performance monitoring
                            # Configured in app.utils.observability.sentry
                            # Activated when SENTRY_DSN env var is set
 
@@ -118,7 +118,7 @@ sentry-sdk[flask]==2.18.0  # Error tracking & performance monitoring
 # ============================================================================
 # PROGRESS TRACKING
 # ============================================================================
-tqdm==4.67.1
+tqdm==4.67.3
 
 # ============================================================================
 # WEATHER DATA SOURCES
@@ -129,8 +129,8 @@ meteostat==1.6.8
 # EXTERNAL DATA SOURCES (Free APIs)
 # ============================================================================
 # Open-Meteo - Weather forecasts & historical data (no API key needed)
-openmeteo-requests==1.2.0
-requests-cache==1.2.1  # Caching for Open-Meteo
+openmeteo-requests==1.7.5
+requests-cache==1.3.1  # Caching for Open-Meteo
 retry-requests==2.0.0  # Retry logic for API calls
 
 # NASA GPM/IMERG - Satellite rainfall data
@@ -143,26 +143,26 @@ retry-requests==2.0.0  # Retry logic for API calls
 # xarray==2024.10.0
 
 # PAGASA/Web Scraping
-beautifulsoup4==4.12.3
+beautifulsoup4==4.14.3
 lxml==5.3.0
 
 # NAMRIA Tide Tables (PDF/Excel parsing)
-tabula-py==2.9.3
+tabula-py==2.10.0
 openpyxl==3.1.5
 
 # PDF Generation (for export endpoints)
-reportlab==4.2.5
+reportlab==4.4.10
 
 # OpenStreetMap Queries
 overpy==0.7
 
 # Model Explainability (Large dependency ~500MB)
-shap==0.50.0  # Requires C++ build tools on Windows (Visual Studio Build Tools with Windows SDK)
+shap==0.51.0  # Requires C++ build tools on Windows (Visual Studio Build Tools with Windows SDK)
 
 # Geospatial (for flood mapping features)
-geopandas==1.1.2  # Security fix: CVE SQL injection in to_postgis()
-folium==0.18.0  # Interactive maps
-shapely==2.0.6  # Geometric operations
+geopandas==1.1.3  # Security fix: CVE SQL injection in to_postgis()
+folium==0.20.0  # Interactive maps
+shapely==2.1.2  # Geometric operations
 
 # Image Processing (for community report photo uploads)
 Pillow>=10.0  # EXIF stripping, image manipulation
@@ -171,10 +171,10 @@ Pillow>=10.0  # EXIF stripping, image manipulation
 supabase>=2.0  # Supabase client for file storage
 
 # Time Series Analysis (for temporal pattern analysis)
-statsmodels==0.14.4
-prophet==1.1.6  # Facebook's forecasting tool
+statsmodels==0.14.6
+prophet==1.3.0  # Facebook's forecasting tool
                 # Optional: Commented out due to heavy build requirements (cmdstan)
-                # Uncomment if needed: pip install prophet==1.1.6
+                # Uncomment if needed: pip install prophet==1.3.0
 
 # ============================================================================
 # SERVER-SENT EVENTS (SSE)
@@ -188,21 +188,21 @@ flask-sse==1.0.0  # Flask SSE extension for real-time updates
 graphene==3.4.3  # GraphQL schema definition framework
 # graphql-server removed - unused (graphql-core provides graphql_sync directly)
 #flask-graphql==2.0.1  # GraphQL endpoint integration (superseded by graphql-core)
-graphql-core==3.2.5  # GraphQL core library for schema and execution
+graphql-core==3.2.8  # GraphQL core library for schema and execution
 
 # ============================================================================
 # GOOGLE CLOUD / EARTH ENGINE
 # ============================================================================
 # Earth Engine Python API for satellite data
-earthengine-api==1.4.3
+earthengine-api==1.7.19
 
 # Google Cloud BigQuery for historical weather data
-google-cloud-bigquery==3.27.0
+google-cloud-bigquery==3.40.1
 
 # Google Authentication
-google-auth==2.37.0
-google-auth-oauthlib==1.2.1
-google-auth-httplib2==0.2.0
+google-auth==2.49.1
+google-auth-oauthlib==1.3.0
+google-auth-httplib2==0.3.0
 
 # Google Cloud Storage (for caching Earth Engine exports)
 google-cloud-storage==2.19.0
