@@ -15,8 +15,8 @@ waitress==3.0.2  # Windows alternative (updated: fixes DoS CVE-2024-49768, race 
 requests==2.33.0  # Updated: fixes GHSA-9hjg-9r4m-mvj7
 urllib3==2.6.3  # Updated: fixes GHSA-48p4-8xcf-vxj5, GHSA-pq67-6m6q-mj2v, GHSA-gm62-xv2j-4w53, GHSA-2xpw-w6gg-jr37, GHSA-38jv-5279-wg99
 charset-normalizer>=3.4,<4  # Pin to suppress RequestsDependencyWarning
-aiohttp==3.13.3  # Updated: fixes GHSA-9548-qrrj-x5pj, GHSA-6mq8-rvhq-8wgg, GHSA-69f9-5gxw-wvc2 and more
-aiohttp[speedups]==3.13.3  # Optional C extensions for better performance
+aiohttp==3.13.4  # Updated: fixes GHSA-9548-qrrj-x5pj, GHSA-6mq8-rvhq-8wgg, GHSA-69f9-5gxw-wvc2 and more
+aiohttp[speedups]==3.13.4  # Optional C extensions for better performance
 pywebpush==2.3.0  # Web Push notifications (VAPID/ECDH)
 tenacity==9.1.2  # Retry logic with exponential backoff (>=9.1.2 required by schemathesis)
 
