@@ -96,7 +96,7 @@ jobs:
           echo "stats=${STATS}" >> "$GITHUB_OUTPUT"
           echo "Raw stats: $STATS"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -164,7 +164,7 @@ jobs:
 
       - name: "Open drift issue and trigger retraining"
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -274,7 +274,7 @@ jobs:
 
       - name: "Post retraining result"
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -341,7 +341,7 @@ jobs:
 
       - name: "Send email to DRRMO recipients"
         if: steps.fetch.outputs.report_url != ''
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v16
         with:
           server_address: ${{ secrets.SMTP_HOST }}
           server_port: ${{ secrets.SMTP_PORT }}
@@ -381,7 +381,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'compound-alert-check')
 
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -516,7 +516,7 @@ jobs:
             || echo '{}')
           echo "stats=${STATS}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -600,7 +600,7 @@ jobs:
         github.event.inputs.job == 'role-notifications')
 
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 

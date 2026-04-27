@@ -74,7 +74,7 @@ jobs:
     steps:
       - name: "Fetch Dependabot metadata"
         id: meta
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -178,12 +178,12 @@ jobs:
        needs.classify.outputs.ecosystem == 'docker')
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
@@ -244,7 +244,7 @@ jobs:
 
       - name: "Upload test results"
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-results
           path: |
@@ -330,12 +330,12 @@ jobs:
       needs.classify.outputs.ecosystem == 'npm'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
@@ -372,7 +372,7 @@ jobs:
 
       - name: "Upload frontend artifacts"
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-test-results
           path: |
@@ -392,7 +392,7 @@ jobs:
       needs.classify.outputs.ecosystem == 'github-actions'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
           persist-credentials: false
@@ -451,7 +451,7 @@ jobs:
           fi
 
       - name: "Post decision comment"
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           DECISION: ${{ needs.classify.outputs.decision }}
           DECISION_REASON: ${{ needs.classify.outputs.decision_reason }}
@@ -630,7 +630,7 @@ jobs:
 
     steps:
       - name: "Enable auto-merge (squash)"
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           DECISION: ${{ needs.classify.outputs.decision }}
           ECOSYSTEM: ${{ needs.classify.outputs.ecosystem }}
@@ -679,7 +679,7 @@ jobs:
 
     steps:
       - name: "Apply appropriate label"
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -707,7 +707,7 @@ jobs:
 
       - name: "Request review from maintainer"
         if: needs.classify.outputs.decision == 'hold_for_review'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -744,7 +744,7 @@ jobs:
 
     steps:
       - name: "Merge approved PR (squash)"
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           PACKAGE_NAME: ${{ needs.classify.outputs.package_name }}
           ECOSYSTEM: ${{ needs.classify.outputs.ecosystem }}
