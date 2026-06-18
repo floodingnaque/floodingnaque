@@ -80,7 +80,7 @@ PyJWT[crypto]==2.13.0  # For JWT token-based authentication (>=2.10.1 required b
 # INPUT VALIDATION & SANITIZATION
 # ============================================================================
 validators==0.34.0
-bleach==6.2.0
+bleach==6.4.0
 email-validator==2.2.0  # Enhanced email validation
 
 # ============================================================================
