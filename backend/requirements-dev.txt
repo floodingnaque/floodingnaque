@@ -15,7 +15,7 @@ pytest-asyncio==0.24.0  # Testing async code with pytest
 pytest-cov==6.0.0
 pytest-mock==3.14.0  # Mock objects for pytest
 pytest-xdist==3.5.0  # Parallel test execution
-faker==21.0.0  # Generate test data
+faker==40.1.2  # Generate test data
 responses==0.24.1  # Mock requests library
 httpx[http2]==0.28.1  # Async HTTP client for testing (>=0.26 required by supabase-auth/functions)
 
