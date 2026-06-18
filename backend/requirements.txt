@@ -3,7 +3,7 @@
 # ============================================================================
 Flask==3.0.3
 flask-cors==6.0.0  # Updated: fixes GHSA-43qf-4rqw-9q2g, GHSA-8vgw-p6qm-5gr7, GHSA-7rxf-gvfg-47g4
-Werkzeug==3.1.5  # Updated: fixes GHSA-hgf8-39gv-g3f2, GHSA-87hc-h4r5-73f7
+Werkzeug==3.1.6  # Updated: fixes GHSA-hgf8-39gv-g3f2, GHSA-87hc-h4r5-73f7
 
 # Production Servers
 gunicorn==23.0.0  # Linux/macOS/Docker (updated: fixes request smuggling CVE-2024-1135)
