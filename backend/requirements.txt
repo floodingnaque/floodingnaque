@@ -208,4 +208,4 @@ google-auth-httplib2==0.2.0
 google-cloud-storage==2.19.0
 
 # Protocol buffers (required by Google Cloud)
-protobuf==5.29.5  # Updated: fixes GHSA-8qvm-5x2c-j2w7
+protobuf==6.33.4  # Updated: fixes GHSA-8qvm-5x2c-j2w7
