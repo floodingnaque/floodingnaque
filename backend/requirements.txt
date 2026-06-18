@@ -90,7 +90,7 @@ Flask-Limiter==4.1.1  # Updated: v4.x removes rich dependency, resolves conflict
 Flask-Session==0.8.0  # Server-side session storage (Redis in production)
 redis==5.2.0  # For rate limiting, caching, and sessions
 limits==3.13.0  # Required by Flask-Limiter
-packaging==24.2  # Required by limits, pinned
+packaging==26.0  # Required by limits, pinned
 # rich is no longer required by Flask-Limiter 4.x, but still used by schemathesis
 
 # ============================================================================
