@@ -16,7 +16,7 @@
 # Explainability & Feature Importance
 # ==============================================
 # Used by: train_production.py, train_enterprise.py, train_ultimate.py
-shap>=0.44.0
+shap>=0.52.0
 
 # ==============================================
 # Experiment Tracking & Model Registry
@@ -59,17 +59,17 @@ optuna>=3.5.0
 # Database Tools
 # ==============================================
 # Used by: backup_database.py (PostgreSQL backups)
-psycopg2-binary>=2.9.9  # PostgreSQL adapter
+psycopg2-binary>=2.9.12  # PostgreSQL adapter
 
 # ==============================================
 # API Rate Limiting & Retries
 # ==============================================
 # Used by: ingest_training_data.py
-tenacity>=8.2.0  # Retry with exponential backoff
+tenacity>=9.1.4  # Retry with exponential backoff
 
 # ==============================================
 # Testing & Quality (Development)
 # ==============================================
 # Used by: test_*.py, security_scan.py
 hypothesis>=6.92.0  # Property-based testing
-bandit>=1.7.0       # Security linting
+bandit>=1.9.4       # Security linting
