@@ -50,7 +50,7 @@ pyyaml>=6.0  # YAML validation
 # API Contract Testing
 schemathesis>=4.9.0  # OpenAPI-based testing (requires tenacity>=9.1.2)
 hypothesis>=6.108.0  # Property-based testing (compatible with schemathesis)
-pact-python==2.2.2  # Consumer-driven contract testing
+pact-python==3.2.1  # Consumer-driven contract testing
 syrupy==4.6.1  # Snapshot testing framework
 
 # Google Cloud Development Tools
