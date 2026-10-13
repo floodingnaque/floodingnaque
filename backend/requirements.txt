@@ -179,7 +179,7 @@ prophet==1.1.6  # Facebook's forecasting tool
 # ============================================================================
 # SERVER-SENT EVENTS (SSE)
 # ============================================================================
-sse-starlette==2.2.1  # SSE support (compatible with Flask via adapters)
+sse-starlette==3.2.0  # SSE support (compatible with Flask via adapters)
 flask-sse==1.0.0  # Flask SSE extension for real-time updates
 
 # ============================================================================
